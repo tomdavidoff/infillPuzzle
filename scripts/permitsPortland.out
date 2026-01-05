@@ -1,0 +1,190 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # permitsPortland.R 
+> # R code to grab portland permits for single family / infill areas
+> # Tom Davidoff started by Google AI
+> # 12/25/25
+> # Modified by Claude 12/26/25: Added ZIP/Tract toggle
+> # Modified by google AI to aggregate lot/date
+> 
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(ggplot2)
+> library(tigris)
+To enable caching of data, set `options(tigris_use_cache = TRUE)`
+in your R script or .Rprofile.
+> 
+> # ==========================================
+> # TOGGLE: "zip" or "tract"
+> # ==========================================
+> GEOGRAPHY <- "zip"
+> # ==========================================
+> 
+> options(timeout = 600)
+> options(tigris_use_cache = TRUE)
+> 
+> # --- PORTLAND PERMITS ---
+> pdx_file <- "data/raw/portlandPermit-Search-Results.csv"
+> 
+> if (!file.exists(pdx_file)) {
++   pdx_url <- "https://opendata.arcgis.com/api/v3/datasets/60341c09939e4407b4d135d55b0a3d6f_0/downloads/data?format=csv&spatialRefId=4326&where=1%3D1"
++   download.file(pdx_url, pdx_file, method = "libcurl")
++ }
+> 
+> dtPdx <- fread(pdx_file)
+> setnames(dtPdx, tolower(names(dtPdx)))
+> 
+> # Filter for the RIP Era (2021-2025) and Major Construction
+> dtPdxMajor <- dtPdx[
++   as.IDate(issued) >= "2021-01-01" &
++   work %in% c("New Construction", "Addition")
++ ]
+> 
+> # Portland Infill Logic:
+> dtPdxMajor[, isPlex := new_units >= 2 |
++              grepl("duplex|triplex|fourplex", description, ignore.case = TRUE) |
++              (work == "Addition" & new_units > 0) |
++              grepl("Townhouse", type, ignore.case = TRUE)]
+> 
+> dtPdxMajor <- dtPdxMajor[!is.na(x_web_mercator)]
+> 
+> sfPermit <- st_as_sf(dtPdxMajor,
++                      coords = c("x_web_mercator", "y_web_mercator"),
++                      crs = 3857)
+> 
+> # --- PORTLAND ZONING DISTRICTS ---
+> zoning_dir <- "data/raw/portlandZoning"
+> shp_path <- list.files(zoning_dir, pattern = "\\.shp$", full.names = TRUE)
+> sfZoning <- st_read(shp_path)
+Reading layer `Zoning' from data source 
+  `/Users/tdavidof/Library/CloudStorage/Dropbox/infillPuzzle/data/raw/portlandZoning/Zoning.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 15672 features and 22 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -13674130 ymin: 5689506 xmax: -13633520 ymax: 5724897
+Projected CRS: WGS 84 / Pseudo-Mercator
+> names(sfZoning) <- tolower(names(sfZoning))
+> sfZoning <- st_transform(sfZoning, 3857)
+> 
+> # --- SPATIAL JOIN: PERMITS + ZONING ---
+> sfPermitZoned <- st_join(sfPermit, sfZoning)
+> 
+> # ==========================================
+> # GEOGRAPHY-SPECIFIC JOIN
+> # ==========================================
+> 
+> if (GEOGRAPHY == "tract") {
++   sfTracts <- tracts(state = "OR", county = "Multnomah", year = 2021, cb = TRUE)
++   sfTracts <- st_transform(sfTracts, 3857)
++   sfFinal <- st_join(sfPermitZoned, sfTracts[, c("GEOID", "NAMELSAD")])
++   dtFinal <- as.data.table(sfFinal)
++   setnames(dtFinal, c("GEOID", "NAMELSAD"), c("geo_id", "geo_name"), skip_absent = TRUE)
++ } else {
++   sfZips <- zctas(year = 2020, cb = TRUE)
++   sfZips <- sfZips[grepl("^972", sfZips$ZCTA5CE20), ]
++   sfZips <- st_transform(sfZips, 3857)
++   sfFinal <- st_join(sfPermitZoned, sfZips[, c("ZCTA5CE20")])
++   dtFinal <- as.data.table(sfFinal)
++   setnames(dtFinal, "ZCTA5CE20", "geo_id", skip_absent = TRUE)
++   dtFinal[, geo_name := paste("ZIP", geo_id)]
++ }
+> 
+> # ==========================================
+> # LOT-LEVEL COLLAPSE (The "Nakamura/Zen" fix)
+> # ==========================================
+> 
+> # 1. Filter for R-Zones
+> dtAnalysis <- dtFinal[grepl("^R2.5|^R5|^R7|^R10|^R20", zone)]
+> 
+> 
+> # 2. Collapse multiple permits per property_id into a single Lot record
+> # We define an 'Infill Lot' as any lot that had at least one Plex permit issued.
+> dtLots <- dtAnalysis[!is.na(geo_id) & !is.na(property_id), .(
++   isPlexLot = any(isPlex, na.rm = TRUE),
++   total_sqft_lot = sum(total_sqft, na.rm = TRUE),
++   permit_count = .N
++ ), by = .(property_id, geo_id, zone, geo_name)]
+> 
+> # 2a. Side project: figure out if new construction projects are different sized
+> dtNews <- dtAnalysis[work == "New Construction" & !is.na(geo_id) & !is.na(property_id), .(
++   isPlexLot = any(isPlex, na.rm = TRUE),
++   total_sqft_lot = sum(total_sqft, na.rm = TRUE),
++   permit_count = .N
++ ), by = .(property_id, geo_id, zone, geo_name)]
+> print(dtNews[,.(mean(total_sqft_lot),median(total_sqft_lot,by=isPlexlot)),by=isPlexLot])
+   isPlexLot       V1     V2
+      <lgcl>    <num>  <num>
+1:     FALSE 2084.927 1481.5
+2:      TRUE 3553.643 3480.0
+> 
+> 
+> # ==========================================
+> # GEOGRAPHY-LEVEL PROPENSITY (Based on Lots)
+> # ==========================================
+> 
+> dtGeo <- dtLots[, .(
++   infill_lot_count = sum(isPlexLot, na.rm = TRUE),
++   total_lots_active = .N,
++   propensity = sum(isPlexLot, na.rm = TRUE) / .N
++ ), by = .(geo_id, zone, geo_name)]
+> 
+> setorder(dtGeo, -total_lots_active)
+> 
+> # ==========================================
+> # SAVE & SUMMARY
+> # ==========================================
+> output_file <- sprintf("data/derived/portland_%s_propensity.rds", GEOGRAPHY)
+> saveRDS(dtGeo, output_file)
+> 
+> cat("\n=== LOT-LEVEL SUMMARY BY", toupper(GEOGRAPHY), "===\n")
+
+=== LOT-LEVEL SUMMARY BY ZIP ===
+> cat("Total Active Lots (R-Zones):", nrow(dtLots), "\n")
+Total Active Lots (R-Zones): 3563 
+> cat("Total Infill Lots (Plexes):", sum(dtLots$isPlexLot), "\n")
+Total Infill Lots (Plexes): 555 
+> cat("Overall Infill Propensity (Lot-based):",
++     round(sum(dtGeo$infill_lot_count) / sum(dtGeo$total_lots_active), 4), "\n")
+Overall Infill Propensity (Lot-based): 0.1558 
+> 
+> print(head(dtGeo, 15))
+    geo_id   zone  geo_name infill_lot_count total_lots_active propensity
+    <char> <char>    <char>            <int>             <int>      <num>
+ 1:  97206     R5 ZIP 97206               41               268 0.15298507
+ 2:  97202     R5 ZIP 97202               32               213 0.15023474
+ 3:  97212     R5 ZIP 97212               11               176 0.06250000
+ 4:  97203     R5 ZIP 97203               41               175 0.23428571
+ 5:  97211     R5 ZIP 97211               26               166 0.15662651
+ 6:  97213     R5 ZIP 97213               17               147 0.11564626
+ 7:  97219     R7 ZIP 97219               10               144 0.06944444
+ 8:  97206   R2.5 ZIP 97206               39               133 0.29323308
+ 9:  97217     R5 ZIP 97217               25               127 0.19685039
+10:  97215     R5 ZIP 97215                8               105 0.07619048
+11:  97211   R2.5 ZIP 97211               26                90 0.28888889
+12:  97236    R10 ZIP 97236                4                87 0.04597701
+13:  97202   R2.5 ZIP 97202               28                85 0.32941176
+14:  97219    R10 ZIP 97219                6                75 0.08000000
+15:  97221     R7 ZIP 97221                4                72 0.05555556
+> 
+> proc.time()
+   user  system elapsed 
+  2.308   0.461   1.652 

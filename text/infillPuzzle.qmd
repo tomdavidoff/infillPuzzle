@@ -1,0 +1,65 @@
+---
+title: "The Infill Puzzle"
+author: "Thomas Davidoff"
+date: today
+date-format: "MMMM D, YYYY"
+format: pdf
+---
+
+# A Model of Structure Density with FAR Multipliers
+
+Consider a developer with a lot of land size $L$. The allowable buildable area is governed by a neighborhood-specific Floor Area Ratio (FAR) $F_j$. The developer chooses between building a single-family dwelling (SFD) or an infill project (e.g., a duplex). 
+
+Let $m_j \geq 1$ be a policy parameter representing the FAR "multiplier" or "bump" granted to infill projects. 
+
+The resulting structure sizes are:
+- **SFD Size:** $S_{SFD} = L F_j$
+- **Total Infill Size:** $S_{TotalInf} = L F_j m_j$
+- **Individual Infill Unit Size ($n=2$):** $S_{unit} = \frac{L F_j m_j}{2}$
+
+The market price function for square footage in neighbourhood $j$ remains:
+$$V_j(S) = \alpha_j S + \frac{1}{2} \beta_j S^2$$
+where $\beta_j < 0$ represents the concavity of the price-space relationship.
+
+## The Infill Condition
+
+The developer chooses Infill if the revenue gain exceeds the additional construction costs $C$:
+$$ 2 \cdot V_j\left(\frac{L F_j m_j}{2}\right) - V_j(L F_j) > C $$
+
+Substituting the price function:
+$$ 2 \left[ \alpha_j \left(\frac{L F_j m_j}{2}\right) + \frac{1}{2} \beta_j \left(\frac{L F_j m_j}{2}\right)^2 \right] - \left[ \alpha_j (L F_j) + \frac{1}{2} \beta_j (L F_j)^2 \right] > C $$
+
+Expanding and rearranging:
+$$ \alpha_j L F_j (m_j - 1) + \beta_j (L F_j)^2 \left[ \frac{1}{4} m_j^2 - \frac{1}{2} \right] > C $$
+
+## Implications
+
+**Case 1: FSR Neutrality ($m_j = 1$)**
+When the regulator provides no additional floor area for density, the condition simplifies to:
+$$ -\frac{1}{4} \beta_j (L F_j)^2 > C $$
+As previously noted, in this regime, the price level $\alpha_j$ drops out. Infill is driven strictly by the concavity $\beta_j$. In wealthy areas where demand for volume is linear ($\beta_j \to 0$), infill is economically impossible regardless of how high land prices ($\alpha_j$) are.
+
+**Case 2: The Density Bonus ($m_j > 1$)**
+When an FAR bump is introduced, the price level $\alpha_j$ becomes a primary driver of infill. Because $m_j - 1 > 0$, higher land values ($\alpha_j$) scale the incentive to densify.
+
+**Proposition:** 
+In the absence of a significant FAR bonus ($m_j \approx 1$), the "Infill Puzzle" is explained by the luxury of linearity: wealthy buyers' willingness to pay a constant PPSF for large volumes removes the "Slicing Premium" necessary to offset multi-unit construction costs. Infill thus gravitates toward middle-market neighborhoods where budget constraints induce the necessary concavity.
+
+### 4. US Expansion: ATTOM Field Strategy (`scripts/02_attom_us_cities.R`)
+Using **ATTOM** to get the "Slope" for Portland/Minneapolis.
+
+**Key ATTOM Fields:**
+*   `PropertyAddressFull`: To extract Postal/Zip.
+*   `SalesPriceAmount`: Your Y variable.
+*   `AreaBuilding`: Your X variable (Living SqFt).
+*   `PropertyTypeAddress`: Filter for `1001` (Single Family).
+
+# Description of built units exercise Portland
+We construct a building- and lot-level inventory of recent residential construction in Portland using administrative GIS data from PortlandMaps. Building footprints and attributes are obtained from the City of Portland Buildings feature layer, restricting attention to structures with reported year built ≥ 2018. These data include building geometry, structure type, residential unit counts, and gross building square footage.
+
+To associate buildings with parcels, we obtain tax lot polygons from the PortlandMaps CGIS Taxlots layer, restricting the download to parcels intersecting the bounding box of the building dataset. All spatial operations are performed in a projected coordinate system (UTM Zone 10N) to ensure accurate area calculations. Lot area is computed directly from parcel geometry and converted to square feet.
+
+Each building is linked to a parcel using a centroid-within spatial join: a building is assigned to the tax lot containing the centroid of its footprint. To address edge cases in which a centroid lies exactly on a parcel boundary, we apply a small (1 meter) buffer to unmatched centroids and repeat the join using an intersects criterion. This procedure successfully assigns approximately 99 percent of buildings to a unique tax lot; unmatched cases are retained but excluded from lot-level aggregation.
+
+For each matched building, we compute a footprint-based coverage measure (building footprint area divided by lot area) and a floor-area-ratio proxy (reported building square footage divided by lot area). We then aggregate buildings to the parcel (lot) level using the tax lot identifier, computing the number of structures per lot, total residential units, total building square footage, total footprint area, and indicators for the presence of accessory dwelling units or other multi-unit structures. The resulting lot-level dataset forms the basis for subsequent analysis of post-reform residential construction patterns.
+

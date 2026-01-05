@@ -12,17 +12,13 @@ library(stringr)
 library(RSQLite)
 library(sf)
 
-# pricingPropensity.R
-library(data.table); library(fixest); library(ggplot2); library(scales)
-library(stringr); library(RSQLite); library(sf)
-
 # ==========================================
 # 1. SETTINGS & DATA SOURCE PATHS
 # ==========================================
 GEO_LEVEL <- "census_tract" # Options: "bca_nbhd", "census_tract", "fsa_plus_1"
-PCCF_RAW  <- "../foreignTrend/data/raw/pccfNat_fccpNat_062017.txt"
+PCCF_RAW  <- "data/raw/pccfNat_fccpNat_062017.txt"
 PCCF_RDS  <- "data/pccf_bc.rds"
-BCA_DB    <- "~/OneDrive - UBC/Documents/data/bca/REVD16_and_inventory_extracts.sqlite3"
+BCA_DB    <- "data/raw/REVD16_and_inventory_extracts.sqlite3"
 PERMIT_F  <- "data/raw/vancouver_permits_full.csv"
 ZONING_F  <- "data/raw/vancouver_zoning.geojson"
 
@@ -95,6 +91,9 @@ dtMajor[, `:=`(
     cleanPostal = clean_pc(str_sub(address, -7))
 )]
 
+print(head(dtMajor))
+q("no")
+
 # Extract Lat/Long and Spatial Join
 dtMajor[, c("Lat", "Lon") := tstrsplit(geo_point_2d, ", ", type.convert = TRUE)]
 sfPermit <- st_join(st_as_sf(dtMajor[!is.na(Lat)], coords=c("Lon","Lat"), crs=4326),
@@ -135,6 +134,8 @@ dtInfill <- dtPermitGeo[, .(propensity = sum(infillType == "Infill/Duplex") / .N
 # Final Merge for Plot
 dtFinal <- merge(dtInfill, dtSlopes, by = "geo_id")
 dtFinal <- merge(dtFinal, dtBcaMeans, by = "geo_id")
+
+print(dtFinal[,.(.N,mean(total_sqft,na.rm=TRUE),median(total_sqft,na.rm=TRUE)),by=type])
 
 
 ggplot(dtFinal[totalProjects > 10], aes(x = estimate, y = propensity)) +

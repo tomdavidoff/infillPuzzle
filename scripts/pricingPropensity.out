@@ -39,17 +39,13 @@ The following object is masked from ‘package:fixest’:
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > 
-> # pricingPropensity.R
-> library(data.table); library(fixest); library(ggplot2); library(scales)
-> library(stringr); library(RSQLite); library(sf)
-> 
 > # ==========================================
 > # 1. SETTINGS & DATA SOURCE PATHS
 > # ==========================================
 > GEO_LEVEL <- "census_tract" # Options: "bca_nbhd", "census_tract", "fsa_plus_1"
-> PCCF_RAW  <- "../foreignTrend/data/raw/pccfNat_fccpNat_062017.txt"
+> PCCF_RAW  <- "data/raw/pccfNat_fccpNat_062017.txt"
 > PCCF_RDS  <- "data/pccf_bc.rds"
-> BCA_DB    <- "~/OneDrive - UBC/Documents/data/bca/REVD16_and_inventory_extracts.sqlite3"
+> BCA_DB    <- "data/raw/REVD16_and_inventory_extracts.sqlite3"
 > PERMIT_F  <- "data/raw/vancouver_permits_full.csv"
 > ZONING_F  <- "data/raw/vancouver_zoning.geojson"
 > 
@@ -122,53 +118,96 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +     cleanPostal = clean_pc(str_sub(address, -7))
 + )]
 > 
-> # Extract Lat/Long and Spatial Join
-> dtMajor[, c("Lat", "Lon") := tstrsplit(geo_point_2d, ", ", type.convert = TRUE)]
-> sfPermit <- st_join(st_as_sf(dtMajor[!is.na(Lat)], coords=c("Lon","Lat"), crs=4326),
-+                     st_read(ZONING_F, quiet=T))
-> 
-> # Filter for R-Zone (using R1-1 as requested)
-> dtRZone <- as.data.table(sfPermit)[grepl("R1-1", zoning_district)]
-> 
-> # ==========================================
-> # 5. GEOGRAPHIC CROSSWALK
-> # ==========================================
-> if (GEO_LEVEL == "bca_nbhd") {
-+     crosswalk <- dtBCA[, .N, by = .(cleanPostal, geo_id = neighbourhoodDescription)][order(cleanPostal, -N)][, .(geo_id = geo_id[1]), by = cleanPostal]
-+ } else if (GEO_LEVEL == "census_tract") {
-+     crosswalk <- readRDS(PCCF_RDS)[, .(cleanPostal = postalCode, geo_id = censusTract)]
-+ } else {
-+     crosswalk <- dtBCA[, .(geo_id = str_sub(cleanPostal, 1, 4)), by = cleanPostal]
-+ }
-> 
-> # ==========================================
-> # 6. ANALYSIS & VIZ
-> # ==========================================
-> dtBCAGeo   <- merge(dtBCA, crosswalk, by = "cleanPostal")
-> dtPermitGeo <- merge(dtRZone, crosswalk, by = "cleanPostal")
-> 
-> # Step 1: BCA Pricing Slope (Concavity)
-> m_slopes <- feols(ppsf ~ log(age + 1) + i(geo_id, MB_total_finished_area) | geo_id, data = dtBCAGeo)
-The variables 'geo_id::0040.02:MB_total_finished_area', 'geo_id::0063.00:MB_total_finished_area', 'geo_id::0065.00:MB_total_finished_area', 'geo_id::0068.00:MB_total_finished_area', 'geo_id::0145.02:MB_total_finished_area', 'geo_id::0148.00:MB_total_finished_area' and 5 others have been removed because of collinearity (see $collin.var).
-> dtSlopes <- as.data.table(broom::tidy(m_slopes))[grepl("MB_total_finished_area", term)]
-> dtSlopes[, geo_id := gsub("geo_id::(.*):MB_total_finished_area", "\\1", term)]
-> 
-> # Step 2: Permit Propensity
-> dtInfill <- dtPermitGeo[, .(propensity = sum(infillType == "Infill/Duplex") / .N, totalProjects = .N), by = geo_id]
-> 
-> # Final Merge for Plot
-> dtFinal <- merge(dtInfill, dtSlopes, by = "geo_id")
-> 
-> ggplot(dtFinal[totalProjects > 10], aes(x = estimate, y = propensity)) +
-+     geom_point(aes(size = totalProjects), alpha = 0.4) +
-+     geom_smooth(method = "lm", color = "firebrick") +
-+     scale_y_continuous(labels = percent) +
-+     labs(title = paste("Concavity vs Infill:", GEO_LEVEL), x = "BCA Pricing Slope", y = "Infill Propensity") +
-+     theme_minimal()
-`geom_smooth()` using formula = 'y ~ x'
-> ggsave(paste0("text/pricingPropensity", GEO_LEVEL, ".png"), width = 8, height = 6)
-`geom_smooth()` using formula = 'y ~ x'
-> 
+> print(head(dtMajor))
+    permitnumber permitnumbercreateddate  issuedate permitelapseddays
+          <char>                  <IDat>     <IDat>             <int>
+1: DB-2018-04803              2018-09-06 2019-10-04               393
+2: BP-2018-06489              2018-12-13 2019-05-08               146
+3: BP-2021-02977              2021-06-14 2022-01-14               214
+4: BP-2023-01912              2023-06-05 2023-08-01                57
+5: BP-2019-02286              2019-05-27 2022-11-10              1263
+6: DB-2018-06054              2018-11-21 2019-02-28                99
+   projectvalue            typeofwork
+          <num>                <char>
+1:       250000 Addition / Alteration
+2:       350000 Addition / Alteration
+3:      1721114 Addition / Alteration
+4:       630000 Addition / Alteration
+5:       980000 Addition / Alteration
+6:       275000 Addition / Alteration
+                                       address
+                                        <char>
+1: 1055 MAINLAND STREET, Vancouver, BC V6B 5P9
+2:               796 W BROADWAY, Vancouver, BC
+3:   355 BURRARD STREET, Vancouver, BC V6C 0C5
+4:    2123 W 4TH AVENUE, Vancouver, BC V6K 1N7
+5:    1228 MAPLE STREET, Vancouver, BC V6J 3R8
+6:  700 W PENDER STREET, Vancouver, BC V6C 1G8
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     projectdescription
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 <char>
+1:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   High Density Housing / Commercial - Addition / Alteration - Interior and exterior alterations:\r\nInterior and exterior alterations to the existing Restaurant-Class 1 for this existing Restaurant tenant in this existing commercial residential building on this site.\r\n\r\nBuilding Review Branch Notes:                                                      \r\n 1) Total proposed Occupant load is 68 seats + 7 staffs. = 75 persons. \r\n 2) A permanent sign indicating the above proposed occupant load shall be posted in a conspicuous location near the suite's principal entrance.                                                            \r\n3) Separate permit will be required if interior seating layout changed.  \r\n4) Separate permit is required for outdoor patio seating.\r\n\r\nSprinkler commitment letter on file.\r\n\r\nClass-4 Cooking operation\r\n\r\nCRP: P. J. Mallen, AIBC, 604.484.8285.  Email: permits@mgba.com\r\n\r\n\r\nNote:                                                                             \r\n""This permit has been reviewed under the 2014 Vancouver Building By-law (#10908).""
+2:                                                                                                                                                                                                                                                                                                                                                           High Density Housing / Commercial - Addition / Alteration - Change of Major Occupancy from Office - shell (Group D) to Restaurant - Class 1 (Group A2) and provide Interior Alterations for the new Restaurant  tenant - Meat and Bread in this existing mixed-use building.\r\nNo exterior alterations proposed. \r\n\r\nNote:\r\n1. Maximum occupant load = 25 persons including staff due to washroom restriction.\r\n1. No DP is required for change of use as Restaurant Class 1 is outright use in C-3A as per Eun Jeon.\r\n2. No translucent or opaque film, artwork, posters, shelving, display case, curtains or similar elements are to be installed on or directly outside or inside of the approved glazing frontages and windows.                     \r\n3. See DB-2018-05746 for landlord's work to demise the suite and to install ecology units and grease interceptors.\r\n\r\nMechanical Review Notes:\r\n1. Class 1 cooking operations (Grease-Laden Vapours).\r\n2. Commercial kitchen exhaust system to NFPA 96 (Type 1 hood).\r\n\r\nRevision#1 - Sep 6, 2019, J. Chen\r\n- Update total occupant load to 30 persons (25 dinning + 5 staff), staff will use shared washroom in the common area.\r\n- Change kitchen exhaust canopy brand and model.
+3:                                                                                                                                                                                                                                                                                                                                                                                         High Density Housing / Commercial - Addition / Alteration - Interior alterations to replace & relocate a new building transformer and convert approx. 469.86 ft2 of existing storage room to a new transformer room at Level A of this existing Municipally-Designated ""M"" and Vancouver Heritage-Designated ""A"" mixed used building on this site. Scope of work includes:\r\n\r\n- convert existing transformer room to a new storage room,\r\n- infill flooring for new storage space,\r\n- new chain link storage space allocations, \r\n- repair and relocate existing doors for ease of installation,\r\n- install new transformer in new transformer room,\r\n- infill existing louver at vertical shaft and provide with new ductwork & 8"" x 8"" louver for venting through existing ventilation shaft to sidewalk above.\r\n\r\n******THIS PERMIT HAS BEEN ISSUED UNDER THE REQUIREMENTS OF VBBL 2019 AND REVIEWED DURING THE COVID-19 PANDEMIC CRISIS. ********\r\n\r\nBuilding Review Branch Notes:\r\n1. Ok for BP only per L Clarke on June 4, 2021. \r\n2. Sch-A, Arch. B, Struct. B, Elec. B, Mech. B & Plumb. B. are submitted.\r\n3. Part 11 design upgrade levels Per Minor Renovation: 'F1’, ‘S2’, ‘N1’, ‘A2’ & ‘E2’.
+4: Field Review - Addition / Alteration - #2123\r\n\r\nInterior alterations to provide tenant improvements on the ground floor for a new Retail tenant at this existing 1-storey building on this site.\r\n\r\nScope of work includes: New non-load bearing interior partitions, new millwork and finishes new furniture and fixtures, and upgrades to the existing HVAC system.\r\n\r\nNew tenant: Peak Performance\r\n\r\nOK for field review as per Wayland W June 5, 2023.\r\n\r\nRelated to: BP-2020-03613\r\n\r\nNote: \r\n-DBI to determine if structural plan and Schedule B structural is required.\r\n\r\n-No translucent or opaque film, artwork, posters, shelving, display cases or similar elements are to be installed on or directly outside or inside of the approved glazing frontages and windows.  A separate sign permit is required. \r\n\r\n-Building is sprinklered, a separate sprinkler permit is required for all related work.\r\n\r\n-Energy checklist is currently no longer required with your Building Permit application.  Some supporting documents are still required at BP stage, specifically Envelope and HVAC, if applicable.  Service Water Heating and Lighting supporting documents, if applicable, must be submitted with your related trade’s permits (e.g. electrical and plumbing).  \r\n\r\nSchedule A Peter J. Mallen Architect AIBC (604) 484-8285\r\nSchedule B Plumbing and Mechanical P.Eng Jason Barabonoff 403-561-3234\r\nSchedule B Electrical P.Eng  Brian Calverley  403-269-2125\r\nSchedule B Structural-Non-Sales Storage Racks only, Brian D. Hanson, P.Eng. 509-921-7731
+5:                                                                                                                                                                                                                                                                                                                                                                                              Low Density Housing - Addition / Alteration - Exterior and interior alterations to this one family dwelling. Associated to DP-2018-00080. Scope of work to include: add roof deck; raise basement ceiling 4.1 feet, removal of stairs to rear porch, demolish existing non-conforming garage and rebuild a larger, non- conforming garage in side yard and interior renovations on all three floors\r\n\r\nBoard of Variance Decision - November 20th, 2018\r\n\r\nAppeal No.  Z35383  -  1228 Maple Street\r\n\r\nSchedule A submitted by: Piers Cunnington 604-737-0235\r\nArchitectural schedule B submitted by: Piers Cunnington 604-737-0235\r\nStructural schedule B submitted by: Nick De Ridder, P.Eng 604-731-7412\r\nGeotechnical schedule B submitted by: Matt J. Kikan, P.Eng 604-439-0922\r\nREUP provided by: Scott Maguire of Capital Home Energy 604-562-0387\r\n\r\nSprinkler NFPA 13D\r\n\r\nScope of work to include energy and building upgrades in accordance with Article 11.2.1.4 of the 2014 Vancouver Building By-law and as required by the District Building Inspector. This includes air sealing, attic insulation upgrade, and as required by the Energy Upgrade Proposal. ALL NEW WORK TO MEET VBBL 2014.
+6:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 High Density Housing / Commercial - Addition / Alteration - Unit 102B\r\nInterior and exterior alterations to provide tenant improvements for new tenant (Tractor Foods) in this existing Restaurant Class-1 (A2) on the ground floor of this existing commercial building. \r\n\r\nNotes:\r\n1. Outdoor patio seating requires a separate permit. \r\n2. Shared public washrooms with Tim Horton's on the ground floor. \r\n3. Exterior alteration limited to 1 exhaust venting out to lane. \r\n4. Class 1 cooking proposed.\r\n5. Permit related to BP-2018-06142.\r\n6. Maximum allowable occupant load: 100\r\n7. Any increase in seating/occupant load and/or changes to Tractor restaurant and/or to the 3rd floor require further review of the VBBL and may require changes to washroom requirements. \r\n\r\nRevision #1:\r\nRelocating the ecologizer by 2 ft to the north within kitchen, alter reflected ceiling plan, and add extra seating to the interior.\r\nP Volpi, Aug. 6, 2019.
+                                          permitcategory
+                                                  <char>
+1:                                                      
+2:                                                      
+3:                                                      
+4: Renovation - Commercial/ Mixed Use - Lower Complexity
+5:                                                      
+6:                                                      
+                                                        applicant
+                                                           <char>
+1: Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+2: Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+3: Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+4: Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+5:                                     Measured Architecture Inc.
+6:                                     Measured Architecture Inc.
+                                                                  applicantaddress
+                                                                            <char>
+1:                              #300 - 7 East 6th Avenue\r\nVancouver, BC  V5T 1J3
+2:                              #300 - 7 East 6th Avenue\r\nVancouver, BC  V5T 1J3
+3:                              #300 - 7 East 6th Avenue\r\nVancouver, BC  V5T 1J3
+4:                              #300 - 7 East 6th Avenue\r\nVancouver, BC  V5T 1J3
+5: MEASURED ARCHITECTURE INC\r\n410-1639 West 2nd Avenue\r\nVancouver, BC  V6J 1H3
+6: MEASURED ARCHITECTURE INC\r\n410-1639 West 2nd Avenue\r\nVancouver, BC  V6J 1H3
+     propertyuse   specificusecategory        buildingcontractor
+          <char>                <char>                    <char>
+1:  Service Uses  Restaurant - Class 1                          
+2:  Service Uses  Restaurant - Class 1 Montroyal Contracting Ltd
+3:   Office Uses        General Office                          
+4:   Retail Uses          Retail Store                          
+5: Dwelling Uses Single Detached House   Eyco Building Group Ltd
+6:  Service Uses  Restaurant - Class 1                          
+                             buildingcontractoraddress issueyear geolocalarea
+                                                <char>     <int>       <char>
+1:                                                          2019     Downtown
+2: 1008 Olaus Way  \r\nUnit 9\r\nRossland, BC  V0G 1Y0      2019     Fairview
+3:                                                          2022     Downtown
+4:                                                          2023    Kitsilano
+5:          1529 W 75TH AV  \r\nVancouver, BC  V6P 6Z7      2022    Kitsilano
+6:                                                          2019     Downtown
+                                                                 geom yearmonth
+                                                               <char>    <char>
+1: {""coordinates"": [-123.1201999, 49.2761932], ""type"": ""Point""}   2019-10
+2: {""coordinates"": [-123.1217043, 49.2632574], ""type"": ""Point""}   2019-05
+3:  {""coordinates"": [-123.1172287, 49.287517], ""type"": ""Point""}   2022-01
+4: {""coordinates"": [-123.1533691, 49.2683992], ""type"": ""Point""}   2023-08
+5: {""coordinates"": [-123.1498796, 49.2746571], ""type"": ""Point""}   2022-11
+6:  {""coordinates"": [-123.1156241, 49.284808], ""type"": ""Point""}   2019-02
+               geo_point_2d     infillType cleanPostal
+                     <char>         <char>      <char>
+1: 49.2761932, -123.1201999 Major SFD Reno      V6B5P9
+2: 49.2632574, -123.1217043 Major SFD Reno      VER,BC
+3:  49.287517, -123.1172287  Infill/Duplex      V6C0C5
+4: 49.2683992, -123.1533691 Major SFD Reno      V6K1N7
+5: 49.2746571, -123.1498796 Major SFD Reno      V6J3R8
+6:  49.284808, -123.1156241 Major SFD Reno      V6C1G8
+> q("no")
 > proc.time()
    user  system elapsed 
-  9.300   2.298   7.378 
+  6.122   1.405   5.808 

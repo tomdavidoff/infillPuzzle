@@ -1,0 +1,178 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # processAttom.R
+> # processAttom_zip.R
+> # Tom Davidoff
+> # 12/26/25
+> # Purpose: Pricing slopes by ZIP for Portland/Multnomah (FIPS muni 051)
+> # started with google AI, this version ChatGPT
+> 
+> library(data.table)
+> library(arrow)
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+Warning message:
+package ‘arrow’ was built under R version 4.5.2 
+> library(fixest)
+> 
+> options(timeout = 600)
+> 
+> # ==========================================
+> # 1) LOAD SALES (41051.txt)
+> # ==========================================
+> message("Reading Sales data...")
+Reading Sales data...
+> 
+> raw_txt <- readLines("data/derived/41051.txt", warn = FALSE, encoding = "latin1")
+> header_line <- raw_txt[1]
+> data_body   <- raw_txt[-1]
+> 
+> header_names <- unlist(strsplit(header_line, "|", fixed = TRUE))
+> header_names <- make.names(tolower(header_names))
+> 
+> message("Splitting pipes...")
+Splitting pipes...
+> dtSales <- data.table(raw = data_body)
+> dtSales <- dtSales[, tstrsplit(raw, "|", fixed = TRUE, fill = NA)]
+> 
+> names(dtSales)[1:length(header_names)] <- header_names
+> setnames(dtSales, "X.attom.id.", "attom_id", skip_absent = TRUE)
+> setnames(dtSales, "transferamount", "price", skip_absent = TRUE)
+> setnames(dtSales, "transactiondate", "date", skip_absent = TRUE)
+> 
+> # normalize names after setnames
+> setnames(dtSales, tolower(make.names(names(dtSales))))
+> 
+> # types
+> dtSales[, attom_id := as.character(attom_id)]
+> dtSales[, price := as.numeric(price)]
+> dtSales[, date  := as.IDate(date)]
+> 
+> # filter years
+> dtSales <- dtSales[year(date) >= 2018 & year(date) <= 2021]
+> 
+> # ZIP from sales (clean)
+> if (!"propertyaddresszip" %in% names(dtSales)) stop("propertyaddresszip not found in dtSales.")
+> dtSales[, zip := gsub("[^0-9]", "", as.character(propertyaddresszip))]
+> dtSales[nchar(zip) == 9, zip := substr(zip, 1, 5)]
+> dtSales[zip == "", zip := NA_character_]
+> 
+> message("Sales rows after date filter: ", nrow(dtSales))
+Sales rows after date filter: 49772
+> 
+> # ==========================================
+> # 2) LOAD ASSESSOR (sqft) from Parquet
+> # ==========================================
+> message("Opening Assessor Parquet...")
+Opening Assessor Parquet...
+> ds <- open_dataset("data/derived/AH_state_OR.parquet")
+> 
+> # Pull only what we need
+> scanner <- ds$NewScan()$
++   Filter(Expression$field_ref("MM_FIPS_MUNI_CODE") == "051")$
++   Project(c("[ATTOM ID]", "SA_FIN_SQFT_TOT"))$
++   Finish()
+> 
+> dtAssessor <- as.data.table(scanner$ToTable())
+> setnames(dtAssessor, c("[ATTOM ID]", "SA_FIN_SQFT_TOT"), c("attom_id", "sqft"))
+> 
+> dtAssessor[, attom_id := as.character(attom_id)]
+> dtAssessor[, sqft := as.numeric(sqft)]
+> 
+> # Deduplicate: multiple records per ATTOM id
+> dtAssessor_Final <- dtAssessor[, .(
++   sqft = max(sqft, na.rm = TRUE)
++ ), by = attom_id]
+> 
+> dtAssessor_Final[is.infinite(sqft), sqft := NA_real_]
+> 
+> message("Unique assessor ATTOM IDs: ", uniqueN(dtAssessor_Final$attom_id))
+Unique assessor ATTOM IDs: 282021
+> 
+> # ==========================================
+> # 3) MERGE + SLOPE ESTIMATION BY ZIP
+> # ==========================================
+> message("Merging sales + assessor...")
+Merging sales + assessor...
+> dtFinal <- merge(dtSales, dtAssessor_Final, by = "attom_id", all = FALSE)
+> 
+> # clean
+> dtFinal <- dtFinal[!is.na(price) & !is.na(sqft) & !is.na(zip)]
+> dtFinal <- dtFinal[price > 100000 & sqft > 400]
+> 
+> dtFinal[, ppsf := price / sqft]
+> 
+> # keep plausible ZIPs
+> dtFinal <- dtFinal[nchar(zip) == 5]
+> 
+> message("Final rows for regression: ", nrow(dtFinal),
++         " | ZIPs: ", uniqueN(dtFinal$zip))
+Final rows for regression: 13050 | ZIPs: 2093
+> 
+> # Slope by ZIP: ZIP-specific intercept and ZIP-specific slope on sqft
+> # (ppsf = a_zip + b_zip * sqft + error)
+> dtFinal[, zip := as.factor(zip)]
+> m <- feols(ppsf ~ 0 + zip + zip:sqft, data = dtFinal)
+The variables 'zip01402:sqft', 'zip01511:sqft', 'zip01520:sqft', 'zip01659:sqft', 'zip01717:sqft', 'zip01803:sqft' and 1842 others have been removed because of collinearity (see $collin.var).
+> 
+> # ==========================================
+> # 4) EXTRACT SLOPES ROBUSTLY (no broom)
+> # ==========================================
+> b <- coef(m)
+> keep <- grepl(":sqft$", names(b))
+> 
+> dtSlopes <- data.table(
++   zip = sub(":sqft$", "", sub("^zip", "", names(b)[keep])),
++   slope = unname(b[keep])
++ )
+> 
+> zipStats <- dtFinal[, .(N = .N, mean_ppsf = mean(ppsf, na.rm = TRUE)), by = zip]
+> 
+> # add sample size per ZIP (useful for filtering)
+> dtSlopes <- merge(dtSlopes, zipStats, by = "zip", all.x = TRUE)
+> setorder(dtSlopes, -N)
+> 
+> saveRDS(dtSlopes, "data/derived/portland_attom_slopes_by_zip.rds")
+> 
+> message("Saved slopes: data/derived/portland_attom_slopes_by_zip.rds")
+Saved slopes: data/derived/portland_attom_slopes_by_zip.rds
+> print(dtSlopes[1:10])
+       zip       slope     N mean_ppsf
+    <char>       <num> <int>     <num>
+ 1:  97206 -0.18288334   854  401.8969
+ 2:  97217 -0.16115506   620  420.2160
+ 3:  97203 -0.14871082   589  376.0504
+ 4:  97230 -0.06212572   546  263.0407
+ 5:  97266 -0.11562770   543  306.9385
+ 6:  97219 -0.03137507   531  339.7798
+ 7:  97220 -0.14474777   516  326.6134
+ 8:  97211 -0.18681290   510  465.0542
+ 9:  97233 -0.01900491   475  261.8736
+10:  97202 -0.18582848   450  488.9082
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 20.207   1.514  17.135 

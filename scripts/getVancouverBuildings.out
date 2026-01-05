@@ -1,0 +1,159 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # getVancouverBuildings.R
+> # Compare FSR for single family with/without laneways
+> # Tom Davidoff, 12/28/25
+> 
+> library(data.table)
+> library(ggplot2)
+> library(readxl)
+> 
+> # ========================================
+> # 1. LOAD & MERGE DATA
+> # ========================================
+> dtDesc <- fread(
++   "~/OneDrive - UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_descriptions_20250331_REVD25.csv",
++   select = c("FOLIO_ID", "ROLL_NUMBER", "ACTUAL_USE_DESCRIPTION", "LAND_SIZE")
++ )
+> dtDesc[, Roll_Number := as.numeric(ROLL_NUMBER)]
+Warning message:
+In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+> 
+> dtRoll <- fread(
++   "~/OneDrive - UBC/Documents/data/bca/Residential_inventory_202501/20250101_A09_Residential_Inventory_Extract.txt",
++   select = c("Roll_Number", "MB_Year_Built", "MB_Total_Finished_Area", "Land_Area_Total", "Zoning")
++ )
+> dtRoll <- dtRoll[MB_Year_Built > 2018]
+> 
+> dtMerge <- merge(dtDesc, dtRoll, by = "Roll_Number")
+> 
+> # ========================================
+> # 2. CLASSIFY DWELLING TYPES
+> # ========================================
+> dtMerge[, dwelling_type := fcase(
++   grepl("Duplex", ACTUAL_USE_DESCRIPTION, ignore.case = TRUE), "duplex",
++   grepl("Single Family Dwelling", ACTUAL_USE_DESCRIPTION, ignore.case = TRUE), "single_family",
++   ACTUAL_USE_DESCRIPTION == "Residential Dwelling with Suite", "suite",
++   default = "other"
++ )]
+> 
+> # ========================================
+> # 3. UNIT-LEVEL DATA PREP
+> # ========================================
+> dt <- dtMerge[
++   dwelling_type %in% c("single_family", "duplex") &
++   !is.na(MB_Total_Finished_Area) &
++   !is.na(Land_Area_Total) &
++   Land_Area_Total > 0
++ ]
+> 
+> dt[, `:=`(
++   land_sqft = Land_Area_Total * 43560,
++   roll_base = floor(Roll_Number / 1000)
++ )]
+> 
+> # ========================================
+> # 4. AGGREGATE TO LOT LEVEL
+> # ========================================
+> dt_lot <- dt[, .(
++   dwelling_type = first(dwelling_type),
++   land_sqft = first(land_sqft),
++   total_floor_area = sum(MB_Total_Finished_Area),
++   n_units = .N,
++   year_built = max(MB_Year_Built)
++ ), by = roll_base]
+> 
+> dt_lot[, fsr := total_floor_area / land_sqft]
+> dt_lot_clean <- dt_lot[land_sqft <= 10000 & fsr < 2]
+> 
+> # ========================================
+> # 5. LOAD LANEWAY DATA
+> # ========================================
+> dtNew <- as.data.table(read_excel("data/raw/20231231_UBC_CustomLanewayReport.xlsx", sheet = "DATA"))
+> setnames(dtNew, "ROLL_NUM", "Roll_Number_char")
+> dtNew[, `:=`(
++   Roll_Number = as.numeric(Roll_Number_char),
++   roll_base = floor(as.numeric(Roll_Number_char) / 1000)
++ )]
+> 
+> # ========================================
+> # 6. SINGLE FAMILY: WITH VS WITHOUT LANEWAY
+> # ========================================
+> # Filter to single family only
+> dt_sf <- dt_lot_clean[dwelling_type == "single_family"]
+> 
+> # Mark which lots have laneways
+> dt_sf[, has_laneway := roll_base %in% dtNew$roll_base]
+> 
+> # Summary comparison
+> print("=== Single Family: With vs Without Laneway ===")
+[1] "=== Single Family: With vs Without Laneway ==="
+> dt_sf[, .(
++   n_lots = .N,
++   mean_fsr = mean(fsr),
++   median_fsr = median(fsr),
++   mean_land = mean(land_sqft)
++ ), by = has_laneway]
+   has_laneway n_lots  mean_fsr median_fsr mean_land
+        <lgcl>  <int>     <num>      <num>     <num>
+1:       FALSE    526 0.6333802  0.6725833  5508.518
+2:        TRUE    115 0.6131120  0.6427916  5757.496
+> 
+> # Regression: FSR controlling for lot size
+> m_laneway <- lm(fsr ~ has_laneway + land_sqft, data = dt_sf)
+> print(summary(m_laneway))
+
+Call:
+lm(formula = fsr ~ has_laneway + land_sqft, data = dt_sf)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.49604 -0.02308  0.03930  0.06491  0.26944 
+
+Coefficients:
+                  Estimate Std. Error t value Pr(>|t|)    
+(Intercept)      7.070e-01  1.522e-02  46.448  < 2e-16 ***
+has_lanewayTRUE -1.694e-02  1.224e-02  -1.384    0.167    
+land_sqft       -1.337e-05  2.598e-06  -5.145 3.57e-07 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.1188 on 638 degrees of freedom
+Multiple R-squared:  0.04379,	Adjusted R-squared:  0.04079 
+F-statistic: 14.61 on 2 and 638 DF,  p-value: 6.257e-07
+
+> 
+> # Plot
+> ggplot(dt_sf, aes(x = land_sqft, y = fsr, color = has_laneway)) +
++   geom_point(alpha = 0.3) +
++   geom_smooth(method = "lm", se = TRUE) +
++   labs(
++     title = "Single Family FSR: With vs Without Laneway (2019+)",
++     x = "Lot Size (sqft)", y = "FSR (BC Assessment only, excludes laneway sqft)"
++   ) +
++   theme_minimal()
+`geom_smooth()` using formula = 'y ~ x'
+> 
+> ggsave("text/sf_fsr_laneway_comparison.png", width = 8, height = 6)
+`geom_smooth()` using formula = 'y ~ x'
+> 
+> proc.time()
+   user  system elapsed 
+  7.118   2.387   3.278 

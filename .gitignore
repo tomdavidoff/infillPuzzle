@@ -1,0 +1,20 @@
+# Ignore the data directory
+data/
+
+# Ignore data files even if they are in the root
+*.csv
+*.rds
+*.sqlite3
+*.xlsx
+
+# Vim junk
+*.swp
+.*.swp
+*.swo
+
+# R/Quarto junk
+.Rhistory
+.RData
+.Rproj.user/
+*_files/
+.quarto/
