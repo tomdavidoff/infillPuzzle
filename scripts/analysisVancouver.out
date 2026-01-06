@@ -49,7 +49,7 @@ Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > GEO_LEVEL <- "census_tract" # Options: "bca_nbhd", "census_tract", "fsa_plus_1"
 > PCCF_RAW  <- "data/raw/pccfNat_fccpNat_062017.txt"
 > PCCF_RDS  <- "data/pccf_bc.rds"
-> BCA_DB    <- "data/raw/REVD16_and_inventory_extracts.sqlite3"
+> BCA_DB    <- "~/OneDrive - UBC/Documents/data/bca/REVD16_and_inventory_extracts.sqlite3"
 > PERMIT_F  <- "data/raw/vancouver_permits_full.csv"
 > ZONING_F  <- "data/raw/vancouver_zoning.geojson"
 > 
@@ -84,7 +84,7 @@ Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > db <- dbConnect(SQLite(), BCA_DB)
 > dtBCA2016 <- as.data.table(dbGetQuery(db, "
 +     SELECT s.folioID, s.conveyancePrice, s.conveyanceDate,
-+            i.MB_effective_year, i.MB_total_finished_area,
++            i.MB_effective_year, i.MB_total_finished_area, d.landWidth, d.landDepth,
 +            d.actualUseDescription, d.neighbourhoodDescription, a.postalCode
 +     FROM sales s
 +     JOIN folio f ON s.folioID = f.folioID
@@ -100,9 +100,10 @@ Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > dtBCA2016_all <- dtBCA2016
 > 
 > # Numeric conversion and cleaning
-> cols <- c("conveyancePrice", "MB_effective_year", "MB_total_finished_area")
+> cols <- c("conveyancePrice", "MB_effective_year", "MB_total_finished_area","landWidth","landDepth")
 > dtBCA2016_all[, (cols) := lapply(.SD, as.numeric), .SDcols = cols]
 > dtBCA2016_all <- dtBCA2016_all[!is.na(MB_total_finished_area) & conveyancePrice > 100000]
+> dtBCA2016_all[, land_area := landWidth * landDepth]
 > 
 > # filter types to only single and duplex 
 > print(table(dtBCA2016_all$actualUseDescription))
@@ -184,9 +185,6 @@ Stratified Rental Apartment (Hi-Rise Construction)
 +     dwelling_type = ifelse(grepl("uplex", actualUseDescription, ignore.case = TRUE), "duplex", "single")
 + )]
 > 
-> # Filter to singles and duplexes only
-> dtBCA2016_all <- dtBCA2016_all[dwelling_type %in% c("single", "duplex")]
-> 
 > dtBCA2016_all <- dtBCA2016_all[
 +     age >= 0 &
 +     MB_total_finished_area %between% quantile(MB_total_finished_area, c(CUT, 1-CUT))
@@ -233,7 +231,7 @@ BCA 2025 records (2019+): 19783
 > dtMerge[, dwelling_type := fcase(
 +   grepl("Duplex", ACTUAL_USE_DESCRIPTION, ignore.case = TRUE), "duplex",
 +   grepl("Single Family Dwelling", ACTUAL_USE_DESCRIPTION, ignore.case = TRUE), "single_family",
-+   ACTUAL_USE_DESCRIPTION == "Residential Dwelling with Suite", "suite",
++   ACTUAL_USE_DESCRIPTION == "Residential Dwelling with Suite", "single_family",
 +   default = "other"
 + )]
 > 
@@ -297,9 +295,9 @@ Laneway records: 943
 > print(dt_lot_clean[, .N, by = dwelling_class])
         dwelling_class     N
                 <char> <int>
-1:         single_only   526
+1:         single_only  1443
 2:              duplex  1247
-3: single_with_laneway   115
+3: single_with_laneway   526
 > 
 > cat("\n=== FSR by dwelling class ===\n")
 
@@ -313,9 +311,9 @@ Laneway records: 943
 + ), by = dwelling_class])
         dwelling_class n_lots mean_fsr median_fsr mean_land mean_floor
                 <char>  <int>    <num>      <num>     <num>      <num>
-1:         single_only    526    0.633      0.673      5509       3438
+1:         single_only   1443    0.667      0.699      4959       3265
 2:              duplex   1247    0.643      0.713      4565       2896
-3: single_with_laneway    115    0.613      0.643      5757       3522
+3: single_with_laneway    526    0.677      0.702      5008       3354
 > 
 > # ==========================================
 > # PART 4: PERMIT DATA & INFILL PROPENSITY
@@ -460,289 +458,34 @@ RMSE: 229.0     Adj. R2: 0.150118
 + )
 The variables 'geo_id::0040.01:MB_total_finished_area', 'geo_id::0061.00:MB_total_finished_area', 'geo_id::0064.00:MB_total_finished_area', 'geo_id::0065.00:MB_total_finished_area', 'geo_id::0068.00:MB_total_finished_area', 'geo_id::0140.02:MB_total_finished_area' and 25 others have been removed because of collinearity (see $collin.var).
 > 
+> # Curiosity: duplex by neighbourhood
+> dtBCAGeo[,duplex:= ifelse(dwelling_type=="duplex",1,0)]
+> m_duplex <- feols(ppsf ~ log(age+1) + log(land_area) + i(geo_id,duplex) | geo_id + duplex,data=dtBCAGeo)
+NOTE: 10,513 observations removed because of NA values (RHS: 10,513).
+The variables 'geo_id::0041.01:duplex' and 'geo_id::0059.11:duplex' have been removed because of collinearity (see $collin.var).
+> 
 > dtSlopes <- as.data.table(broom::tidy(m_slopes))[grepl("MB_total_finished_area", term)]
 > dtSlopes[, geo_id := gsub("geo_id::(.*):MB_total_finished_area", "\\1", term)]
-> 
-> # Calculate Mean Price per SqFt by tract
-> dtBcaMeans <- dtBCAGeo[dwelling_type == "single", .(
-+     meanPPSF = mean(ppsf, na.rm = TRUE),
-+     meanPPSF_duplex = NA_real_  # placeholder for later
-+ ), by = geo_id]
-> 
-> # Add duplex mean prices where available
-> duplex_means <- dtBCAGeo[dwelling_type == "duplex", .(
-+     meanPPSF_duplex = mean(ppsf, na.rm = TRUE)
-+ ), by = geo_id]
-> 
-> dtBcaMeans <- merge(dtBcaMeans, duplex_means, by = "geo_id", all.x = TRUE, suffixes = c("", "_dup"))
-> dtBcaMeans[!is.na(meanPPSF_duplex_dup), meanPPSF_duplex := meanPPSF_duplex_dup]
-> dtBcaMeans[, meanPPSF_duplex_dup := NULL]
-> 
-> # ==========================================
-> # PART 8: INFILL PROPENSITY BY TYPE
-> # ==========================================
-> cat("\n=== PART 8: Calculating infill propensity by type ===\n")
-
-=== PART 8: Calculating infill propensity by type ===
-> 
-> # Calculate propensity for duplex, laneway, multiplex, and total infill
-> dtInfill <- dtPermitGeo[, .(
-+     propensity_duplex = sum(infillType == "duplex") / .N,
-+     propensity_laneway = sum(infillType == "laneway") / .N,
-+     propensity_multiplex = sum(infillType == "multiplex") / .N,
-+     propensity_total = sum(infillType %in% c("duplex", "laneway", "multiplex")) / .N,
-+     n_duplex = sum(infillType == "duplex"),
-+     n_laneway = sum(infillType == "laneway"),
-+     n_multiplex = sum(infillType == "multiplex"),
-+     totalProjects = .N
-+ ), by = geo_id]
-> 
-> cat("Census tracts with permit data:", nrow(dtInfill), "\n")
-Census tracts with permit data: 76 
-> 
-> # ==========================================
-> # PART 9: FINAL MERGE & ANALYSIS
-> # ==========================================
-> cat("\n=== PART 9: Creating final merged dataset ===\n")
-
-=== PART 9: Creating final merged dataset ===
-> 
-> dtFinal <- merge(dtInfill, dtSlopes, by = "geo_id", all.x = TRUE)
-> dtFinal <- merge(dtFinal, dtBcaMeans, by = "geo_id", all.x = TRUE)
-> 
-> cat("Final dataset:", nrow(dtFinal), "census tracts\n")
-Final dataset: 76 census tracts
-> 
-> # Summary statistics
-> cat("\n=== Summary by infill type ===\n")
-
-=== Summary by infill type ===
-> print(dtFinal[totalProjects > 10, .(
-+     n_tracts = .N,
-+     mean_propensity_duplex = mean(propensity_duplex),
-+     mean_propensity_laneway = mean(propensity_laneway),
-+     mean_propensity_multiplex = mean(propensity_multiplex),
-+     mean_slope = mean(estimate, na.rm = TRUE),
-+     mean_ppsf = mean(meanPPSF, na.rm = TRUE)
-+ )])
-   n_tracts mean_propensity_duplex mean_propensity_laneway
-      <int>                  <num>                   <num>
-1:       68               0.269043               0.3989934
-   mean_propensity_multiplex  mean_slope mean_ppsf
-                       <num>       <num>     <num>
-1:                0.05096418 -0.06034698  259.9685
-> 
-> # ==========================================
-> # PART 10: VISUALIZATIONS
-> # ==========================================
-> cat("\n=== PART 10: Creating visualizations ===\n")
-
-=== PART 10: Creating visualizations ===
-> 
-> # Plot 1: Duplex propensity vs pricing slope
-> p1 <- ggplot(dtFinal[totalProjects > 10], 
-+              aes(x = estimate, y = propensity_duplex)) +
-+     geom_point(aes(size = totalProjects), alpha = 0.4) +
-+     geom_smooth(method = "lm", color = "firebrick") +
-+     scale_y_continuous(labels = percent) +
-+     labs(
-+         title = paste("Duplex Propensity vs Pricing Concavity:", GEO_LEVEL),
-+         x = "BCA Pricing Slope ($/sqft per sqft)",
-+         y = "Duplex Propensity"
-+     ) +
-+     theme_minimal()
-> 
-> ggsave(paste0("text/duplex_propensity_", GEO_LEVEL, ".png"), p1, width = 8, height = 6)
+> dtDuplexCoef <- as.data.table(broom::tidy(m_duplex))[grepl("duplex", term)]
+> dtDuplexCoef[, geo_id := gsub("geo_id::(.*):duplex", "\\1", term)]
+> dtDuplexSlopes <- merge(dtSlopes, dtDuplexCoef[, .(geo_id, duplex_coef = estimate)], by = "geo_id", all.x = TRUE)
+> print(cor(dtDuplexSlopes$estimate, dtDuplexSlopes$duplex_coef, use = "complete.obs"))
+[1] 0.1343553
+> ggplot(dtDuplexSlopes, aes(x=estimate,y=duplex_coef)) + geom_point() + geom_smooth(method="lm")
 `geom_smooth()` using formula = 'y ~ x'
-> 
-> # Plot 2: Laneway propensity vs pricing slope
-> p2 <- ggplot(dtFinal[totalProjects > 10], 
-+              aes(x = estimate, y = propensity_laneway)) +
-+     geom_point(aes(size = totalProjects), alpha = 0.4) +
-+     geom_smooth(method = "lm", color = "darkgreen") +
-+     scale_y_continuous(labels = percent) +
-+     labs(
-+         title = paste("Laneway Propensity vs Pricing Concavity:", GEO_LEVEL),
-+         x = "BCA Pricing Slope ($/sqft per sqft)",
-+         y = "Laneway Propensity"
-+     ) +
-+     theme_minimal()
-> 
-> ggsave(paste0("text/laneway_propensity_", GEO_LEVEL, ".png"), p2, width = 8, height = 6)
+Warning messages:
+1: Removed 48 rows containing non-finite outside the scale range
+(`stat_smooth()`). 
+2: Removed 48 rows containing missing values or values outside the scale range
+(`geom_point()`). 
+> ggsave("text/duplexCoefSlope.png", width=8,height=6)
 `geom_smooth()` using formula = 'y ~ x'
-> 
-> # Plot 3: Multiplex propensity vs pricing slope
-> p3 <- ggplot(dtFinal[totalProjects > 10], 
-+              aes(x = estimate, y = propensity_multiplex)) +
-+     geom_point(aes(size = totalProjects), alpha = 0.4) +
-+     geom_smooth(method = "lm", color = "darkorange") +
-+     scale_y_continuous(labels = percent) +
-+     labs(
-+         title = paste("Multiplex Propensity vs Pricing Concavity:", GEO_LEVEL),
-+         x = "BCA Pricing Slope ($/sqft per sqft)",
-+         y = "Multiplex Propensity"
-+     ) +
-+     theme_minimal()
-> 
-> ggsave(paste0("text/multiplex_propensity_", GEO_LEVEL, ".png"), p3, width = 8, height = 6)
-`geom_smooth()` using formula = 'y ~ x'
-> 
-> # Plot 4: FSR by dwelling class (from PART 3)
-> p4 <- ggplot(dt_lot_clean, aes(x = land_sqft, y = fsr, color = dwelling_class)) +
-+     geom_point(alpha = 0.3) +
-+     geom_smooth(method = "lm", se = TRUE) +
-+     labs(
-+         title = "FSR by Dwelling Class (2019+)",
-+         x = "Lot Size (sqft)",
-+         y = "FSR (Main Building only, from BC Assessment)",
-+         color = "Dwelling Class"
-+     ) +
-+     theme_minimal()
-> 
-> ggsave("text/fsr_by_dwelling_class.png", p4, width = 10, height = 6)
-`geom_smooth()` using formula = 'y ~ x'
-> 
-> # ==========================================
-> # PART 11: REGRESSIONS
-> # ==========================================
-> cat("\n=== PART 11: Regression results ===\n")
-
-=== PART 11: Regression results ===
-> 
-> # Duplex propensity
-> m_duplex_ppsf <- feols(propensity_duplex ~ meanPPSF, 
-+                        data = dtFinal[totalProjects > 10])
-> m_duplex_full <- feols(propensity_duplex ~ estimate + meanPPSF, 
-+                        data = dtFinal[totalProjects > 10])
-> 
-> cat("\n--- Duplex Propensity Regressions ---\n")
-
---- Duplex Propensity Regressions ---
-> print(etable(m_duplex_ppsf, m_duplex_full))
-                      m_duplex_ppsf      m_duplex_full
-Dependent Var.:   propensity_duplex  propensity_duplex
-                                                      
-Constant         0.5279*** (0.0472) 0.3783*** (0.1026)
-meanPPSF        -0.0010*** (0.0002)  -0.0006* (0.0003)
-estimate                              -0.8834 (0.5398)
-_______________ ___________________ __________________
-S.E. type                       IID                IID
-Observations                     68                 68
-R2                          0.32969            0.35621
-Adj. R2                     0.31954            0.33640
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-> 
-> # Laneway propensity
-> m_laneway_ppsf <- feols(propensity_laneway ~ meanPPSF, 
-+                         data = dtFinal[totalProjects > 10])
-> m_laneway_full <- feols(propensity_laneway ~ estimate + meanPPSF, 
-+                         data = dtFinal[totalProjects > 10])
-> 
-> cat("\n--- Laneway Propensity Regressions ---\n")
-
---- Laneway Propensity Regressions ---
-> print(etable(m_laneway_ppsf, m_laneway_full))
-                    m_laneway_ppsf     m_laneway_full
-Dependent Var.: propensity_laneway propensity_laneway
-                                                     
-Constant        0.4554*** (0.0595) 0.6514*** (0.1290)
-meanPPSF          -0.0002 (0.0002)  -0.0007. (0.0004)
-estimate                              1.157. (0.6788)
-_______________ __________________ __________________
-S.E. type                      IID                IID
-Observations                    68                 68
-R2                         0.01452            0.05670
-Adj. R2                   -0.00041            0.02768
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-> 
-> # Multiplex propensity
-> m_multiplex_ppsf <- feols(propensity_multiplex ~ meanPPSF, 
-+                           data = dtFinal[totalProjects > 10])
-> m_multiplex_full <- feols(propensity_multiplex ~ estimate + meanPPSF, 
-+                           data = dtFinal[totalProjects > 10])
-> 
-> cat("\n--- Multiplex Propensity Regressions ---\n")
-
---- Multiplex Propensity Regressions ---
-> print(etable(m_multiplex_ppsf, m_multiplex_full))
-                    m_multiplex_ppsf     m_multiplex_full
-Dependent Var.: propensity_multiplex propensity_multiplex
-                                                         
-Constant             0.0273 (0.0276)     -0.0159 (0.0608)
-meanPPSF            9.11e-5 (0.0001)      0.0002 (0.0002)
-estimate                                 -0.2549 (0.3200)
-_______________ ____________________ ____________________
-S.E. type                        IID                  IID
-Observations                      68                   68
-R2                           0.01194              0.02150
-Adj. R2                     -0.00303             -0.00861
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-> 
-> # Combined infill
-> m_total_ppsf <- feols(propensity_total ~ meanPPSF, 
-+                       data = dtFinal[totalProjects > 10])
-> m_total_full <- feols(propensity_total ~ estimate + meanPPSF, 
-+                       data = dtFinal[totalProjects > 10])
-> 
-> cat("\n--- Total Infill Propensity Regressions ---\n")
-
---- Total Infill Propensity Regressions ---
-> print(etable(m_total_ppsf, m_total_full))
-                       m_total_ppsf        m_total_full
-Dependent Var.:    propensity_total    propensity_total
-                                                       
-Constant          1.011*** (0.0377)   1.014*** (0.0837)
-meanPPSF        -0.0011*** (0.0001) -0.0011*** (0.0002)
-estimate                                0.0189 (0.4403)
-_______________ ___________________ ___________________
-S.E. type                       IID                 IID
-Observations                     68                  68
-R2                          0.49418             0.49419
-Adj. R2                     0.48652             0.47863
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-> 
-> # ==========================================
-> # PART 12: EXPORT RESULTS
-> # ==========================================
-> cat("\n=== PART 12: Exporting results ===\n")
-
-=== PART 12: Exporting results ===
-> 
-> if (!dir.exists("data/processed")) {
-+     dir.create("data/processed", recursive = TRUE)
-+ }
-> 
-> fwrite(dtFinal, "data/processed/infill_propensity_by_tract.csv")
-> fwrite(dt_lot_clean, "data/processed/lot_level_fsr_with_laneways.csv")
-> fwrite(price_comparison, "data/processed/single_vs_duplex_pricing.csv")
-> 
-> cat("\n=== Analysis complete! ===\n")
-
-=== Analysis complete! ===
-> cat("Files exported:\n")
-Files exported:
-> cat("  - data/processed/infill_propensity_by_tract.csv\n")
-  - data/processed/infill_propensity_by_tract.csv
-> cat("  - data/processed/lot_level_fsr_with_laneways.csv\n")
-  - data/processed/lot_level_fsr_with_laneways.csv
-> cat("  - data/processed/single_vs_duplex_pricing.csv\n")
-  - data/processed/single_vs_duplex_pricing.csv
-> cat("\nPlots saved:\n")
-
-Plots saved:
-> cat("  - text/duplex_propensity_", GEO_LEVEL, ".png\n", sep = "")
-  - text/duplex_propensity_census_tract.png
-> cat("  - text/laneway_propensity_", GEO_LEVEL, ".png\n", sep = "")
-  - text/laneway_propensity_census_tract.png
-> cat("  - text/multiplex_propensity_", GEO_LEVEL, ".png\n", sep = "")
-  - text/multiplex_propensity_census_tract.png
-> cat("  - text/fsr_by_dwelling_class.png\n")
-  - text/fsr_by_dwelling_class.png
-> 
+Warning messages:
+1: Removed 48 rows containing non-finite outside the scale range
+(`stat_smooth()`). 
+2: Removed 48 rows containing missing values or values outside the scale range
+(`geom_point()`). 
+> q("no")
 > proc.time()
    user  system elapsed 
- 28.372   3.925  19.390 
+ 27.340   3.528  21.123 

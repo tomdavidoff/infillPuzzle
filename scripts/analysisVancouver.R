@@ -53,7 +53,7 @@ if (!file.exists(PCCF_RDS)) {
 db <- dbConnect(SQLite(), BCA_DB)
 dtBCA2016 <- as.data.table(dbGetQuery(db, "
     SELECT s.folioID, s.conveyancePrice, s.conveyanceDate,
-           i.MB_effective_year, i.MB_total_finished_area,
+           i.MB_effective_year, i.MB_total_finished_area, d.landWidth, d.landDepth,
            d.actualUseDescription, d.neighbourhoodDescription, a.postalCode
     FROM sales s
     JOIN folio f ON s.folioID = f.folioID
@@ -69,9 +69,10 @@ dbDisconnect(db)
 dtBCA2016_all <- dtBCA2016
 
 # Numeric conversion and cleaning
-cols <- c("conveyancePrice", "MB_effective_year", "MB_total_finished_area")
+cols <- c("conveyancePrice", "MB_effective_year", "MB_total_finished_area","landWidth","landDepth")
 dtBCA2016_all[, (cols) := lapply(.SD, as.numeric), .SDcols = cols]
 dtBCA2016_all <- dtBCA2016_all[!is.na(MB_total_finished_area) & conveyancePrice > 100000]
+dtBCA2016_all[, land_area := landWidth * landDepth]
 
 # filter types to only single and duplex 
 print(table(dtBCA2016_all$actualUseDescription))
@@ -86,9 +87,6 @@ dtBCA2016_all[, `:=`(
     cleanPostal = clean_pc(postalCode),
     dwelling_type = ifelse(grepl("uplex", actualUseDescription, ignore.case = TRUE), "duplex", "single")
 )]
-
-# Filter to singles and duplexes only
-dtBCA2016_all <- dtBCA2016_all[dwelling_type %in% c("single", "duplex")]
 
 dtBCA2016_all <- dtBCA2016_all[
     age >= 0 &
@@ -128,7 +126,7 @@ cat("BCA 2025 records (2019+):", nrow(dtMerge), "\n")
 dtMerge[, dwelling_type := fcase(
   grepl("Duplex", ACTUAL_USE_DESCRIPTION, ignore.case = TRUE), "duplex",
   grepl("Single Family Dwelling", ACTUAL_USE_DESCRIPTION, ignore.case = TRUE), "single_family",
-  ACTUAL_USE_DESCRIPTION == "Residential Dwelling with Suite", "suite",
+  ACTUAL_USE_DESCRIPTION == "Residential Dwelling with Suite", "single_family",
   default = "other"
 )]
 
@@ -303,8 +301,19 @@ m_slopes <- feols(
     data = dtBCAGeo[dwelling_type == "single"]
 )
 
+# Curiosity: duplex by neighbourhood
+dtBCAGeo[,duplex:= ifelse(dwelling_type=="duplex",1,0)]
+m_duplex <- feols(ppsf ~ log(age+1) + log(land_area) + i(geo_id,duplex) | geo_id + duplex,data=dtBCAGeo)
+
 dtSlopes <- as.data.table(broom::tidy(m_slopes))[grepl("MB_total_finished_area", term)]
 dtSlopes[, geo_id := gsub("geo_id::(.*):MB_total_finished_area", "\\1", term)]
+dtDuplexCoef <- as.data.table(broom::tidy(m_duplex))[grepl("duplex", term)]
+dtDuplexCoef[, geo_id := gsub("geo_id::(.*):duplex", "\\1", term)]
+dtDuplexSlopes <- merge(dtSlopes, dtDuplexCoef[, .(geo_id, duplex_coef = estimate)], by = "geo_id", all.x = TRUE)
+print(cor(dtDuplexSlopes$estimate, dtDuplexSlopes$duplex_coef, use = "complete.obs"))
+ggplot(dtDuplexSlopes, aes(x=estimate,y=duplex_coef)) + geom_point() + geom_smooth(method="lm")
+ggsave("text/duplexCoefSlope.png", width=8,height=6)
+q("no")
 
 # Calculate Mean Price per SqFt by tract
 dtBcaMeans <- dtBCAGeo[dwelling_type == "single", .(
