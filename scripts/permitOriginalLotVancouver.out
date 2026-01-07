@@ -1,6 +1,6 @@
 
-R version 4.4.0 (2024-04-24) -- "Puppy Cup"
-Copyright (C) 2024 The R Foundation for Statistical Computing
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -18,34 +18,46 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > # ------------------------------------------------------------
-> # Vancouver infill puzzle: Permits x Parcels x BCA(2016)
-> # Output per original lot:
-> #   (a) outcome ∈ {sf_rebuild_or_upgrade, duplex, multiplex}
-> #   (b) lot_size_original = landWidth * landDepth (ignore land_area)
+> # Vancouver infill puzzle: Permits x Parcel-address fabric x BCA(2016)
 > #
-> # Requires: data.table, DBI, RSQLite, jsonlite, stringi
+> # Goal: produce one row per ORIGINAL (2016) lot:
+> #   (a) outcome ∈ {sf_rebuild_or_upgrade, duplex, multiplex}
+> #   (b) lot_size_original = landWidth * landDepth  (ignore land_area)
+> #
+> # Notes / tips baked in:
+> # - Fixes Vancouver address quirks (unit numbers, VANCOUVER BC, postal codes)
+> # - Canonicalizes street types (STREET->ST, AVENUE/AVE->AV), ordinals (12TH->12),
+> #   direction placement (e.g. "... ST E" -> "E ... ST")
+> # - Uses parcel GeoJSON as address normalizer (since it has civic_number + streetname)
+> # - BCA join path: permit -> parcel addr_key -> BCA.address -> folio -> rollNumber
+> # - Correct BCA dims query: residentialInventory has roll_number; folioDescription has rollNumber
+> # - Classifier tightened (multiplex overcount guard): excludes obvious big projects and,
+> #   if units column exists, uses it.
+> #
+> # Dependencies: data.table, DBI, RSQLite, jsonlite, stringi
 > # ------------------------------------------------------------
 > 
-> library(data.table)
-Warning message:
-package ‘data.table’ was built under R version 4.4.1 
-> library(DBI)
-> library(RSQLite)
-> library(jsonlite)
-Warning message:
-package ‘jsonlite’ was built under R version 4.4.1 
-> library(stringi)
+> suppressPackageStartupMessages({
++   library(data.table)
++   library(DBI)
++   library(RSQLite)
++   library(jsonlite)
++   library(stringi)
++ })
 > 
-> # ---- paths (edit if needed)
+> # ---- paths
 > dir_raw <- "~/OneDrive - UBC/dataRaw"
 > dir_bca <- "~/OneDrive - UBC/Documents/data/bca"
 > f_perm  <- file.path(dir_raw, "vancouver_permits_full.csv")
 > f_parc  <- file.path(dir_raw, "property-parcel-polygons.geojson")
 > f_bca   <- file.path(dir_bca, "REVD16_and_inventory_extracts.sqlite3")
-> f_out   <- "lot_outcomes_lotsize_2016.csv"
+> 
+> # ---- output
+> f_out_lot   <- "lot_outcomes_lotsize_2016.csv"
+> f_out_match <- "permit_matches_debug.csv"
 > 
 > # ---------------------------
-> # helpers: normalization
+> # Helpers
 > # ---------------------------
 > norm_str <- function(x) {
 +   x <- ifelse(is.na(x), "", x)
@@ -57,268 +69,247 @@ package ‘jsonlite’ was built under R version 4.4.1
 > 
 > numify <- function(x) suppressWarnings(as.numeric(gsub(",", "", x)))
 > 
-> extract_civic_num <- function(addr) {
-+   as.integer(stri_extract_first_regex(addr, "\\b\\d{1,6}\\b")) }
-> 
-> extract_street_chunk <- function(addr) {
-+   # remove leading civic number + trailing city/province bits
+> extract_postal <- function(addr) {
 +   a <- norm_str(addr)
-+   a <- stri_replace_first_regex(a, "^\\s*\\d{1,6}\\s+", "")
-+   a <- stri_replace_all_regex(a, ",\\s*VANCOUVER.*$", "")
++   stri_extract_first_regex(a, "\\bV[0-9][A-Z]\\s*[0-9][A-Z][0-9]\\b")
++ }
+> 
+> extract_civic_num <- function(addr) {
++   a <- norm_str(addr)
++   as.integer(stri_extract_first_regex(a, "\\b\\d{1,6}\\b"))
++ }
+> 
+> # Canonical street string to match parcel fabric style:
+> # - drop city/province/postal/unit tail
+> # - standardize street types: STREET->ST, AVENUE/AVE->AV, etc.
+> # - strip ordinals: 12TH->12
+> # - move trailing direction: "... ST E" -> "E ... ST"
+> canon_street <- function(addr_or_street) {
++   a <- norm_str(addr_or_street)
++ 
++   # If this is a full address, remove leading civic number (and ranges like 1234-1238)
++   a <- stri_replace_first_regex(a, "^\\s*\\d{1,6}(\\s*\\-\\s*\\d{1,6})?\\s+", "")
++ 
++   # Remove VANCOUVER / BC / postal tail (order matters)
++   a <- stri_replace_all_regex(a, "\\bVANCOUVER\\b.*$", "")
++   a <- stri_replace_all_regex(a, "\\bBC\\b.*$", "")
++   a <- stri_replace_all_regex(a, "\\bV[0-9][A-Z]\\s*[0-9][A-Z][0-9]\\b.*$", "")
++ 
++   # Remove trailing unit number if present: "... ST 109"
++   a <- stri_replace_all_regex(a, "\\s+\\d{1,6}$", "")
++ 
++   # Strip ordinals: 12TH -> 12
++   a <- stri_replace_all_regex(a, "\\b(\\d+)(ST|ND|RD|TH)\\b", "$1")
++ 
++   # Street-type normalization to align with parcel fabric (AV not AVE)
++   a <- stri_replace_all_regex(a, "\\bSTREET\\b", "ST")
++   a <- stri_replace_all_regex(a, "\\bAVENUE\\b", "AV")
++   a <- stri_replace_all_regex(a, "\\bAVE\\b", "AV")
++   a <- stri_replace_all_regex(a, "\\bBOULEVARD\\b", "BLVD")
++   a <- stri_replace_all_regex(a, "\\bROAD\\b", "RD")
++   a <- stri_replace_all_regex(a, "\\bDRIVE\\b", "DR")
++   a <- stri_replace_all_regex(a, "\\bCRESCENT\\b", "CRES")
++   a <- stri_replace_all_regex(a, "\\bLANE\\b", "LN")
++   a <- stri_replace_all_regex(a, "\\bPLACE\\b", "PL")
++   a <- stri_replace_all_regex(a, "\\bCOURT\\b", "CT")
++   a <- stri_replace_all_regex(a, "\\bTERRACE\\b", "TER")
++ 
++   # Move trailing direction token to front (if present)
++   a <- stri_replace_all_regex(a, "^(.*)\\s+([NSEW])\\b$", "$2 $1")
++ 
 +   a <- stri_replace_all_regex(a, "\\s+", " ")
 +   trimws(a)
 + }
 > 
-> street_type_list <- c(
-+   "ST","AVE","AV","BLVD","RD","DR","CRES","WAY","PL","LANE","LN",
-+   "PKWY","HWY","CIR","CT","SQ","TER","TRL","TRAIL","WALK","MEWS"
-+ )
-> 
-> split_street_name_type <- function(street_chunk) {
-+   s <- norm_str(street_chunk)
-+   toks <- strsplit(s, " ", fixed = TRUE)
-+   out_name <- character(length(s)); out_type <- character(length(s))
-+   for (i in seq_along(s)) {
-+     tt <- toks[[i]]
-+     if (length(tt) == 0 || (length(tt) == 1 && tt == "")) {
-+       out_name[i] <- NA_character_; out_type[i] <- NA_character_; next
-+     }
-+     last <- tt[length(tt)]
-+     if (last %in% street_type_list) {
-+       out_type[i] <- last
-+       out_name[i] <- paste(tt[-length(tt)], collapse = " ")
-+     } else {
-+       out_type[i] <- NA_character_
-+       out_name[i] <- paste(tt, collapse = " ")
-+     }
-+   }
-+   list(streetName = out_name, streetType = out_type)
-+ }
-> 
-> # ---------------------------
-> # outcome classifier (editable)
-> # ---------------------------
-> classify_outcome <- function(propertyuse, usecat, desc, work) {
+> # Outcome classifier (conservative; multiplex overcount guard)
+> # - If units column exists, prefer it.
+> # - Exclude obvious big projects by text
+> classify_outcome <- function(propertyuse, usecat, desc, work, units = NA) {
 +   pu <- norm_str(propertyuse)
 +   uc <- norm_str(usecat)
 +   ds <- norm_str(desc)
 +   wk <- norm_str(work)
 + 
-+   # Multiplex signals
-+   is_multi_text <- stri_detect_regex(ds, "(FOURPLEX|TRIPLEX|MULTIPLEX|MULTI\\s*FAMILY|MULTIPLE\\s*DWELLING|TOWNHOUSE|ROW\\s*HOUSE)") |
-+                    stri_detect_regex(uc, "(MULTIPLEX|TOWNHOUSE|ROW)") |
-+                    stri_detect_regex(pu, "(MULTI\\s*FAMILY|APARTMENT|MULTIPLE\\s*DWELLING)")
++   units_n <- suppressWarnings(as.integer(units))
 + 
-+   # Duplex signals
-+   is_duplex_text <- stri_detect_regex(ds, "\\bDUPLEX\\b|TWO\\s*FAMILY") |
-+                     stri_detect_regex(uc, "\\bDUPLEX\\b") |
-+                     stri_detect_regex(pu, "\\bDUPLEX\\b")
++   # obvious big-project exclusion tokens (Vancouver permit language)
++   big_project <- stri_detect_regex(ds, "(APARTMENT|TOWER|MID\\s*RISE|HIGH\\s*DENSITY|CONDO|MIXED\\s*USE|CD\\s*\\-\\s*1|REZONING)") |
++                  stri_detect_regex(pu, "(COMMERCIAL|OFFICE|RETAIL|INDUSTRIAL)")
 + 
-+   # Single-family rebuild/upgrade (broad)
-+   is_sf_text <- stri_detect_regex(pu, "(SINGLE\\s*FAMILY|ONE\\s*FAMILY|DWELLING)") &
-+                stri_detect_regex(wk, "(NEW|ADDITION|ALTERATION|RENOVATION|REPAIR|CONVERSION)")
++   # duplex
++   is_duplex <- (!is.na(units_n) & units_n == 2) |
++                stri_detect_regex(ds, "\\bDUPLEX\\b|TWO\\s*FAMILY") |
++                stri_detect_regex(uc, "\\bDUPLEX\\b")
 + 
-+   out <- ifelse(is_multi_text, "multiplex",
-+          ifelse(is_duplex_text, "duplex",
-+          ifelse(is_sf_text, "sf_rebuild_or_upgrade", NA_character_)))
++   # multiplex (infill scale) -- if units known, require 3..6; else require explicit triplex/fourplex/...
++   is_multiplex <- (!is.na(units_n) & units_n >= 3 & units_n <= 6) |
++                   (is.na(units_n) &
++                     stri_detect_regex(ds, "(TRIPLEX|FOURPLEX|FIVEPLEX|SIXPLEX|MULTIPLEX)"))
++ 
++   # sf rebuild/upgrade
++   is_sf <- (!is.na(units_n) & units_n == 1) |
++            (stri_detect_regex(pu, "(SINGLE\\s*FAMILY|ONE\\s*FAMILY|DWELLING)") &
++             stri_detect_regex(wk, "(NEW|ADDITION|ALTERATION|RENOVATION|REPAIR|CONVERSION)"))
++ 
++   out <- ifelse(is_multiplex & !big_project, "multiplex",
++          ifelse(is_duplex   & !big_project, "duplex",
++          ifelse(is_sf, "sf_rebuild_or_upgrade", NA_character_)))
 +   out
 + }
 > 
-> # ============================================================
-> # 1) Load permits (CSV)
-> # ============================================================
-> perm <- fread(f_perm, sep = ";", na.strings = c("", "NA"))
+> # ---------------------------
+> # 1) Load permits (CSV) + build clean addr_key
+> # ---------------------------
+> perm <- fread(f_perm, sep=";", na.strings=c("", "NA"))
+> stopifnot("address" %in% names(perm))
+> stopifnot(is.character(perm$address))   # critical: avoids list/function clobber
 > 
-> # required fields per your header: address, propertyuse, specificusecategory, typeofwork,
-> # projectdescription, issueyear, issuedate, geolocalarea, etc.
+> # Units column (optional): autodetect by name
+> unit_candidates <- grep("unit", names(perm), value = TRUE, ignore.case = TRUE)
+> units_col <- if (length(unit_candidates) > 0) unit_candidates[1] else NA_character_
+> message("Units column detected: ", ifelse(is.na(units_col), "<none>", units_col))
+Units column detected: <none>
+> 
+> perm[, postal := extract_postal(address)]
 > perm[, civic_number := extract_civic_num(address)]
-> perm[, street_chunk := extract_street_chunk(address)]
-> tmp <- split_street_name_type(perm$street_chunk)
-> perm[, street_name := tmp$streetName]
-> perm[, street_type := tmp$streetType]
+> perm[, street_name := canon_street(address)]
+> perm[, addr_key1 := paste(civic_number, street_name)]
 > 
-> # keys for matching
-> perm[, addr_key1 := paste(civic_number, street_name)]                  # no type
-> perm[, addr_key2 := paste(civic_number, street_name, norm_str(street_type))]
+> # classify
+> if (!is.na(units_col)) {
++   perm[, outcome := classify_outcome(propertyuse, specificusecategory, projectdescription, typeofwork, get(units_col))]
++ } else {
++   perm[, outcome := classify_outcome(propertyuse, specificusecategory, projectdescription, typeofwork)]
++ }
 > 
-> # classify outcome
-> perm[, outcome := classify_outcome(propertyuse, specificusecategory, projectdescription, typeofwork)]
-> 
-> # keep only classified records
 > perm_evt <- perm[!is.na(outcome) & civic_number > 0 & nzchar(street_name),
 +                  .(permitnumber, issuedate, issueyear, geolocalarea,
-+                    civic_number, street_name, street_type, addr_key1, addr_key2, outcome)]
++                    address, civic_number, street_name, postal, addr_key1, outcome)]
 > 
-> # If multiple permits at same address, keep earliest per outcome (you can change this rule)
-> setorder(perm_evt, civic_number, street_name, issuedate)
-> perm_evt <- perm_evt[, .SD[1], by = .(addr_key1, outcome)]
+> message("Permit outcomes:")
+Permit outcomes:
+> print(perm_evt[, .N, by=outcome][order(-N)])
+                 outcome     N
+                  <char> <int>
+1: sf_rebuild_or_upgrade 20115
+2:                duplex  2785
+3:             multiplex   146
 > 
-> # ============================================================
+> # ---------------------------
 > # 2) Load parcel fabric (GeoJSON) via jsonlite (no GDAL needed)
 > #    properties: civic_number, streetname, site_id, tax_coord, geo_point_2d
-> # ============================================================
+> # ---------------------------
 > parc_json <- fromJSON(f_parc, simplifyDataFrame = TRUE)
 > parc <- as.data.table(parc_json$features$properties)
 > 
-> # normalize parcel address fields
+> stopifnot(all(c("civic_number","streetname") %in% names(parc)))
+> 
 > parc[, civic_number := as.integer(civic_number)]
-> parc[, street_name := norm_str(streetname)]
+> parc[, street_name := canon_street(streetname)]
 > parc[, addr_key1 := paste(civic_number, street_name)]
 > 
-> # de-dup parcels on addr_key1; keep first (or prefer smallest site_id, etc.)
+> # de-dup by key
 > setkey(parc, addr_key1)
 > parc_uniq <- parc[!is.na(civic_number) & civic_number > 0 & nzchar(street_name),
-+                   .SD[1], by = addr_key1]
++                   .SD[1], by=addr_key1]
 > 
-> # ============================================================
-> # 3) Permits -> Parcels (address bridge)
-> # ============================================================
+> # quick overlap check
+> ov <- length(intersect(perm_evt$addr_key1, parc_uniq$addr_key1))
+> message("Key overlap permits vs parcel fabric: ", ov)
+Key overlap permits vs parcel fabric: 11741
+> 
+> # ---------------------------
+> # 3) Join permits -> parcel fabric (address bridge)
+> # ---------------------------
 > setkey(perm_evt, addr_key1)
 > setkey(parc_uniq, addr_key1)
-> perm_parc <- parc_uniq[perm_evt, on = "addr_key1", nomatch = 0L]
+> perm_parc <- parc_uniq[perm_evt, on="addr_key1", nomatch=0L]
 > 
-> # ============================================================
-> # 4) Pull BCA(2016) tables from SQLite
-> #    We use address -> folioID -> rollNumber -> (width, depth) from:
-> #      residentialInventory.land_width/land_depth
-> #      folioDescription.landWidth/landDepth as fallback
-> # ============================================================
+> message("perm_evt rows: ", nrow(perm_evt))
+perm_evt rows: 23046
+> message("perm_parc matched rows: ", nrow(perm_parc))
+perm_parc matched rows: 14432
+> 
+> # Write a debug file you can inspect if matching is low
+> fwrite(perm_parc, f_out_match)
+> 
+> # ---------------------------
+> # 4) Pull BCA (2016) from SQLite
+> #    Join path: BCA.address -> folio -> rollNumber
+> #    Lot size: width*depth from residentialInventory (fallback folioDescription)
+> # ---------------------------
 > con <- dbConnect(RSQLite::SQLite(), f_bca)
-> 
+> # --- Address table (one row per folioID per address record) ---
 > bca_addr <- as.data.table(dbGetQuery(con, "
-+   SELECT folioID, streetNumber, streetName, streetType, city, province, postalCode, primaryFlag
++   SELECT
++     folioID,
++     streetNumber,
++     streetName,
++     streetType,
++     city,
++     province,
++     postalCode,
++     primaryFlag
 +   FROM address
 + "))
 > 
+> # --- Folio table: stable parcel ID + roll number ---
 > bca_folio <- as.data.table(dbGetQuery(con, "
-+   SELECT folioID, rollNumber FROM folio
++   SELECT
++     folioID,
++     rollNumber
++   FROM folio
 + "))
 > 
-> # width/depth from both sources; rollNumber aligns them
+> # --- Dimensions: residentialInventory keyed by roll_number;
+> #     folioDescription keyed by folioID, so bridge via folio ---
 > bca_dims <- as.data.table(dbGetQuery(con, "
 +   SELECT
 +     ri.roll_number AS roll_number,
++     f.folioID      AS folioID,
++ 
 +     ri.land_width  AS land_width_ri,
 +     ri.land_depth  AS land_depth_ri,
++ 
 +     fd.landWidth   AS land_width_fd,
 +     fd.landDepth   AS land_depth_fd
 +   FROM residentialInventory ri
 +   LEFT JOIN folio f
-+     ON ri.roll_number = f.rollNumber
++     ON f.rollNumber = ri.roll_number
 +   LEFT JOIN folioDescription fd
 +     ON fd.folioID = f.folioID
 + "))
 > 
-> 
-> # optional PID (nice stable ID if present)
+> # --- Optional stable identifier (PID) ---
 > bca_pid <- as.data.table(dbGetQuery(con, "
-+   SELECT folioID, PID
++   SELECT
++     folioID,
++     PID
 +   FROM legalDescription
 + "))
 > 
 > dbDisconnect(con)
 > 
-> # build BCA address keys
+> 
+> # Build BCA address keys matching our canonical form
 > bca_addr[, civic_number := as.integer(streetNumber)]
 Warning message:
 In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
-> bca_addr[, street_name  := norm_str(streetName)]
-> bca_addr[, street_type  := norm_str(streetType)]
+> bca_addr[, street_name := canon_street(paste(streetName, streetType))]
+> bca_addr[, postal := norm_str(postalCode)]
 > bca_addr[, addr_key1 := paste(civic_number, street_name)]
-> bca_addr[, addr_key2 := paste(civic_number, street_name, street_type)]
 > 
-> # ============================================================
-> # 5) Match permits/parcels -> BCA address (with and without street type)
-> # ============================================================
-> # Normalize permit street type and create addr_key2
-> perm_parc[, street_type_n := norm_str(street_type)]
-> perm_parc[, addr_key2 := paste(civic_number, street_name, street_type_n)]
-> 
-> # First: strict match on addr_key2
-> setkey(bca_addr, addr_key2)
-> setkey(perm_parc, addr_key2)
-> m1 <- bca_addr[perm_parc, on = "addr_key2", nomatch = 0L]
-> 
-> # Fallback: match on addr_key1 for remaining
-> matched_permits <- unique(m1$permitnumber)
-> unmatched <- perm_parc[!permitnumber %in% matched_permits]
+> # ---------------------------
+> # 5) Join matched permits (perm_parc) -> BCA by addr_key1, optionally confirm with postal if present
+> # ---------------------------
+> # (A) join by addr_key1
 > setkey(bca_addr, addr_key1)
-> unmatched[, addr_key1 := paste(civic_number, street_name)]
-> m2 <- bca_addr[unmatched, on = "addr_key1", nomatch = 0L]
+> setkey(perm_parc, addr_key1)
+> m <- bca_addr[perm_parc, on="addr_key1", nomatch=0L]
 > 
-> m <- rbindlist(list(m1, m2), fill = TRUE)
-> 
-> # ============================================================
-> # 6) Join to rollNumber -> width/depth -> lot size; add PID
-> # ============================================================
-> setkey(bca_folio, folioID)
-> setkey(m, folioID)
-> m <- bca_folio[m, on = "folioID"]
-> 
-> # dimensions by roll_number
-> m[, roll_number := rollNumber]
-> setkey(bca_dims, roll_number)
-> setkey(m, roll_number)
-> m <- bca_dims[m, on = "roll_number"]
-> 
-> # PID
-> setkey(bca_pid, folioID)
-> m <- bca_pid[m, on = "folioID"]
-> 
-> # Compute unified width/depth and lot size (ignore land_area entirely)
-> m[, land_width := fcoalesce(numify(land_width_ri), numify(land_width_fd))]
-> m[, land_depth := fcoalesce(numify(land_depth_ri), numify(land_depth_fd))]
-> m[, lot_size_original := land_width * land_depth]
-> 
-> m[, lot_size_source := fifelse(!is.na(land_width_ri) & !is.na(land_depth_ri),
-+                                "residentialInventory",
-+                         fifelse(!is.na(land_width_fd) & !is.na(land_depth_fd),
-+                                "folioDescription", NA_character_))]
-> 
-> # stable lot id
-> m[, lot_id := fifelse(!is.na(PID) & nzchar(PID), PID, folioID)]
-> 
-> # ============================================================
-> # 7) Collapse to one row per lot_id (earliest permit event)
-> # ============================================================
-> setorder(m, lot_id, issuedate)
-> 
-> lot_panel <- m[, .(
-+   first_issue_date = issuedate[1],
-+   first_issue_year = issueyear[1],
-+   outcome          = outcome[1],
-+   lot_size_original = lot_size_original[1],
-+   lot_size_source   = lot_size_source[1],
-+   land_width        = land_width[1],
-+   land_depth        = land_depth[1],
-+   roll_number       = roll_number[1],
-+   folioID           = folioID[1],
-+   PID               = PID[1],
-+   geolocalarea      = geolocalarea[1],
-+   site_id           = site_id[1],
-+   tax_coord         = tax_coord[1]
-+ ), by = lot_id]
-> 
-> # basic QA
-> lot_panel[, lot_size_missing := is.na(lot_size_original) | lot_size_original <= 0]
-> cat("Lots:", nrow(lot_panel),
-+     "| missing lot size:", lot_panel[lot_size_missing == TRUE, .N], "\n")
-Lots: 0 | missing lot size: 0 
-> 
-> # quick sanity summary (you can comment out)
-> print(lot_panel[lot_size_missing==0,
-+   .(n=.N,
-+     p50_w=median(land_width, na.rm=TRUE),
-+     p50_d=median(land_depth, na.rm=TRUE),
-+     p50_area=median(lot_size_original, na.rm=TRUE),
-+     p95_area=quantile(lot_size_original, 0.95, na.rm=TRUE))])
-Empty data.table (0 rows and 5 cols): n,p50_w,p50_d,p50_area,p95_area
-> 
-> # write
-> fwrite(lot_panel, f_out)
-> cat("Wrote:", f_out, "\n")
-Wrote: lot_outcomes_lotsize_2016.csv 
-> 
-> proc.time()
-   user  system elapsed 
- 55.709   3.945  43.061 
+> # (B) optional: if permit has postal, enforce it when BCA has it (reduces false matches)
+> m[, permit_postal := norm_str(postal)]
+> m[, bca_postal := postal.1]  # bca_addr's postal is now 'postal' column; join created duplicates; keep safe
+Error in eval(jsub, SDenv, parent.frame()) : object 'postal.1' not found
+Calls: [ -> [.data.table -> eval -> eval
+Execution halted
