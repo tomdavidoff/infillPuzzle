@@ -1,3 +1,7 @@
+# permitOriginalLotVancouver.R 
+# R to map R-zone permits to original (2016) Vancouver lots via parcel-address fabric and BCA data.
+# Tom Davidoff
+# 01/07/26
 # ------------------------------------------------------------
 # Vancouver infill puzzle: Permits x Parcel-address fabric x BCA(2016)
 #
@@ -32,6 +36,88 @@ dir_bca <- "~/OneDrive - UBC/Documents/data/bca"
 f_perm  <- file.path(dir_raw, "vancouver_permits_full.csv")
 f_parc  <- file.path(dir_raw, "property-parcel-polygons.geojson")
 f_bca   <- file.path(dir_bca, "REVD16_and_inventory_extracts.sqlite3")
+f_bca18 <- file.path(dir_bca, "REVD18_and_inventory_extracts_CSV_files/address.csv")
+
+library(data.table)
+library(stringi)
+
+# ---------- helpers
+norm <- function(x) {
+  x <- fifelse(is.na(x), "", x)
+  x <- toupper(trimws(x))
+  x <- stri_replace_all_regex(x, "[^A-Z0-9 ]+", " ")
+  x <- stri_replace_all_regex(x, "\\s+", " ")
+  trimws(x)
+}
+
+# Extract civic number (first integer)
+civic_num <- function(addr) as.integer(stri_extract_first_regex(norm(addr), "\\b\\d{1,6}\\b"))
+
+# Extract postal (optional)
+postal <- function(addr) stri_extract_first_regex(norm(addr), "\\b[ABCEGHJ-NPRSTVXY]\\d[ABCEGHJ-NPRSTVXY]\\s*\\d[ABCEGHJ-NPRSTVXY]\\d\\b")
+
+# Canonical street string from permit free-form:
+# remove civic num, unit, city/province/postal tail; normalize common street types + ordinals
+canon_street <- function(addr) {
+  a <- norm(addr)
+
+  a <- stri_replace_all_regex(a, "#\\s*\\d+\\b", "")                  # unit like #205
+  a <- stri_replace_first_regex(a, "^\\s*\\d{1,6}\\s+", "")           # drop civic num
+  a <- stri_replace_all_regex(a, "\\bVANCOUVER\\b.*$", "")            # drop city onward
+  a <- stri_replace_all_regex(a, "\\bBC\\b.*$", "")
+  a <- stri_replace_all_regex(a, "\\b[ABCEGHJ-NPRSTVXY]\\d[ABCEGHJ-NPRSTVXY]\\s*\\d[ABCEGHJ-NPRSTVXY]\\d\\b.*$", "")
+
+  a <- stri_replace_all_regex(a, "\\b(\\d+)(ST|ND|RD|TH)\\b", "$1")   # 1ST -> 1
+  a <- stri_replace_all_regex(a, "\\bAVENUE\\b|\\bAVE\\b", "AV")
+  a <- stri_replace_all_regex(a, "\\bSTREET\\b", "ST")
+  a <- stri_replace_all_regex(a, "\\bROAD\\b", "RD")
+  a <- stri_replace_all_regex(a, "\\bDRIVE\\b", "DR")
+  a <- stri_replace_all_regex(a, "\\bLANE\\b", "LN")
+  a <- stri_replace_all_regex(a, "\\bBOULEVARD\\b", "BLVD")
+  a <- stri_replace_all_regex(a, "\\s+", " ")
+  trimws(a)
+}
+
+# Build key: "NUM DIR NAME TYPE DIR2" (spaces normalized)
+mk_key <- function(num, dir_pre, name, type, dir_suf) {
+  norm(paste(num, dir_pre, name, type, dir_suf))
+}
+
+# ---------- load permit data (example: you already have perm)
+# perm <- fread("vancouver_permits_full.csv", sep=";")
+# expects column: address and permitnumber (or similar)
+perm <- fread(f_perm, sep=";", na.strings=c("", "NA"))
+perm <- copy(perm)  # if already in memory
+
+perm[, civic := civic_num(address)]
+perm[, street := canon_street(address)]
+perm[, permit_key := norm(paste(civic, street))]
+perm_use <- perm[!is.na(civic) & civic > 0 & nzchar(street), .(permitnumber, permit_key)]
+
+# ---------- load BCA address CSV (2018)
+# bca_addr <- fread(".../address_2018.csv")
+bca_addr <- fread(f_bca18)
+
+# primary only (as text "true"/"false" in your head)
+bca_addr <- bca_addr[norm(primaryFlag) %in% c("TRUE", "T", "1")]
+
+# Build BCA key using structured parts
+bca_addr[, bca_key := mk_key(streetNumber, streetDirectionPrefix, streetName, streetType, streetDirectionSuffix)]
+bca_use <- bca_addr[!is.na(streetNumber) & streetNumber != "", .(folioID, bca_key)]
+
+setkey(perm_use, permit_key)
+setkey(bca_use, bca_key)
+
+m <- bca_use[perm_use, on=c(bca_key="permit_key"), nomatch=0L]
+
+cat("Permits with usable address:", nrow(perm_use), "\n")
+cat("Matched permits:", uniqueN(m$permitnumber), "\n")
+cat("Match rate:", round(uniqueN(m$permitnumber) / nrow(perm_use), 3), "\n")
+cat("Avg folios per matched permit:", nrow(m) / uniqueN(m$permitnumber), "\n")
+
+# optional: save unmatched for inspection
+unmatched <- perm_use[!permit_key %in% m$bca_key]
+stop("FF")
 
 # ---- output
 f_out_lot   <- "lot_outcomes_lotsize_2016.csv"
@@ -144,6 +230,7 @@ classify_outcome <- function(propertyuse, usecat, desc, work, units = NA) {
 perm <- fread(f_perm, sep=";", na.strings=c("", "NA"))
 stopifnot("address" %in% names(perm))
 stopifnot(is.character(perm$address))   # critical: avoids list/function clobber
+stop("CHECK PERM")
 
 # Units column (optional): autodetect by name
 unit_candidates <- grep("unit", names(perm), value = TRUE, ignore.case = TRUE)
