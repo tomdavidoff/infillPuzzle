@@ -3,20 +3,12 @@
 # Tom Davidoff
 # 01/07/26
 
-
-# Data examples from permits
-#[33782] "2251 COLLINGWOOD STREET, Vancouver, BC V6R 3L1"
-#[33783] "459 E 49TH AVENUE, Vancouver, BC V5W 2G8"
-
-#BCA address 
-#folioID,addressID,primaryFlag,streetNumber,unitNumber,streetDirectionPrefix,streetName,streetDirectionSuffix,streetType,city,province,postalCode,mapReferenceNumber
-#"A000027PMT","A000004S6Z","true","425","","","11TH","E","ST","NORTH VANCOUVER","BC","V7L 2H3",""
-#"A000027PMU","A000004S70","true","429","","","11TH","E","ST","NORTH VANCOUVER","BC","V7L 2H3",""
 library(data.table)
 library(stringr)
 library(jsonlite)
 library(sf)
-# prepare hugedata if needed
+
+# prepare huge BC 2022 FOLIO -> Address data if needed
 ingpkg  <- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
 layer   <- "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_ADDRESSES_SV"
 outgpkg <- path.expand("~/OneDrive - UBC/dataProcessed/vancouverFolio2022.gpkg")
@@ -36,6 +28,7 @@ if (!file.exists( outgpkg)) {
 geo2022 <-  st_read(outgpkg)
 print(head(geo2022))    
 
+# STEP: Merge as many 2019-2025 permits to 2018 single family as feasible
 # Make nice commands that give file names after directories for the below
 dirRaw <- "~/OneDrive - UBC/dataRaw"
 dirBCA <- "~/OneDrive - UBC/Documents/data/bca"
@@ -79,7 +72,7 @@ print(table(is.na(dtMerge$folioID),is.na(dtMerge$permitnumber)))
 print(table(dtMerge[is.na(folioID),permitcategory]))
 print(table(dtMerge[!is.na(folioID),permitcategory]))
 # NB NOT PERFECT, but pretty good -- resi dominated in yes match
-fwrite(dtMerge[is.na(folioID)],"~/Downloads/nono.csv")
+print(names(dtMerge)) # record for subsequent rbind
 
 # Next, try matching on 2025 floor(rollnumber/1000)
 dtNoMerge <- dtMerge[is.na(folioID) & !is.na(permitnumber),.(permitnumber,addressOrig,address,projectvalue,typeofwork,specificusecategory,permitcategory)]
@@ -106,20 +99,70 @@ dtBCA2025[,address:=gsub("\\s+", " ", address)]
 dtBCA2025[,address:=sub("(VANCOUVER, BC).*","\\1",address)] 
 dtBCA2025[,address:= str_trim(toupper(address))]
 
+
 dtMerge2 <- merge(dtNoMerge,dtBCA2025,by="address",all.x=TRUE)
+dtNoMerge2 <- dtMerge2[is.na(FOLIO_ID) & !is.na(permitnumber)]
 print(table(is.na(dtMerge2$FOLIO_ID),is.na(dtMerge2$permitnumber)))
 print(head(dtMerge2))
-print(table(dtMerge2[is.na(folioID),permitcategory]))
-print(table(dtMerge2[!is.na(folioID),permitcategory]))
+print(table(dtMerge2[is.na(FOLIO_ID),permitcategory]))
+print(table(dtMerge2[!is.na(FOLIO_ID),permitcategory]))
+# note only useful if joined to a 2018 house
+dtBCA2025 <- merge(dtMerge2[!is.na(FOLIO_ID)],dtBCA,by.x="FOLIO_ID",by.y="folioID",all.x=TRUE,suffixes=c("_2025","_2018"))
 
 
+# Now geography stuff
+# Get centroids of permit addresses by joining address with city parcel polygons
 parc_json <- fromJSON(f_parc, simplifyDataFrame = TRUE)
 parc <- as.data.table(parc_json$features$properties)
 print(head(parc))
 print(length(unique(parc[,site_id])))
 print(length(unique(parc[,paste0(geo_point_2d.lat,geo_point_2d.lon)])))
 print(nrow(parc))
-print(parc[civic_number=="1305" & streetname=="MAPLE ST"])
-print(parc[civic_number=="2020" & streetname=="CREELMAN AV"])
+#civic_number     streetname tax_coord   site_id geo_point_2d.lon
+#           <char>         <char>    <char>    <char>            <num>
+#  1:         4875     HEATHER ST  73015907 032529686        -123.1221             2:          375      E 33RD AV  73019575  EPS10489        -123.0975
+
+parc[,address:= str_trim(toupper(paste(civic_number,streetname)))]
+parc[,address:=gsub(" ST "," STREET ",address)]
+parc[,address:=gsub(" AVE "," AVENUE ",address)]
+parc[,address:=gsub(" RD "," ROAD ",address)]
+parc[,address:=gsub(" DR "," DRIVE ",address)]
+parc[,address:=gsub(" BLVD "," BOULEVARD ",address)]
+parc[,address:=gsub(" CT "," COURT ",address)]
+parc[,address:=gsub(" PL "," PLACE ",address)]
+parc[,address:=gsub(" HWY "," HIGHWAY ",address)]
+dtPermit[,addressParc:= str_trim(toupper(sub(", VANCOUVER, BC.*","",address)))]
+
+dtPermitAddress <- merge(dtPermit,parc,by.x="addressParc",by.y="address",all.x=TRUE)
+print(head(dtPermit))
+print(head(dtParc))
+print(table(is.na(dtPermitAddress$site_id)))
+
+q("no")
+
+
+# Now merge on centroids from 2018
+# we have a st dataframe geo2022
+# we want to merge based on closest centroid, with some tolerance, say 30 ft 10Meters max, so be strict at 5m
+geo2022$centroid <- st_centroid(geo2022$geom)
+geo2022_centroids <- st_coordinates(geo2022$centroid)
+geo2022_dt <- as.data.table(geo2022)
+geo2022_dt[,geo_point_2d.lon:=geo2022_centroids[,1]]
+geo2022_dt[,geo_point_2d.lat:=geo2022_centroids[,2]]
+print(head(geo2022_dt))
+# Now find min distance for each of the no merge 2
+print(names(dtNoMerge2))
+q("no")
+dtNoMerge2_sf <- st_as_sf(dtNoMerge2, coords = c("geo_point_2d.lon", "geo_point_2d.lat"), crs = 4326, remove=FALSE)
+dtNoMerge2_sf <- st_transform(dtNoMerge2_sf, st_crs(geo2022))
+dist_matrix <- st_distance(dtNoMerge2_sf, geo2022)
+min_dist_indices <- apply(dist_matrix, 1, which.min)
+min_dist_values <- apply(dist_matrix, 1, min)
+tolerance_meters <- 5
+dtNoMerge2[,min_dist_meters:=as.numeric(min_dist_values)]
+dtNoMerge2[,closest_folioID:=geo2022_dt$FOLIO_ID[min_dist_indices]]
+dtNoMerge2_matched <- dtNoMerge2[min_dist_meters <= tolerance_meters]
+print(head(dtNoMerge2_matched))
+
 
 q("no")
