@@ -1,6 +1,11 @@
 
+<<<<<<< HEAD
 R version 4.4.0 (2024-04-24) -- "Puppy Cup"
 Copyright (C) 2024 The R Foundation for Statistical Computing
+=======
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+>>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -22,10 +27,15 @@ Type 'q()' to quit R.
 > 
 > # Load necessary libraries
 > library(data.table)
+<<<<<<< HEAD
 Warning message:
 package ‘data.table’ was built under R version 4.4.1 
 > library(sf)
 Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
+=======
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+>>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 > 
 > # Read headers
 > directory <- "~/OneDrive - UBC/dataRaw"
@@ -35,9 +45,15 @@ Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > # Read permit data
 > dtPermits <- fread(file.path(directory,f_permit),select=c("permitnumber","address"))
 > # Read parcel data
+<<<<<<< HEAD
 > parcels <- st_read(file.path(directory,f_parcel)) # is thjis best way to read geojson? 
 Reading layer `property-parcel-polygons' from data source 
   `/Users/davidoff/Library/CloudStorage/OneDrive-UBC/dataRaw/property-parcel-polygons.geojson' 
+=======
+> parcels <- st_read(file.path(directory,f_parcel)) # is thjis best way to read geojson?
+Reading layer `property-parcel-polygons' from data source 
+  `/Users/tdavidof/Library/CloudStorage/OneDrive-UBC/dataRaw/property-parcel-polygons.geojson' 
+>>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
   using driver `GeoJSON'
 Simple feature collection with 99765 features and 5 fields
 Geometry type: MULTIPOLYGON
@@ -89,8 +105,13 @@ Geodetic CRS:  WGS 84
 > # How to these subsequent shifts recognizing we dont want "STREET" -> "STREETEET"? But also recognizing "ST" often ends word, so gsub(" ST "," STREET ") wont catch those
 > # What's below for parcels is good, but let's make a nice data.table or something and apply to both parcels and permits. Maybe a function? Your call
 > streetRename <- data.table(
+<<<<<<< HEAD
 +   short = c(" ST"," AVE"," RD"," DR"," BLVD"," CRES"," HWY"," PL"," PLZ"),
 +   long = c(" STREET"," AVENUE"," ROAD"," DRIVE"," BOULEVARD"," CRESCENT"," HIGHWAY"," PLACE"," PLAZA")
+=======
++   short = c(" ST"," AVE"," AV"," RD"," DR"," BLVD"," CRES"," HWY"," PL"," PLZ"),
++   long = c(" STREET"," AVENUE"," AVENUE"," ROAD"," DRIVE"," BOULEVARD"," CRESCENT"," HIGHWAY"," PLACE"," PLAZA")
+>>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 + )
 > # Apply renaming to parcels
 > for (i in 1:nrow(streetRename)) {
@@ -101,6 +122,7 @@ Geodetic CRS:  WGS 84
 +   dtPermits[,address:=gsub(paste0(short,"$"), long, address)] # standardize street type at end of string
 +   dtPermits[,address:=gsub(paste0(short," "), paste0(long," "), address)] # standardize street type
 + }
+<<<<<<< HEAD
 > dtParcels[,address:=gsub(" ST$"," STREET",address)] # standardize street type at end of string
 > dtParcels[,address:=gsub(" ST "," STREET ",address)] # standardize street type
 > dtParcels[,address:=gsub(" AVE$"," AVENUE",address)] # standardize street type at end of string
@@ -124,6 +146,8 @@ Geodetic CRS:  WGS 84
 > dtParcels[,address:=gsub("\\s+"," ",address)] # remove double spaces if any
 > dtPermits[,address:=gsub("\\s+"," ",address)] # remove double spaces if any
 > 
+=======
+>>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 > dtPermits[,address:=gsub(", Vancouver, BC","",address)] # remove city and province
 > # delete last 7 characters (postal code) if present
 > # detect a postal code of form " V#V #V#" at end of string
@@ -151,11 +175,21 @@ Geodetic CRS:  WGS 84
                          geometry                address
                <sfc_MULTIPOLYGON>                 <char>
 1: MULTIPOLYGON (((-123.1234 4...    4875 HEATHER STREET
+<<<<<<< HEAD
 2: MULTIPOLYGON (((-123.0976 4...          375 E 33RD AV
 3: MULTIPOLYGON (((-123.0687 4... 4763 COMMERCIAL STREET
 4: MULTIPOLYGON (((-123.2072 4...         4429 W 13TH AV
 5: MULTIPOLYGON (((-123.0322 4...    3415 SEAFORTH DRIVE
 6: MULTIPOLYGON (((-123.0538 4...         2552 E 11TH AV
+=======
+2: MULTIPOLYGON (((-123.0976 4...      375 E 33RD AVENUE
+3: MULTIPOLYGON (((-123.0687 4... 4763 COMMERCIAL STREET
+4: MULTIPOLYGON (((-123.2072 4...     4429 W 13TH AVENUE
+5: MULTIPOLYGON (((-123.0322 4...    3415 SEAFORTH DRIVE
+6: MULTIPOLYGON (((-123.0538 4...     2552 E 11TH AVENUE
+> print("PP")
+[1] "PP"
+>>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 > print(head(dtPermits))
     permitnumber              address
           <char>               <char>
@@ -169,7 +203,11 @@ Geodetic CRS:  WGS 84
 > print(table(is.na(dtMerge$site_id))) # check how many permits did not find a matching parcel
 
 FALSE  TRUE 
+<<<<<<< HEAD
 23453 31811 
+=======
+39053 17253 
+>>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 > print(head(dtMerge))
 Key: <address>
    address civic_number streetname tax_coord site_id geo_point_2d
@@ -188,6 +226,7 @@ Key: <address>
 4:               NULL DB-2024-00764
 5:               NULL DB-2021-06302
 6:               NULL DB-2022-01001
+<<<<<<< HEAD
 > print(dtMerge[is.na(site_id)]) # inspect permits that did not find a matching parcel
 Key: <address>
                                    address civic_number streetname tax_coord
@@ -257,10 +296,57 @@ Key: <address>
 23451: MULTIPOLYGON (((-123.1162 4... BP-2024-01424
 23452: MULTIPOLYGON (((-123.1162 4... BP-2024-01486
 23453: MULTIPOLYGON (((-123.1162 4... BP-2025-00006
+=======
+> print(head(dtMerge[is.na(site_id)])) # inspect permits that did not find a matching parcel
+Key: <address>
+   address civic_number streetname tax_coord site_id geo_point_2d
+    <char>       <char>     <char>    <char>  <char>       <char>
+1:                 <NA>       <NA>      <NA>    <NA>         <NA>
+2:                 <NA>       <NA>      <NA>    <NA>         <NA>
+3:                 <NA>       <NA>      <NA>    <NA>         <NA>
+4:                 <NA>       <NA>      <NA>    <NA>         <NA>
+5:                 <NA>       <NA>      <NA>    <NA>         <NA>
+6:                 <NA>       <NA>      <NA>    <NA>         <NA>
+             geometry  permitnumber
+   <sfc_MULTIPOLYGON>        <char>
+1:               NULL DB-2021-06398
+2:               NULL BP-2023-02138
+3:               NULL DB-2020-01950
+4:               NULL DB-2024-00764
+5:               NULL DB-2021-06302
+6:               NULL DB-2022-01001
+> print(head(dtMerge[!is.na(site_id)])) # inspect permits that found a matching parcel
+Key: <address>
+              address civic_number   streetname tax_coord   site_id
+               <char>       <char>       <char>    <char>    <char>
+1: 1 ALEXANDER STREET            1 ALEXANDER ST  57917805 026741059
+2: 1 ALEXANDER STREET            1 ALEXANDER ST  57917805 026741059
+3: 1 ALEXANDER STREET            1 ALEXANDER ST  57917805 026741059
+4:     1 ATHLETES WAY            1 ATHLETES WAY  63418201 026894041
+5: 1 E CORDOVA STREET            1 E CORDOVA ST  58917805   LMS2854
+6:   1 PEVERIL AVENUE            1   PEVERIL AV  18471695 010708065
+                                                geo_point_2d
+                                                      <char>
+1: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
+2: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
+3: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
+4:  { "lon": -123.10576689952619, "lat": 49.27179256077271 }
+5: { "lon": -123.10374368035457, "lat": 49.282624223015887 }
+6: { "lon": -123.10548046039521, "lat": 49.244807766242161 }
+                         geometry  permitnumber
+               <sfc_MULTIPOLYGON>        <char>
+1: MULTIPOLYGON (((-123.1039 4... DB-2020-02486
+2: MULTIPOLYGON (((-123.1039 4... BP-2023-03589
+3: MULTIPOLYGON (((-123.1039 4... BP-2025-02811
+4: MULTIPOLYGON (((-123.1047 4... BP-2018-00017
+5: MULTIPOLYGON (((-123.1032 4... DB-2018-04874
+6: MULTIPOLYGON (((-123.1058 4... BP-2018-00482
+>>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 > N <- 200
 > # print N rows of randomly selected failed merge addresses for manual inspection
 > set.seed(123)
 > print(sample(dtMerge[is.na(site_id)]$address,N))
+<<<<<<< HEAD
   [1] "3528 W 27TH AVENUE"             "3534 W 41ST AVENUE"            
   [3] "6363 OAK STREET"                "5485 LARCH STREET"             
   [5] "750 HORNBY STREET"              "1306 E 37TH AVENUE"            
@@ -411,3 +497,222 @@ Key: <matched_site_id>
 > proc.time()
    user  system elapsed 
  12.285   0.328  10.059 
+=======
+  [1] "1535 NELSON STREET #207"             
+  [2] "1283 DAVIE STREET"                   
+  [3] "163 W KING EDWARD AVENUE"            
+  [4] "485 W 59TH AVENUE"                   
+  [5] "2047 E 39TH AVENUE"                  
+  [6] "2645 GRANT STREET"                   
+  [7] "830 E 7TH AVENUE #217"               
+  [8] "1489 FRANCES STREET"                 
+  [9] "550 GRANVILLE STREET"                
+ [10] "3476 TUPPER STREET"                  
+ [11] "3878 BEATRICE STREET"                
+ [12] "6211 GRANVILLE STREET"               
+ [13] "1510 GRANT STREET #203"              
+ [14] "2451 ETON STREET #3"                 
+ [15] "359 W 49TH AVENUE"                   
+ [16] "5415 WALES STREET"                   
+ [17] "1238 CARDERO STREET #1"              
+ [18] "939 HOMER STREET #3309"              
+ [19] "6616 GLADSTONE STREET"               
+ [20] "737 DUNSMUIR STREET"                 
+ [21] "3509 TURNER STREET"                  
+ [22] "3735 W 10TH AVENUE"                  
+ [23] "3436 E 24TH AVENUE #3"               
+ [24] "749 W 49TH AVENUE"                   
+ [25] "1538 NANAIMO STREET"                 
+ [26] "305 E PENDER STREET"                 
+ [27] "1795 E 60TH AVENUE"                  
+ [28] "61 E 23RD AVENUE #4"                 
+ [29] "3194 CHARLES STREET"                 
+ [30] "8889 LAUREL STREET"                  
+ [31] "4320 W 10TH AVENUE"                  
+ [32] "247 E 49TH AVENUE"                   
+ [33] "899 W 12TH AVENUE"                   
+ [34] "3224 E 48TH AVENUE"                  
+ [35] "630 HORNBY STREET"                   
+ [36] ""                                    
+ [37] "6830 ASH STREET"                     
+ [38] "2842 W 1ST AVENUE"                   
+ [39] "2807 W 39TH AVENUE #3"               
+ [40] "817 W 28TH AVENUE"                   
+ [41] "4434 W 8TH AVENUE"                   
+ [42] "2644 DUKE STREET"                    
+ [43] "471 W 28TH AVENUE"                   
+ [44] "325 SEYMOUR STREET"                  
+ [45] "376 W 10TH AVENUE"                   
+ [46] "3915 W 32ND AVENUE #3"               
+ [47] "5294 ST. CATHERINES STREET"          
+ [48] "2443 KINGSWAY"                       
+ [49] "1067 MARINASIDE CRESCENT #1903"      
+ [50] "2583 E 23RD AVENUE"                  
+ [51] "2756 W 13TH AVENUE #3"               
+ [52] "3589 W 20TH AVENUE #3"               
+ [53] "179 W 48TH AVENUE"                   
+ [54] "6850 LANARK STREET #3"               
+ [55] "350 SE MARINE DRIVE"                 
+ [56] "16 E 3RD AVENUE"                     
+ [57] "2268 W 12TH AVENUE #103"             
+ [58] "3604 TANNER STREET"                  
+ [59] "6818 ASH STREET"                     
+ [60] "3811 W 14TH AVENUE"                  
+ [61] "2388 CAMBIE STREET"                  
+ [62] "35 W 6TH AVENUE"                     
+ [63] "539 E 6TH AVENUE"                    
+ [64] "2977 E 29TH AVENUE #3"               
+ [65] "460 W 45TH AVENUE #3"                
+ [66] "768 W 17TH AVENUE"                   
+ [67] "1199 MARINASIDE CRESCENT #501"       
+ [68] "4049 W 38TH AVENUE"                  
+ [69] "1055 W HASTINGS STREET"              
+ [70] "5120 ASH STREET"                     
+ [71] "734 W 13TH AVENUE"                   
+ [72] "785 E 58TH AVENUE"                   
+ [73] "2123 E 13TH AVENUE"                  
+ [74] "8271 LABURNUM STREET"                
+ [75] "740 W 41ST AVENUE"                   
+ [76] "833 HOMER STREET #2909"              
+ [77] "2801 E HASTINGS STREET"              
+ [78] "2033 TRIUMPH STREET #225"            
+ [79] "664 W 17TH AVENUE #3"                
+ [80] "669 HOWE STREET #850"                
+ [81] ""                                    
+ [82] "3655 W 3RD AVENUE #3"                
+ [83] "1355 W 4TH AVENUE"                   
+ [84] "795 W 8TH AVENUE #16"                
+ [85] "6869 CAMBIE STREET"                  
+ [86] "3235 CLIVE AVENUE"                   
+ [87] "5120 ASH STREET"                     
+ [88] "8337 FRENCH STREET"                  
+ [89] "4446 W 8TH AVENUE"                   
+ [90] "2943 E 44TH AVENUE"                  
+ [91] "1311 BEACH AVENUE #603"              
+ [92] "2214 E 10TH AVENUE"                  
+ [93] "620 GORE AVENUE"                     
+ [94] "2459 MCGILL STREET"                  
+ [95] "188 E PENDER STREET"                 
+ [96] "2995 COMMERCIAL DRIVE"               
+ [97] "4022 W 14TH AVENUE"                  
+ [98] "373 E 33RD AVENUE"                   
+ [99] "2050 COMOX STREET #503"              
+[100] "7825 ADERA STREET"                   
+[101] "2618 WAVERLEY AVENUE #3"             
+[102] "1111 MARINASIDE CRESCENT #602"       
+[103] "452 E 45TH AVENUE #3"                
+[104] "4568 COLLINGWOOD STREET"             
+[105] "888 HAMILTON STREET #2203"           
+[106] "6608 ROSS STREET #3"                 
+[107] "4660 JOYCE STREET #3"                
+[108] "1566 RAND AVENUE"                    
+[109] "5802 BLENHEIM STREET"                
+[110] "7161 WILTSHIRE STREET #3"            
+[111] "525 W 59TH AVENUE"                   
+[112] "1655 W 4TH AVENUE"                   
+[113] "178 KEEFER STREET"                   
+[114] "570 GRANVILLE STREET #400"           
+[115] "2954 W 14TH AVENUE"                  
+[116] "1489 W BROADWAY"                     
+[117] "1740 COMOX STREET #1802"             
+[118] "979 RICHARDS STREET"                 
+[119] "5679 MAIN STREET"                    
+[120] "375 W 59TH AVENUE"                   
+[121] "1551 MARINER WALK #106"              
+[122] "417 E 50TH AVENUE"                   
+[123] "4551 W 15TH AVENUE #3"               
+[124] "3301 W 16TH AVENUE #3"               
+[125] "701 W GEORGIA STREET"                
+[126] "7010 KERR STREET"                    
+[127] "925 W GEORGIA STREET"                
+[128] "690 W 41ST AVENUE"                   
+[129] "2430 COMMERCIAL DRIVE"               
+[130] "1328 W 73RD AVENUE #1"               
+[131] "4435 TRAFALGAR STREET"               
+[132] "4650 OAK STREET"                     
+[133] "1132 E PENDER STREET"                
+[134] "2121 W 5TH AVENUE #102"              
+[135] "1181 SEYMOUR STREET"                 
+[136] ""                                    
+[137] "1020 W CORDOVA STREET"               
+[138] "2034 E 1ST AVENUE"                   
+[139] "427 W 39TH AVENUE"                   
+[140] "7555 YUKON STREET"                   
+[141] "2083 ALMA STREET #215"               
+[142] "3622 W 4TH AVENUE"                   
+[143] "941 E HASTINGS STREET #6"            
+[144] "339 W 49TH AVENUE"                   
+[145] "701 W GEORGIA STREET"                
+[146] "1723 ALBERNI STREET #2305"           
+[147] "1882 E 16TH AVENUE"                  
+[148] "701 W GEORGIA STREET"                
+[149] "1683 RENFREW STREET"                 
+[150] "451 E 51ST AVENUE #3"                
+[151] "2605 W 12TH AVENUE"                  
+[152] "2032 E HASTINGS STREET"              
+[153] "899 W 12TH AVENUE"                   
+[154] "2655 MAPLE STREET"                   
+[155] "256 E 22ND AVENUE"                   
+[156] "1055 MAINLAND STREET"                
+[157] "7241 CAMBIE STREET"                  
+[158] "3239 CLIVE AVENUE"                   
+[159] "3908 W 32ND AVENUE #3"               
+[160] "1039 GRANVILLE STREET"               
+[161] "6473 YEW STREET"                     
+[162] "1689 JOHNSTON STREET"                
+[163] "7753 VIVIAN DRIVE"                   
+[164] "3588 WHITNEY PLACE"                  
+[165] "5980 GRANVILLE STREET"               
+[166] "2659 W 35TH AVENUE #3"               
+[167] "1355 W BROADWAY"                     
+[168] "138 W 6TH AVENUE #301"               
+[169] "293 E GEORGIA STREET"                
+[170] "7755 YUKON STREET"                   
+[171] "5656 MANSON STREET"                  
+[172] "3490 KINGSWAY #8"                    
+[173] "3532 MONMOUTH AVENUE"                
+[174] "2981 E 56TH AVENUE"                  
+[175] "1255 MAIN STREET #504"               
+[176] "701 W GEORGIA STREET"                
+[177] "722 NELSON STREET"                   
+[178] "308 W 62ND AVENUE"                   
+[179] "3378 DUNBAR STREET"                  
+[180] "1111 RICHARDS STREET #3401"          
+[181] "4200 W 8TH AVENUE"                   
+[182] "SKYTRAIN STATION - 590 BEATTY STREET"
+[183] "446 SW MARINE DRIVE"                 
+[184] "3530 NAPLES WAY"                     
+[185] "550 PACIFIC STREET #302"             
+[186] "550 W BROADWAY #613"                 
+[187] "1150 ALBERNI STREET"                 
+[188] "1355 W BROADWAY #602"                
+[189] "6235 VICTORIA DRIVE"                 
+[190] "2258 NANAIMO STREET"                 
+[191] "1425 ANDERSON STREET"                
+[192] "519 ABBOTT STREET"                   
+[193] "2471 GRANDVIEW HIGHWAY NORTH"        
+[194] "6320 FRONTENAC STREET"               
+[195] "701 W GEORGIA STREET"                
+[196] "2689 GRANT STREET"                   
+[197] "7884 OAK STREET"                     
+[198] "2610 E 18TH AVENUE"                  
+[199] "2941 W 15TH AVENUE"                  
+[200] "3389 W 41ST AVENUE"                  
+> 
+> # see if something systematic about last word of missing addresses,e.g. street type
+> failedAddresses <- dtMerge[is.na(site_id) & address!="",.(address)]
+> print(head(failedAddresses))
+Key: <address>
+                   address
+                    <char>
+1: 1 E CORDOVA STREET #109
+2: 1 E CORDOVA STREET #109
+3: 1 E CORDOVA STREET #110
+4: 1 E CORDOVA STREET #140
+5: 1 E CORDOVA STREET #303
+6: 1 E CORDOVA STREET #304
+> failedAddresses[,lastWord:=sapply(strsplit(failedAddresses," "),"[",lengths(strsplit(failedAddresses," ")))]
+Error in strsplit(failedAddresses, " ") : non-character argument
+Calls: [ ... [.data.table -> eval -> eval -> sapply -> lapply -> strsplit
+Execution halted
+>>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437

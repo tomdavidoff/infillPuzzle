@@ -1,6 +1,6 @@
 
-R version 4.4.0 (2024-04-24) -- "Puppy Cup"
-Copyright (C) 2024 The R Foundation for Statistical Computing
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -22,25 +22,13 @@ Type 'q()' to quit R.
 > # Tom Davidoff
 > # 01/07/26
 > 
-> 
-> # Data examples from permits
-> #[33782] "2251 COLLINGWOOD STREET, Vancouver, BC V6R 3L1"
-> #[33783] "459 E 49TH AVENUE, Vancouver, BC V5W 2G8"
-> 
-> #BCA address 
-> #folioID,addressID,primaryFlag,streetNumber,unitNumber,streetDirectionPrefix,streetName,streetDirectionSuffix,streetType,city,province,postalCode,mapReferenceNumber
-> #"A000027PMT","A000004S6Z","true","425","","","11TH","E","ST","NORTH VANCOUVER","BC","V7L 2H3",""
-> #"A000027PMU","A000004S70","true","429","","","11TH","E","ST","NORTH VANCOUVER","BC","V7L 2H3",""
 > library(data.table)
-Warning message:
-package ‘data.table’ was built under R version 4.4.1 
 > library(stringr)
 > library(jsonlite)
-Warning message:
-package ‘jsonlite’ was built under R version 4.4.1 
 > library(sf)
-Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
-> # prepare hugedata if needed
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> # prepare huge BC 2022 FOLIO -> Address data if needed
 > ingpkg  <- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
 > layer   <- "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_ADDRESSES_SV"
 > outgpkg <- path.expand("~/OneDrive - UBC/dataProcessed/vancouverFolio2022.gpkg")
@@ -59,7 +47,7 @@ Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > 
 > geo2022 <-  st_read(outgpkg)
 Reading layer `vancouverFolio2022' from data source 
-  `/Users/davidoff/Library/CloudStorage/OneDrive-UBC/dataProcessed/vancouverFolio2022.gpkg' 
+  `/Users/tdavidof/Library/CloudStorage/OneDrive-UBC/dataProcessed/vancouverFolio2022.gpkg' 
   using driver `GPKG'
 Simple feature collection with 247217 features and 3 fields
 Geometry type: POLYGON
@@ -80,6 +68,7 @@ Projected CRS: NAD83 / BC Albers
 5 A00000004A 001030630500000     13121790 POLYGON ((1203673 477239.4,...
 6 A00000004A 001030630500000     13121791 POLYGON ((1203673 477239.4,...
 > 
+> # STEP: Merge as many 2019-2025 permits to 2018 single family as feasible
 > # Make nice commands that give file names after directories for the below
 > dirRaw <- "~/OneDrive - UBC/dataRaw"
 > dirBCA <- "~/OneDrive - UBC/Documents/data/bca"
@@ -17212,7 +17201,14 @@ Renovation - Residential - Lower Complexity
 Renovation - Residential - Lower Complexity 
                                        3128 
 > # NB NOT PERFECT, but pretty good -- resi dominated in yes match
-> fwrite(dtMerge[is.na(folioID)],"~/Downloads/nono.csv")
+> print(names(dtMerge)) # record for subsequent rbind
+ [1] "address"               "permitnumber"          "projectvalue"         
+ [4] "typeofwork"            "specificusecategory"   "permitcategory"       
+ [7] "addressOrig"           "folioID"               "addressID"            
+[10] "primaryFlag"           "streetNumber"          "unitNumber"           
+[13] "streetDirectionPrefix" "streetName"            "streetDirectionSuffix"
+[16] "streetType"            "city"                  "province"             
+[19] "postalCode"            "mapReferenceNumber"    "actualUseDescription" 
 > 
 > # Next, try matching on 2025 floor(rollnumber/1000)
 > dtNoMerge <- dtMerge[is.na(folioID) & !is.na(permitnumber),.(permitnumber,addressOrig,address,projectvalue,typeofwork,specificusecategory,permitcategory)]
@@ -17344,7 +17340,9 @@ Key: <address>
 > dtBCA2025[,address:=sub("(VANCOUVER, BC).*","\\1",address)] 
 > dtBCA2025[,address:= str_trim(toupper(address))]
 > 
+> 
 > dtMerge2 <- merge(dtNoMerge,dtBCA2025,by="address",all.x=TRUE)
+> dtNoMerge2 <- dtMerge2[is.na(FOLIO_ID) & !is.na(permitnumber)]
 > print(table(is.na(dtMerge2$FOLIO_ID),is.na(dtMerge2$permitnumber)))
        
         FALSE
@@ -17408,8 +17406,102 @@ Key: <address>
 4:           NA           NA          NA
 5:           NA           NA          NA
 6:           NA           NA          NA
-> print(table(dtMerge2[is.na(folioID),permitcategory]))
-Error in .checkTypos(e, names_x) : 
-  Object 'folioID' not found. Perhaps you intended [FOLIO_ID]
-Calls: print ... <Anonymous> -> .checkTypos -> stopf -> raise_condition -> signal
+> print(table(dtMerge2[is.na(FOLIO_ID),permitcategory]))
+
+            New Build - Low Density Housing 
+                                        922 
+             New Build - Standalone Laneway 
+                                       1147 
+Renovation - Residential - Lower Complexity 
+                                       2681 
+> print(table(dtMerge2[!is.na(FOLIO_ID),permitcategory]))
+
+            New Build - Low Density Housing 
+                                       1810 
+             New Build - Standalone Laneway 
+                                        670 
+Renovation - Residential - Lower Complexity 
+                                      52803 
+> # note only useful if joined to a 2018 house
+> dtBCA2025 <- merge(dtMerge2[!is.na(FOLIO_ID)],dtBCA,by.x="FOLIO_ID",by.y="folioID",all.x=TRUE,suffixes=c("_2025","_2018"))
+> 
+> 
+> # Now geography stuff
+> # Get centroids of permit addresses by joining address with city parcel polygons
+> parc_json <- fromJSON(f_parc, simplifyDataFrame = TRUE)
+> parc <- as.data.table(parc_json$features$properties)
+> print(head(parc))
+   civic_number     streetname tax_coord   site_id geo_point_2d.lon
+         <char>         <char>    <char>    <char>            <num>
+1:         4875     HEATHER ST  73015907 032529686        -123.1221
+2:          375      E 33RD AV  73019575  EPS10489        -123.0975
+3:         4763  COMMERCIAL ST  24472675  EPS11578        -123.0684
+4:         4429      W 13TH AV  68302467 032545592        -123.2071
+5:         3415 SEAFORTH DRIVE  69430049  EPS11591        -123.0320
+6:         2552      E 11TH AV  66527160 032551827        -123.0537
+   geo_point_2d.lat
+              <num>
+1:         49.24203
+2:         49.24084
+3:         49.24206
+4:         49.26132
+5:         49.25380
+6:         49.25983
+> print(length(unique(parc[,site_id])))
+[1] 98866
+> print(length(unique(parc[,paste0(geo_point_2d.lat,geo_point_2d.lon)])))
+[1] 99448
+> print(nrow(parc))
+[1] 99765
+> #civic_number     streetname tax_coord   site_id geo_point_2d.lon
+> #           <char>         <char>    <char>    <char>            <num>
+> #  1:         4875     HEATHER ST  73015907 032529686        -123.1221             2:          375      E 33RD AV  73019575  EPS10489        -123.0975
+> 
+> parc[,address:= str_trim(toupper(paste(civic_number,streetname)))]
+> parc[,address:=gsub(" ST "," STREET ",address)]
+> parc[,address:=gsub(" AVE "," AVENUE ",address)]
+> parc[,address:=gsub(" RD "," ROAD ",address)]
+> parc[,address:=gsub(" DR "," DRIVE ",address)]
+> parc[,address:=gsub(" BLVD "," BOULEVARD ",address)]
+> parc[,address:=gsub(" CT "," COURT ",address)]
+> parc[,address:=gsub(" PL "," PLACE ",address)]
+> parc[,address:=gsub(" HWY "," HIGHWAY ",address)]
+> dtPermit[,addressParc:= str_trim(toupper(sub(", VANCOUVER, BC.*","",address)))]
+> 
+> dtPermitAddress <- merge(dtPermit,parc,by.x="addressParc",by.y="address",all.x=TRUE)
+> print(head(dtPermit))
+    permitnumber                            address projectvalue
+          <char>                             <char>        <num>
+1: BP-2024-02231   3455 MAPLE STREET, VANCOUVER, BC    7500000.0
+2: BP-2024-00174 4632 LANGARA AVENUE, VANCOUVER, BC    1150000.0
+3: DB-2019-00743   869 W 20TH AVENUE, VANCOUVER, BC     703730.0
+4: DB-2019-00746   873 W 20TH AVENUE, VANCOUVER, BC     180205.0
+5: DB-2018-02313   4427 JAMES STREET, VANCOUVER, BC     827237.5
+6: BP-2017-04254  1009 W 10TH AVENUE, VANCOUVER, BC       4900.0
+              typeofwork   specificusecategory
+                  <char>                <char>
+1:          New Building Single Detached House
+2: Addition / Alteration Single Detached House
+3:          New Building Single Detached House
+4:          New Building         Laneway House
+5:          New Building Single Detached House
+6: Addition / Alteration     Multiple Dwelling
+                                permitcategory
+                                        <char>
+1:             New Build - Low Density Housing
+2: Renovation - Residential - Lower Complexity
+3:             New Build - Low Density Housing
+4:             New Build - Low Density Housing
+5:             New Build - Low Density Housing
+6: Renovation - Residential - Lower Complexity
+                                  addressOrig         addressParc
+                                       <char>              <char>
+1:   3455 MAPLE STREET, Vancouver, BC V6J 2P5   3455 MAPLE STREET
+2: 4632 LANGARA AVENUE, Vancouver, BC V6R 1E1 4632 LANGARA AVENUE
+3:   869 W 20TH AVENUE, Vancouver, BC V5Z 1Y3   869 W 20TH AVENUE
+4:   873 W 20TH AVENUE, Vancouver, BC V5Z 1Y3   873 W 20TH AVENUE
+5:   4427 JAMES STREET, Vancouver, BC V5V 3H9   4427 JAMES STREET
+6:  1009 W 10TH AVENUE, Vancouver, BC V6H 1H9  1009 W 10TH AVENUE
+> print(head(dtParc))
+Error: object 'dtParc' not found
 Execution halted
