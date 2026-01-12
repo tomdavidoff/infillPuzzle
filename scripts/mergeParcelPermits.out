@@ -1,11 +1,6 @@
 
-<<<<<<< HEAD
-R version 4.4.0 (2024-04-24) -- "Puppy Cup"
-Copyright (C) 2024 The R Foundation for Statistical Computing
-=======
 R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
->>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -27,15 +22,8 @@ Type 'q()' to quit R.
 > 
 > # Load necessary libraries
 > library(data.table)
-<<<<<<< HEAD
-Warning message:
-package ‘data.table’ was built under R version 4.4.1 
-> library(sf)
-Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
-=======
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
->>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 > 
 > # Read headers
 > directory <- "~/OneDrive - UBC/dataRaw"
@@ -43,17 +31,11 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > f_parcel <- "property-parcel-polygons.geojson"
 > 
 > # Read permit data
-> dtPermits <- fread(file.path(directory,f_permit),select=c("permitnumber","address"))
+> dtPermits <- fread(file.path(directory,f_permit))#,select=c("permitnumber","address","))
 > # Read parcel data
-<<<<<<< HEAD
-> parcels <- st_read(file.path(directory,f_parcel)) # is thjis best way to read geojson? 
-Reading layer `property-parcel-polygons' from data source 
-  `/Users/davidoff/Library/CloudStorage/OneDrive-UBC/dataRaw/property-parcel-polygons.geojson' 
-=======
 > parcels <- st_read(file.path(directory,f_parcel)) # is thjis best way to read geojson?
 Reading layer `property-parcel-polygons' from data source 
   `/Users/tdavidof/Library/CloudStorage/OneDrive-UBC/dataRaw/property-parcel-polygons.geojson' 
->>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
   using driver `GeoJSON'
 Simple feature collection with 99765 features and 5 fields
 Geometry type: MULTIPOLYGON
@@ -61,57 +43,32 @@ Dimension:     XY
 Bounding box:  xmin: -123.2297 ymin: 49.19939 xmax: -123.0233 ymax: 49.31407
 Geodetic CRS:  WGS 84
 > dtParcels <- as.data.table(parcels) # convert to data.table for easier manipulation
-> print(head(dtParcels))
-   civic_number     streetname tax_coord   site_id
-         <char>         <char>    <char>    <char>
-1:         4875     HEATHER ST  73015907 032529686
-2:          375      E 33RD AV  73019575  EPS10489
-3:         4763  COMMERCIAL ST  24472675  EPS11578
-4:         4429      W 13TH AV  68302467 032545592
-5:         3415 SEAFORTH DRIVE  69430049  EPS11591
-6:         2552      E 11TH AV  66527160 032551827
-                                                geo_point_2d
-                                                      <char>
-1: { "lon": -123.12209884815704, "lat": 49.242031082674288 }
-2:   { "lon": -123.097486205344, "lat": 49.240837965447966 }
-3:  { "lon": -123.0684260171443, "lat": 49.242064771116986 }
-4:    { "lon": -123.2070648698195, "lat": 49.2613218519813 }
-5: { "lon": -123.03197426086219, "lat": 49.253802339521435 }
-6: { "lon": -123.05366607019535, "lat": 49.259827585051205 }
-                         geometry
-               <sfc_MULTIPOLYGON>
-1: MULTIPOLYGON (((-123.1234 4...
-2: MULTIPOLYGON (((-123.0976 4...
-3: MULTIPOLYGON (((-123.0687 4...
-4: MULTIPOLYGON (((-123.2072 4...
-5: MULTIPOLYGON (((-123.0322 4...
-6: MULTIPOLYGON (((-123.0538 4...
-> #   civic_number     streetname tax_coord   site_id
-> #         <char>         <char>    <char>    <char>
-> # 1:         4875     HEATHER ST  73015907 032529686
-> print(head(dtPermits))
-    permitnumber                                 address
-          <char>                                  <char>
-1: DB-2016-02175     429 GRANVILLE STREET, Vancouver, BC
-2: DB-2018-00356         126 W 3RD AVENUE, Vancouver, BC
-3: BP-2017-05803  3668 W BROADWAY, Vancouver, BC V6R 2B7
-4: BP-2018-00904      579 DUNSMUIR STREET, Vancouver, BC
-5: BP-2017-05422     608 W CORDOVA STREET, Vancouver, BC
-6: DB-2018-03761 120 W 3RD AVENUE, Vancouver, BC V5Y 1E9
->     # addres: 126 W 3RD AVENUE, Vancouver, BC # permits
+> dtPermits[,grouper:=paste0(yearmonth,applicant)]
+> # convert geo_point_2d to lon, lat and then compute a simple within group distance
+> dtPermits[, c("lat", "lon") := tstrsplit(geo_point_2d, ",\\s*", type.convert = TRUE)]
+> dtPermits[, groupDistance := { lon_adj <- cos(mean(lat) * pi/180) 
++           sqrt(var(lat) + var(lon * lon_adj)) * 111000
++         }, by = grouper] # meters
+> print(summary(dtPermits[,groupDistance]))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+    0.0    13.6   790.3  1692.9  3204.9  9357.0   24783 
+> print(length(unique(dtPermits[,grouper])))
+[1] 32434
+> dtPermits[,nGroup:=.N,by=grouper]
+> dtPermits[,group2:=grouper]
+> dtPermits[groupDistance>25,group2:=paste0(grouper,runif(length(grouper)))]
+> print(length(unique(dtPermits[,grouper])))
+[1] 32434
+> print(nrow(dtPermits))
+[1] 49093
 > 
 > dtParcels[,address:=paste(civic_number,streetname)]
 > dtParcels[,address:=toupper(address)] # make uppercase to match permit data
 > # How to these subsequent shifts recognizing we dont want "STREET" -> "STREETEET"? But also recognizing "ST" often ends word, so gsub(" ST "," STREET ") wont catch those
 > # What's below for parcels is good, but let's make a nice data.table or something and apply to both parcels and permits. Maybe a function? Your call
 > streetRename <- data.table(
-<<<<<<< HEAD
-+   short = c(" ST"," AVE"," RD"," DR"," BLVD"," CRES"," HWY"," PL"," PLZ"),
-+   long = c(" STREET"," AVENUE"," ROAD"," DRIVE"," BOULEVARD"," CRESCENT"," HIGHWAY"," PLACE"," PLAZA")
-=======
 +   short = c(" ST"," AVE"," AV"," RD"," DR"," BLVD"," CRES"," HWY"," PL"," PLZ"),
 +   long = c(" STREET"," AVENUE"," AVENUE"," ROAD"," DRIVE"," BOULEVARD"," CRESCENT"," HIGHWAY"," PLACE"," PLAZA")
->>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 + )
 > # Apply renaming to parcels
 > for (i in 1:nrow(streetRename)) {
@@ -122,32 +79,6 @@ Geodetic CRS:  WGS 84
 +   dtPermits[,address:=gsub(paste0(short,"$"), long, address)] # standardize street type at end of string
 +   dtPermits[,address:=gsub(paste0(short," "), paste0(long," "), address)] # standardize street type
 + }
-<<<<<<< HEAD
-> dtParcels[,address:=gsub(" ST$"," STREET",address)] # standardize street type at end of string
-> dtParcels[,address:=gsub(" ST "," STREET ",address)] # standardize street type
-> dtParcels[,address:=gsub(" AVE$"," AVENUE",address)] # standardize street type at end of string
-> dtParcels[,address:=gsub(" AVE "," AVENUE ",address)] # standardize street type
-> dtParcels[,address:=gsub(" RD$"," ROAD",address)] # standardize street type at end of string
-> dtParcels[,address:=gsub(" RD "," ROAD ",address)] # standardize street type
-> dtParcels[,address:=gsub(" DR$"," DRIVE",address)] # standardize street type at end of string
-> dtParcels[,address:=gsub(" DR "," DRIVE ",address)] # standard
-> dtParcels[,address:=gsub(" BLVD$"," BOULEVARD",address)] # standardize street type at end of string
-> dtParcels[,address:=gsub(" BLVD "," BOULEVARD ",address)] # standardize street type
-> dtParcels[,address:=gsub(" CRES$"," CRESCENT",address)]
-> dtParcels[,address:=gsub(" CRES "," CRESCENT ",address)]
-> dtParcels[,address:=gsub(" HWY$"," HIGHWAY",address)]
-> dtParcels[,address:=gsub(" HWY "," HIGHWAY ",address)]
-> dtParcels[,address:=gsub(" PL$"," PLACE",address)]
-> dtParcels[,address:=gsub(" PL "," PLACE ",address)]
-> dtParcels[,address:=gsub(" PLZ$"," PLAZA",address)]
-> dtParcels[,address:=gsub(" PLZ "," PLAZA ",address)]
-> dtPermits[,address:=gsub("AV ","AVENUE ",address)] # standardize street type
-> dtPermits[,address:=gsub("AVE ","AVENUE ",address)] # standardize street type
-> dtParcels[,address:=gsub("\\s+"," ",address)] # remove double spaces if any
-> dtPermits[,address:=gsub("\\s+"," ",address)] # remove double spaces if any
-> 
-=======
->>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 > dtPermits[,address:=gsub(", Vancouver, BC","",address)] # remove city and province
 > # delete last 7 characters (postal code) if present
 > # detect a postal code of form " V#V #V#" at end of string
@@ -175,13 +106,6 @@ Geodetic CRS:  WGS 84
                          geometry                address
                <sfc_MULTIPOLYGON>                 <char>
 1: MULTIPOLYGON (((-123.1234 4...    4875 HEATHER STREET
-<<<<<<< HEAD
-2: MULTIPOLYGON (((-123.0976 4...          375 E 33RD AV
-3: MULTIPOLYGON (((-123.0687 4... 4763 COMMERCIAL STREET
-4: MULTIPOLYGON (((-123.2072 4...         4429 W 13TH AV
-5: MULTIPOLYGON (((-123.0322 4...    3415 SEAFORTH DRIVE
-6: MULTIPOLYGON (((-123.0538 4...         2552 E 11TH AV
-=======
 2: MULTIPOLYGON (((-123.0976 4...      375 E 33RD AVENUE
 3: MULTIPOLYGON (((-123.0687 4... 4763 COMMERCIAL STREET
 4: MULTIPOLYGON (((-123.2072 4...     4429 W 13TH AVENUE
@@ -189,530 +113,389 @@ Geodetic CRS:  WGS 84
 6: MULTIPOLYGON (((-123.0538 4...     2552 E 11TH AVENUE
 > print("PP")
 [1] "PP"
->>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
 > print(head(dtPermits))
-    permitnumber              address
-          <char>               <char>
-1: DB-2016-02175 429 GRANVILLE STREET
-2: DB-2018-00356     126 W 3RD AVENUE
-3: BP-2017-05803      3668 W BROADWAY
-4: BP-2018-00904  579 DUNSMUIR STREET
-5: BP-2017-05422 608 W CORDOVA STREET
-6: DB-2018-03761     120 W 3RD AVENUE
+    permitnumber permitnumbercreateddate  issuedate permitelapseddays
+          <char>                  <IDat>     <IDat>             <int>
+1: DB-2016-02175              2016-09-02 2017-02-14               165
+2: DB-2018-00356              2018-01-23 2018-02-06                14
+3: BP-2017-05803              2017-11-09 2018-01-25                77
+4: BP-2018-00904              2018-02-20 2020-01-03               682
+5: BP-2017-05422              2017-10-18 2018-05-28               222
+6: DB-2018-03761              2018-07-11 2018-08-29                49
+   projectvalue            typeofwork              address
+          <num>                <char>               <char>
+1:       160000 Addition / Alteration 429 GRANVILLE STREET
+2:       404200 Addition / Alteration     126 W 3RD AVENUE
+3:       125000 Addition / Alteration      3668 W BROADWAY
+4:       200000 Addition / Alteration  579 DUNSMUIR STREET
+5:        70000 Addition / Alteration 608 W CORDOVA STREET
+6:       120000 Addition / Alteration     120 W 3RD AVENUE
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      projectdescription
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  <char>
+1: High Density Housing / Commercial - Addition / Alteration - Exterior and interior alterations to provide tenant improvement for a new tenant in the existing Restaurant - Class 1 suite in this existing commercial building. Scope of work includes installation new sliding full height windows on east and north sides of the suite, a new kitchen canopy with a mechanical unit hanging from the ceiling and  exterior mechanical duct and kitchen exhaust through the lower roof located at the southwest. \r\n\r\nOK for DB and for new stacked glazed sliding panels with a 18"" modesty panel as per Howie Chow and Jason Olinek on Aug.11, 2016.\r\n\r\nOK for Kitchen exhaust location at the lower roof as per Jason Olinek on Dec. 15, 2016.\r\n\r\nOccupant Load = max 60 persons (50 seats + 10 staff)\r\n\r\nNotes Kitchen contains both Class 1 and Class 5 cooking operations:\r\n\r\nClass 1:\r\n1. Class 1 cooking operations (Grease-Laden Vapours).\r\n2. Commercial kitchen exhaust system to NFPA 96 (Type 1 hood).\r\n\r\nClass 5:\r\n1. Class 5 Cooking Operations (No Hood):  \r\n2. Appliances are less than or equal to 6 kW (Cooking procedures producing significant grease laden vapours, or significant heat or steam are not permitted from these appliances).                               \r\n\r\nBuilding Review Branch Note:\r\n- The suite must be separated by a fire separation with 2h FRR as per VBBL 3.3.1.1.(5) & 3.4.4.1. The architect to verify the suite separation to District Building Inspector.\r\n- A permanent sign with the occupant load should be posted in a conspicuous location.\r\n- Outdoor or sidewalk patio is NOT permitted unless an additional washroom is proposed.\r\n\r\nREVISION #1(Jul 27, 2017):\r\n1. Removed originally proposed storefront glazing.\r\n2. Reconfigured lighting layout.\r\n3. Interior changes at service counter & added an under counter freezer.\r\n4. Added 1h FRR wall around cooler.\r\n5. Updated seating layout.
+2:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     Field Review - Addition / Alteration - #100 - 126 W 3rd Av\r\n\r\nTo provide interior and exterior alterations on the ground floor of this existing industrial building.\r\n\r\nScope of work: new non-load-bearing partition, new loading bay doors and new washrooms.\r\n\r\nOK for Field review per DBI I. Mackie Jan 23/2018\r\nOk for proposed exterior work on rear elevation as per Grace Jiang\r\n\r\nL2 - Lighting - Upgrade to incorporate Automatic Lighting Shutoff (per 9.4.1.1 of ASHRAE 90.1 - 2010).\r\n\r\nProcessed through CRC
+3:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            Field Review - Addition / Alteration - Interior alterations and change of use from Retail Store 'shell' (E) to Health Care Office (D) at 3668 West Broadway of this existing mixed-use commercial and residential building. \r\n\r\nScope of work includes: validating the shower adjacent to the handicapped washroom. \r\n\r\nScheduled Submitted by: \r\nA/B (Architectural) by Christopher P. R. Gowing, Architect, 604.484.8285 ext. 103.\r\nB (Mechanical) by Charles W. Powell, P.Eng., 604.595.4869\r\nB (Electrical) by Brennan Town, P.Eng., 604.516.9878\r\n\r\nOK for field review as per Howie Chow, November 9, 2017.\r\n\r\nNote: \r\n1) Storefront glazing is to remain clear and unobstructed. No translucent or opaque film, artwork, shelving, display case, curtains or similar elements are to be installed on or directly outside or inside of the approved glazing.
+4:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 High Density Housing / Commercial - Addition / Alteration - Building Permit for DP-2017-00811 \r\nInterior alterations to address work without permit changes made pursuant prior development permit DE416911.\r\nProposed work includes restoration of fire separation at exit stair, validation of kitchen equipment layout and reconfiguration of the interior layout. \r\n\r\nBuilding Review Branch Notes:\r\nSee related BP-2018-00356 for exterior rooftop patio application. \r\n\r\n1. Class 2 and Class 4 Cooking Operation.\r\n2. Grease laden vapour shall not be generated by the Class 2 cooking equipment.\r\nPost a sign on the hood, ""Cooking causing grease-laden vapours is not allowed Exhaust system is designed for steam and heat removal only"".\r\n\r\nType II Hoods (Heat and Steam Removal Only) to be design, constructed, and installed in accordance with VBBL and referenced standards.\r\n\r\n3. Class 4 cooking operations (Grease-Laden Vapours).\r\n4. Commercial kitchen exhaust system to NFPA 96 (Type 1 Self-contained hood).
+5:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            Field Review - Addition / Alteration - 608 W Cordova\r\n\r\nInterior alterations to provide improvements for a new office tenant in this office (shell) at 608 W Cordova on the ground floor of this existing commercial building on this site.\r\n\r\nScope of work is to include partial demolition of existing partitions and to build new partitions.\r\n\r\nChange of use approved under DP-2017-00793, 2 Oct 2017\r\n\r\nOK for field review per W.Wong, October 18, 2017.\r\n\r\nNote: No Energy trigger required BOMA BEST building\r\n\r\nRevision #1- Storage room\r\n*Revise suite layout\r\n*Revise storage room and area\r\n*Reconfigure non-loadbearing partitions\r\n*Revise lighting layout\r\n*Submit ASHARE (L2 - Lighting upgrade to incorporate automatic lighting shutoff per (9.4.1.1 of ASHARE 90.1 - 2010) and Lighting Compliance
+6:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       Field Review - Addition / Alteration - Exterior alterations to replace existing 3' fabric awning with a new 1'-5"" faux wood awning band on the North and East elevations of this mixed-use (industrial and commercial) building.\r\n\r\nScope of Work:\r\n- construct new fixed projection and new exterior lights \r\n\r\nOK for field review as per Brad Marsh, July 11, 2018\r\n\r\nNote: \r\n1. OK for DB for exterior alterations as per Karen Campbell.\r\n2. Separate permit(s) will be required for new signage.\r\n\r\nLetter of Assurance Submitted:\r\nSchedule (A) Commitment by Owner & Professional by Michael Hungerford, Agent of 120 W 3rd Ave Properties Ltd. Partnership & Peter J. Mallen, Architect, 604.484.8285\r\nSchedule (B) Architectural by Peter J. Mallen, Architect, 604.484.8285\r\nSchedule (B) Structural by Robert Holding, P.Eng., 604.294.6662\r\nSchedule (D-1) Building Envelope by Peter J. Mallen, Architect, 604.484.8285\r\n\r\nEnergy Upgrade Exempted: Site/ External Alterations
+                                          permitcategory
+                                                  <char>
+1:                                                      
+2: Renovation - Commercial/ Mixed Use - Lower Complexity
+3: Renovation - Commercial/ Mixed Use - Lower Complexity
+4:                                                      
+5: Renovation - Commercial/ Mixed Use - Lower Complexity
+6: Renovation - Commercial/ Mixed Use - Lower Complexity
+                                                        applicant
+                                                           <char>
+1: Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+2: Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+3: Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+4: Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+5: Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+6: Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+                                     applicantaddress              propertyuse
+                                               <char>                   <char>
+1: #300 - 7 East 6th Avenue\r\nVancouver, BC  V5T 1J3             Service Uses
+2: #300 - 7 East 6th Avenue\r\nVancouver, BC  V5T 1J3             Service Uses
+3: #300 - 7 East 6th Avenue\r\nVancouver, BC  V5T 1J3              Office Uses
+4: #300 - 7 East 6th Avenue\r\nVancouver, BC  V5T 1J3             Service Uses
+5: #300 - 7 East 6th Avenue\r\nVancouver, BC  V5T 1J3              Office Uses
+6: #300 - 7 East 6th Avenue\r\nVancouver, BC  V5T 1J3 Office Uses,Service Uses
+                             specificusecategory
+                                          <char>
+1:                          Restaurant - Class 1
+2:                Production or Rehearsal Studio
+3:                            Health Care Office
+4:                    Neighbourhood Public House
+5:                                General Office
+6: General Office,Production or Rehearsal Studio
+                  buildingcontractor
+                              <char>
+1: Pacific Solutions Contracting Ltd
+2:                                  
+3:                                  
+4:                                  
+5:           Mercury Contracting Ltd
+6:        Mara Industries (2015) Ltd
+                               buildingcontractoraddress issueyear
+                                                  <char>     <int>
+1:           1376 WILLIAM ST  \r\nVancouver, BC  V5L 2P5      2017
+2:                                                            2018
+3:                                                            2018
+4:                                                            2020
+5: 788 BEATTY ST  \r\nUnit 303\r\nVancouver, BC  V6B 2M1      2018
+6:    1815 Paul's Place  \r\nQualicum Beach, BC  V9K 2S3      2018
+     geolocalarea
+           <char>
+1:       Downtown
+2: Mount Pleasant
+3:      Kitsilano
+4:       Downtown
+5:       Downtown
+6: Mount Pleasant
+                                                                 geom yearmonth
+                                                               <char>    <char>
+1: {""coordinates"": [-123.1123788, 49.2862375], ""type"": ""Point""}   2017-02
+2:  {""coordinates"": [-123.107197, 49.2683183], ""type"": ""Point""}   2018-02
+3: {""coordinates"": [-123.1849691, 49.2640851], ""type"": ""Point""}   2018-01
+4: {""coordinates"": [-123.1152237, 49.2829154], ""type"": ""Point""}   2020-01
+5: {""coordinates"": [-123.1119964, 49.2853748], ""type"": ""Point""}   2018-05
+6: {""coordinates"": [-123.1070745, 49.2680779], ""type"": ""Point""}   2018-08
+               geo_point_2d
+                     <char>
+1: 49.2862375, -123.1123788
+2:  49.2683183, -123.107197
+3: 49.2640851, -123.1849691
+4: 49.2829154, -123.1152237
+5: 49.2853748, -123.1119964
+6: 49.2680779, -123.1070745
+                                                                 grouper
+                                                                  <char>
+1: 2017-02Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+2: 2018-02Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+3: 2018-01Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+4: 2020-01Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+5: 2018-05Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+6: 2018-08Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+        lat       lon groupDistance nGroup
+      <num>     <num>         <num>  <int>
+1: 49.28624 -123.1124     2110.9395      2
+2: 49.26832 -123.1072            NA      1
+3: 49.26409 -123.1850     3387.9698      2
+4: 49.28292 -123.1152     4321.3303      2
+5: 49.28537 -123.1120      754.4932      4
+6: 49.26808 -123.1071      895.8116      3
+                                                                                   group2
+                                                                                   <char>
+1: 2017-02Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.0.420218077488244
+2:                  2018-02Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.
+3: 2018-01Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.0.104522982845083
+4: 2020-01Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.0.376459347549826
+5: 2018-05Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.0.333352208370343
+6: 2018-08Mallen Gowing Berzins Architecture Incorporated DBA: MGBA Inc.0.680323438253254
 > dtMerge <- merge(dtParcels,dtPermits,by="address",all.y=TRUE)
 > print(table(is.na(dtMerge$site_id))) # check how many permits did not find a matching parcel
 
 FALSE  TRUE 
-<<<<<<< HEAD
-23453 31811 
-=======
 39053 17253 
->>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
-> print(head(dtMerge))
-Key: <address>
-   address civic_number streetname tax_coord site_id geo_point_2d
-    <char>       <char>     <char>    <char>  <char>       <char>
-1:                 <NA>       <NA>      <NA>    <NA>         <NA>
-2:                 <NA>       <NA>      <NA>    <NA>         <NA>
-3:                 <NA>       <NA>      <NA>    <NA>         <NA>
-4:                 <NA>       <NA>      <NA>    <NA>         <NA>
-5:                 <NA>       <NA>      <NA>    <NA>         <NA>
-6:                 <NA>       <NA>      <NA>    <NA>         <NA>
-             geometry  permitnumber
-   <sfc_MULTIPOLYGON>        <char>
-1:               NULL DB-2021-06398
-2:               NULL BP-2023-02138
-3:               NULL DB-2020-01950
-4:               NULL DB-2024-00764
-5:               NULL DB-2021-06302
-6:               NULL DB-2022-01001
-<<<<<<< HEAD
-> print(dtMerge[is.na(site_id)]) # inspect permits that did not find a matching parcel
-Key: <address>
-                                   address civic_number streetname tax_coord
-                                    <char>       <char>     <char>    <char>
-    1:                                             <NA>       <NA>      <NA>
-    2:                                             <NA>       <NA>      <NA>
-    3:                                             <NA>       <NA>      <NA>
-    4:                                             <NA>       <NA>      <NA>
-    5:                                             <NA>       <NA>      <NA>
-   ---                                                                      
-31807: VANCOUVER AQUARIUM - 845 AVISON WAY         <NA>       <NA>      <NA>
-31808: VANCOUVER AQUARIUM - 845 AVISON WAY         <NA>       <NA>      <NA>
-31809: VANCOUVER AQUARIUM - 845 AVISON WAY         <NA>       <NA>      <NA>
-31810: VANCOUVER AQUARIUM - 845 AVISON WAY         <NA>       <NA>      <NA>
-31811: VANCOUVER AQUARIUM - 845 AVISON WAY         <NA>       <NA>      <NA>
-       site_id geo_point_2d           geometry  permitnumber
-        <char>       <char> <sfc_MULTIPOLYGON>        <char>
-    1:    <NA>         <NA>               NULL DB-2021-06398
-    2:    <NA>         <NA>               NULL BP-2023-02138
-    3:    <NA>         <NA>               NULL DB-2020-01950
-    4:    <NA>         <NA>               NULL DB-2024-00764
-    5:    <NA>         <NA>               NULL DB-2021-06302
-   ---                                                      
-31807:    <NA>         <NA>               NULL DB-2018-05436
-31808:    <NA>         <NA>               NULL DB-2020-02362
-31809:    <NA>         <NA>               NULL DB-2021-05686
-31810:    <NA>         <NA>               NULL DB-2024-04133
-31811:    <NA>         <NA>               NULL DB-2019-04049
-> print(dtMerge[!is.na(site_id)]) # inspect permits that found a matching parcel
-Key: <address>
-                     address civic_number    streetname tax_coord   site_id
-                      <char>       <char>        <char>    <char>    <char>
-    1:    1 ALEXANDER STREET            1  ALEXANDER ST  57917805 026741059
-    2:    1 ALEXANDER STREET            1  ALEXANDER ST  57917805 026741059
-    3:    1 ALEXANDER STREET            1  ALEXANDER ST  57917805 026741059
-    4:        1 ATHLETES WAY            1  ATHLETES WAY  63418201 026894041
-    5:    1 E CORDOVA STREET            1  E CORDOVA ST  58917805   LMS2854
-   ---                                                                     
-23449: 999 W HASTINGS STREET          999 W HASTINGS ST  59012009 003866262
-23450: 999 W HASTINGS STREET          999 W HASTINGS ST  59012009 003866262
-23451: 999 W HASTINGS STREET          999 W HASTINGS ST  59012009 003866262
-23452: 999 W HASTINGS STREET          999 W HASTINGS ST  59012009 003866262
-23453: 999 W HASTINGS STREET          999 W HASTINGS ST  59012009 003866262
-                                                    geo_point_2d
-                                                          <char>
-    1: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
-    2: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
-    3: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
-    4:  { "lon": -123.10576689952619, "lat": 49.27179256077271 }
-    5: { "lon": -123.10374368035457, "lat": 49.282624223015887 }
-   ---                                                          
-23449:  { "lon": -123.11603654648847, "lat": 49.28722485628834 }
-23450:  { "lon": -123.11603654648847, "lat": 49.28722485628834 }
-23451:  { "lon": -123.11603654648847, "lat": 49.28722485628834 }
-23452:  { "lon": -123.11603654648847, "lat": 49.28722485628834 }
-23453:  { "lon": -123.11603654648847, "lat": 49.28722485628834 }
-                             geometry  permitnumber
-                   <sfc_MULTIPOLYGON>        <char>
-    1: MULTIPOLYGON (((-123.1039 4... DB-2020-02486
-    2: MULTIPOLYGON (((-123.1039 4... BP-2023-03589
-    3: MULTIPOLYGON (((-123.1039 4... BP-2025-02811
-    4: MULTIPOLYGON (((-123.1047 4... BP-2018-00017
-    5: MULTIPOLYGON (((-123.1032 4... DB-2018-04874
-   ---                                             
-23449: MULTIPOLYGON (((-123.1162 4... BP-2020-01128
-23450: MULTIPOLYGON (((-123.1162 4... BP-2016-04314
-23451: MULTIPOLYGON (((-123.1162 4... BP-2024-01424
-23452: MULTIPOLYGON (((-123.1162 4... BP-2024-01486
-23453: MULTIPOLYGON (((-123.1162 4... BP-2025-00006
-=======
-> print(head(dtMerge[is.na(site_id)])) # inspect permits that did not find a matching parcel
-Key: <address>
-   address civic_number streetname tax_coord site_id geo_point_2d
-    <char>       <char>     <char>    <char>  <char>       <char>
-1:                 <NA>       <NA>      <NA>    <NA>         <NA>
-2:                 <NA>       <NA>      <NA>    <NA>         <NA>
-3:                 <NA>       <NA>      <NA>    <NA>         <NA>
-4:                 <NA>       <NA>      <NA>    <NA>         <NA>
-5:                 <NA>       <NA>      <NA>    <NA>         <NA>
-6:                 <NA>       <NA>      <NA>    <NA>         <NA>
-             geometry  permitnumber
-   <sfc_MULTIPOLYGON>        <char>
-1:               NULL DB-2021-06398
-2:               NULL BP-2023-02138
-3:               NULL DB-2020-01950
-4:               NULL DB-2024-00764
-5:               NULL DB-2021-06302
-6:               NULL DB-2022-01001
-> print(head(dtMerge[!is.na(site_id)])) # inspect permits that found a matching parcel
-Key: <address>
-              address civic_number   streetname tax_coord   site_id
-               <char>       <char>       <char>    <char>    <char>
-1: 1 ALEXANDER STREET            1 ALEXANDER ST  57917805 026741059
-2: 1 ALEXANDER STREET            1 ALEXANDER ST  57917805 026741059
-3: 1 ALEXANDER STREET            1 ALEXANDER ST  57917805 026741059
-4:     1 ATHLETES WAY            1 ATHLETES WAY  63418201 026894041
-5: 1 E CORDOVA STREET            1 E CORDOVA ST  58917805   LMS2854
-6:   1 PEVERIL AVENUE            1   PEVERIL AV  18471695 010708065
-                                                geo_point_2d
-                                                      <char>
-1: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
-2: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
-3: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
-4:  { "lon": -123.10576689952619, "lat": 49.27179256077271 }
-5: { "lon": -123.10374368035457, "lat": 49.282624223015887 }
-6: { "lon": -123.10548046039521, "lat": 49.244807766242161 }
-                         geometry  permitnumber
-               <sfc_MULTIPOLYGON>        <char>
-1: MULTIPOLYGON (((-123.1039 4... DB-2020-02486
-2: MULTIPOLYGON (((-123.1039 4... BP-2023-03589
-3: MULTIPOLYGON (((-123.1039 4... BP-2025-02811
-4: MULTIPOLYGON (((-123.1047 4... BP-2018-00017
-5: MULTIPOLYGON (((-123.1032 4... DB-2018-04874
-6: MULTIPOLYGON (((-123.1058 4... BP-2018-00482
->>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
-> N <- 200
-> # print N rows of randomly selected failed merge addresses for manual inspection
-> set.seed(123)
-> print(sample(dtMerge[is.na(site_id)]$address,N))
-<<<<<<< HEAD
-  [1] "3528 W 27TH AVENUE"             "3534 W 41ST AVENUE"            
-  [3] "6363 OAK STREET"                "5485 LARCH STREET"             
-  [5] "750 HORNBY STREET"              "1306 E 37TH AVENUE"            
-  [7] "116 W 59TH AVENUE"              "5733 CAMBIE STREET #501"       
-  [9] "1344 W 46TH AVENUE"             "82 W 43RD AVENUE #3"           
- [11] "821 W 33RD AVENUE"              "8050 ELLIOTT STREET"           
- [13] "250 W 70TH AVENUE"              "1526 NANTON AVENUE"            
- [15] "179 DAVIE STREET #220"          "600 W 10TH AVENUE"             
- [17] "3153 E GEORGIA STREET"          "1270 RICHARDS STREET"          
- [19] "4063 W 41ST AVENUE"             "8106 SELKIRK STREET"           
- [21] "563 W 20TH AVENUE"              "265 E PENDER STREET"           
- [23] "2142 ASH STREET"                "2258 NANAIMO STREET"           
- [25] "2791 E 47TH AVENUE"             "1288 NAPIER STREET"            
- [27] "1694 E 22ND AVENUE"             "354 E 39TH AVENUE"             
- [29] "220 E 62ND AVENUE"              "848 W 66TH AVENUE #3"          
- [31] "610 E 10TH AVENUE"              "2628 YEW STREET #302"          
- [33] "3588 FALAISE AVENUE"            "1137 E 29TH AVENUE"            
- [35] "938 HOWE STREET #411"           "3250 E 26TH AVENUE"            
- [37] "2861 E 49TH AVENUE"             "3915 W 32ND AVENUE #3"         
- [39] "3005 E 18TH AVENUE"             "2162 E 32ND AVENUE"            
- [41] "650 W 41ST AVENUE"              "650 W 41ST AVENUE"             
- [43] "500 W BROADWAY"                 "2238 RUPERT STREET #3"         
- [45] "2130 W 47TH AVENUE"             "302 INDUSTRIAL AVENUE"         
- [47] "864 E 16TH AVENUE"              "332 E 23RD AVENUE"             
- [49] "4651 BELMONT AVENUE"            "131 DUNLEVY AVENUE"            
- [51] "754 W 13TH AVENUE"              "3627 E 45TH AVENUE"            
- [53] "199 WATER STREET"               "1425 LAMEY'S MILL ROAD #60"    
- [55] "2770 BURRARD STREET #307"       "2041 E 6TH AVENUE"             
- [57] "3214 E 44TH AVENUE"             "581 W 61ST AVENUE"             
- [59] "520 W 29TH AVENUE"              "2353 HARRISON DRIVE"           
- [61] "1702 E 36TH AVENUE"             "550 W 29TH AVENUE"             
- [63] "3406 W KING EDWARD AVENUE"      "3865 W 37TH AVENUE"            
- [65] "7829 INVERNESS STREET"          "380 W 5TH AVENUE"              
- [67] "3830 CARNARVON STREET"          "358 E 19TH AVENUE"             
- [69] "749 W 24TH AVENUE"              "3223 W 39TH AVENUE"            
- [71] "2057 E 1ST AVENUE"              "2800 E 1ST AVENUE"             
- [73] ""                               "925 W 8TH AVENUE"              
- [75] "2891 E 44TH AVENUE #3"          "5374 CULLODEN STREET #3"       
- [77] "19 E 40TH AVENUE"               "455 E KENT AVENUE NORTH"       
- [79] "188 KEEFER PLACE #3703"         "3127 E 4TH AVENUE"             
- [81] "2393 E 46TH AVENUE"             "6602 MAIN STREET"              
- [83] "3533 E 23RD AVENUE"             "1789 W 4TH AVENUE"             
- [85] "7295 MAIN STREET"               "575 W 8TH AVENUE"              
- [87] "555 W 12TH AVENUE"              "2475 EDGAR CRESCENT"           
- [89] "2068 E 13TH AVENUE"             "2242 E 52ND AVENUE #3"         
- [91] "4423 W 10TH AVENUE"             "2266 W 41ST AVENUE"            
- [93] "3948 W 24TH AVENUE"             "2604 E 46TH AVENUE"            
- [95] "3488 COMMERCIAL STREET"         "1689 JOHNSTON STREET"          
- [97] "8693 OOLICHAN WAY"              "1050 PACIFIC BOULEVARD"        
- [99] "1760 E 14TH AVENUE"             "418 E 56TH AVENUE"             
-[101] "8101 SHAUGHNESSY STREET"        "980 W 22ND AVENUE"             
-[103] "566 E 28TH AVENUE"              "650 W 41ST AVENUE"             
-[105] "1850 E 49TH AVENUE"             "6435 CARTIER STREET"           
-[107] "220 E 49TH AVENUE"              "730 W 7TH AVENUE"              
-[109] "3655 W 15TH AVENUE"             "1424 WALNUT STREET #308"       
-[111] "779 E 51ST AVENUE"              "2895 W 21ST AVENUE"            
-[113] "2156 W BROADWAY"                "1331 W 59TH AVENUE #3"         
-[115] "809 SEYMOUR STREET"             "1628 W 1ST AVENUE"             
-[117] "620 DAVIE STREET"               "2206 E 7TH AVENUE"             
-[119] "3941 MAIN STREET"               "3755 W 3RD AVENUE"             
-[121] "2889 E 19TH AVENUE"             "503 W 16TH AVENUE #301"        
-[123] "225 E 57TH AVENUE"              "1673 RENFREW STREET"           
-[125] "2154 E 8TH AVENUE"              "2625 E 47TH AVENUE"            
-[127] "196 W 21ST AVENUE"              "570 E 8TH AVENUE"              
-[129] "2449 E 53RD AVENUE"             "3060 E 7TH AVENUE"             
-[131] "111 E 5TH AVENUE"               "2290 W 4TH AVENUE"             
-[133] "3975 W 21ST AVENUE"             "3517 W 2ND AVENUE"             
-[135] "950 W 41ST AVENUE"              "748 E 57TH AVENUE #3"          
-[137] "3821 W 50TH AVENUE"             "638 W 17TH AVENUE"             
-[139] "1040 NELSON STREET"             "256 E 22ND AVENUE"             
-[141] "4411 W 14TH AVENUE"             "30 E 12TH AVENUE"              
-[143] "3080 E 19TH AVENUE"             "1550 W 29TH AVENUE"            
-[145] "315 W 11TH AVENUE"              "3010 E KENT AVENUE SOUTH"      
-[147] "4490 W 11TH AVENUE"             "558 E 27TH AVENUE"             
-[149] "3157 E 51ST AVENUE"             "188 JACKSON AVENUE"            
-[151] "565 E 53RD AVENUE"              "1519 W 37TH AVENUE"            
-[153] "2866 E 48TH AVENUE"             "7637 HUDSON STREET #3"         
-[155] "2878 E 15TH AVENUE"             ""                              
-[157] "4580 JOYCE STREET #3"           "2219 E BROADWAY"               
-[159] "521 E 52ND AVENUE"              "4608 W 15TH AVENUE"            
-[161] "1201 MARINASIDE CRESCENT #3601" "3098 E 23RD AVENUE"            
-[163] "2903 W 28TH AVENUE"             "650 W 41ST AVENUE"             
-[165] "3315 E 22ND AVENUE"             "2061 W 58TH AVENUE"            
-[167] "256 E 22ND AVENUE"              "4825 DUCHESS STREET"           
-[169] "3157 W 33RD AVENUE"             "2395 W 15TH AVENUE"            
-[171] "195 E 36TH AVENUE"              "514 W 60TH AVENUE"             
-[173] "1176 W 15TH AVENUE"             "521 E 20TH AVENUE"             
-[175] "16 E 3RD AVENUE"                "4350 VALLEY DRIVE #3"          
-[177] "3830 W 18TH AVENUE"             "2789 ALAMEIN AVENUE"           
-[179] "3304 CLIVE AVENUE"              "1696 VENABLES STREET"          
-[181] "965 GRANVILLE STREET"           "3304 KINGSWAY"                 
-[183] "1463 W 8TH AVENUE"              "650 W 41ST AVENUE"             
-[185] "608 W CORDOVA STREET"           "3402 W 22ND AVENUE"            
-[187] "3969 W 13TH AVENUE"             "1969 MCNICOLL AVENUE"          
-[189] "737 DUNSMUIR STREET"            "868 CASSIAR STREET"            
-[191] "6292 EAST BOULEVARD"            "2288 E 33RD AVENUE"            
-[193] "2238 E 54TH AVENUE #3"          "1528 NANAIMO STREET"           
-[195] "3076 E 19TH AVENUE"             "845 W 17TH AVENUE"             
-[197] "1774 E 32ND AVENUE"             "1067 MARINASIDE CRESCENT #2205"
-[199] "6109 WEST BOULEVARD"            "5387 WILLOW STREET"            
-> 
-> # take that sample and somehow find closest matches in parcel data?
-> # perhaps using stringdist package?
-> # Too slow for large data, but ok for small sample
-> library(stringdist)
-> failed_addresses <- dtMerge[is.na(site_id) & address!="",address][1:N]
-> matched_site_ids <- sapply(failed_addresses, function(addr) {
-+   distances <- stringdist(addr, dtParcels$address, method = "jw")
-+   closest_index <- which.min(distances)
-+   return(dtParcels$site_id[closest_index])
-+ })
-> # Create a data.table of failed addresses, their initial failed address and the associated  matched address from the parcel data
-> dtMatched <- data.table(
-+   failed_address = failed_addresses,
-+   matched_site_id = matched_site_ids
-+ )
-> print(dtMatched) # but I need to see the parcel info too
-                  failed_address matched_site_id
-                          <char>          <char>
-  1:     1 E CORDOVA STREET #109         LMS2854
-  2:     1 E CORDOVA STREET #109         LMS2854
-  3:     1 E CORDOVA STREET #110         LMS2854
-  4:     1 E CORDOVA STREET #140         LMS2854
-  5:     1 E CORDOVA STREET #303         LMS2854
- ---                                            
-196: 1011 W CORDOVA STREET #3506         BCS3699
-197: 1011 W CORDOVA STREET #3607         BCS3699
-198:         1012 BALFOUR AVENUE         VAS2139
-199:           1012 BEACH AVENUE       008920796
-200:        1012 BEACH AVENUE #1       008920796
-> dtMatched <- merge(dtMatched, dtParcels[, .(site_id, address)], by.x = "matched_site_id", by.y = "site_id", all.x = TRUE)
-> print(dtMatched)
-Key: <matched_site_id>
-       matched_site_id           failed_address               address
-                <char>                   <char>                <char>
-    1:            <NA>     1000 CHESTNUT STREET                 NA NA
-    2:            <NA>     1000 CHESTNUT STREET                 NA NA
-    3:            <NA>     1000 CHESTNUT STREET                 NA NA
-    4:            <NA>     1000 CHESTNUT STREET                 NA NA
-    5:            <NA>     1000 CHESTNUT STREET                 NA NA
-   ---                                                               
-11389:         VAS2770 1010 BURNABY STREET #401   1010 BURNABY STREET
-11390:         VAS2770 1010 BURNABY STREET #602   1010 BURNABY STREET
-11391:          VAS442    1006 IRONWORK PASSAGE 1000 IRONWORK PASSAGE
-11392:          VAS859        1005 W 7TH AVENUE         1005 W 7TH AV
-11393:          VAS859   1005 W 7TH AVENUE #203         1005 W 7TH AV
-> 
+> dtMerge[,maxMerge:=max(!is.na(site_id)),by=grouper]
+> print(table(dtMerge$maxMerge)) # check how many permit groups had at least one successful merge
+
+    0     1 
+11384 44922 
+> print(dtMerge[maxMerge==0,mean(propertyuse=="Dwelling Uses",na.rm=TRUE)]) # fraction of permits in groups with no successful merges that are dwelling uses
+[1] 0.5526177
+> print(dtMerge[maxMerge==1,mean(propertyuse=="Dwelling Uses",na.rm=TRUE)]) # fraction of permits in groups with no successful merges that are dwelling uses
+[1] 0.6638173
+> print(names(dtMerge))
+ [1] "address"                   "civic_number"             
+ [3] "streetname"                "tax_coord"                
+ [5] "site_id"                   "geo_point_2d.x"           
+ [7] "geometry"                  "permitnumber"             
+ [9] "permitnumbercreateddate"   "issuedate"                
+[11] "permitelapseddays"         "projectvalue"             
+[13] "typeofwork"                "projectdescription"       
+[15] "permitcategory"            "applicant"                
+[17] "applicantaddress"          "propertyuse"              
+[19] "specificusecategory"       "buildingcontractor"       
+[21] "buildingcontractoraddress" "issueyear"                
+[23] "geolocalarea"              "geom"                     
+[25] "yearmonth"                 "geo_point_2d.y"           
+[27] "grouper"                   "lat"                      
+[29] "lon"                       "groupDistance"            
+[31] "nGroup"                    "group2"                   
+[33] "maxMerge"                 
+> print(table(dtMerge[maxMerge==0 & propertyuse=="Dwelling Uses",specificusecategory]))
+
+                                              1FD w/ Family Suite 
+                                                                1 
+                              2FD on Sites w/ Mult Principal Bldg 
+                                                                1 
+                                                        Apartment 
+                                                                6 
+                                              Apartment,Townhouse 
+                                                                1 
+                                                           Duplex 
+                                                              214 
+                                         Duplex w/Secondary Suite 
+                                                               43 
+                         Duplex w/Secondary Suite,Secondary Suite 
+                                                                6 
+                                            Duplex,Lock -off Unit 
+                                                                1 
+                                           Duplex,Secondary Suite 
+                                                                1 
+                                                    Dwelling Unit 
+                                                              314 
+                                       Dwelling Unit w/ Other Use 
+                                                               11 
+                     Dwelling Unit,Mixed-Use Residential Building 
+                                                                1 
+                                  Dwelling Unit,Multiple Dwelling 
+                                                                1 
+                                                Freehold Rowhouse 
+                                                                1 
+                                                           Infill 
+                                                               10 
+                                                    Infill Duplex 
+                                                                1 
+                                         Infill Multiple Dwelling 
+                                                                1 
+                                     Infill Single Detached House 
+                                                               35 
+        Infill Single Detached House,Multiple Conversion Dwelling 
+                                                                2 
+                                       Infill Two-Family Dwelling 
+                                                                2 
+                                                    Laneway House 
+                                                             1572 
+                                                   Micro Dwelling 
+                                                                3 
+                                   Mixed-Use Residential Building 
+                                                                7 
+                                     Multiple Conversion Dwelling 
+                                                               51 
+                                                Multiple Dwelling 
+                                                             2432 
+Multiple Dwelling,Residential Unit Associated w/ an Artist Studio 
+                                                                1 
+                                                   Not Applicable 
+                                                                5 
+                  Residential Unit Associated w/ an Artist Studio 
+                                                                3 
+                                        Residential/Business Unit 
+                                                                1 
+                                                    Rooming House 
+                                                                3 
+                                                  Secondary Suite 
+                                                                1 
+                              Seniors Supportive/Assisted Housing 
+                                                                4 
+                                            Single Detached House 
+                                                             1215 
+                                Single Detached House w/Sec Suite 
+                                                              308 
+          Single Detached House,Single Detached House w/Sec Suite 
+                                                                1 
+                                        Temporary Modular Housing 
+                                                                6 
+                                                        Townhouse 
+                                                               25 
+> print(table(dtMerge[maxMerge==1 & propertyuse=="Dwelling Uses",specificusecategory]))
+
+                                                                                
+                                                                              1 
+                               1FD on Sites w/ More Than One Principal Building 
+                                                                              1 
+                                                            1FD w/ Family Suite 
+                                                                              9 
+                                            2FD on Sites w/ Mult Principal Bldg 
+                                                                              2 
+                                                                      Apartment 
+                                                                             57 
+                                                            Apartment,Townhouse 
+                                                                              7 
+                                                                         Duplex 
+                                                                           1842 
+                                                       Duplex w/Secondary Suite 
+                                                                            652 
+                                        Duplex w/Secondary Suite,Lock -off Unit 
+                                                                              8 
+                                       Duplex w/Secondary Suite,Secondary Suite 
+                                                                            182 
+                 Duplex w/Secondary Suite,Secondary Suite,Single Detached House 
+                                                                              1 
+                                                                  Duplex,Infill 
+                                                                              1 
+                                                          Duplex,Lock -off Unit 
+                                                                             29 
+                                          Duplex,Lock -off Unit,Secondary Suite 
+                                                                              1 
+                                            Duplex,Multiple Conversion Dwelling 
+                                                                              1 
+                                                   Duplex,Single Detached House 
+                                                                              5 
+                                                                  Dwelling Unit 
+                                                                            644 
+                                                     Dwelling Unit w/ Other Use 
+                                                                              4 
+                                            Dwelling Unit,Single Detached House 
+                                                                              3 
+                                                              Freehold Rowhouse 
+                                                                              9 
+                                                              Housekeeping Unit 
+                                                                              2 
+                                                                         Infill 
+                                                                             25 
+                                                                  Infill Duplex 
+                                                                              5 
+                                                       Infill Multiple Dwelling 
+                                                                              6 
+                                                   Infill Single Detached House 
+                                                                            172 
+                      Infill Single Detached House,Multiple Conversion Dwelling 
+                                                                              3 
+Infill Single Detached House,Multiple Conversion Dwelling,Single Detached House 
+                                                                              6 
+                             Infill Single Detached House,Single Detached House 
+                                                                              2 
+                 Infill Single Detached House,Single Detached House w/Sec Suite 
+                                                                              2 
+                                                     Infill Two-Family Dwelling 
+                                                                             18 
+                   Infill Two-Family Dwelling,Single Detached House w/Sec Suite 
+                                                                              1 
+                                            Infill,Infill Single Detached House 
+                                                                              1 
+                                            Infill,Multiple Conversion Dwelling 
+                                                                              1 
+                      Infill,Multiple Conversion Dwelling,Single Detached House 
+                                                                              2 
+                                 Infill,Multiple Dwelling,Single Detached House 
+                                                                              2 
+                                                   Infill,Single Detached House 
+                                                                              1 
+                                                                  Laneway House 
+                                                                           2477 
+                                            Laneway House,Single Detached House 
+                                                                              2 
+                                                                 Micro Dwelling 
+                                                                             11 
+                                                 Mixed-Use Residential Building 
+                                                                             32 
+                                         Multiple Conv Dwelling w/ Family Suite 
+                                                                              1 
+                                            Multiple Conv Dwelling w/ Sec Suite 
+                                                                              1 
+                                                   Multiple Conversion Dwelling 
+                                                                            325 
+                                 Multiple Conversion Dwelling,Multiple Dwelling 
+                                                                              2 
+                                    Multiple Conversion Dwelling,Not Applicable 
+                                                                              1 
+                             Multiple Conversion Dwelling,Single Detached House 
+                                                                              4 
+                 Multiple Conversion Dwelling,Single Detached House w/Sec Suite 
+                                                                              1 
+                                                              Multiple Dwelling 
+                                                                           5133 
+              Multiple Dwelling,Residential Unit Associated w/ an Artist Studio 
+                                                                              1 
+                                                Multiple Dwelling,Rooming House 
+                                                                              1 
+                                        Multiple Dwelling,Single Detached House 
+                                                                              1 
+                                    Multiple Dwelling,Temporary Modular Housing 
+                                                                              3 
+                                                                 Not Applicable 
+                                                                             72 
+                                           Not Applicable,Single Detached House 
+                                                                              1 
+                                             Principal Dwelling Unit w/Lock Off 
+                                                                              8 
+                                Residential Unit Associated w/ an Artist Studio 
+                                                                              1 
+                                                      Residential/Business Unit 
+                                                                              1 
+                                                                  Rooming House 
+                                                                             44 
+                                                                Secondary Suite 
+                                                                              4 
+                              Secondary Suite,Single Detached House w/Sec Suite 
+                                                                              1 
+                                            Seniors Supportive/Assisted Housing 
+                                                                             36 
+                                                          Single Detached House 
+                                                                          12275 
+                                              Single Detached House w/Sec Suite 
+                                                                           5596 
+                        Single Detached House,Single Detached House w/Sec Suite 
+                                                                             34 
+                                                                  Sleeping Unit 
+                                                                              3 
+                                                      Temporary Modular Housing 
+                                                                             20 
+                                                                      Townhouse 
+                                                                             20 
+> print(table(dtMerge[maxMerge==0 & propertyuse=="Dwelling Uses",mean(grepl("uplex",specificusecategory))]))
+
+0.0422826259736131 
+                 1 
+> print(table(dtMerge[maxMerge==1 & propertyuse=="Dwelling Uses",mean(grepl("uplex",specificusecategory))]))
+
+0.0914486921529175 
+                 1 
+> print(table(dtMerge[maxMerge==0 & propertyuse=="Dwelling Uses",mean(grepl("Single Detached",specificusecategory))]))
+
+0.248132252424098 
+                1 
+> print(table(dtMerge[maxMerge==1 & propertyuse=="Dwelling Uses",mean(grepl("Single Detached",specificusecategory))]))
+
+0.607511737089202 
+                1 
+> # Note: looks like no selection!
+> q("no")
 > proc.time()
    user  system elapsed 
- 12.285   0.328  10.059 
-=======
-  [1] "1535 NELSON STREET #207"             
-  [2] "1283 DAVIE STREET"                   
-  [3] "163 W KING EDWARD AVENUE"            
-  [4] "485 W 59TH AVENUE"                   
-  [5] "2047 E 39TH AVENUE"                  
-  [6] "2645 GRANT STREET"                   
-  [7] "830 E 7TH AVENUE #217"               
-  [8] "1489 FRANCES STREET"                 
-  [9] "550 GRANVILLE STREET"                
- [10] "3476 TUPPER STREET"                  
- [11] "3878 BEATRICE STREET"                
- [12] "6211 GRANVILLE STREET"               
- [13] "1510 GRANT STREET #203"              
- [14] "2451 ETON STREET #3"                 
- [15] "359 W 49TH AVENUE"                   
- [16] "5415 WALES STREET"                   
- [17] "1238 CARDERO STREET #1"              
- [18] "939 HOMER STREET #3309"              
- [19] "6616 GLADSTONE STREET"               
- [20] "737 DUNSMUIR STREET"                 
- [21] "3509 TURNER STREET"                  
- [22] "3735 W 10TH AVENUE"                  
- [23] "3436 E 24TH AVENUE #3"               
- [24] "749 W 49TH AVENUE"                   
- [25] "1538 NANAIMO STREET"                 
- [26] "305 E PENDER STREET"                 
- [27] "1795 E 60TH AVENUE"                  
- [28] "61 E 23RD AVENUE #4"                 
- [29] "3194 CHARLES STREET"                 
- [30] "8889 LAUREL STREET"                  
- [31] "4320 W 10TH AVENUE"                  
- [32] "247 E 49TH AVENUE"                   
- [33] "899 W 12TH AVENUE"                   
- [34] "3224 E 48TH AVENUE"                  
- [35] "630 HORNBY STREET"                   
- [36] ""                                    
- [37] "6830 ASH STREET"                     
- [38] "2842 W 1ST AVENUE"                   
- [39] "2807 W 39TH AVENUE #3"               
- [40] "817 W 28TH AVENUE"                   
- [41] "4434 W 8TH AVENUE"                   
- [42] "2644 DUKE STREET"                    
- [43] "471 W 28TH AVENUE"                   
- [44] "325 SEYMOUR STREET"                  
- [45] "376 W 10TH AVENUE"                   
- [46] "3915 W 32ND AVENUE #3"               
- [47] "5294 ST. CATHERINES STREET"          
- [48] "2443 KINGSWAY"                       
- [49] "1067 MARINASIDE CRESCENT #1903"      
- [50] "2583 E 23RD AVENUE"                  
- [51] "2756 W 13TH AVENUE #3"               
- [52] "3589 W 20TH AVENUE #3"               
- [53] "179 W 48TH AVENUE"                   
- [54] "6850 LANARK STREET #3"               
- [55] "350 SE MARINE DRIVE"                 
- [56] "16 E 3RD AVENUE"                     
- [57] "2268 W 12TH AVENUE #103"             
- [58] "3604 TANNER STREET"                  
- [59] "6818 ASH STREET"                     
- [60] "3811 W 14TH AVENUE"                  
- [61] "2388 CAMBIE STREET"                  
- [62] "35 W 6TH AVENUE"                     
- [63] "539 E 6TH AVENUE"                    
- [64] "2977 E 29TH AVENUE #3"               
- [65] "460 W 45TH AVENUE #3"                
- [66] "768 W 17TH AVENUE"                   
- [67] "1199 MARINASIDE CRESCENT #501"       
- [68] "4049 W 38TH AVENUE"                  
- [69] "1055 W HASTINGS STREET"              
- [70] "5120 ASH STREET"                     
- [71] "734 W 13TH AVENUE"                   
- [72] "785 E 58TH AVENUE"                   
- [73] "2123 E 13TH AVENUE"                  
- [74] "8271 LABURNUM STREET"                
- [75] "740 W 41ST AVENUE"                   
- [76] "833 HOMER STREET #2909"              
- [77] "2801 E HASTINGS STREET"              
- [78] "2033 TRIUMPH STREET #225"            
- [79] "664 W 17TH AVENUE #3"                
- [80] "669 HOWE STREET #850"                
- [81] ""                                    
- [82] "3655 W 3RD AVENUE #3"                
- [83] "1355 W 4TH AVENUE"                   
- [84] "795 W 8TH AVENUE #16"                
- [85] "6869 CAMBIE STREET"                  
- [86] "3235 CLIVE AVENUE"                   
- [87] "5120 ASH STREET"                     
- [88] "8337 FRENCH STREET"                  
- [89] "4446 W 8TH AVENUE"                   
- [90] "2943 E 44TH AVENUE"                  
- [91] "1311 BEACH AVENUE #603"              
- [92] "2214 E 10TH AVENUE"                  
- [93] "620 GORE AVENUE"                     
- [94] "2459 MCGILL STREET"                  
- [95] "188 E PENDER STREET"                 
- [96] "2995 COMMERCIAL DRIVE"               
- [97] "4022 W 14TH AVENUE"                  
- [98] "373 E 33RD AVENUE"                   
- [99] "2050 COMOX STREET #503"              
-[100] "7825 ADERA STREET"                   
-[101] "2618 WAVERLEY AVENUE #3"             
-[102] "1111 MARINASIDE CRESCENT #602"       
-[103] "452 E 45TH AVENUE #3"                
-[104] "4568 COLLINGWOOD STREET"             
-[105] "888 HAMILTON STREET #2203"           
-[106] "6608 ROSS STREET #3"                 
-[107] "4660 JOYCE STREET #3"                
-[108] "1566 RAND AVENUE"                    
-[109] "5802 BLENHEIM STREET"                
-[110] "7161 WILTSHIRE STREET #3"            
-[111] "525 W 59TH AVENUE"                   
-[112] "1655 W 4TH AVENUE"                   
-[113] "178 KEEFER STREET"                   
-[114] "570 GRANVILLE STREET #400"           
-[115] "2954 W 14TH AVENUE"                  
-[116] "1489 W BROADWAY"                     
-[117] "1740 COMOX STREET #1802"             
-[118] "979 RICHARDS STREET"                 
-[119] "5679 MAIN STREET"                    
-[120] "375 W 59TH AVENUE"                   
-[121] "1551 MARINER WALK #106"              
-[122] "417 E 50TH AVENUE"                   
-[123] "4551 W 15TH AVENUE #3"               
-[124] "3301 W 16TH AVENUE #3"               
-[125] "701 W GEORGIA STREET"                
-[126] "7010 KERR STREET"                    
-[127] "925 W GEORGIA STREET"                
-[128] "690 W 41ST AVENUE"                   
-[129] "2430 COMMERCIAL DRIVE"               
-[130] "1328 W 73RD AVENUE #1"               
-[131] "4435 TRAFALGAR STREET"               
-[132] "4650 OAK STREET"                     
-[133] "1132 E PENDER STREET"                
-[134] "2121 W 5TH AVENUE #102"              
-[135] "1181 SEYMOUR STREET"                 
-[136] ""                                    
-[137] "1020 W CORDOVA STREET"               
-[138] "2034 E 1ST AVENUE"                   
-[139] "427 W 39TH AVENUE"                   
-[140] "7555 YUKON STREET"                   
-[141] "2083 ALMA STREET #215"               
-[142] "3622 W 4TH AVENUE"                   
-[143] "941 E HASTINGS STREET #6"            
-[144] "339 W 49TH AVENUE"                   
-[145] "701 W GEORGIA STREET"                
-[146] "1723 ALBERNI STREET #2305"           
-[147] "1882 E 16TH AVENUE"                  
-[148] "701 W GEORGIA STREET"                
-[149] "1683 RENFREW STREET"                 
-[150] "451 E 51ST AVENUE #3"                
-[151] "2605 W 12TH AVENUE"                  
-[152] "2032 E HASTINGS STREET"              
-[153] "899 W 12TH AVENUE"                   
-[154] "2655 MAPLE STREET"                   
-[155] "256 E 22ND AVENUE"                   
-[156] "1055 MAINLAND STREET"                
-[157] "7241 CAMBIE STREET"                  
-[158] "3239 CLIVE AVENUE"                   
-[159] "3908 W 32ND AVENUE #3"               
-[160] "1039 GRANVILLE STREET"               
-[161] "6473 YEW STREET"                     
-[162] "1689 JOHNSTON STREET"                
-[163] "7753 VIVIAN DRIVE"                   
-[164] "3588 WHITNEY PLACE"                  
-[165] "5980 GRANVILLE STREET"               
-[166] "2659 W 35TH AVENUE #3"               
-[167] "1355 W BROADWAY"                     
-[168] "138 W 6TH AVENUE #301"               
-[169] "293 E GEORGIA STREET"                
-[170] "7755 YUKON STREET"                   
-[171] "5656 MANSON STREET"                  
-[172] "3490 KINGSWAY #8"                    
-[173] "3532 MONMOUTH AVENUE"                
-[174] "2981 E 56TH AVENUE"                  
-[175] "1255 MAIN STREET #504"               
-[176] "701 W GEORGIA STREET"                
-[177] "722 NELSON STREET"                   
-[178] "308 W 62ND AVENUE"                   
-[179] "3378 DUNBAR STREET"                  
-[180] "1111 RICHARDS STREET #3401"          
-[181] "4200 W 8TH AVENUE"                   
-[182] "SKYTRAIN STATION - 590 BEATTY STREET"
-[183] "446 SW MARINE DRIVE"                 
-[184] "3530 NAPLES WAY"                     
-[185] "550 PACIFIC STREET #302"             
-[186] "550 W BROADWAY #613"                 
-[187] "1150 ALBERNI STREET"                 
-[188] "1355 W BROADWAY #602"                
-[189] "6235 VICTORIA DRIVE"                 
-[190] "2258 NANAIMO STREET"                 
-[191] "1425 ANDERSON STREET"                
-[192] "519 ABBOTT STREET"                   
-[193] "2471 GRANDVIEW HIGHWAY NORTH"        
-[194] "6320 FRONTENAC STREET"               
-[195] "701 W GEORGIA STREET"                
-[196] "2689 GRANT STREET"                   
-[197] "7884 OAK STREET"                     
-[198] "2610 E 18TH AVENUE"                  
-[199] "2941 W 15TH AVENUE"                  
-[200] "3389 W 41ST AVENUE"                  
-> 
-> # see if something systematic about last word of missing addresses,e.g. street type
-> failedAddresses <- dtMerge[is.na(site_id) & address!="",.(address)]
-> print(head(failedAddresses))
-Key: <address>
-                   address
-                    <char>
-1: 1 E CORDOVA STREET #109
-2: 1 E CORDOVA STREET #109
-3: 1 E CORDOVA STREET #110
-4: 1 E CORDOVA STREET #140
-5: 1 E CORDOVA STREET #303
-6: 1 E CORDOVA STREET #304
-> failedAddresses[,lastWord:=sapply(strsplit(failedAddresses," "),"[",lengths(strsplit(failedAddresses," ")))]
-Error in strsplit(failedAddresses, " ") : non-character argument
-Calls: [ ... [.data.table -> eval -> eval -> sapply -> lapply -> strsplit
-Execution halted
->>>>>>> 63662ebcb4252c7e0a8959cf09cd3d0aa97a4437
+  7.021   1.419   4.982 
