@@ -1,0 +1,676 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # mergeParcelBCA.R merge parcel vancouver data with BC assessment data
+> # Tom Davidoff 
+> # 01/11/26
+> 
+> library(data.table)
+> library(RSQLite)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> # read BCA data from 201901, pre-duplex zoning benchmark, when avaialble. Proof of concept with 201..
+> 
+> bcaDir <- "~/OneDrive - UBC/Documents/data/bca/REVD18_and_inventory_extracts_CSV_files"
+> dtAddress <- fread(file.path(bcaDir,"address.csv"))
+> dtAddress <- dtAddress[city=="VANCOUVER"]
+> dtDescription <- fread(file.path(bcaDir,"folioDescription.csv"),select=c("folioID","actualUseDescription","landDimensionType","landDimensionTypeDescription","landDimension","landWidth","landDepth"))
+> dtAddress <- merge(dtAddress,dtDescription,by="folioID")
+> print(table(dtAddress[,actualUseDescription])[order(-table(dtAddress[,actualUseDescription]))])
+
+                    Strata-Lot Residence (Condominium) 
+                                                 91216 
+                       Residential Dwelling with Suite 
+                                                 41681 
+                                Single Family Dwelling 
+                                                 41456 
+                   Row Housing (Single Unit Ownership) 
+                                                 10971 
+                                 Commercial Strata-Lot 
+                                                  5579 
+                             Multi-Family (Conversion) 
+                                                  3424 
+                   Individual Strata Lot (Hotel/Motel) 
+                                                  2755 
+                           Duplex, Strata Front / Back 
+                                                  2606 
+    Stratified Rental Apartment (Hi-Rise Construction) 
+                                                  2583 
+      Stratified Rental Apartment (Frame Construction) 
+                                                  2510 
+                        Multi-Family (Apartment Block) 
+                                                  2225 
+                          Store(S) And Living Quarters 
+                                                  2109 
+                       Store(S) And Service Commercial 
+                                                  2055 
+                           Duplex, Strata Side by Side 
+                                                  1503 
+                        Storage & Warehousing (Closed) 
+                                                  1474 
+                                  Store(S) And Offices 
+                                                  1373 
+       Duplex, Non-Strata Side by Side or Front / Back 
+                                                  1265 
+                         Office Building (Primary Use) 
+                                                  1242 
+                     Property Subject To Section 19(8) 
+                                                   897 
+                              Multi-Family (High-Rise) 
+                                                   768 
+         Multi-Family (Garden Apartment & Row Housing) 
+                                                   715 
+          Civic, Institutional & Recreational (Vacant) 
+                                                   496 
+               Parking (Lot Only, Paved Or Gravel-Com) 
+                                                   365 
+                      Strata Lot (Parking Residential) 
+                                                   350 
+                              Churches & Bible Schools 
+                                                   332 
+                      Multi-Family (Residential Hotel) 
+                                                   315 
+                  Vacant Residential Less Than 2 Acres 
+                                                   315 
+  Schools & Universities, College Or Technical Schools 
+                                                   301 
+                       Strata Lot (Parking Commercial) 
+                                                   283 
+                     Multi-Family (Minimal Commercial) 
+                                                   279 
+                 Stratified Operational Facility Areas 
+                                                   230 
+                              Duplex, Strata Up / Down 
+                                                   204 
+                                 Multi-Family (Vacant) 
+                                                   204 
+                                Parks & Playing Fields 
+                                                   197 
+                  Automobile Paint Shop, Garages, Etc. 
+                                                   194 
+                                           Vacant IC&I 
+                                                   182 
+                          Duplex, Non-Strata Up / Down 
+                                                   161 
+                               IC&I Water Lot (Vacant) 
+                                                   153 
+                                       Restaurant Only 
+                                                   148 
+                            Marine Facilities (Marina) 
+                                                   144 
+                                                 Hotel 
+                                                   126 
+                                          Retail Strip 
+                                                   126 
+                                       Air Space Title 
+                                                   123 
+                                   Industrial (Vacant) 
+                                                   108 
+                   Hall (Community, Lodge, Club, Etc.) 
+                                                    99 
+                                               Railway 
+                                                    98 
+   Recreational & Cultural Buildings (Includes Curling 
+                                                    91 
+                 Stores And/Or Offices With Apartments 
+                                                    89 
+                                                  Bank 
+                                                    87 
+Government Buildings (Includes Courthouse, Post Office 
+                                                    83 
+                           Shopping Centre (Community) 
+                                                    73 
+                           Stratified Rental Townhouse 
+                                                    73 
+Hospitals (Nursing Homes Refer To Commercial Section). 
+                                                    72 
+                                        Parking Garage 
+                                                    70 
+                    Parking Lot Only (Paved Or Gravel) 
+                                                    58 
+                                     Clothing Industry 
+                                                    55 
+                                       Service Station 
+                                                    53 
+                       Shopping Centre (Neighbourhood) 
+                                                    53 
+                                 Automobile Dealership 
+                                                    46 
+                                     Theatre Buildings 
+                                                    43 
+      2 Acres Or More (Single Family Dwelling, Duplex) 
+                                                    42 
+                                          Self Storage 
+                                                    42 
+                                 Seniors Licensed Care 
+                                                    41 
+                 Seniors Independent & Assisted Living 
+                                                    39 
+                    Miscellaneous & (Industrial Other) 
+                                                    38 
+                                           Food Market 
+                                                    33 
+                                                  Alrt 
+                                                    30 
+                                 Fast Food Restaurants 
+                                                    30 
+                        Printing & Publishing Industry 
+                                                    29 
+                            Shopping Centre (Regional) 
+                                                    29 
+           Bed & Breakfast Operation Less Than 4 Units 
+                                                    28 
+                 Bus Company, Including Street Railway 
+                                                    27 
+                                               Big Box 
+                                                    26 
+       Electrical Power Systems (Including Non-Utility 
+                                                    25 
+                                    Fiberoptic Conduit 
+                                                    25 
+                                Sign Or Billboard Only 
+                                                    25 
+                          Residential Outbuilding Only 
+                                                    24 
+                          Storage & Warehousing (Open) 
+                                                    22 
+                          Metal Fabricating Industries 
+                                                    19 
+              Golf Courses (Includes Public & Private) 
+                                                    18 
+               Parking (Lot Only, Paved Or Gravel-Res) 
+                                                    17 
+                                           Works Yards 
+                                                    17 
+                             IC&I Water Lot (Improved) 
+                                                    16 
+                       Miscellaneous (Food Processing) 
+                                                    15 
+              Cemeteries (Includes Public Or Private). 
+                                                    14 
+                     Convenience Store/Service Station 
+                                                    14 
+             Bed & Breakfast Operation 4 Or More Units 
+                                                    13 
+                         Furniture & Fixtures Industry 
+                                                    13 
+                                             Telephone 
+                                                    13 
+                                       Docks & Wharves 
+                                                    12 
+                                     Neighbourhood Pub 
+                                                    12 
+                                                 Other 
+                                                    12 
+                                               Triplex 
+                                                    11 
+                                Concrete Mixing Plants 
+                                                    10 
+                            Self-Serve Service Station 
+                                                    10 
+                            Water Distribution Systems 
+                                                    10 
+     Government Research Centres (Includes Nurseries & 
+                                                     9 
+                                        Meat & Poultry 
+                                                     9 
+                        Bakery & Biscuit Manufacturing 
+                                                     8 
+                                       Grain Elevators 
+                                                     8 
+        Machinery Manufacturing (Excluding Electrical) 
+                                                     8 
+                                              Sea Food 
+                                                     8 
+                        Department Store - Stand Alone 
+                                                     7 
+      Marine & Navigational Facilities (Includes Ferry 
+                                                     7 
+                             Textiles & Knitting Mills 
+                                                     7 
+                                   Drive-In Restaurant 
+                                                     6 
+                          Storage & Warehousing (Cold) 
+                                                     6 
+                              Gas Distribution Systems 
+                                                     5 
+                                                 Mixed 
+                                                     5 
+                              2 Acres Or More (Vacant) 
+                                                     4 
+                                              Car Wash 
+                                                     4 
+        Confectionery Manufacturing & Sugar Processing 
+                                                     4 
+        Miscellaneous (Transportation & Communication) 
+                                                     4 
+                                    Motel & Auto Court 
+                                                     4 
+                         Recreational Clubs, Ski Hills 
+                                                     4 
+             Telecommunications (Other Than Telephone) 
+                                                     4 
+                         2 Acres Or More (Outbuilding) 
+                                                     3 
+                                Automobile Sales (Lot) 
+                                                     3 
+                                               Brewery 
+                                                     3 
+               Chemical & Chemical Products Industries 
+                                                     3 
+                                        Dairy Products 
+                                                     3 
+    Garbage Dumps, Sanitary Fills, Sewer Lagoons, Etc. 
+                                                     3 
+                                           Sash & Door 
+                                                     3 
+                                        Asphalt Plants 
+                                                     2 
+                                         Bowling Alley 
+                                                     2 
+            Community Antenna Television (Cablevision) 
+                                                     2 
+                                     Fruit & Vegetable 
+                                                     2 
+                                      Leather Industry 
+                                                     2 
+                  Logging Operations, Incl Log Storage 
+                                                     2 
+                      Lumber Yard Or Building Supplies 
+                                                     2 
+            Miscellaneous (Forest And Allied Industry) 
+                                                     2 
+Paper Box, Paper Bag, And Other Paper Remanufacturing. 
+                                                     2 
+                             Airports, Heliports, Etc. 
+                                                     1 
+                                            Distillery 
+                                                     1 
+            Electrical & Electronics Products Industry 
+                                                     1 
+          Miscellaneous (Mining And Allied Industries) 
+                                                     1 
+                                               Poultry 
+                                                     1 
+         Primary Metal Industries (Iron & Steel Mills, 
+                                                     1 
+                                              Sawmills 
+                                                     1 
+                                     Seasonal Dwelling 
+                                                     1 
+                                     Vegetable & Truck 
+                                                     1 
+> dtAddress <- dtAddress[actualUseDescription %in% c("Single Family Dwelling","Residential Dwelling with Suite")]
+> print(head(dtAddress))
+Key: <folioID>
+      folioID  addressID primaryFlag streetNumber unitNumber
+       <char>     <char>      <lgcl>       <char>     <char>
+1: A000000009 A000000009        TRUE         4888           
+2: A00000000A A00000000A        TRUE         4898           
+3: A00000000B A00000000B        TRUE         4874           
+4: A00000000C A00000000C        TRUE         4850           
+5: A00000000C D000007TXQ       FALSE         4860           
+6: A00000000D A00000000D        TRUE         4811           
+   streetDirectionPrefix streetName streetDirectionSuffix streetType      city
+                  <char>     <char>                <char>     <char>    <char>
+1:                           FANNIN                              AVE VANCOUVER
+2:                           FANNIN                              AVE VANCOUVER
+3:                           FANNIN                              AVE VANCOUVER
+4:                           FANNIN                              AVE VANCOUVER
+5:                           FANNIN                              AVE VANCOUVER
+6:                           FANNIN                              AVE VANCOUVER
+   province postalCode mapReferenceNumber   actualUseDescription
+     <char>     <char>             <char>                 <char>
+1:       BC    V6T 1B1                E10 Single Family Dwelling
+2:       BC    V6T 1B2                E10 Single Family Dwelling
+3:       BC    V6T 1B2                E10 Single Family Dwelling
+4:       BC    V6T 1B2                E10 Single Family Dwelling
+5:       BC    V6T 1B2                E10 Single Family Dwelling
+6:       BC    V6T 1B1                F10 Single Family Dwelling
+   landDimensionType landDimensionTypeDescription landDimension landWidth
+               <int>                       <char>         <num>     <num>
+1:                 2                  Square Feet     38389.810        NA
+2:                 3                        Acres         1.128        NA
+3:                 2                  Square Feet     37505.000        NA
+4:                 2                  Square Feet     37505.000        NA
+5:                 2                  Square Feet     37505.000        NA
+6:                 3                        Acres         0.840        NA
+   landDepth
+       <num>
+1:        NA
+2:        NA
+3:        NA
+4:        NA
+5:        NA
+6:        NA
+> parcelDir <- "~/OneDrive - UBC/dataRaw"
+> parcels <- st_read(file.path(parcelDir,"property-parcel-polygons.geojson")) # is this best way to read geojson?
+Reading layer `property-parcel-polygons' from data source 
+  `/Users/tdavidof/Library/CloudStorage/OneDrive-UBC/dataRaw/property-parcel-polygons.geojson' 
+  using driver `GeoJSON'
+Simple feature collection with 99765 features and 5 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: -123.2297 ymin: 49.19939 xmax: -123.0233 ymax: 49.31407
+Geodetic CRS:  WGS 84
+> dtParcels <- as.data.table(parcels) # convert to data.table for easier manipulation
+> print(head(dtParcels))
+   civic_number     streetname tax_coord   site_id
+         <char>         <char>    <char>    <char>
+1:         4875     HEATHER ST  73015907 032529686
+2:          375      E 33RD AV  73019575  EPS10489
+3:         4763  COMMERCIAL ST  24472675  EPS11578
+4:         4429      W 13TH AV  68302467 032545592
+5:         3415 SEAFORTH DRIVE  69430049  EPS11591
+6:         2552      E 11TH AV  66527160 032551827
+                                                geo_point_2d
+                                                      <char>
+1: { "lon": -123.12209884815704, "lat": 49.242031082674288 }
+2:   { "lon": -123.097486205344, "lat": 49.240837965447966 }
+3:  { "lon": -123.0684260171443, "lat": 49.242064771116986 }
+4:    { "lon": -123.2070648698195, "lat": 49.2613218519813 }
+5: { "lon": -123.03197426086219, "lat": 49.253802339521435 }
+6: { "lon": -123.05366607019535, "lat": 49.259827585051205 }
+                         geometry
+               <sfc_MULTIPOLYGON>
+1: MULTIPOLYGON (((-123.1234 4...
+2: MULTIPOLYGON (((-123.0976 4...
+3: MULTIPOLYGON (((-123.0687 4...
+4: MULTIPOLYGON (((-123.2072 4...
+5: MULTIPOLYGON (((-123.0322 4...
+6: MULTIPOLYGON (((-123.0538 4...
+> dtAddress[,streetType:=gsub("AVE","AV",streetType)]
+> # missing street types
+> #        AV  BOULEVARD  BRIDGEWAY   BROADWAY     CIRCLE      CLOSE  CONNECTOR 
+> #      1666         28          1        138         11          5         11 
+> #     COURT       COVE   CRESCENT   CROSSING  DIVERSION      DRIVE       FOOT 
+> #        20          1        931         10         22       4870          1 
+> #GREENCHAIN    HIGHWAY   KINGSWAY    LANDING       LANE       MEWS         NA 
+> #         1        109         47          2          4          9       1163 
+> #     NORTH     PARADE      PLACE       ROAD      SOUTH     SQUARE         ST 
+> #       127          2        357        462         81         10       1815 
+> #      WALK        WAY 
+> #         3          6 
+> # 
+> # vers street types in BCA
+> #        ALLEY     AV   BLVD CAMPUS    CIR  CLOSE   COVE   CRES  CROSS    CRT 
+> #  7439     47  89581   1202      2     11     16      8   3176     10    184 
+> #DIVERS     DR  GREEN   HILL    HWY  INLET ISLAND LANDNG   LANE   MALL   MEWS 
+> #    45  10482      1     36    188      1      2     11    849    719   1628 
+> #PARADE    PKY     PL   QUAY     RD    ROW     SQ     ST  VISTA   WALK    WAY 
+> #   456    170   3493     29   2894      3    581 103323      1    280    950 
+> #  WYND 
+> #    38 
+> dtAddress[,streetType:=gsub("CRESCENT","CRES",streetType)]
+> dtAddress[,streetType:=gsub("BOULEVARD","BLVD",streetType)]
+> dtAddress[,streetType:=gsub("DR","DRIVE",streetType)]
+> dtAddress[,streetType:=gsub("PLACE","PL",streetType)]
+> 
+> dtAddress[,address:=toupper(paste0(streetNumber," ",streetDirectionPrefix," ",streetDirectionSuffix," ",streetName," ",streetType," "))]
+> dtAddress[unitNumber!="",address:=toupper(paste0(address," #",unitNumber))]
+> dtParcels[,address:=toupper(paste0(civic_number," ",streetname))]
+> dtParcels[,address:=toupper(paste(civic_number,streetname))]
+> dtParcels[,address:=gsub("  "," ",address)] # remove double spaces if any
+> dtAddress[,address:=gsub("   "," ",address)] # remove double spaces if any
+> dtAddress[,address:=gsub("  "," ",address)] # remove double spaces if any
+> # trim terminal space in dtAddress
+> dtAddress[,address:=gsub(" $","",address)]
+> print(head(dtAddress$address))
+[1] "4888 FANNIN AV" "4898 FANNIN AV" "4874 FANNIN AV" "4850 FANNIN AV"
+[5] "4860 FANNIN AV" "4811 FANNIN AV"
+> print(head(dtParcels$address))
+[1] "4875 HEATHER ST"     "375 E 33RD AV"       "4763 COMMERCIAL ST" 
+[4] "4429 W 13TH AV"      "3415 SEAFORTH DRIVE" "2552 E 11TH AV"     
+> print(table(dtAddress[,streetType]))
+
+           AV   BLVD    CIR  CLOSE   COVE   CRES    CRT DIVERS  DRIVE    HWY 
+   423  46622     58     11     16      8    832      9     13   3747     75 
+  LANE   MALL    PKY     PL     RD     ST    WAY   WYND 
+    24      4     24    402    481  30321     32     35 
+> dtMerge <- merge(dtParcels,dtAddress,by="address",all.x=TRUE,all.y=TRUE)
+> print(table(is.na(dtMerge[,.(primaryFlag)])))#,is.na(dtMerge[,.(site_id)])))
+
+FALSE  TRUE 
+83685 27351 
+> print(dtMerge[is.na(primaryFlag)])
+Key: <address>
+                   address civic_number        streetname tax_coord   site_id
+                    <char>       <char>            <char>    <char>    <char>
+    1:      1 ALEXANDER ST            1      ALEXANDER ST  57917805 026741059
+    2:      1 ATHLETES WAY            1      ATHLETES WAY  63418201 026894041
+    3: 1 CASSIAR CONNECTOR            1 CASSIAR CONNECTOR  30057791 015288960
+    4: 1 CASSIAR CONNECTOR            1 CASSIAR CONNECTOR  30057791 015289001
+    5: 1 CASSIAR CONNECTOR            1 CASSIAR CONNECTOR  30057791 015288943
+   ---                                                                       
+27347:               NA NA         <NA>              <NA>  16161494 024655767
+27348:               NA NA         <NA>              <NA>  30059471 013659014
+27349:               NA NA         <NA>              <NA>  30059695 013333330
+27350:               NA NA         <NA>              <NA>  58729850 007253061
+27351:               NA NA         <NA>              <NA>  58829802 007253150
+                                                    geo_point_2d
+                                                          <char>
+    1: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
+    2:  { "lon": -123.10576689952619, "lat": 49.27179256077271 }
+    3: { "lon": -123.03121718455009, "lat": 49.285417167233952 }
+    4: { "lon": -123.03163287363918, "lat": 49.285028451601256 }
+    5: { "lon": -123.03149357707161, "lat": 49.285417380347468 }
+   ---                                                          
+27347:  { "lon": -123.1228324547633, "lat": 49.270732177326607 }
+27348: { "lon": -123.03141745565557, "lat": 49.278481596702441 }
+27349: { "lon": -123.03141882682344, "lat": 49.277574771346515 }
+27350: { "lon": -123.03311132349847, "lat": 49.282511511878596 }
+27351: { "lon": -123.03260554122829, "lat": 49.281801439128287 }
+                             geometry folioID addressID primaryFlag
+                   <sfc_MULTIPOLYGON>  <char>    <char>      <lgcl>
+    1: MULTIPOLYGON (((-123.1039 4...    <NA>      <NA>          NA
+    2: MULTIPOLYGON (((-123.1047 4...    <NA>      <NA>          NA
+    3: MULTIPOLYGON (((-123.0313 4...    <NA>      <NA>          NA
+    4: MULTIPOLYGON (((-123.0316 4...    <NA>      <NA>          NA
+    5: MULTIPOLYGON (((-123.0314 4...    <NA>      <NA>          NA
+   ---                                                             
+27347: MULTIPOLYGON (((-123.1246 4...    <NA>      <NA>          NA
+27348: MULTIPOLYGON (((-123.0317 4...    <NA>      <NA>          NA
+27349: MULTIPOLYGON (((-123.0317 4...    <NA>      <NA>          NA
+27350: MULTIPOLYGON (((-123.0329 4...    <NA>      <NA>          NA
+27351: MULTIPOLYGON (((-123.0318 4...    <NA>      <NA>          NA
+       streetNumber unitNumber streetDirectionPrefix streetName
+             <char>     <char>                <char>     <char>
+    1:         <NA>       <NA>                  <NA>       <NA>
+    2:         <NA>       <NA>                  <NA>       <NA>
+    3:         <NA>       <NA>                  <NA>       <NA>
+    4:         <NA>       <NA>                  <NA>       <NA>
+    5:         <NA>       <NA>                  <NA>       <NA>
+   ---                                                         
+27347:         <NA>       <NA>                  <NA>       <NA>
+27348:         <NA>       <NA>                  <NA>       <NA>
+27349:         <NA>       <NA>                  <NA>       <NA>
+27350:         <NA>       <NA>                  <NA>       <NA>
+27351:         <NA>       <NA>                  <NA>       <NA>
+       streetDirectionSuffix streetType   city province postalCode
+                      <char>     <char> <char>   <char>     <char>
+    1:                  <NA>       <NA>   <NA>     <NA>       <NA>
+    2:                  <NA>       <NA>   <NA>     <NA>       <NA>
+    3:                  <NA>       <NA>   <NA>     <NA>       <NA>
+    4:                  <NA>       <NA>   <NA>     <NA>       <NA>
+    5:                  <NA>       <NA>   <NA>     <NA>       <NA>
+   ---                                                            
+27347:                  <NA>       <NA>   <NA>     <NA>       <NA>
+27348:                  <NA>       <NA>   <NA>     <NA>       <NA>
+27349:                  <NA>       <NA>   <NA>     <NA>       <NA>
+27350:                  <NA>       <NA>   <NA>     <NA>       <NA>
+27351:                  <NA>       <NA>   <NA>     <NA>       <NA>
+       mapReferenceNumber actualUseDescription landDimensionType
+                   <char>               <char>             <int>
+    1:               <NA>                 <NA>                NA
+    2:               <NA>                 <NA>                NA
+    3:               <NA>                 <NA>                NA
+    4:               <NA>                 <NA>                NA
+    5:               <NA>                 <NA>                NA
+   ---                                                          
+27347:               <NA>                 <NA>                NA
+27348:               <NA>                 <NA>                NA
+27349:               <NA>                 <NA>                NA
+27350:               <NA>                 <NA>                NA
+27351:               <NA>                 <NA>                NA
+       landDimensionTypeDescription landDimension landWidth landDepth
+                             <char>         <num>     <num>     <num>
+    1:                         <NA>            NA        NA        NA
+    2:                         <NA>            NA        NA        NA
+    3:                         <NA>            NA        NA        NA
+    4:                         <NA>            NA        NA        NA
+    5:                         <NA>            NA        NA        NA
+   ---                                                               
+27347:                         <NA>            NA        NA        NA
+27348:                         <NA>            NA        NA        NA
+27349:                         <NA>            NA        NA        NA
+27350:                         <NA>            NA        NA        NA
+27351:                         <NA>            NA        NA        NA
+> print(dtMerge[is.na(primaryFlag),address][1:100])
+  [1] "1 ALEXANDER ST"        "1 ATHLETES WAY"        "1 CASSIAR CONNECTOR"  
+  [4] "1 CASSIAR CONNECTOR"   "1 CASSIAR CONNECTOR"   "1 CASSIAR CONNECTOR"  
+  [7] "1 CASSIAR CONNECTOR"   "1 CASSIAR CONNECTOR"   "1 CASSIAR CONNECTOR"  
+ [10] "1 CASSIAR CONNECTOR"   "1 E BROADWAY"          "1 E CORDOVA ST"       
+ [13] "1 E PENDER ST"         "1 MAIN NORTH FOOT"     "1 ROBSON ST"          
+ [16] "1 SENNOK CRESCENT"     "1 W 7TH AV"            "10 DIEPPE PLACE"      
+ [19] "10 E 11TH AV"          "10 E 11TH AV"          "10 E PENDER ST"       
+ [22] "10 FALAISE PLACE"      "10 N NANAIMO ST"       "10 SE MARINE DRIVE"   
+ [25] "10 SEMANA CRESCENT"    "10 SENNOK CRESCENT"    "10 TAMATH CRESCENT"   
+ [28] "10 W 14TH AV"          "100 E CORDOVA ST"      "100 E PENDER ST"      
+ [31] "100 POWELL ST"         "100 SEMLIN DRIVE"      "100 SEMLIN DRIVE"     
+ [34] "100 SEMLIN DRIVE"      "100 W 13TH AV"         "100 W 15TH AV"        
+ [37] "1000 CHESTNUT ST"      "1000 CYPRESS ST"       "1000 CYPRESS ST"      
+ [40] "1000 CYPRESS ST"       "1000 E 59TH AV"        "1000 IRONWORK PASSAGE"
+ [43] "1000 PARKER ST"        "1000 ROBSON ST"        "1001 COTTON DRIVE"    
+ [46] "1001 COTTON DRIVE"     "1001 E 20TH AV"        "1001 E 7TH AV"        
+ [49] "1001 E 7TH AV"         "1001 E PENDER ST"      "1001 HOMER ST"        
+ [52] "1001 HORNBY ST"        "1001 HORNBY ST"        "1001 KINGSWAY"        
+ [55] "1001 KINGSWAY"         "1001 KINGSWAY"         "1001 NICOLA ST"       
+ [58] "1001 POWELL ST"        "1001 RICHARDS ST"      "1001 ROBSON ST"       
+ [61] "1001 SEYMOUR ST"       "1001 SEYMOUR ST"       "1001 SEYMOUR ST"      
+ [64] "1001 VENABLES ST"      "1001 W 43RD AV"        "1001 W 55TH AV"       
+ [67] "1001 W BROADWAY"       "1001 W BROADWAY"       "1001 W BROADWAY"      
+ [70] "1001 W CORDOVA ST"     "1002 E 12TH AV"        "1002 E 20TH AV"       
+ [73] "1002 SEYMOUR ST"       "1002 W 10TH AV"        "1003 BURNABY ST"      
+ [76] "1003 COMMERCIAL DRIVE" "1003 DOUGLAS CRESCENT" "1003 E 11TH AV"       
+ [79] "1003 MCLEAN DRIVE"     "1003 PACIFIC ST"       "1003 SEMLIN DRIVE"    
+ [82] "1003 W 45TH AV"        "1003 WOLFE AV"         "1004 COMMERCIAL DRIVE"
+ [85] "1004 DOUGLAS CRESCENT" "1004 E 10TH AV"        "1004 E 11TH AV"       
+ [88] "1004 W 11TH AV"        "1004 W 11TH AV"        "1004 W BROADWAY"      
+ [91] "1004 WOLFE AV"         "1005 BEACH AV"         "1005 BROUGHTON ST"    
+ [94] "1005 E 15TH AV"        "1005 E 52ND AV"        "1005 E BROADWAY"      
+ [97] "1005 E BROADWAY"       "1005 GRANVILLE ST"     "1005 GRANVILLE ST"    
+[100] "1005 GRANVILLE ST"    
+> dtMerge[,lastWord:=sub(".* (.*)$","\\1",address)]
+> print(table(dtMerge[is.na(primaryFlag),lastWord]))
+
+         AV   BOULEVARD   BRIDGEWAY    BROADWAY BUCKETWHEEL    CASTINGS 
+      10059          71           8         689           2           1 
+  CHARLESON      CIRCLE       CLOSE   CONNECTOR       COURT        COVE 
+          3          11           5          11          20           1 
+   CRESCENT    CROSSING   DIVERSION       DRIVE        FOOT       GREEN 
+        933          10          22        1502           1           1 
+ GREENCHAIN     HIGHWAY    KINGSWAY     LANDING        LANE        MEWS 
+          2         109         409           2          10          19 
+   MILLBANK          NA       NORTH      PARADE     PASSAGE       PLACE 
+          1        1163         127           2           3         357 
+       ROAD  SCANTLINGS       SOUTH      SQUARE          ST   SWANSACRE 
+        462           1          81          10       11203           1 
+       WALK         WAY 
+          8          31 
+> print(mean(is.na(dtMerge[,site_id]))) # missing appx 10% of single family lots in the parcel data
+[1] 0.1091268
+> print(names(dtMerge)) # need folioID and address, and land area stuff
+ [1] "address"                      "civic_number"                
+ [3] "streetname"                   "tax_coord"                   
+ [5] "site_id"                      "geo_point_2d"                
+ [7] "geometry"                     "folioID"                     
+ [9] "addressID"                    "primaryFlag"                 
+[11] "streetNumber"                 "unitNumber"                  
+[13] "streetDirectionPrefix"        "streetName"                  
+[15] "streetDirectionSuffix"        "streetType"                  
+[17] "city"                         "province"                    
+[19] "postalCode"                   "mapReferenceNumber"          
+[21] "actualUseDescription"         "landDimensionType"           
+[23] "landDimensionTypeDescription" "landDimension"               
+[25] "landWidth"                    "landDepth"                   
+[27] "lastWord"                    
+> print(head(dtMerge))
+Key: <address>
+               address civic_number        streetname tax_coord   site_id
+                <char>       <char>            <char>    <char>    <char>
+1:        TRAFALGAR ST         <NA>              <NA>      <NA>      <NA>
+2:        TRAFALGAR ST         <NA>              <NA>      <NA>      <NA>
+3:      1 ALEXANDER ST            1      ALEXANDER ST  57917805 026741059
+4:      1 ATHLETES WAY            1      ATHLETES WAY  63418201 026894041
+5: 1 CASSIAR CONNECTOR            1 CASSIAR CONNECTOR  30057791 015288960
+6: 1 CASSIAR CONNECTOR            1 CASSIAR CONNECTOR  30057791 015289001
+                                                geo_point_2d
+                                                      <char>
+1:                                                      <NA>
+2:                                                      <NA>
+3: { "lon": -123.10395543972179, "lat": 49.283694386249799 }
+4:  { "lon": -123.10576689952619, "lat": 49.27179256077271 }
+5: { "lon": -123.03121718455009, "lat": 49.285417167233952 }
+6: { "lon": -123.03163287363918, "lat": 49.285028451601256 }
+                         geometry    folioID  addressID primaryFlag
+               <sfc_MULTIPOLYGON>     <char>     <char>      <lgcl>
+1:                           NULL D00001CRYP D000000PP9       FALSE
+2:                           NULL D00001CRYS D000000PP9       FALSE
+3: MULTIPOLYGON (((-123.1039 4...       <NA>       <NA>          NA
+4: MULTIPOLYGON (((-123.1047 4...       <NA>       <NA>          NA
+5: MULTIPOLYGON (((-123.0313 4...       <NA>       <NA>          NA
+6: MULTIPOLYGON (((-123.0316 4...       <NA>       <NA>          NA
+   streetNumber unitNumber streetDirectionPrefix streetName
+         <char>     <char>                <char>     <char>
+1:                                                TRAFALGAR
+2:                                                TRAFALGAR
+3:         <NA>       <NA>                  <NA>       <NA>
+4:         <NA>       <NA>                  <NA>       <NA>
+5:         <NA>       <NA>                  <NA>       <NA>
+6:         <NA>       <NA>                  <NA>       <NA>
+   streetDirectionSuffix streetType      city province postalCode
+                  <char>     <char>    <char>   <char>     <char>
+1:                               ST VANCOUVER       BC           
+2:                               ST VANCOUVER       BC           
+3:                  <NA>       <NA>      <NA>     <NA>       <NA>
+4:                  <NA>       <NA>      <NA>     <NA>       <NA>
+5:                  <NA>       <NA>      <NA>     <NA>       <NA>
+6:                  <NA>       <NA>      <NA>     <NA>       <NA>
+   mapReferenceNumber   actualUseDescription landDimensionType
+               <char>                 <char>             <int>
+1:                K17 Single Family Dwelling                 0
+2:                K17 Single Family Dwelling                 0
+3:               <NA>                   <NA>                NA
+4:               <NA>                   <NA>                NA
+5:               <NA>                   <NA>                NA
+6:               <NA>                   <NA>                NA
+   landDimensionTypeDescription landDimension landWidth landDepth  lastWord
+                         <char>         <num>     <num>     <num>    <char>
+1:                Width * Depth            NA      32.5     125.4        ST
+2:                Width * Depth            NA      32.5     125.4        ST
+3:                         <NA>            NA        NA        NA        ST
+4:                         <NA>            NA        NA        NA       WAY
+5:                         <NA>            NA        NA        NA CONNECTOR
+6:                         <NA>            NA        NA        NA CONNECTOR
+> 
+> q("no")
+> proc.time()
+   user  system elapsed 
+ 13.418   4.217   6.671 
