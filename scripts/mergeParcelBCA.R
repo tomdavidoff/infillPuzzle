@@ -68,5 +68,6 @@ print(table(dtMerge[is.na(primaryFlag),lastWord]))
 print(mean(is.na(dtMerge[,site_id]))) # missing appx 10% of single family lots in the parcel data
 print(names(dtMerge)) # need folioID and address, and land area stuff
 print(head(dtMerge))
+fwrite(dtMerge[!is.na(folioID) & !is.na(site_id),.(folioID,site_id,landWidth,landDepth,actualUseDescription,civic_number,streetname,address)],file="~/OneDrive - UBC/dataProcessed/mergeParcelBCA.csv")
 
 q("no")

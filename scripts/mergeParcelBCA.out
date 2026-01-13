@@ -1,6 +1,6 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
-Copyright (C) 2025 The R Foundation for Statistical Computing
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -22,9 +22,11 @@ Type 'q()' to quit R.
 > # 01/11/26
 > 
 > library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
 > library(RSQLite)
 > library(sf)
-Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > 
 > # read BCA data from 201901, pre-duplex zoning benchmark, when avaialble. Proof of concept with 201..
 > 
@@ -363,7 +365,7 @@ Key: <folioID>
 > parcelDir <- "~/OneDrive - UBC/dataRaw"
 > parcels <- st_read(file.path(parcelDir,"property-parcel-polygons.geojson")) # is this best way to read geojson?
 Reading layer `property-parcel-polygons' from data source 
-  `/Users/tdavidof/Library/CloudStorage/OneDrive-UBC/dataRaw/property-parcel-polygons.geojson' 
+  `/Users/davidoff/Library/CloudStorage/OneDrive-UBC/dataRaw/property-parcel-polygons.geojson' 
   using driver `GeoJSON'
 Simple feature collection with 99765 features and 5 fields
 Geometry type: MULTIPOLYGON
@@ -669,8 +671,9 @@ Key: <address>
 4:                         <NA>            NA        NA        NA       WAY
 5:                         <NA>            NA        NA        NA CONNECTOR
 6:                         <NA>            NA        NA        NA CONNECTOR
+> fwrite(dtMerge[!is.na(folioID) & !is.na(site_id),.(folioID,site_id,landWidth,landDepth,actualUseDescription,civic_number,streetname,address)],file="~/OneDrive - UBC/dataProcessed/mergeParcelBCA.csv")
 > 
 > q("no")
 > proc.time()
    user  system elapsed 
- 13.418   4.217   6.671 
+ 20.529   1.096   7.763 
