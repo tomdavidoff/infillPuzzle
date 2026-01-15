@@ -12,6 +12,37 @@ zoning_path  <- "~/OneDrive - UBC/dataRaw/vancouver_zoning.geojson"
 permits_path <- "~/OneDrive - UBC/dataRaw/vancouver_permits_full.csv"
 out_path     <- "~/OneDrive - UBC/dataProcessed/vancouver_permits_with_zone.csv"
 
+# Read roll-number polygons (already EPSG:3005 in your GPKG)
+roll_poly <- st_read(
+  BCA26,
+  layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
+  query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
+  quiet = TRUE
+)
+
+# Convert polygon geometry to a point guaranteed to be inside
+roll_pt <- st_point_on_surface(roll_poly)
+
+# Optional: keep X/Y columns (in metres, EPSG:3005) for non-spatial work/debugging
+xy <- st_coordinates(roll_pt)
+roll_pt$X_3005 <- xy[,1]
+roll_pt$Y_3005 <- xy[,2]
+
+# Keep only what you need
+roll_pt <- roll_pt[, c("ROLL_NUMBER", "X_3005", "Y_3005")]
+
+# sCT: your census tract sf (currently 3347)
+sCT <- st_make_valid(sCT)
+sCT_3005 <- st_transform(sCT, 3005)
+
+roll_ct <- st_join(
+  roll_pt,
+  sCT_3005[, c("CTUID", "DGUID", "CTNAME", "PRUID")],
+  join = st_intersects,
+  left = TRUE
+)
+
+
 # 1) Zoning polygons
 sZoning <- st_read(zoning_path, quiet = TRUE)
 
