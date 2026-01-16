@@ -230,15 +230,16 @@ Key: <roll_base>
 > 
 > dtBCA2019 <- dtBCA2019[
 +     age >= 0 &
-+     MB_total_finished_area %between% quantile(MB_total_finished_area, c(CUT, 1-CUT))
++     MB_total_finished_area %between% quantile(MB_total_finished_area, c(CUT, 1-CUT)) &
++     ppsf %between% quantile(ppsf,c(CUT,1-CUT))
 + ]
 > 
 > cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
-BCA 2019 transactions loaded: 105145 
+BCA 2019 transactions loaded: 96060 
 > cat("  Single:", dtBCA2019[dwelling_type == "single", .N], "\n")
-  Single: 96345 
+  Single: 88123 
 > cat("  Duplex:", dtBCA2019[dwelling_type == "duplex", .N], "\n")
-  Duplex: 8800 
+  Duplex: 7937 
 > 
 > # ==========================================
 > # Exclude from the sales homes with laneways in some (all?) specifications
@@ -306,36 +307,36 @@ BCA 2019 transactions loaded: 105145
 Key: <roll_base>
     roll_base    folioID conveyancePrice conveyanceDate MB_effective_year
         <num>     <char>           <num>         <char>             <num>
-1: 1019632450 A00000000B         3850000     2006-12-04              1945
-2: 1019632450 A00000000B          190000     1977-04-15              1945
-3: 1019635500 A00000000N         1550000     1999-07-29              1970
-4: 1019636570 A00000000Z         8580000     2015-01-05              1965
-5: 1019636570 A00000000Z         5490000     2010-11-30              1965
-6: 1019636570 A00000000Z         2525000     2003-09-30              1965
+1: 1019632450 A00000000B          190000     1977-04-15              1945
+2: 1019635500 A00000000N         1550000     1999-07-29              1970
+3: 1019636570 A00000000Z         2525000     2003-09-30              1965
+4: 1020636620 D00002YZLV         2150000     2011-08-22              2004
+5: 1020636620 D00002YZLV         2150000     2011-08-22              2004
+6: 1020674600 A00000001B         1705500     2019-04-04              1941
    MB_total_finished_area land_width land_depth land_area     roll_number
                     <num>     <char>     <char>    <char>          <char>
 1:                   3215        150        250           001019632450000
-2:                   3215        150        250           001019632450000
-3:                   3940                                 001019635500000
-4:                   3599                                 001019636570000
-5:                   3599                                 001019636570000
-6:                   3599                                 001019636570000
+2:                   3940                                 001019635500000
+3:                   3599                                 001019636570000
+4:                   2431       82.6         66           001020636620001
+5:                   2431       82.6         66           001020636620001
+6:                   2448         61         66           001020674600000
    zoning            actualUseDescription neighbourhoodDescription postalCode
    <char>                          <char>                   <char>     <char>
 1:    RS1          Single Family Dwelling               POINT GREY    V6T 1B2
-2:    RS1          Single Family Dwelling               POINT GREY    V6T 1B2
-3:    RS1          Single Family Dwelling               POINT GREY    V6T 1B6
-4:    RS1 Residential Dwelling with Suite               POINT GREY    V6T 1B7
-5:    RS1 Residential Dwelling with Suite               POINT GREY    V6T 1B7
-6:    RS1 Residential Dwelling with Suite               POINT GREY    V6T 1B7
-        CTUID               DGUID  CTNAME   age       ppsf dwelling_type
-       <char>              <char>  <char> <num>      <num>        <char>
-1: 9330044.00 2021S05079330044.00 0044.00    61 1197.51166        single
-2: 9330044.00 2021S05079330044.00 0044.00    32   59.09798        single
-3: 9330044.00 2021S05079330044.00 0044.00    29  393.40102        single
-4: 9330044.00 2021S05079330044.00 0044.00    50 2383.99555        single
-5: 9330044.00 2021S05079330044.00 0044.00    45 1525.42373        single
-6: 9330044.00 2021S05079330044.00 0044.00    38  701.58377        single
+2:    RS1          Single Family Dwelling               POINT GREY    V6T 1B6
+3:    RS1 Residential Dwelling with Suite               POINT GREY    V6T 1B7
+4:    RS1     Duplex, Strata Side by Side               POINT GREY    V6R 4E5
+5:    RS1     Duplex, Strata Side by Side               POINT GREY    V6R 4E5
+6:    RS1          Single Family Dwelling               POINT GREY    V6R 4E8
+        CTUID               DGUID  CTNAME   age      ppsf dwelling_type
+       <char>              <char>  <char> <num>     <num>        <char>
+1: 9330044.00 2021S05079330044.00 0044.00    32  59.09798        single
+2: 9330044.00 2021S05079330044.00 0044.00    29 393.40102        single
+3: 9330044.00 2021S05079330044.00 0044.00    38 701.58377        single
+4: 9330044.00 2021S05079330044.00 0044.00     7 884.40971        duplex
+5: 9330044.00 2021S05079330044.00 0044.00     7 884.40971        duplex
+6: 9330043.01 2021S05079330043.01 0043.01    78 696.69118        single
    lanewayBuilt hasLaneway
           <num>     <lgcl>
 1:           NA      FALSE
@@ -345,74 +346,114 @@ Key: <roll_base>
 5:           NA      FALSE
 6:           NA      FALSE
 > 
-> MINYEAR <- 2014
+> MINYEAR <- 2012
 > 
 > dtBCA2019[,duplex:= ifelse(dwelling_type=="duplex",1,0)]
 > dtBCA2019[,nDuplex:=sum(duplex),by=.(CTUID)]
 > dtBCA2019 <- dtBCA2019[ grepl("RS",zoning)]
 > dtbca2019 <- dtBCA2019[ neighbourhoodDescription %chin% c("SHAUGNESSY","WEST END")==FALSE]
+> print(dtBCA2019[year(conveyanceDate)>MINYEAR,quantile(ppsf),by=year(conveyanceDate)])
+     year       V1
+    <int>    <num>
+ 1:  2019 348.0445
+ 2:  2019 614.4815
+ 3:  2019 717.8786
+ 4:  2019 795.2808
+ 5:  2019 927.6438
+ 6:  2013 164.8213
+ 7:  2013 392.3834
+ 8:  2013 486.3553
+ 9:  2013 648.1190
+10:  2013 928.2802
+11:  2014 220.0000
+12:  2014 434.6793
+13:  2014 526.5763
+14:  2014 691.9054
+15:  2014 929.0323
+16:  2015 184.2471
+17:  2015 516.3802
+18:  2015 610.4129
+19:  2015 744.2923
+20:  2015 929.0016
+21:  2016 246.5596
+22:  2016 625.7465
+23:  2016 707.5489
+24:  2016 801.5549
+25:  2016 928.2649
+26:  2017 337.2388
+27:  2017 643.8515
+28:  2017 722.5870
+29:  2017 808.4526
+30:  2017 928.6776
+31:  2018 295.8580
+32:  2018 645.0041
+33:  2018 735.0272
+34:  2018 810.8108
+35:  2018 928.7097
+     year       V1
+> 
 > m_dwelling <- feols(ppsf ~ duplex + log(age + 1) | CTUID, data = dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >= MINYEAR])
-NOTE: 91 observations removed because of NA values (Fixed-effects: 91).
+NOTE: 52 observations removed because of NA values (Fixed-effects: 52).
 > m_sf <- feols(ppsf ~ log(age + 1) + MB_total_finished_area | CTUID, data = dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >= MINYEAR & nDuplex>20])
-NOTE: 91 observations removed because of NA values (Fixed-effects: 91).
+NOTE: 52 observations removed because of NA values (Fixed-effects: 52).
 > print(etable(m_dwelling,m_sf))
                             m_dwelling                m_sf
 Dependent Var.:                   ppsf                ppsf
                                                           
-duplex                 -87.63. (47.06)                    
-log(age+1)             9.472** (2.971)     -16.14* (6.465)
-MB_total_finished_area                 -0.1117*** (0.0162)
+duplex                  -32.97 (23.05)                    
+log(age+1)             6.295** (2.152)      -2.767 (2.972)
+MB_total_finished_area                 -0.0384*** (0.0093)
 Fixed-Effects:         --------------- -------------------
 CTUID                              Yes                 Yes
 ______________________ _______________ ___________________
 S.E.: Clustered              by: CTUID           by: CTUID
-Observations                    13,202               4,877
-R2                             0.49615             0.49160
-Within R2                      0.00290             0.06861
+Observations                    13,103               5,093
+R2                             0.24053             0.22161
+Within R2                      0.00280             0.01965
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
 > m_dwellingNbhd <- feols(ppsf ~ neighbourhoodDescription + duplex + neighbourhoodDescription:duplex + log(age + 1) | year(conveyanceDate) , data = dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >= MINYEAR])
-The variables 'neighbourhoodDescriptionCOLLINGWOOD:duplex', 'neighbourhoodDescriptionGRANDVIEW:duplex', 'neighbourhoodDescriptionKERRISDALE:duplex', 'neighbourhoodDescriptionKNIGHT:duplex', 'neighbourhoodDescriptionMARINE DRIVE:duplex', 'neighbourhoodDescriptionMARPOLE:duplex' and 7 others have been removed because of collinearity (see $collin.var).
+The variables 'neighbourhoodDescriptionCOLLINGWOOD:duplex', 'neighbourhoodDescriptionDUNBAR:duplex', 'neighbourhoodDescriptionGRANDVIEW:duplex', 'neighbourhoodDescriptionKERRISDALE:duplex', 'neighbourhoodDescriptionKNIGHT:duplex', 'neighbourhoodDescriptionMARINE DRIVE:duplex' and 7 others have been removed because of collinearity (see $collin.var).
 > 
 > m_sqftNbhd <- feols(ppsf ~ neighbourhoodDescription + log(MB_total_finished_area) + neighbourhoodDescription:log(MB_total_finished_area) + log(age + 1) | year(conveyanceDate) , data = dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >= MINYEAR])
 > print(etable(m_dwellingNbhd,m_sqftNbhd))
                                                                         m_dwellingNbhd
 Dependent Var.:                                                                   ppsf
                                                                                       
-neighbourhoodDescriptionCAMBIE                                          -42.52 (30.50)
-neighbourhoodDescriptionCEDARCOTTAGE                                 -315.1*** (37.82)
-neighbourhoodDescriptionCOLLINGWOOD                                  -463.5*** (42.74)
-neighbourhoodDescriptionDUNBAR                                          -1.054 (6.518)
-neighbourhoodDescriptionFRASERVIEW                                   -461.7*** (43.72)
-neighbourhoodDescriptionGRANDVIEW                                    -396.2*** (38.65)
-neighbourhoodDescriptionHASTINGSEAST                                 -451.6*** (42.00)
-neighbourhoodDescriptionKERRISDALE                                   -72.37*** (9.411)
-neighbourhoodDescriptionKILLARNEY                                    -431.4*** (38.65)
-neighbourhoodDescriptionKITSILANO                                        14.51 (21.10)
-neighbourhoodDescriptionKNIGHT                                       -443.1*** (41.77)
-neighbourhoodDescriptionMAIN/FRASER                                  -339.3*** (33.70)
-neighbourhoodDescriptionMARINEDRIVE                                  -500.6*** (37.91)
-neighbourhoodDescriptionMARPOLE                                      -212.8*** (14.98)
-neighbourhoodDescriptionOAKRIDGE                                        -86.17 (61.26)
-neighbourhoodDescriptionPOINTGREY                                     195.8*** (14.52)
-neighbourhoodDescriptionRENFREW                                      -462.8*** (35.91)
-neighbourhoodDescriptionRENFREWHEIGHTS                               -458.1*** (37.44)
-neighbourhoodDescriptionSHAUGHNESSY                                      66.42 (38.28)
-neighbourhoodDescriptionSOUTHGRANVILLE                                 -88.97* (29.29)
-neighbourhoodDescriptionSOUTHVANCOUVER                               -444.8*** (38.43)
-neighbourhoodDescriptionSOUTHLANDS                                    -110.1** (23.81)
-duplex                                                                -311.6** (52.46)
-log(age+1)                                                              -6.070 (4.905)
-neighbourhoodDescriptionCAMBIE x duplex                                 211.7* (78.57)
-neighbourhoodDescriptionCEDARCOTTAGE x duplex                           132.7* (50.92)
-neighbourhoodDescriptionDUNBAR x duplex                               634.9*** (66.66)
-neighbourhoodDescriptionFRASERVIEW x duplex                            188.2** (46.38)
-neighbourhoodDescriptionHASTINGSEAST x duplex                         513.1*** (45.95)
-neighbourhoodDescriptionKILLARNEY x duplex                            318.9*** (46.27)
-neighbourhoodDescriptionKITSILANO x duplex                              595.6. (252.6)
-neighbourhoodDescriptionMAIN/FRASER x duplex                           350.6** (51.37)
-neighbourhoodDescriptionPOINTGREY x duplex                               153.7 (95.65)
+neighbourhoodDescriptionCAMBIE                                       -70.81*** (12.24)
+neighbourhoodDescriptionCEDARCOTTAGE                                 -214.2*** (20.19)
+neighbourhoodDescriptionCOLLINGWOOD                                  -311.0*** (19.17)
+neighbourhoodDescriptionDUNBAR                                         -18.00. (7.675)
+neighbourhoodDescriptionFRASERVIEW                                   -310.6*** (20.91)
+neighbourhoodDescriptionGRANDVIEW                                    -265.1*** (22.94)
+neighbourhoodDescriptionHASTINGSEAST                                 -297.4*** (21.77)
+neighbourhoodDescriptionKERRISDALE                                    -40.02** (10.13)
+neighbourhoodDescriptionKILLARNEY                                    -281.3*** (19.66)
+neighbourhoodDescriptionKITSILANO                                      -46.74. (24.01)
+neighbourhoodDescriptionKNIGHT                                       -294.9*** (20.16)
+neighbourhoodDescriptionMAIN/FRASER                                  -233.5*** (24.46)
+neighbourhoodDescriptionMARINEDRIVE                                  -355.0*** (30.04)
+neighbourhoodDescriptionMARPOLE                                      -129.8*** (16.51)
+neighbourhoodDescriptionOAKRIDGE                                     -116.8*** (16.61)
+neighbourhoodDescriptionPOINTGREY                                        11.34 (14.60)
+neighbourhoodDescriptionRENFREW                                      -310.0*** (20.25)
+neighbourhoodDescriptionRENFREWHEIGHTS                               -300.0*** (19.19)
+neighbourhoodDescriptionSHAUGHNESSY                                     -40.45 (24.13)
+neighbourhoodDescriptionSOUTHGRANVILLE                               -81.14*** (14.28)
+neighbourhoodDescriptionSOUTHVANCOUVER                               -294.0*** (19.07)
+neighbourhoodDescriptionSOUTHLANDS                                   -100.3*** (16.36)
+duplex                                                               -75.47*** (11.95)
+log(age+1)                                                              -8.018 (4.474)
+neighbourhoodDescriptionCAMBIE x duplex                                 122.5* (40.86)
+neighbourhoodDescriptionCEDARCOTTAGE x duplex                            10.44 (10.01)
+neighbourhoodDescriptionFRASERVIEW x duplex                            -33.05. (16.04)
+neighbourhoodDescriptionHASTINGSEAST x duplex                         275.6*** (11.16)
+neighbourhoodDescriptionKILLARNEY x duplex                            142.0*** (10.86)
+neighbourhoodDescriptionKITSILANO x duplex                              71.44. (36.80)
+neighbourhoodDescriptionMAIN/FRASER x duplex                          106.0*** (8.154)
+neighbourhoodDescriptionPOINTGREY x duplex                               35.05 (24.51)
+neighbourhoodDescriptionSHAUGHNESSY x duplex                            -14.12 (93.11)
 log(MB_total_finished_area)                                                           
 neighbourhoodDescriptionCAMBIE x log(MB_total_finished_area)                          
 neighbourhoodDescriptionCEDARCOTTAGE x log(MB_total_finished_area)                    
@@ -440,135 +481,200 @@ Fixed-Effects:                                                       -----------
 year(conveyanceDate)                                                               Yes
 ________________________________________                             _________________
 S.E.: Clustered                                                      by: conveyanceD..
-Observations                                                                    13,293
-R2                                                                             0.60816
-Within R2                                                                      0.52547
+Observations                                                                    13,155
+R2                                                                             0.62027
+Within R2                                                                      0.50952
 
-                                                                             m_sqftNbhd
-Dependent Var.:                                                                    ppsf
-                                                                                       
-neighbourhoodDescriptionCAMBIE                                            894.5 (780.8)
-neighbourhoodDescriptionCEDARCOTTAGE                                   -1,237.7 (671.7)
-neighbourhoodDescriptionCOLLINGWOOD                                      -933.9 (745.3)
-neighbourhoodDescriptionDUNBAR                                           -48.98 (449.4)
-neighbourhoodDescriptionFRASERVIEW                                    -1,842.2* (608.8)
-neighbourhoodDescriptionGRANDVIEW                                         4.842 (657.6)
-neighbourhoodDescriptionHASTINGSEAST                                     -614.4 (660.9)
-neighbourhoodDescriptionKERRISDALE                                        504.1 (409.8)
-neighbourhoodDescriptionKILLARNEY                                        -755.4 (634.0)
-neighbourhoodDescriptionKITSILANO                                         37.78 (370.6)
-neighbourhoodDescriptionKNIGHT                                           -929.5 (678.5)
-neighbourhoodDescriptionMAIN/FRASER                                      -170.4 (646.1)
-neighbourhoodDescriptionMARINEDRIVE                                      -914.9 (961.0)
-neighbourhoodDescriptionMARPOLE                                          -135.2 (461.7)
-neighbourhoodDescriptionOAKRIDGE                                     3,271.4* (1,091.0)
-neighbourhoodDescriptionPOINTGREY                                     -2,810.0* (736.8)
-neighbourhoodDescriptionRENFREW                                          -443.0 (630.1)
-neighbourhoodDescriptionRENFREWHEIGHTS                                   -339.5 (868.2)
-neighbourhoodDescriptionSHAUGHNESSY                                     610.4 (1,307.2)
-neighbourhoodDescriptionSOUTHGRANVILLE                                 1,226.9. (587.7)
-neighbourhoodDescriptionSOUTHVANCOUVER                                 -1,005.5 (604.6)
-neighbourhoodDescriptionSOUTHLANDS                                        168.2 (490.9)
-duplex                                                                                 
-log(age+1)                                                             -32.51** (6.110)
-neighbourhoodDescriptionCAMBIE x duplex                                                
-neighbourhoodDescriptionCEDARCOTTAGE x duplex                                          
-neighbourhoodDescriptionDUNBAR x duplex                                                
-neighbourhoodDescriptionFRASERVIEW x duplex                                            
-neighbourhoodDescriptionHASTINGSEAST x duplex                                          
-neighbourhoodDescriptionKILLARNEY x duplex                                             
-neighbourhoodDescriptionKITSILANO x duplex                                             
-neighbourhoodDescriptionMAIN/FRASER x duplex                                           
-neighbourhoodDescriptionPOINTGREY x duplex                                             
-log(MB_total_finished_area)                                             -300.3* (91.43)
-neighbourhoodDescriptionCAMBIE x log(MB_total_finished_area)             -123.4 (96.14)
-neighbourhoodDescriptionCEDARCOTTAGE x log(MB_total_finished_area)        106.0 (79.64)
-neighbourhoodDescriptionCOLLINGWOOD x log(MB_total_finished_area)         49.52 (89.84)
-neighbourhoodDescriptionDUNBAR x log(MB_total_finished_area)              2.829 (55.36)
-neighbourhoodDescriptionFRASERVIEW x log(MB_total_finished_area)         169.0. (71.97)
-neighbourhoodDescriptionGRANDVIEW x log(MB_total_finished_area)          -64.90 (79.44)
-neighbourhoodDescriptionHASTINGSEAST x log(MB_total_finished_area)        7.930 (78.29)
-neighbourhoodDescriptionKERRISDALE x log(MB_total_finished_area)         -71.97 (50.83)
-neighbourhoodDescriptionKILLARNEY x log(MB_total_finished_area)           34.55 (75.03)
-neighbourhoodDescriptionKITSILANO x log(MB_total_finished_area)          -9.272 (45.80)
-neighbourhoodDescriptionKNIGHT x log(MB_total_finished_area)              51.11 (79.82)
-neighbourhoodDescriptionMAIN/FRASER x log(MB_total_finished_area)        -34.82 (77.05)
-neighbourhoodDescriptionMARINEDRIVE x log(MB_total_finished_area)         40.36 (118.2)
-neighbourhoodDescriptionMARPOLE x log(MB_total_finished_area)            -16.56 (56.49)
-neighbourhoodDescriptionOAKRIDGE x log(MB_total_finished_area)          -414.1* (129.6)
-neighbourhoodDescriptionPOINTGREY x log(MB_total_finished_area)         374.9** (91.99)
-neighbourhoodDescriptionRENFREW x log(MB_total_finished_area)            -12.45 (75.28)
-neighbourhoodDescriptionRENFREWHEIGHTS x log(MB_total_finished_area)     -26.25 (105.5)
-neighbourhoodDescriptionSHAUGHNESSY x log(MB_total_finished_area)        -58.99 (157.4)
-neighbourhoodDescriptionSOUTHGRANVILLE x log(MB_total_finished_area)    -155.0. (70.01)
-neighbourhoodDescriptionSOUTHVANCOUVER x log(MB_total_finished_area)      62.45 (71.48)
-neighbourhoodDescriptionSOUTHLANDS x log(MB_total_finished_area)         -32.50 (60.13)
-Fixed-Effects:                                                       ------------------
-year(conveyanceDate)                                                                Yes
-________________________________________                             __________________
-S.E.: Clustered                                                      by: conveyanceDa..
-Observations                                                                     13,293
-R2                                                                              0.64740
-Within R2                                                                       0.57299
+                                                                            m_sqftNbhd
+Dependent Var.:                                                                   ppsf
+                                                                                      
+neighbourhoodDescriptionCAMBIE                                          969.0* (327.4)
+neighbourhoodDescriptionCEDARCOTTAGE                                     330.7 (322.4)
+neighbourhoodDescriptionCOLLINGWOOD                                     768.3* (299.9)
+neighbourhoodDescriptionDUNBAR                                          -33.96 (246.6)
+neighbourhoodDescriptionFRASERVIEW                                      -50.27 (166.8)
+neighbourhoodDescriptionGRANDVIEW                                    1,123.4** (313.5)
+neighbourhoodDescriptionHASTINGSEAST                                 1,073.1** (237.8)
+neighbourhoodDescriptionKERRISDALE                                      -56.14 (369.2)
+neighbourhoodDescriptionKILLARNEY                                       825.4* (289.0)
+neighbourhoodDescriptionKITSILANO                                       944.4* (298.1)
+neighbourhoodDescriptionKNIGHT                                          809.5* (278.2)
+neighbourhoodDescriptionMAIN/FRASER                                   1,032.4* (354.7)
+neighbourhoodDescriptionMARINEDRIVE                                      792.4 (462.0)
+neighbourhoodDescriptionMARPOLE                                         425.0. (212.2)
+neighbourhoodDescriptionOAKRIDGE                                        677.0* (273.6)
+neighbourhoodDescriptionPOINTGREY                                       -484.4 (524.5)
+neighbourhoodDescriptionRENFREW                                      1,159.8** (267.9)
+neighbourhoodDescriptionRENFREWHEIGHTS                                1,320.2* (431.9)
+neighbourhoodDescriptionSHAUGHNESSY                                      353.1 (713.8)
+neighbourhoodDescriptionSOUTHGRANVILLE                                  -327.6 (339.6)
+neighbourhoodDescriptionSOUTHVANCOUVER                                  555.9. (245.3)
+neighbourhoodDescriptionSOUTHLANDS                                       528.9 (404.1)
+duplex                                                                                
+log(age+1)                                                            -25.34** (5.791)
+neighbourhoodDescriptionCAMBIE x duplex                                               
+neighbourhoodDescriptionCEDARCOTTAGE x duplex                                         
+neighbourhoodDescriptionFRASERVIEW x duplex                                           
+neighbourhoodDescriptionHASTINGSEAST x duplex                                         
+neighbourhoodDescriptionKILLARNEY x duplex                                            
+neighbourhoodDescriptionKITSILANO x duplex                                            
+neighbourhoodDescriptionMAIN/FRASER x duplex                                          
+neighbourhoodDescriptionPOINTGREY x duplex                                            
+neighbourhoodDescriptionSHAUGHNESSY x duplex                                          
+log(MB_total_finished_area)                                            -80.23* (28.06)
+neighbourhoodDescriptionCAMBIE x log(MB_total_finished_area)           -132.4* (41.62)
+neighbourhoodDescriptionCEDARCOTTAGE x log(MB_total_finished_area)      -74.52 (39.93)
+neighbourhoodDescriptionCOLLINGWOOD x log(MB_total_finished_area)     -143.1** (37.92)
+neighbourhoodDescriptionDUNBAR x log(MB_total_finished_area)             1.317 (30.12)
+neighbourhoodDescriptionFRASERVIEW x log(MB_total_finished_area)        -35.17 (21.62)
+neighbourhoodDescriptionGRANDVIEW x log(MB_total_finished_area)       -183.8** (38.49)
+neighbourhoodDescriptionHASTINGSEAST x log(MB_total_finished_area)   -181.9*** (28.77)
+neighbourhoodDescriptionKERRISDALE x log(MB_total_finished_area)         2.023 (45.81)
+neighbourhoodDescriptionKILLARNEY x log(MB_total_finished_area)       -142.8** (35.41)
+neighbourhoodDescriptionKITSILANO x log(MB_total_finished_area)        -128.0* (40.72)
+neighbourhoodDescriptionKNIGHT x log(MB_total_finished_area)          -146.5** (33.99)
+neighbourhoodDescriptionMAIN/FRASER x log(MB_total_finished_area)     -167.7** (43.29)
+neighbourhoodDescriptionMARINEDRIVE x log(MB_total_finished_area)      -154.0* (59.54)
+neighbourhoodDescriptionMARPOLE x log(MB_total_finished_area)          -72.16* (26.10)
+neighbourhoodDescriptionOAKRIDGE x log(MB_total_finished_area)         -96.92* (34.07)
+neighbourhoodDescriptionPOINTGREY x log(MB_total_finished_area)          61.27 (64.98)
+neighbourhoodDescriptionRENFREW x log(MB_total_finished_area)        -191.9*** (33.34)
+neighbourhoodDescriptionRENFREWHEIGHTS x log(MB_total_finished_area)  -212.5** (54.00)
+neighbourhoodDescriptionSHAUGHNESSY x log(MB_total_finished_area)       -45.40 (86.60)
+neighbourhoodDescriptionSOUTHGRANVILLE x log(MB_total_finished_area)     31.85 (40.67)
+neighbourhoodDescriptionSOUTHVANCOUVER x log(MB_total_finished_area)  -112.1** (29.51)
+neighbourhoodDescriptionSOUTHLANDS x log(MB_total_finished_area)        -76.55 (49.22)
+Fixed-Effects:                                                       -----------------
+year(conveyanceDate)                                                               Yes
+________________________________________                             _________________
+S.E.: Clustered                                                      by: conveyanceD..
+Observations                                                                    13,155
+R2                                                                             0.67603
+Within R2                                                                      0.58155
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
 > print(dtBCA2019[ , mean(ppsf), by = .(neighbourhoodDescription, duplex) ])
      neighbourhoodDescription duplex        V1
                        <char>  <num>     <num>
- 1:                POINT GREY      0 543.70607
- 2:                POINT GREY      1 632.86780
- 3:                 KITSILANO      0 436.90359
- 4:                 KITSILANO      1 611.10110
- 5:                    DUNBAR      0 450.67899
- 6:                    DUNBAR      1 832.39986
- 7: ARBUTUS/MACKENZIE HEIGHTS      0 471.78908
- 8:                KERRISDALE      0 444.58940
+ 1:                POINT GREY      0 351.20704
+ 2:                POINT GREY      1 480.97227
+ 3:                 KITSILANO      0 324.55579
+ 4:                 KITSILANO      1 390.61902
+ 5:                    DUNBAR      0 336.23388
+ 6:                    DUNBAR      1 114.78202
+ 7: ARBUTUS/MACKENZIE HEIGHTS      0 375.94744
+ 8:                KERRISDALE      0 367.20094
  9:                KERRISDALE      1 317.56193
-10:                SOUTHLANDS      0 415.63619
+10:                SOUTHLANDS      0 338.43288
 11:                SOUTHLANDS      1 549.37868
-12:               SHAUGHNESSY      0 418.56770
-13:               SHAUGHNESSY      1 643.45351
-14:                    CAMBIE      0 420.97557
-15:                    CAMBIE      1 490.65271
-16:           SOUTH GRANVILLE      0 391.85445
-17:                  OAKRIDGE      0 419.21456
-18:                   MARPOLE      0 363.93268
-19:                 GRANDVIEW      0 275.67121
+12:               SHAUGHNESSY      0 320.05795
+13:               SHAUGHNESSY      1 494.74010
+14:                    CAMBIE      0 331.21357
+15:                    CAMBIE      1 408.56724
+16:           SOUTH GRANVILLE      0 332.10705
+17:                  OAKRIDGE      0 336.57446
+18:                   MARPOLE      0 326.75947
+19:                 GRANDVIEW      0 269.92734
 20:                 GRANDVIEW      1 156.87019
-21:             CEDAR COTTAGE      0 295.02656
-22:             CEDAR COTTAGE      1 376.21119
-23:               MAIN/FRASER      0 297.39198
+21:             CEDAR COTTAGE      0 277.81574
+22:             CEDAR COTTAGE      1 406.62958
+23:               MAIN/FRASER      0 283.65749
 24:               MAIN/FRASER      1 351.87554
-25:           SOUTH VANCOUVER      0 261.26931
+25:           SOUTH VANCOUVER      0 268.68766
 26:           SOUTH VANCOUVER      1 100.85227
-27:              MARINE DRIVE      0 295.87315
+27:              MARINE DRIVE      0 289.53971
 28:              MARINE DRIVE      1 248.82751
-29:                    KNIGHT      0 258.86853
+29:                    KNIGHT      0 262.62204
 30:                    KNIGHT      1  99.72106
-31:             HASTINGS EAST      0 269.15234
+31:             HASTINGS EAST      0 275.08000
 32:             HASTINGS EAST      1 842.26491
-33:                   RENFREW      0 256.54465
-34:           RENFREW HEIGHTS      0 262.98531
-35:               COLLINGWOOD      0 240.42179
-36:                 KILLARNEY      0 255.50240
+33:                   RENFREW      0 262.97221
+34:           RENFREW HEIGHTS      0 265.93430
+35:               COLLINGWOOD      0 246.04566
+36:                 KILLARNEY      0 261.94035
 37:                 KILLARNEY      1 426.04627
-38:                FRASERVIEW      0 251.43169
+38:                FRASERVIEW      0 260.25026
 39:                FRASERVIEW      1 253.30289
      neighbourhoodDescription duplex        V1
 > 
 > print(dtBCA2019[,median(MB_total_finished_area),by=.(duplex)])
    duplex    V1
     <num> <num>
-1:      0  2382
-2:      1  1816
+1:      0  2361
+2:      1  1808
 > 
 > print(table(dtBCA2019[,.(zoning)]))
 zoning
  RS05   RS1  RS1A  RS1B  RS1S   RS2   RS3  RS3A   RS4   RS5  RS5S   RS6   RS7 
-    1 57968   219   428   102   163   336   138    21 14769     3  1172  2386 
+    1 53593   212   423    97   127   279    95    19 12420     3  1033  2156 
+> 
+> mainReg <- feols(ppsf ~ i(CTUID,MB_total_finished_area) + log(age+1) + MB_total_finished_area | CTUID + duplex, data=dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >=MINYEAR])
+NOTE: 52 observations removed because of NA values (RHS: 52, Fixed-effects: 52).
+The variable 'MB_total_finished_area' has been removed because of collinearity (see $collin.var).
+> # extract interaction coefficients by CTUID into a data.table
+> dtSlopes <- as.data.table(broom::tidy(mainReg))[grepl("MB_total_finished_area", term)]
+> dtSlopes[, CTUID := gsub("CTUID::(.*):MB_total_finished_area", "\\1", term)]
+> print(head(dtSlopes))
+                                       term    estimate    std.error
+                                     <char>       <num>        <num>
+1: CTUID::9330001.01:MB_total_finished_area -0.24805602 0.0006465836
+2: CTUID::9330001.02:MB_total_finished_area -0.03285001 0.0009671321
+3: CTUID::9330002.01:MB_total_finished_area -0.06549629 0.0016986671
+4: CTUID::9330002.03:MB_total_finished_area -0.08092621 0.0021209813
+5: CTUID::9330002.04:MB_total_finished_area -0.03911302 0.0097092562
+6: CTUID::9330003.01:MB_total_finished_area -0.01694708 0.0025975600
+     statistic       p.value      CTUID
+         <num>         <num>     <char>
+1: -383.641062 2.986680e-125 9330001.01
+2:  -33.966411  2.732901e-47 9330001.02
+3:  -38.557464  3.376614e-51 9330002.01
+4:  -38.155079  7.142139e-51 9330002.03
+5:   -4.028426  1.332890e-04 9330002.04
+6:   -6.524231  7.135477e-09 9330003.01
+> 
+> # Now get mean ppsf by CTUID and merge with slopes
+> MEANYEAR <- 2015
+> dtBcaMeans <- dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >=MEANYEAR, .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = sum(year(conveyanceDate)>=MINYEAR)), by = CTUID]
+> dtBcaMeans <- merge(dtBcaMeans, dtSlopes[, .(CTUID, slope = estimate)], by = "CTUID", all.x = TRUE)
+> print(head(dtBcaMeans))
+Key: <CTUID>
+        CTUID meanPPSF  nobs       slope
+       <char>    <num> <int>       <num>
+1:       <NA> 696.7770    31          NA
+2: 9330001.01 689.6406    14 -0.24805602
+3: 9330001.02 540.2713    20 -0.03285001
+4: 9330002.01 634.0783   116 -0.06549629
+5: 9330002.03 639.3170   110 -0.08092621
+6: 9330002.04 536.1255   122 -0.03911302
+> fwrite(dtBcaMeans, "tables/bca19_mean_ppsf_slope_by_tract.csv")
+> ggplot(dtBcaMeans[nobs>quantile(nobs,.025)], aes(x=slope,y=meanPPSF)) + geom_point() + geom_smooth(method="lm") + labs(title="Mean BCA Price per SqFt vs Pricing Slope by Census Tract", x="BCA Pricing Slope ($/sqft per sqft)", y="Mean Price per SqFt")
+`geom_smooth()` using formula = 'y ~ x'
+Warning messages:
+1: Removed 1 row containing non-finite outside the scale range (`stat_smooth()`). 
+2: Removed 1 row containing missing values or values outside the scale range
+(`geom_point()`). 
+> ggsave("text/bca19_mean_ppsf_vs_slope.png")
+Saving 7 x 7 in image
+`geom_smooth()` using formula = 'y ~ x'
+Warning messages:
+1: Removed 1 row containing non-finite outside the scale range (`stat_smooth()`). 
+2: Removed 1 row containing missing values or values outside the scale range
+(`geom_point()`). 
+> print(cor(dtBcaMeans[!is.na(slope),.(slope,meanPPSF)]))
+              slope   meanPPSF
+slope    1.00000000 0.08640369
+meanPPSF 0.08640369 1.00000000
+> print(cor(dtBcaMeans[!is.na(slope) & nobs>quantile(nobs,.025),.(slope,meanPPSF)]))
+             slope  meanPPSF
+slope    1.0000000 0.5229345
+meanPPSF 0.5229345 1.0000000
+> print(cor(dtBcaMeans[!is.na(slope) & nobs>quantile(nobs,.05),.(slope,meanPPSF)]))
+             slope  meanPPSF
+slope    1.0000000 0.5030124
+meanPPSF 0.5030124 1.0000000
 > 
 > q("no")
 > proc.time()
    user  system elapsed 
- 13.802   0.604   5.538 
+ 20.059   0.825   7.246 

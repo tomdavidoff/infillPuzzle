@@ -102,7 +102,8 @@ dtBCA2019[, `:=`(
 
 dtBCA2019 <- dtBCA2019[
     age >= 0 &
-    MB_total_finished_area %between% quantile(MB_total_finished_area, c(CUT, 1-CUT))
+    MB_total_finished_area %between% quantile(MB_total_finished_area, c(CUT, 1-CUT)) &
+    ppsf %between% quantile(ppsf,c(CUT,1-CUT))
 ]
 
 cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
@@ -128,12 +129,14 @@ dtBCA2019[, hasLaneway := !is.na(lanewayBuilt) & (year(conveyanceDate) >= lanewa
 print(names(dtBCA2019))
 print(head(dtBCA2019))
 
-MINYEAR <- 2014
+MINYEAR <- 2012
 
 dtBCA2019[,duplex:= ifelse(dwelling_type=="duplex",1,0)]
 dtBCA2019[,nDuplex:=sum(duplex),by=.(CTUID)]
 dtBCA2019 <- dtBCA2019[ grepl("RS",zoning)]
 dtbca2019 <- dtBCA2019[ neighbourhoodDescription %chin% c("SHAUGNESSY","WEST END")==FALSE]
+print(dtBCA2019[year(conveyanceDate)>MINYEAR,quantile(ppsf),by=year(conveyanceDate)])
+
 m_dwelling <- feols(ppsf ~ duplex + log(age + 1) | CTUID, data = dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >= MINYEAR])
 m_sf <- feols(ppsf ~ log(age + 1) + MB_total_finished_area | CTUID, data = dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >= MINYEAR & nDuplex>20])
 print(etable(m_dwelling,m_sf))
@@ -148,6 +151,24 @@ print(dtBCA2019[ , mean(ppsf), by = .(neighbourhoodDescription, duplex) ])
 print(dtBCA2019[,median(MB_total_finished_area),by=.(duplex)])
 
 print(table(dtBCA2019[,.(zoning)]))
+
+mainReg <- feols(ppsf ~ i(CTUID,MB_total_finished_area) + log(age+1) + MB_total_finished_area | CTUID + duplex, data=dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >=MINYEAR])
+# extract interaction coefficients by CTUID into a data.table
+dtSlopes <- as.data.table(broom::tidy(mainReg))[grepl("MB_total_finished_area", term)]
+dtSlopes[, CTUID := gsub("CTUID::(.*):MB_total_finished_area", "\\1", term)]
+print(head(dtSlopes))
+
+# Now get mean ppsf by CTUID and merge with slopes
+MEANYEAR <- 2015
+dtBcaMeans <- dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >=MEANYEAR, .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = sum(year(conveyanceDate)>=MINYEAR)), by = CTUID]
+dtBcaMeans <- merge(dtBcaMeans, dtSlopes[, .(CTUID, slope = estimate)], by = "CTUID", all.x = TRUE)
+print(head(dtBcaMeans))
+fwrite(dtBcaMeans, "tables/bca19_mean_ppsf_slope_by_tract.csv")
+ggplot(dtBcaMeans[nobs>quantile(nobs,.025)], aes(x=slope,y=meanPPSF)) + geom_point() + geom_smooth(method="lm") + labs(title="Mean BCA Price per SqFt vs Pricing Slope by Census Tract", x="BCA Pricing Slope ($/sqft per sqft)", y="Mean Price per SqFt")
+ggsave("text/bca19_mean_ppsf_vs_slope.png")
+print(cor(dtBcaMeans[!is.na(slope),.(slope,meanPPSF)]))
+print(cor(dtBcaMeans[!is.na(slope) & nobs>quantile(nobs,.025),.(slope,meanPPSF)]))
+print(cor(dtBcaMeans[!is.na(slope) & nobs>quantile(nobs,.05),.(slope,meanPPSF)]))
 
 q("no")
 # Classify dwelling types
