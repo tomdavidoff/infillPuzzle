@@ -1,7 +1,6 @@
 # mergePermitsZoningBCA.R
 # Merge Vancouver permits with: Zoning, Census Tracts, and BC Assessment data
-# Combines permitsZoning.R and mergePermitsBCA.R into a single workflow
-# Now with option to use BCA 2026 parcel geometry for spatial matching
+# Uses BCA parcel polygons for spatial matching, BCA 2019 for property details
 # Tom Davidoff / Claude
 # 01/15/26
 
@@ -20,42 +19,9 @@ permits_path <- file.path(directory, "vancouver_permits_full.csv")
 zoning_path  <- file.path(directory, "vancouver_zoning.geojson")
 ct_file      <- file.path(directory, "lct_000b21a_e/lct_000b21a_e.shp")
 bcaFile19    <- file.path(directory, "REVD19_and_inventory_extracts.sqlite3")
-bcaFile26    <- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
+bcaFileGeo <- "~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.rds"
 
 out_path     <- file.path(outputDir, "permits_zoning_ct_bca.csv")
-
-# Threshold for using geometry-based matching vs address matching
-# If >= this fraction of BCA 2019 records match to BCA 2026 geometry, use spatial join
-LEVELUSEGEOM <- 0.95
-
-# ============================================================================
-# Address Standardization Function
-# ============================================================================
-
-streetRename <- data.table(
-  short = c(" ST", " AVE", " AV", " RD", " DR", " BLVD", " CRES", " HWY", " PL", " PLZ"),
-  long = c(" STREET", " AVENUE", " AVENUE", " ROAD", " DRIVE", " BOULEVARD", " CRESCENT", " HIGHWAY", " PLACE", " PLAZA")
-)
-
-standardizeAddress <- function(dt, addressCol = "address") {
-  dt[, (addressCol) := toupper(get(addressCol))]
-  
-  # Remove city/province suffix and postal codes
-  dt[, (addressCol) := gsub(", Vancouver, BC", "", get(addressCol), ignore.case = TRUE)]
-  dt[, (addressCol) := gsub(" V[0-9][A-Z] [0-9][A-Z][0-9]$", "", get(addressCol))]
-  
-  # Standardize street types
-  for (i in seq_len(nrow(streetRename))) {
-    pattern_end <- paste0(streetRename$short[i], "$")
-    pattern_mid <- paste0(streetRename$short[i], " ")
-    replacement_mid <- paste0(streetRename$long[i], " ")
-    
-    dt[, (addressCol) := gsub(pattern_end, streetRename$long[i], get(addressCol))]
-    dt[, (addressCol) := gsub(pattern_mid, replacement_mid, get(addressCol))]
-  }
-  
-  invisible(dt)
-}
 
 # ============================================================================
 # STEP 1: Load Permits
@@ -133,350 +99,131 @@ sPermits <- st_join(sPermits, sCT_cov[, c("CTUID", "DGUID", "CTNAME")], join = s
 cat("Permits with census tract attached\n")
 
 # ============================================================================
-# STEP 5: Check BCA 2019 -> BCA 2026 geometry match quality
+# STEP 5: Load BCA parcel polygons
 # ============================================================================
 
-cat("\n=== STEP 5: Checking BCA 2019 to BCA 2026 geometry match quality ===\n")
+cat("\n=== STEP 5: Loading BCA parcel polygons ===\n")
 
-# Load BCA 2019 folios (Vancouver SFD/Suite only)
+# Load Vancouver residential parcels with geometry
+sBCA <- readRDS(bcaFileGeo)
+
+cat("BCA geo parcels loaded:", nrow(sBCA), "\n")
+
+# Add roll_base for linking to BCA 2019 data
+sBCA$roll_base <- floor(as.numeric(sBCA$ROLL_NUMBER) / 1000)
+
+# ============================================================================
+# STEP 6: Load BCA 2019 property details
+# ============================================================================
+
+cat("\n=== STEP 6: Loading BCA 2019 property details ===\n")
+
 con <- dbConnect(SQLite(), bcaFile19)
 
-dtFolio19 <- as.data.table(dbGetQuery(con, "
-  SELECT f.folioID, f.rollNumber
-  FROM folio f
-  INNER JOIN folioDescription fd ON f.folioID = fd.folioID
-  INNER JOIN address a ON f.folioID = a.folioID
-  WHERE a.city = 'VANCOUVER'
-    AND fd.actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
+dtDescription <- as.data.table(dbGetQuery(con, "
+  SELECT folioID, actualUseCode, actualUseDescription,
+         landDimension, landWidth, landDepth,
+         neighbourhoodCode, neighbourhoodDescription
+  FROM folioDescription
+  WHERE actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
+"))
+
+dtValuation <- as.data.table(dbGetQuery(con, "
+  SELECT folioID, propertyClassCode, propertyClassDescription,
+         landValue, improvementValue
+  FROM valuation
+"))
+
+dtLegal <- as.data.table(dbGetQuery(con, "
+  SELECT folioID, PID
+  FROM legalDescription
+"))
+
+dtFolio <- as.data.table(dbGetQuery(con, "
+  SELECT folioID, rollNumber
+  FROM folio
+"))
+
+dtResidential <- as.data.table(dbGetQuery(con, "
+  SELECT roll_number, MB_year_built, MB_effective_year, MB_total_finished_area,
+         MB_num_storeys, num_bedrooms, num_full_baths
+  FROM residentialInventory
 "))
 
 dbDisconnect(con)
 
-# Get unique roll_base values from BCA 2019
-dtFolio19[, roll_base := floor(as.numeric(rollNumber) / 1000)]
-uniqueRollBase19 <- unique(dtFolio19$roll_base)
-cat("BCA 2019 unique roll_base values:", length(uniqueRollBase19), "\n")
-cat("BCA 2019 total Vancouver SFD/Suite folios:", nrow(dtFolio19), "\n")
+# Merge BCA 2019 tables
+dtBCA19 <- merge(dtDescription, dtValuation, by = "folioID", all.x = TRUE)
+dtBCA19 <- merge(dtBCA19, dtLegal, by = "folioID", all.x = TRUE)
+dtBCA19 <- merge(dtBCA19, dtFolio, by = "folioID", all.x = TRUE)
+setnames(dtResidential, "roll_number", "rollNumber")
+dtBCA19 <- merge(dtBCA19, dtResidential, by = "rollNumber", all.x = TRUE)
 
-# Load BCA 2026 roll numbers with geometry (Vancouver SFD/Suite/Duplex only)
-cat("Loading BCA 2026 geometry data...\n")
+# Add roll_base for joining
+dtBCA19[, roll_base := floor(as.numeric(rollNumber) / 1000)]
 
-if (file.exists(bcaFile26)) {
-  sBCA26 <- st_read(
-    bcaFile26,
-    layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
-    query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV 
-             WHERE JURISDICTION_CODE='200' 
-             AND (ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling') 
-                  OR INSTR(ACTUAL_USE_DESCRIPTION, 'uplex') > 0)",
-    quiet = TRUE
-  )
-  
-  # Get roll_base from BCA 2026
-  dtBCA26 <- as.data.table(sBCA26)
-  dtBCA26[, roll_base := floor(as.numeric(ROLL_NUMBER) / 1000)]
-  uniqueRollBase26 <- unique(dtBCA26$roll_base)
-  
-  cat("BCA 2026 unique roll_base values:", length(uniqueRollBase26), "\n")
-  
-  # Calculate match rate
-  matchedRollBase <- intersect(uniqueRollBase19, uniqueRollBase26)
-  matchRate <- length(matchedRollBase) / length(uniqueRollBase19)
-  
-  # Also check at folio level
-  dtFolio19[, hasGeomMatch := roll_base %in% uniqueRollBase26]
-  folioMatchRate <- mean(dtFolio19$hasGeomMatch)
-  
-  cat("\n--- BCA 2019 -> BCA 2026 Match Quality ---\n")
-  cat("Roll_base level match rate:", round(matchRate * 100, 2), "%\n")
-  cat("Folio level match rate:", round(folioMatchRate * 100, 2), "%\n")
-  cat("Threshold for using geometry:", LEVELUSEGEOM * 100, "%\n")
-  
-  USE_GEOMETRY <- folioMatchRate >= LEVELUSEGEOM
-  cat("\n>>> Decision: ", ifelse(USE_GEOMETRY, "USE GEOMETRY-BASED MATCHING", "USE ADDRESS-BASED MATCHING"), " <<<\n")
-  
-} else {
-  cat("BCA 2026 file not found at:", bcaFile26, "\n")
-  cat("Falling back to address-based matching.\n")
-  USE_GEOMETRY <- FALSE
-  folioMatchRate <- NA
-}
+cat("BCA 2019 records loaded:", nrow(dtBCA19), "\n")
 
 # ============================================================================
-# STEP 6: BCA Join (Geometry or Address based)
+# STEP 7: Spatial join - permits to BCA parcels (point in polygon)
 # ============================================================================
 
-if (USE_GEOMETRY) {
-  # -------------------------------------------------------------------------
-  # GEOMETRY-BASED MATCHING
-  # -------------------------------------------------------------------------
-  cat("\n=== STEP 6: Geometry-based BCA matching ===\n")
-  
-  # Get centroids from BCA 2026 polygons
-  cat("Computing parcel centroids...\n")
-  sBCA26_pt <- st_point_on_surface(sBCA26)
-  sBCA26_pt <- sBCA26_pt[, c("ROLL_NUMBER")]
-  dtBCA26_pt <- as.data.table(sBCA26_pt)
-  dtBCA26_pt[, roll_base := floor(as.numeric(ROLL_NUMBER) / 1000)]
-  print("DONE ROLL BASE")
-  
-  # Keep one centroid per roll_base (they should be the same or very close for subdivisions)
-  # Use first() to get representative geometry
-  sBCA26_unique <- sBCA26_pt[!duplicated(dtBCA26_pt$roll_base), ]
-  dtBCA26_unique <- as.data.table(sBCA26_unique)
-  dtBCA26_unique[, roll_base := floor(as.numeric(ROLL_NUMBER) / 1000)]
-  print("DONE UNIQUE")
-  
-  # Load full BCA 2019 property data
-  con <- dbConnect(SQLite(), bcaFile19)
-  
-  dtAddress <- as.data.table(dbGetQuery(con, "
-    SELECT a.folioID, a.streetNumber, a.unitNumber,
-           a.streetDirectionPrefix, a.streetName, a.streetDirectionSuffix, a.streetType
-    FROM address a
-    INNER JOIN folioDescription fd ON a.folioID = fd.folioID
-    WHERE a.city = 'VANCOUVER'
-      AND fd.actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
-  "))
-  
-  dtDescription <- as.data.table(dbGetQuery(con, "
-    SELECT folioID, actualUseCode, actualUseDescription,
-           landDimension, landWidth, landDepth,
-           neighbourhoodCode, neighbourhoodDescription
-    FROM folioDescription
-    WHERE actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
-  "))
-  
-  dtValuation <- as.data.table(dbGetQuery(con, "
-    SELECT folioID, propertyClassCode, propertyClassDescription,
-           landValue, improvementValue
-    FROM valuation
-  "))
-  
-  dtLegal <- as.data.table(dbGetQuery(con, "
-    SELECT folioID, PID
-    FROM legalDescription
-  "))
-  
-  dtFolio <- as.data.table(dbGetQuery(con, "
-    SELECT folioID, rollNumber
-    FROM folio
-  "))
-  
-  dtResidential <- as.data.table(dbGetQuery(con, "
-    SELECT roll_number, MB_year_built, MB_effective_year, MB_total_finished_area,
-           MB_num_storeys, num_bedrooms, num_full_baths
-    FROM residentialInventory
-  "))
-  
-  dbDisconnect(con)
-  
-  # Merge BCA 2019 tables
-  dtBCA <- merge(dtAddress, dtDescription, by = "folioID", all.x = TRUE)
-  dtBCA <- merge(dtBCA, dtValuation, by = "folioID", all.x = TRUE)
-  dtBCA <- merge(dtBCA, dtLegal, by = "folioID", all.x = TRUE)
-  dtBCA <- merge(dtBCA, dtFolio, by = "folioID", all.x = TRUE)
-  setnames(dtResidential, "roll_number", "rollNumber")
-  dtBCA <- merge(dtBCA, dtResidential, by = "rollNumber", all.x = TRUE)
-  print("DONE MERGE BCA RESIDENTIAL")
-  
-  # Add roll_base for geometry lookup
-  dtBCA[, roll_base := floor(as.numeric(rollNumber) / 1000)]
-  
-  # Merge BCA 2019 with BCA 2026 centroids via roll_base
-  dtBCA <- merge(dtBCA, dtBCA26_unique[, .(roll_base, geom)], by = "roll_base", all.x = TRUE)
-  
-  # Convert to sf for spatial join with permits
-  dtBCA_withGeom <- dtBCA[!is.na(geom)]
-  sBCA <- st_as_sf(dtBCA_withGeom, sf_column_name = "geom")
-  st_crs(sBCA) <- st_crs(sBCA26)
-  
-  cat("BCA records with geometry:", nrow(sBCA), "\n")
-  cat("BCA records without geometry:", nrow(dtBCA) - nrow(dtBCA_withGeom), "\n")
-  
-  # Transform permits to BCA CRS and do spatial join (nearest neighbor within tolerance)
-  sPermits_bca <- st_transform(sPermits, st_crs(sBCA))
-  
-  # REPLACEMENT CODE FOR GEOMETRY-BASED MATCHING SECTION
-# Replace the section starting at "# Use st_nearest_feature for point-to-point matching"
-# with this code:
+cat("\n=== STEP 7: Spatial join - permits within BCA parcels ===\n")
 
-  # Transform permits to BCA CRS
-  sPermits_bca <- st_transform(sPermits, st_crs(sBCA))
+# Transform permits to BCA CRS
+sPermits_bca <- st_transform(sPermits, st_crs(sBCA))
 
-  cat("Permits CRS:", st_crs(sPermits_bca)$epsg, "\n")
-  cat("BCA CRS:", st_crs(sBCA)$epsg, "\n")
-  cat("Number of permits:", nrow(sPermits_bca), "\n")
-  cat("Number of BCA parcels:", nrow(sBCA), "\n")
+# Make geometries valid
+sBCA<- st_make_valid(sBCA)
 
-  # Use st_nearest_feature for point-to-point matching with distance threshold
-  cat("Finding nearest BCA parcels to permits...\n")
-  nearest_idx <- st_nearest_feature(sPermits_bca, sBCA)
+# Spatial join: permit points within BCA parcel polygons
+sPermits_bca <- st_join(sPermits_bca, sBCA[, c("ROLL_NUMBER", "roll_base")], 
+                        join = st_within, left = TRUE)
 
-  # Check for NAs in nearest_idx
-  cat("Permits with no nearest match:", sum(is.na(nearest_idx)), "\n")
-
-  # Compute distances only for valid matches
-  # Initialize distance vector with NA
-  distances <- rep(NA_real_, nrow(sPermits_bca))
-
-  valid_idx <- !is.na(nearest_idx)
-  if (sum(valid_idx) > 0) {
-    # Compute distances row by row for valid matches
-    distances[valid_idx] <- as.numeric(
-      st_distance(
-        sPermits_bca[valid_idx, ],
-        sBCA[nearest_idx[valid_idx], ],
-        by_element = TRUE
-      )
-    )
-  }
-
-  # Only match if within 50m (to handle slight geocoding differences)
-  MATCH_TOLERANCE_M <- 50
-  valid_match <- !is.na(distances) & distances <= MATCH_TOLERANCE_M
-
-  cat("Permits within", MATCH_TOLERANCE_M, "m of BCA parcel:", sum(valid_match), "\n")
-
-  # Extract BCA data for valid matches
-  bcaCols <- c("folioID", "rollNumber", "PID",
-               "actualUseCode", "actualUseDescription",
-               "landDimension", "landWidth", "landDepth",
-               "neighbourhoodCode", "neighbourhoodDescription",
-               "propertyClassCode", "propertyClassDescription",
-               "landValue", "improvementValue",
-               "MB_year_built", "MB_effective_year", "MB_total_finished_area",
-               "MB_num_storeys", "num_bedrooms", "num_full_baths")
-
-  dtPermits <- as.data.table(st_drop_geometry(sPermits_bca))
-  dtBCA_dt <- as.data.table(st_drop_geometry(sBCA))
-
-  # Add BCA columns - initialize all as NA first
-  for (col in bcaCols) {
-    if (col %in% names(dtBCA_dt)) {
-      dtPermits[, (col) := dtBCA_dt[[col]][NA_integer_]]  # proper NA type
-      dtPermits[valid_match, (col) := dtBCA_dt[[col]][nearest_idx[valid_match]]]
-    }
-  }
-
-  dtPermits[, bcaMatchDistance := distances]
-  dtPermits[!valid_match, bcaMatchDistance := NA_real_]
-
-  cat("Permits matched to BCA (within", MATCH_TOLERANCE_M, "m):", sum(valid_match), "\n")
-  cat("Permits not matched:", sum(!valid_match), "\n")
-
-  dtMerge <- dtPermits
-  
-} else {
-  # -------------------------------------------------------------------------
-  # ADDRESS-BASED MATCHING (original method)
-  # -------------------------------------------------------------------------
-  cat("\n=== STEP 6: Address-based BCA matching ===\n")
-  
-  # Convert back to data.table for address matching
-  dtPermits <- as.data.table(st_drop_geometry(sPermits))
-  
-  # Standardize permit addresses for matching
-  dtPermits[, addressStd := address]
-  standardizeAddress(dtPermits, "addressStd")
-  
-  # Load BCA data
-  con <- dbConnect(SQLite(), bcaFile19)
-  
-  dtAddress <- as.data.table(dbGetQuery(con, "
-    SELECT a.folioID, a.streetNumber, a.unitNumber,
-           a.streetDirectionPrefix, a.streetName, a.streetDirectionSuffix, a.streetType,
-           a.city
-    FROM address a
-    INNER JOIN folioDescription fd ON a.folioID = fd.folioID
-    WHERE a.city = 'VANCOUVER'
-      AND fd.actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
-  "))
-  
-  dtDescription <- as.data.table(dbGetQuery(con, "
-    SELECT folioID, actualUseCode, actualUseDescription,
-           landDimension, landWidth, landDepth,
-           neighbourhoodCode, neighbourhoodDescription
-    FROM folioDescription
-    WHERE actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
-  "))
-  
-  dtValuation <- as.data.table(dbGetQuery(con, "
-    SELECT folioID, propertyClassCode, propertyClassDescription,
-           landValue, improvementValue
-    FROM valuation
-  "))
-  
-  dtLegal <- as.data.table(dbGetQuery(con, "
-    SELECT folioID, PID
-    FROM legalDescription
-  "))
-  
-  dtFolio <- as.data.table(dbGetQuery(con, "
-    SELECT folioID, rollNumber
-    FROM folio
-  "))
-  
-  dtResidential <- as.data.table(dbGetQuery(con, "
-    SELECT roll_number, MB_year_built, MB_effective_year, MB_total_finished_area,
-           MB_num_storeys, num_bedrooms, num_full_baths
-    FROM residentialInventory
-  "))
-  
-  dbDisconnect(con)
-  
-  # Merge BCA tables
-  dtBCA <- merge(dtAddress, dtDescription, by = "folioID", all.x = TRUE)
-  dtBCA <- merge(dtBCA, dtValuation, by = "folioID", all.x = TRUE)
-  dtBCA <- merge(dtBCA, dtLegal, by = "folioID", all.x = TRUE)
-  dtBCA <- merge(dtBCA, dtFolio, by = "folioID", all.x = TRUE)
-  setnames(dtResidential, "roll_number", "rollNumber")
-  dtBCA <- merge(dtBCA, dtResidential, by = "rollNumber", all.x = TRUE)
-  
-  cat("BCA records loaded:", nrow(dtBCA), "\n")
-  
-  # Build standardized BCA address
-  dtBCA[, addressStd := paste(streetNumber, streetName)]
-  dtBCA[nchar(streetDirectionPrefix) > 0, addressStd := paste(streetNumber, streetDirectionPrefix, streetName)]
-  dtBCA[nchar(streetType) > 0, addressStd := paste(addressStd, streetType)]
-  standardizeAddress(dtBCA, "addressStd")
-  
-  # Select BCA columns to merge
-  bcaCols <- c("addressStd", "folioID", "rollNumber", "PID", 
-               "actualUseCode", "actualUseDescription",
-               "landDimension", "landWidth", "landDepth",
-               "neighbourhoodCode", "neighbourhoodDescription",
-               "propertyClassCode", "propertyClassDescription",
-               "landValue", "improvementValue",
-               "MB_year_built", "MB_effective_year", "MB_total_finished_area",
-               "MB_num_storeys", "num_bedrooms", "num_full_baths")
-  dtBCA_slim <- dtBCA[, ..bcaCols]
-  
-  # Merge permits with BCA
-  dtMerge <- merge(dtPermits, dtBCA_slim, by = "addressStd", all.x = TRUE)
-  
-  cat("Address merge complete\n")
-}
+cat("Spatial join complete\n")
+cat("Permits matched to BCA parcel:", sum(!is.na(sPermits_bca$ROLL_NUMBER)), "\n")
+cat("Permits not matched:", sum(is.na(sPermits_bca$ROLL_NUMBER)), "\n")
 
 # ============================================================================
-# STEP 7: Flag matches and compute project-level stats
+# STEP 8: Merge BCA 2019 property details via roll_base
 # ============================================================================
 
-cat("\n=== STEP 7: Computing match statistics ===\n")
+cat("\n=== STEP 8: Merging BCA 2019 property details ===\n")
 
-dtMerge[, bcaMatched := !is.na(folioID)]
+# Convert to data.table
+dtMerge <- as.data.table(st_drop_geometry(sPermits_bca))
+
+# Select columns to merge from BCA 2019 (exclude roll_base to avoid .x/.y)
+bcaCols <- c("roll_base", "folioID", "rollNumber", "PID", 
+             "actualUseCode", "actualUseDescription",
+             "landDimension", "landWidth", "landDepth",
+             "neighbourhoodCode", "neighbourhoodDescription",
+             "propertyClassCode", "propertyClassDescription",
+             "landValue", "improvementValue",
+             "MB_year_built", "MB_effective_year", "MB_total_finished_area",
+             "MB_num_storeys", "num_bedrooms", "num_full_baths")
+
+dtBCA19_slim <- dtBCA19[, ..bcaCols]
+
+# Merge on roll_base
+dtMerge <- merge(dtMerge, dtBCA19_slim, by = "roll_base", all.x = TRUE)
+
+cat("BCA 2019 details merged\n")
+
+# ============================================================================
+# STEP 9: Flag matches and compute project-level stats
+# ============================================================================
+
+cat("\n=== STEP 9: Computing match statistics ===\n")
+
+dtMerge[, bcaMatched := !is.na(ROLL_NUMBER)]
 dtMerge[, projectHasBCAMatch := any(bcaMatched), by = projectID]
 
 # ============================================================================
-# STEP 8: Summary Statistics
+# STEP 10: Summary Statistics
 # ============================================================================
 
 cat("\n=== SUMMARY STATISTICS ===\n")
-
-cat("\nMatching method:", ifelse(USE_GEOMETRY, "GEOMETRY-BASED", "ADDRESS-BASED"), "\n")
-if (!is.na(folioMatchRate)) {
-  cat("BCA 2019->2026 geometry coverage:", round(folioMatchRate * 100, 2), "%\n")
-}
 
 # Overall counts
 cat("\nTotal permits:", nrow(dtMerge), "\n")
@@ -493,7 +240,7 @@ cat("  With CTUID:", sum(!is.na(dtMerge$CTUID)),
     "(", round(mean(!is.na(dtMerge$CTUID)) * 100, 1), "%)\n")
 
 # BCA match rates
-cat("\nBCA match rates:\n")
+cat("\nBCA match rates (geometry-based):\n")
 cat("  Permit-level:", round(mean(dtMerge$bcaMatched) * 100, 1), "%\n")
 
 projectStats <- dtMerge[, .(projectHasBCAMatch = first(projectHasBCAMatch)), by = projectID]
@@ -512,10 +259,10 @@ categoryStats <- dtMerge[, .(
 print(head(categoryStats, 20))
 
 # ============================================================================
-# STEP 9: Output
+# STEP 11: Output
 # ============================================================================
 
-cat("\n=== STEP 9: Writing output ===\n")
+cat("\n=== STEP 11: Writing output ===\n")
 
 # Select output columns
 outputCols <- c(
@@ -533,7 +280,7 @@ outputCols <- c(
   # Census tract
   "CTUID", "DGUID", "CTNAME",
   # BCA identifiers
-  "folioID", "rollNumber", "PID",
+  "ROLL_NUMBER", "folioID", "rollNumber", "PID",
   # BCA property info
   "actualUseCode", "actualUseDescription",
   "landDimension", "landWidth", "landDepth",
@@ -547,11 +294,6 @@ outputCols <- c(
   "bcaMatched", "projectHasBCAMatch"
 )
 
-# Add geometry match distance if available
-if ("bcaMatchDistance" %in% names(dtMerge)) {
-  outputCols <- c(outputCols, "bcaMatchDistance")
-}
-
 # Keep only columns that exist
 outputCols <- intersect(outputCols, names(dtMerge))
 dtOutput <- dtMerge[, ..outputCols]
@@ -561,10 +303,10 @@ cat("Output written to:", out_path, "\n")
 cat("Output rows:", nrow(dtOutput), "\n")
 
 # ============================================================================
-# STEP 10: Project-level aggregation (optional summary table)
+# STEP 12: Project-level aggregation
 # ============================================================================
 
-cat("\n=== STEP 10: Creating project-level summary ===\n")
+cat("\n=== STEP 12: Creating project-level summary ===\n")
 
 dtProject <- dtMerge[, .(
   # First permit info (representative)
@@ -591,6 +333,7 @@ dtProject <- dtMerge[, .(
   CTNAME = first(CTNAME),
   
   # BCA (take first match if any)
+  ROLL_NUMBER = first(na.omit(ROLL_NUMBER)),
   folioID = first(na.omit(folioID)),
   rollNumber = first(na.omit(rollNumber)),
   PID = first(na.omit(PID)),
