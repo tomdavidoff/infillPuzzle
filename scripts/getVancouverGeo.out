@@ -1,0 +1,216 @@
+
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # extractBCA26VancouverResidential.R
+> # Extract Vancouver single family / duplex parcels from BCA 2026 GeoPackage
+> # and save locally for faster loading
+> # Tom Davidoff / Claude
+> # 01/15/26
+> 
+> library(sf)
+Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
+> library(RSQLite)
+> library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
+> 
+> # ============================================================================
+> # Configuration
+> # ============================================================================
+> 
+> bcaFile<- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
+> outFile   <- "~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.gpkg"
+> 
+> # ============================================================================
+> # Extract Vancouver residential parcels
+> # ============================================================================
+> 
+> cat("Loading Vancouver residential parcels from BCA \n")
+Loading Vancouver residential parcels from BCA 
+> cat("Source:", bcaFile, "\n")
+Source: /Volumes/T7Office/bigFiles/bca_folios.gpkg 
+> 
+> sBCA<- st_read(
++   bcaFile,
++   layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
++   query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
++            WHERE JURISDICTION_CODE='200'",
++   quiet = TRUE
++ )
+Warning message:
+In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
+  argument layer is ignored when query is specified
+>            #AND (ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling')
+> 
+> cat("Parcels loaded:", nrow(sBCA), "\n")
+Parcels loaded: 217182 
+> cat("CRS:", st_crs(sBCA)$epsg, "\n")
+CRS: 3005 
+> dtBCA <- as.data.table(sBCA)
+> dtBCA[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
+> 
+> # ============================================================================
+> # Save locally
+> # ============================================================================
+> 
+> 
+> # Merge with BCA 2019 Vancouver single family R1 -zoned parcels
+> bca19 <- "~/OneDrive - UBC/dataRaw/REVD19_and_inventory_extracts.sqlite3"
+> # get the schema
+> # get zoning, rollnumber, folioID from bca19
+> con <- dbConnect(RSQLite::SQLite(), bca19)
+> dfFolio <- dbGetQuery(con, "SELECT folioID, rollNumber FROM folio WHERE jurisdictionCode=='200'")
+> dfInventory <- dbGetQuery(con, "SELECT roll_number, zoning, MB_effective_year, MB_total_finished_area FROM residentialInventory") 
+> dfDescription <- dbGetQuery(con, "SELECT folioID, actualUseDescription, neighbourhoodDescription FROM folioDescription")
+> dfBCA19 <- merge(dfFolio, dfInventory, by.x="rollNumber", by.y="roll_number")
+> dtBCA19 <- data.table(merge(dfBCA19, dfDescription, by="folioID"))
+> print(head(dtBCA19))
+      folioID      rollNumber zoning MB_effective_year MB_total_finished_area
+       <char>          <char> <char>            <char>                 <char>
+1: A000000009 001019632060000    RS1              2019                  11895
+2: A00000000A 001019632290000    RS1              1997                   7760
+3: A00000000B 001019632450000    RS1              1945                   3215
+4: A00000000C 001019632650000    RS1              2011                   8673
+5: A00000000D 001019632760000    RS1              2000                   7238
+6: A00000000E 001019635070000    RS1              1995                   4739
+     actualUseDescription neighbourhoodDescription
+                   <char>                   <char>
+1: Single Family Dwelling               POINT GREY
+2: Single Family Dwelling               POINT GREY
+3: Single Family Dwelling               POINT GREY
+4: Single Family Dwelling               POINT GREY
+5: Single Family Dwelling               POINT GREY
+6: Single Family Dwelling               POINT GREY
+> print(table(dtBCA19[,actualUseDescription])[order(-table(dtBCA19[,actualUseDescription]))])
+
+                Strata-Lot Residence (Condominium) 
+                                             90144 
+                            Single Family Dwelling 
+                                             39542 
+                   Residential Dwelling with Suite 
+                                             34790 
+               Row Housing (Single Unit Ownership) 
+                                             10766 
+                       Duplex, Strata Front / Back 
+                                              2620 
+Stratified Rental Apartment (Hi-Rise Construction) 
+                                              2475 
+  Stratified Rental Apartment (Frame Construction) 
+                                              2341 
+                       Duplex, Strata Side by Side 
+                                              1518 
+                 Property Subject To Section 19(8) 
+                                               994 
+   Duplex, Non-Strata Side by Side or Front / Back 
+                                               832 
+              Vacant Residential Less Than 2 Acres 
+                                               300 
+               Individual Strata Lot (Hotel/Motel) 
+                                               284 
+                          Duplex, Strata Up / Down 
+                                               159 
+                      Duplex, Non-Strata Up / Down 
+                                                95 
+                       Stratified Rental Townhouse 
+                                                72 
+                         Multi-Family (Conversion) 
+                                                49 
+  2 Acres Or More (Single Family Dwelling, Duplex) 
+                                                36 
+                      Residential Outbuilding Only 
+                                                21 
+                          2 Acres Or More (Vacant) 
+                                                 4 
+                                           Triplex 
+                                                 4 
+       Bed & Breakfast Operation Less Than 4 Units 
+                                                 1 
+           Parking (Lot Only, Paved Or Gravel-Res) 
+                                                 1 
+             Stratified Operational Facility Areas 
+                                                 1 
+                                       Vacant IC&I 
+                                                 1 
+> dtBCA19 <- dtBCA19[actualUseDescription %in% c("Single Family Dwelling","Residential Dwelling with Suite")]
+> 
+> dtBCA19[,rollStart:=floor(as.numeric(rollNumber)/1000)]
+> dtBCA19 <- merge(dtBCA19, dtBCA, by="rollStart",all.x=TRUE, suffixes=c("_2019","_2026"))
+> print(head(dtBCA19))
+Key: <rollStart>
+    rollStart    folioID      rollNumber zoning MB_effective_year
+        <num>     <char>          <char> <char>            <char>
+1: 1019632060 A000000009 001019632060000    RS1              2019
+2: 1019632290 A00000000A 001019632290000    RS1              1997
+3: 1019632450 A00000000B 001019632450000    RS1              1945
+4: 1019632650 A00000000C 001019632650000    RS1              2011
+5: 1019632760 A00000000D 001019632760000    RS1              2000
+6: 1019635070 A00000000E 001019635070000    RS1              1995
+   MB_total_finished_area   actualUseDescription neighbourhoodDescription
+                   <char>                 <char>                   <char>
+1:                  11895 Single Family Dwelling               POINT GREY
+2:                   7760 Single Family Dwelling               POINT GREY
+3:                   3215 Single Family Dwelling               POINT GREY
+4:                   8673 Single Family Dwelling               POINT GREY
+5:                   7238 Single Family Dwelling               POINT GREY
+6:                   4739 Single Family Dwelling               POINT GREY
+       ROLL_NUMBER                           geom
+            <char>                  <sfc_POLYGON>
+1: 001019632060000 POLYGON ((1202268 477115.7,...
+2: 001019632290000 POLYGON ((1202148 477104.5,...
+3: 001019632450000 POLYGON ((1202142 477028.4,...
+4: 001019632650000 POLYGON ((1202194 477101.1,...
+5: 001019632760000 POLYGON ((1202351 477100.2,...
+6: 001019635070000 POLYGON ((1202339 477034.2,...
+> print(mean(dtBCA19[,is.na(geom)])) # should be small
+[1] 0
+> # how many duplex/multi on same rollStart?
+> dtBCA19[,Nlot:=.N, by=.(rollStart)]
+> print(table(dtBCA19[,Nlot]))
+
+    1     2     3     4     5     6     9    12    16    21    30    36    64 
+73883   394    60   176    10    30    27    12    32    21    30   144    64 
+   68   110   256  3249 
+   68   110   256  3249 
+> print(table(dtBCA19[Nlot>5,neighbourhoodDescription])) # nontrivial but small
+
+COLLINGWOOD    FAIRVIEW  POINT GREY SHAUGHNESSY  SOUTHLANDS 
+         12         110         338          30        3553 
+> dtBCA19 <- dtBCA19[Nlot==1 ]
+> print(table(dtBCA19[,zoning]))
+
+         C1    C2   C2C   C3A    C5   CD1  DDL1  DEOD FCCDD   FM1   FSD    I1 
+    1    22    24     1     3     1   293     3    24     3    11   537    37 
+   I2   IC3   M1B    M2   MC1   RA1   RM1 RM10N  RM11 RM11N RM12N  RM1N   RM2 
+   24     2     2    10     2    49   196    25    16    69   149   118    15 
+  RM3  RM3A   RM4  RM4N   RM5  RM5A  RM5B   RM7 RM7AN  RM7N   RM8  RM8A RM8AN 
+    3    75   441    57    11     6     5   593    80    24   179   171    23 
+ RM8N   RM9  RM9A RM9AN RM9BN  RM9N  RS05   RS1  RS1A  RS1B  RS1S   RS2   RS3 
+   58    38   156    36    66     3     1 48906   170    62    71   131   389 
+ RS3A   RS4   RS5  RS5S   RS6   RS7  RSIS   RT1  RT10 RT10N  RT11 RT11N   RT2 
+  182    14 11449     2  1055  1777     1     1   984    68   776    53   653 
+  RT3   RT4  RT4A RT4AN  RT4N   RT5  RT5A RT5AN  RT5N   RT6   RT7   RT8   RT9 
+  424   681    19     1     2  1100    64     8    62   100   452   466    97 
+> dtBCA19 <- dtBCA19[grepl("RS",zoning)]
+> saveRDS(dtBCA19, file="~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.rds")
+> 
+> 
+> q("no")
+> proc.time()
+   user  system elapsed 
+  9.890   0.800   9.608 

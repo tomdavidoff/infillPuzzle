@@ -43,6 +43,9 @@ cat("Permits loaded:", nrow(dtPermits), "\n")
 
 cat("\n=== STEP 2: Creating project groups ===\n")
 
+# Drop anything that isn't among work type and project type of interest
+
+
 # Group by applicant + yearmonth
 dtPermits[, grouper := paste0(yearmonth, applicant)]
 
