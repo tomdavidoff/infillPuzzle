@@ -1,0 +1,142 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # main.vancouver_permits_
+> # main analysis script
+> # Tom Davidoff
+> # 01/16/26
+> 
+> library(data.table)
+> library(ggplot2)
+> 
+> # Vancouver analysis
+> # get slopes and mean values from BCA sales analysis by census tract merge
+> nameSlope <- "tables/bca19_mean_ppsf_slope_by_tract.csv"
+> if (!file.exists(nameSlope)) {
++   source("scripts/bcaSales.R")
++ }
+> # specify column CTUID is a number
+> dtSlope <- fread(nameSlope,colClasses=list(character="CTUID"))
+> 
+> # Now get projects merged with BCA and census tracts
+> nameSpatial <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
+> if (!file.exists(nameSpatial)) {
++   source("scripts/mergePermitsSpatial.R")
++ }
+> dtSpatial <- readRDS(nameSpatial)
+> 
+> print(head(dtSpatial))
+        CTUID     ROLL_NUMBER    folioID permitnumbercreateddate     use
+       <char>          <char>     <char>                  <IDat>  <char>
+1: 9330044.00 001633021620000 A0000000CR              2024-01-17  single
+2: 9330029.00 009697153290000 A00000191E              2019-02-21  single
+3: 9330013.01 019237750590000 A000002L99              2025-05-13 laneway
+4: 9330018.02 019731227950000 A000002MUD              2022-08-29  single
+5: 9330008.02 006769050140000 A000000U30              2021-07-15  single
+6: 9330043.02 001650034570000 A0000001L4              2024-11-27 laneway
+   MB_effective_year MB_total_finished_area neighbourhoodDescription
+              <char>                 <char>                   <char>
+1:              1965                   4002               POINT GREY
+2:                                                            CAMBIE
+3:              2007                   2198                   KNIGHT
+4:              1962                   2145                   KNIGHT
+5:              1978                   3064               SOUTHLANDS
+6:              1975                   2764               POINT GREY
+                                        address
+                                         <char>
+1:   4632 LANGARA AVENUE, Vancouver, BC V6R 1E1
+2:     869 W 20TH AVENUE, Vancouver, BC V5Z 1Y3
+3: 5835 ARGYLE STREET #3, Vancouver, BC V6P 3J8
+4:    1395 E 34TH AVENUE, Vancouver, BC V5W 1A5
+5:    3280 W 48TH AVENUE, Vancouver, BC V6N 3P8
+6:    3863 W BROADWAY #3, Vancouver, BC V6R 2C2
+> print(head(dtSlope))
+        CTUID meanPPSF  nobs       slope
+       <char>    <num> <int>       <num>
+1:            696.7770    31          NA
+2: 9330001.01 689.6406    14 -0.24805602
+3: 9330001.02 540.2713    20 -0.03285001
+4: 9330002.01 634.0783   116 -0.06549629
+5: 9330002.03 639.3170   110 -0.08092621
+6: 9330002.04 536.1255   122 -0.03911302
+> 
+> dtMerge <- merge(dtSpatial,dtSlope,by="CTUID")
+> print(head(dtMerge))
+Key: <CTUID>
+        CTUID     ROLL_NUMBER    folioID permitnumbercreateddate     use
+       <char>          <char>     <char>                  <IDat>  <char>
+1: 9330001.01 025790312140000 A000003EVP              2021-09-20  duplex
+2: 9330001.01 025772312820000 A000003EUV              2020-01-14 laneway
+3: 9330001.01 025772318260000 A000003EVA              2020-02-21 laneway
+4: 9330001.01 025772318600000 A000003EVF              2024-12-21 laneway
+5: 9330001.01 025772312520000 A000003EUQ              2021-01-27  duplex
+6: 9330001.02 025821302570000 A000003GB0              2022-06-27  duplex
+   MB_effective_year MB_total_finished_area neighbourhoodDescription
+              <char>                 <char>                   <char>
+1:              1975                   2595               FRASERVIEW
+2:              1993                   4568               FRASERVIEW
+3:              1975                   2727               FRASERVIEW
+4:              1971                   2787               FRASERVIEW
+5:              1971                   2786               FRASERVIEW
+6:              1973                   3846               FRASERVIEW
+                                     address meanPPSF  nobs       slope
+                                      <char>    <num> <int>       <num>
+1: 3412 E 49TH AVENUE, Vancouver, BC V5S 1M2 689.6406    14 -0.24805602
+2: 3538 E 48TH AVENUE, Vancouver, BC V5S 1H7 689.6406    14 -0.24805602
+3: 3618 E 48TH AVENUE, Vancouver, BC V5S 1H9 689.6406    14 -0.24805602
+4:      3658 E 48TH AVENUE #3, Vancouver, BC 689.6406    14 -0.24805602
+5: 3498 E 48TH AVENUE, Vancouver, BC V5S 1H7 689.6406    14 -0.24805602
+6: 3141 E 62ND AVENUE, Vancouver, BC V5S 2G6 540.2713    20 -0.03285001
+> print(summary(dtMerge))
+    CTUID           ROLL_NUMBER          folioID         
+ Length:3102        Length:3102        Length:3102       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use            MB_effective_year 
+ Min.   :2019-01-02      Length:3102        Length:3102       
+ 1st Qu.:2021-05-31      Class :character   Class :character  
+ Median :2022-06-06      Mode  :character   Mode  :character  
+ Mean   :2022-09-16                                           
+ 3rd Qu.:2024-06-02                                           
+ Max.   :2025-12-01                                           
+ MB_total_finished_area neighbourhoodDescription   address         
+ Length:3102            Length:3102              Length:3102       
+ Class :character       Class :character         Class :character  
+ Mode  :character       Mode  :character         Mode  :character  
+                                                                   
+                                                                   
+                                                                   
+    meanPPSF          nobs           slope         
+ Min.   :536.1   Min.   :  7.0   Min.   :-0.24806  
+ 1st Qu.:650.3   1st Qu.: 68.0   1st Qu.:-0.07879  
+ Median :699.0   Median : 98.0   Median :-0.05493  
+ Mean   :717.4   Mean   :105.7   Mean   :-0.04568  
+ 3rd Qu.:793.9   3rd Qu.:149.0   3rd Qu.:-0.01151  
+ Max.   :861.4   Max.   :247.0   Max.   : 0.03743  
+> print(table(dtMerge[,use]))
+
+ duplex laneway   multi  single 
+    770    1401     182     749 
+> 
+> proc.time()
+   user  system elapsed 
+  0.274   0.028   0.286 

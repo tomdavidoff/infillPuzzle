@@ -8,12 +8,16 @@ library(sf)
 
 dtBCA <- readRDS("~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.rds")
  #[1] "permitnumber"              "permitnumbercreateddate"  [3] "issuedate"                 "permitelapseddays"        [5] "projectvalue"              "typeofwork"               [7] "address"                   "projectdescription"       [9] "permitcategory"            "applicant"                [11] "applicantaddress"          "propertyuse"              [13] "specificusecategory"       "buildingcontractor"       [15] "buildingcontractoraddress" "issueyear"                [17] "geolocalarea"              "geom"                     [19] "yearmonth"                 "geo_point_2d"             
-dtP <- fread("~/OneDrive - UBC/dataRaw/vancouver_permits_full.csv",select=c("geom","geo_point_2d","permitnumber","permitnumbercreateddate","applicant","typeofwork","projectvalue","specificusecategory"))
+dtP <- fread("~/OneDrive - UBC/dataRaw/vancouver_permits_full.csv",select=c("geom","geo_point_2d","permitnumber","permitnumbercreateddate","applicant","typeofwork","projectvalue","specificusecategory","address"))
 dtP <- dtP[typeofwork %in% c("Addition / Alteration","New Building")]
-dtP[,yearMoCreated:=substr(permitnumbercreateddate,1,7)]
-dtP <- dtP[specificusecategory %in% c("Single Detached House","Laneway House","Single Detached House w/ Sec Suite","Multiple Dwelling","Duplex","Duplex w/Secondary Suite","address")]
+dtP[,yearCreated:=year(permitnumbercreateddate)]
+MINYEAR <- 2019
+dtP <- dtP[yearCreated>=MINYEAR]
+x <- table(dtP[,specificusecategory])
+print(sort(x,decreasing=TRUE))
+dtP <- dtP[specificusecategory %in% c("Single Detached House","Laneway House","Single Detached House w/ Sec Suite","Multiple Dwelling","Duplex","Duplex w/Secondary Suite")]
 print(quantile(dtP[typeofwork=="Addition / Alteration",projectvalue]))
-MINVAL <- 125000 # appx 75th percentile for Addition / Alteration
+MINVAL <- quantile(dtP[typeofwork=="Addition / Alteration",projectvalue],.75)
 dtP <- dtP[projectvalue>=MINVAL]
 print(head(dtP[,.(geo_point_2d)]))
 print(head(dtBCA[,.(geom)]))
@@ -48,10 +52,49 @@ mergedCT <- st_join(merged,dCT,join=st_within)
 print(head(mergedCT))
 
 ##
-merged[,matched:=!is.na(zoning)]
-print(table(merged[matched==0,specificusecategory]))
-print(table(merged[matched==1,specificusecategory]))
-
-merged <- merged[matched==1]
+dtSpatial <- as.data.table(mergedCT)
+dtSpatial[,matched:=!is.na(zoning)]
+dtSpatial[,nLot:=.N,by=ROLL_NUMBER]
+dtSpatial[,duplex:=grepl("uplex",specificusecategory)]
+dtSpatial[,laneway:=grepl("aneway",specificusecategory)]
+dtSpatial[,multi:=grepl("ultiple",specificusecategory)]
+dtSpatial[,maxMulti:=max(multi),by=ROLL_NUMBER]
+dtSpatial[,maxDuplex:=max(duplex),by=ROLL_NUMBER]
+dtSpatial[,maxLaneway:=max(laneway),by=ROLL_NUMBER]
+dtSpatial[,use:=fifelse(maxMulti==1,"multi",
+                           fifelse(maxDuplex==1,"duplex",
+                                   fifelse(maxLaneway==1,"laneway","single")))]
+# only one obs per lot
+dtSpatial[,uniqueLot:=.N==1,by=ROLL_NUMBER]
+dtSpatial <- dtSpatial[uniqueLot==TRUE]
+print(table(dtSpatial[matched==1,nLot]))
+print(table(dtSpatial[matched==0,specificusecategory]))
+print(table(dtSpatial[matched==1,specificusecategory,by=nLot]))
+print(table(dtSpatial[matched==1,specificusecategory]))
+dtSpatial[,matcha:=!is.na(CTUID)]
+print(table(dtSpatial[,matcha]))
+print(names(dtSpatial))
+# [1] "geom"                     "geo_point_2d"            
+# [3] "permitnumber"             "permitnumbercreateddate" 
+# [5] "applicant"                "typeofwork"              
+# [7] "projectvalue"             "specificusecategory"     
+# [9] "address"                  "yearCreated"             
+#[11] "rollStart"                "folioID"                 
+#[13] "rollNumber"               "zoning"                  
+#[15] "MB_effective_year"        "MB_total_finished_area"  
+#[17] "actualUseDescription"     "neighbourhoodDescription"
+#[19] "ROLL_NUMBER"              "Nlot"                    
+#[21] "CTUID"                    "DGUID"                   
+#[23] "CTNAME"                   "LANDAREA"                
+#[25] "PRUID"                    "geometry"                
+#[27] "matched"                  "nLot"                    
+#[29] "duplex"                   "laneway"                 
+#[31] "multi"                    "maxMulti"                
+#[33] "maxDuplex"                "maxLaneway"              
+#[35] "use"                      "uniqueLot"               
+#[37] "matcha"                  
+dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address)]
+outfile <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
+saveRDS(dtSpatial,outfile)
 
 
