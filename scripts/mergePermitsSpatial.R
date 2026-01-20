@@ -11,7 +11,7 @@ dtBCA <- readRDS("~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.rds")
 dtP <- fread("~/OneDrive - UBC/dataRaw/vancouver_permits_full.csv",select=c("geom","geo_point_2d","permitnumber","permitnumbercreateddate","applicant","typeofwork","projectvalue","specificusecategory","address"))
 dtP <- dtP[typeofwork %in% c("Addition / Alteration","New Building")]
 dtP[,yearCreated:=year(permitnumbercreateddate)]
-MINYEAR <- 2019
+MINYEAR <- 2017 # might want to see jump in duplex
 dtP <- dtP[yearCreated>=MINYEAR]
 x <- table(dtP[,specificusecategory])
 print(sort(x,decreasing=TRUE))
@@ -93,7 +93,7 @@ print(names(dtSpatial))
 #[33] "maxDuplex"                "maxLaneway"              
 #[35] "use"                      "uniqueLot"               
 #[37] "matcha"                  
-dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address)]
+dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA)]
 outfile <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
 saveRDS(dtSpatial,outfile)
 
