@@ -28,14 +28,14 @@ package ‘data.table’ was built under R version 4.4.1
 > library(ggplot2)
 > library(fixest)
 > 
-> # Vancouver analysis
+> # Vancouver analysis # note neighbourhoodDescription better than tract for analysis level
 > # get slopes and mean values from BCA sales analysis by census tract merge
-> nameSlope <- "tables/bca19_mean_ppsf_slope_by_tract.csv"
+> nameSlope <- "tables/bca19_mean_ppsf_slope_by_neighbourhood.csv"
 > if (!file.exists(nameSlope)) {
 +   source("scripts/bcaSales.R")
 + }
 > # specify column CTUID is a number
-> dtSlope <- fread(nameSlope,colClasses=list(character="CTUID"))
+> dtSlope <- fread(nameSlope)
 > 
 > # Now get projects merged with BCA and census tracts
 > nameSpatial <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
@@ -70,75 +70,83 @@ package ‘data.table’ was built under R version 4.4.1
 5:    1395 E 34TH AVENUE, Vancouver, BC V5W 1A5   0.9880
 6:    3280 W 48TH AVENUE, Vancouver, BC V6N 3P8   3.5378
 > print(head(dtSlope))
-        CTUID meanPPSF  nobs       slope
-       <char>    <num> <int>       <num>
-1:            696.7770    31          NA
-2: 9330001.01 689.6406    14 -0.24805602
-3: 9330001.02 540.2713    20 -0.03285001
-4: 9330002.01 634.0783   116 -0.06549629
-5: 9330002.03 639.3170   110 -0.08092621
-6: 9330002.04 536.1255   122 -0.03911302
+    neighbourhoodDescription meanPPSF  nobs       slope
+                      <char>    <num> <int>       <num>
+1: ARBUTUS/MACKENZIE HEIGHTS 817.7070   128 -0.01479152
+2:                    CAMBIE 786.6326   133 -0.04841163
+3:             CEDAR COTTAGE 710.8595   195 -0.06015174
+4:               COLLINGWOOD 625.0172   380 -0.06155029
+5:                    DUNBAR 814.5198   192 -0.01093593
+6:                FRASERVIEW 603.7006   361 -0.06426389
 > 
-> dtMerge <- merge(dtSpatial,dtSlope,by="CTUID")
+> dtMerge <- merge(dtSpatial,dtSlope,by="neighbourhoodDescription")
 > print(head(dtMerge))
-Key: <CTUID>
-        CTUID     ROLL_NUMBER    folioID permitnumbercreateddate     use
-       <char>          <char>     <char>                  <IDat>  <char>
-1: 9330001.01 025790312140000 A000003EVP              2021-09-20  duplex
-2: 9330001.01 025772312820000 A000003EUV              2020-01-14 laneway
-3: 9330001.01 025772318260000 A000003EVA              2020-02-21 laneway
-4: 9330001.01 025772318600000 A000003EVF              2024-12-21 laneway
-5: 9330001.01 025772312520000 A000003EUQ              2021-01-27  duplex
-6: 9330001.01 025792312610000 A000003F55              2017-03-15 laneway
-   MB_effective_year MB_total_finished_area neighbourhoodDescription
-              <char>                 <char>                   <char>
-1:              1975                   2595               FRASERVIEW
-2:              1993                   4568               FRASERVIEW
-3:              1975                   2727               FRASERVIEW
-4:              1971                   2787               FRASERVIEW
-5:              1971                   2786               FRASERVIEW
-6:              2018                   3952               FRASERVIEW
-                                     address LANDAREA meanPPSF  nobs     slope
-                                      <char>    <num>    <num> <int>     <num>
-1: 3412 E 49TH AVENUE, Vancouver, BC V5S 1M2   1.0195 689.6406    14 -0.248056
-2: 3538 E 48TH AVENUE, Vancouver, BC V5S 1H7   1.0195 689.6406    14 -0.248056
-3: 3618 E 48TH AVENUE, Vancouver, BC V5S 1H9   1.0195 689.6406    14 -0.248056
-4:      3658 E 48TH AVENUE #3, Vancouver, BC   1.0195 689.6406    14 -0.248056
-5: 3498 E 48TH AVENUE, Vancouver, BC V5S 1H7   1.0195 689.6406    14 -0.248056
-6: 3459 E 50TH AVENUE, Vancouver, BC V5S 1P4   1.0195 689.6406    14 -0.248056
+Key: <neighbourhoodDescription>
+    neighbourhoodDescription      CTUID     ROLL_NUMBER    folioID
+                      <char>     <char>          <char>     <char>
+1: ARBUTUS/MACKENZIE HEIGHTS 9330026.00 004698070060000 A000000MK2
+2: ARBUTUS/MACKENZIE HEIGHTS 9330026.00 004701067070000 A000000MPG
+3: ARBUTUS/MACKENZIE HEIGHTS 9330023.00 004726060300000 A000000P3A
+4: ARBUTUS/MACKENZIE HEIGHTS 9330023.00 004726054310000 A000000P1R
+5: ARBUTUS/MACKENZIE HEIGHTS 9330026.00 004698067070000 A000000MJA
+6: ARBUTUS/MACKENZIE HEIGHTS 9330026.00 004710062840000 A000000N4W
+   permitnumbercreateddate     use MB_effective_year MB_total_finished_area
+                    <IDat>  <char>            <char>                 <char>
+1:              2021-05-04  duplex              1940                   1619
+2:              2023-03-06  single              1944                   1539
+3:              2024-10-11 laneway              1996                   2576
+4:              2025-06-06  single              2003                   4339
+5:              2023-08-30  single              1970                   1829
+6:              2025-10-03 laneway              1970                   3387
+                                        address LANDAREA meanPPSF  nobs
+                                         <char>    <num>    <num> <int>
+1:    2796 W 21ST AVENUE, Vancouver, BC V6L 1K3   1.2593  817.707   128
+2:    2893 W 22ND AVENUE, Vancouver, BC V6L 1M7   1.2593  817.707   128
+3: 2882 W 32ND AVENUE #3, Vancouver, BC V6L 2B6   1.2002  817.707   128
+4:    3131 W 32ND AVENUE, Vancouver, BC V6L 2B9   1.2002  817.707   128
+5:    2895 W 21ST AVENUE, Vancouver, BC V6L 1K5   1.2593  817.707   128
+6:  2806 W KING EDWARD AVENUE #3, Vancouver, BC   1.2593  817.707   128
+         slope
+         <num>
+1: -0.01479152
+2: -0.01479152
+3: -0.01479152
+4: -0.01479152
+5: -0.01479152
+6: -0.01479152
 > print(summary(dtMerge))
-    CTUID           ROLL_NUMBER          folioID         
- Length:3762        Length:3762        Length:3762       
- Class :character   Class :character   Class :character  
- Mode  :character   Mode  :character   Mode  :character  
-                                                         
-                                                         
-                                                         
- permitnumbercreateddate     use            MB_effective_year 
- Min.   :2017-01-03      Length:3762        Length:3762       
- 1st Qu.:2020-02-20      Class :character   Class :character  
- Median :2021-11-27      Mode  :character   Mode  :character  
- Mean   :2021-11-04                                           
- 3rd Qu.:2024-03-03                                           
- Max.   :2025-12-01                                           
- MB_total_finished_area neighbourhoodDescription   address         
- Length:3762            Length:3762              Length:3762       
- Class :character       Class :character         Class :character  
- Mode  :character       Mode  :character         Mode  :character  
-                                                                   
-                                                                   
-                                                                   
-    LANDAREA         meanPPSF          nobs           slope         
- Min.   :0.3178   Min.   :536.1   Min.   :  7.0   Min.   :-0.24806  
- 1st Qu.:0.8070   1st Qu.:650.3   1st Qu.: 60.0   1st Qu.:-0.07879  
- Median :1.2002   Median :707.6   Median : 96.0   Median :-0.05163  
- Mean   :1.3069   Mean   :721.1   Mean   :103.8   Mean   :-0.04393  
- 3rd Qu.:1.5340   3rd Qu.:795.5   3rd Qu.:146.0   3rd Qu.:-0.01098  
- Max.   :3.5378   Max.   :861.4   Max.   :247.0   Max.   : 0.03743  
+ neighbourhoodDescription    CTUID           ROLL_NUMBER       
+ Length:3776              Length:3776        Length:3776       
+ Class :character         Class :character   Class :character  
+ Mode  :character         Mode  :character   Mode  :character  
+                                                               
+                                                               
+                                                               
+   folioID          permitnumbercreateddate     use           
+ Length:3776        Min.   :2017-01-03      Length:3776       
+ Class :character   1st Qu.:2020-02-18      Class :character  
+ Mode  :character   Median :2021-11-27      Mode  :character  
+                    Mean   :2021-11-04                        
+                    3rd Qu.:2024-02-28                        
+                    Max.   :2025-12-01                        
+ MB_effective_year  MB_total_finished_area   address             LANDAREA     
+ Length:3776        Length:3776            Length:3776        Min.   :0.3178  
+ Class :character   Class :character       Class :character   1st Qu.:0.8070  
+ Mode  :character   Mode  :character       Mode  :character   Median :1.2002  
+                                                              Mean   :1.3046  
+                                                              3rd Qu.:1.5340  
+                                                              Max.   :3.5378  
+    meanPPSF          nobs           slope          
+ Min.   :569.0   Min.   : 23.0   Min.   :-0.096203  
+ 1st Qu.:645.2   1st Qu.:133.0   1st Qu.:-0.071657  
+ Median :717.0   Median :361.0   Median :-0.053805  
+ Mean   :720.3   Mean   :374.9   Mean   :-0.046394  
+ 3rd Qu.:793.4   3rd Qu.:592.0   3rd Qu.:-0.012308  
+ Max.   :835.9   Max.   :782.0   Max.   : 0.009656  
 > print(table(dtMerge[,use]))
 
  duplex laneway   multi  single 
-    770    1625     181    1186 
+    770    1625     181    1200 
 > # permitnumbercreateddate     use            MB_effective_year 
 > # Min.   :2017-01-03      Length:3762        Length:3762       
 > 
@@ -150,15 +158,15 @@ Key: <CTUID>
 [1] 2017
 
 laneway  single 
-    185     242 
+    185     243 
 [1] 2018
 
  duplex laneway  single 
-      1      41     195 
+      1      41     196 
 [1] 2019
 
  duplex laneway   multi  single 
-     14      58       1     153 
+     14      58       1     156 
 [1] 2020
 
  duplex laneway   multi  single 
@@ -166,23 +174,23 @@ laneway  single
 [1] 2021
 
  duplex laneway   multi  single 
-    275     368       2     160 
+    275     368       2     161 
 [1] 2022
 
  duplex laneway   multi  single 
-    117     203       3      85 
+    117     203       3      88 
 [1] 2023
 
  duplex laneway   multi  single 
-    102     112       4     110 
+    102     112       4     112 
 [1] 2024
 
  duplex laneway   multi  single 
-    131     314      96      93 
+    131     314      96      95 
 [1] 2025
 
  duplex laneway   multi  single 
-     94     153      74      65 
+     94     153      74      66 
 > 
 > 
 > dtMerge[,MB_total_finished_area:=as.numeric(MB_total_finished_area)]
@@ -190,116 +198,150 @@ laneway  single
 > dtMerge[,effectiveAge:=pYear - MB_effective_year]
 > 
 > print(cor(dtMerge[,meanPPSF],dtMerge[,slope],use="complete.obs"))
-[1] 0.6781837
+[1] 0.8653804
 > dtMerge[,slopeMean:=mean(slope),by=neighbourhoodDescription]
 > 
 > # duplex era
 > print(summary(feols(use=="duplex" ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
-NOTE: 106 observations removed because of NA and infinite values (RHS: 106, Fixed-effects: 14).
+NOTE: 108 observations removed because of NA and infinite values (RHS: 108, Fixed-effects: 16).
 OLS estimation, Dep. Var.: use == "duplex"
-Observations: 1,972
-Fixed-effects: MB_effective_year: 97
+Observations: 1,979
+Fixed-effects: MB_effective_year: 98
 Standard-errors: Clustered (MB_effective_year) 
                              Estimate Std. Error   t value   Pr(>|t|)    
-meanPPSF                    -0.000752   0.000150 -5.001048 2.5699e-06 ***
-log(MB_total_finished_area) -0.135141   0.032676 -4.135794 7.5805e-05 ***
-log(LANDAREA)                0.006652   0.021729  0.306121 7.6018e-01    
-log(effectiveAge)            0.394998   0.170256  2.320026 2.2458e-02 *  
+meanPPSF                    -0.000830   0.000167 -4.970871 2.8711e-06 ***
+log(MB_total_finished_area) -0.120791   0.032476 -3.719419 3.3450e-04 ***
+log(LANDAREA)                0.007170   0.021595  0.332045 7.4057e-01    
+log(effectiveAge)            0.388012   0.169056  2.295165 2.3878e-02 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.395708     Adj. R2: 0.169496
-                 Within R2: 0.039592
+RMSE: 0.395158     Adj. R2: 0.169685
+                 Within R2: 0.041284
 Warning message:
 In log(effectiveAge) : NaNs produced
 > print(summary(feols(use=="duplex" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
-NOTE: 106 observations removed because of NA and infinite values (RHS: 106, Fixed-effects: 14).
+NOTE: 108 observations removed because of NA and infinite values (RHS: 108, Fixed-effects: 16).
 OLS estimation, Dep. Var.: use == "duplex"
-Observations: 1,972
-Fixed-effects: MB_effective_year: 97
+Observations: 1,979
+Fixed-effects: MB_effective_year: 98
 Standard-errors: Clustered (MB_effective_year) 
-                             Estimate Std. Error   t value   Pr(>|t|)    
-meanPPSF                    -0.000640   0.000160 -4.008662 1.2070e-04 ***
-slope                       -0.343481   0.332419 -1.033277 3.0407e-01    
-log(MB_total_finished_area) -0.131648   0.031683 -4.155135 7.0571e-05 ***
-log(LANDAREA)                0.008264   0.021849  0.378250 7.0608e-01    
-log(effectiveAge)            0.392296   0.169493  2.314531 2.2770e-02 *  
+                             Estimate Std. Error   t value  Pr(>|t|)    
+meanPPSF                    -0.000504   0.000204 -2.470189 0.0152502 *  
+slope                       -1.076816   0.505955 -2.128284 0.0358476 *  
+log(MB_total_finished_area) -0.106898   0.034129 -3.132227 0.0022939 ** 
+log(LANDAREA)                0.008239   0.021361  0.385702 0.7005622    
+log(effectiveAge)            0.383588   0.166986  2.297123 0.0237616 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.395568     Adj. R2: 0.169639
-                 Within R2: 0.040272
+RMSE: 0.394852     Adj. R2: 0.170525
+                 Within R2: 0.042764
 Warning message:
 In log(effectiveAge) : NaNs produced
-> print(summary(feols(use=="duplex" ~ meanPPSF+slopeMean + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
-NOTE: 106 observations removed because of NA and infinite values (RHS: 106, Fixed-effects: 14).
-OLS estimation, Dep. Var.: use == "duplex"
-Observations: 1,972
-Fixed-effects: MB_effective_year: 97
+> print(summary(feols(use=="single" ~ meanPPSF+ log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
+NOTE: 108 observations removed because of NA and infinite values (RHS: 108, Fixed-effects: 16).
+OLS estimation, Dep. Var.: use == "single"
+Observations: 1,979
+Fixed-effects: MB_effective_year: 98
 Standard-errors: Clustered (MB_effective_year) 
-                             Estimate Std. Error   t value   Pr(>|t|)    
-meanPPSF                    -0.000215   0.000233 -0.924005 0.35780038    
-slopeMean                   -1.693804   0.737514 -2.296641 0.02381297 *  
-log(MB_total_finished_area) -0.115157   0.032538 -3.539139 0.00062078 ***
-log(LANDAREA)                0.009774   0.022135  0.441561 0.65980001    
-log(effectiveAge)            0.383020   0.165547  2.313671 0.02281921 *  
+                             Estimate Std. Error  t value  Pr(>|t|)    
+meanPPSF                     0.002261   0.000121 18.71888 < 2.2e-16 ***
+log(MB_total_finished_area)  0.061537   0.043328  1.42027 0.1587368    
+log(LANDAREA)                0.051944   0.016191  3.20825 0.0018102 ** 
+log(effectiveAge)           -0.464374   0.246548 -1.88351 0.0626273 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.394928     Adj. R2: 0.172324
-                 Within R2: 0.043374
+RMSE: 0.371481     Adj. R2: 0.244599
+                 Within R2: 0.194276
+Warning message:
+In log(effectiveAge) : NaNs produced
+> print(summary(feols(use=="single" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
+NOTE: 108 observations removed because of NA and infinite values (RHS: 108, Fixed-effects: 16).
+OLS estimation, Dep. Var.: use == "single"
+Observations: 1,979
+Fixed-effects: MB_effective_year: 98
+Standard-errors: Clustered (MB_effective_year) 
+                             Estimate Std. Error  t value  Pr(>|t|)    
+meanPPSF                     0.002624   0.000261 10.07082 < 2.2e-16 ***
+slope                       -1.198311   0.696094 -1.72148 0.0883515 .  
+log(MB_total_finished_area)  0.076997   0.043660  1.76357 0.0809526 .  
+log(LANDAREA)                0.053133   0.016236  3.27263 0.0014769 ** 
+log(effectiveAge)           -0.469298   0.248505 -1.88849 0.0619488 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.371079     Adj. R2: 0.245831
+                 Within R2: 0.196018
+Warning message:
+In log(effectiveAge) : NaNs produced
+> print(summary(feols(use=="laneway" ~ meanPPSF+ log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
+NOTE: 108 observations removed because of NA and infinite values (RHS: 108, Fixed-effects: 16).
+OLS estimation, Dep. Var.: use == "laneway"
+Observations: 1,979
+Fixed-effects: MB_effective_year: 98
+Standard-errors: Clustered (MB_effective_year) 
+                             Estimate Std. Error   t value   Pr(>|t|)    
+meanPPSF                    -0.001492   0.000219 -6.813145 8.0662e-10 ***
+log(MB_total_finished_area)  0.057282   0.046222  1.239264 2.1824e-01    
+log(LANDAREA)               -0.057985   0.027989 -2.071738 4.0944e-02 *  
+log(effectiveAge)            0.040037   0.303503  0.131918 8.9532e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.456871     Adj. R2: 0.115133
+                 Within R2: 0.058904
+Warning message:
+In log(effectiveAge) : NaNs produced
+> print(summary(feols(use=="laneway" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
+NOTE: 108 observations removed because of NA and infinite values (RHS: 108, Fixed-effects: 16).
+OLS estimation, Dep. Var.: use == "laneway"
+Observations: 1,979
+Fixed-effects: MB_effective_year: 98
+Standard-errors: Clustered (MB_effective_year) 
+                             Estimate Std. Error   t value   Pr(>|t|)    
+meanPPSF                    -0.002225   0.000344 -6.460231 4.1791e-09 ***
+slope                        2.422218   0.775308  3.124199 2.3514e-03 ** 
+log(MB_total_finished_area)  0.026031   0.046464  0.560245 5.7660e-01    
+log(LANDAREA)               -0.060389   0.027392 -2.204632 2.9844e-02 *  
+log(effectiveAge)            0.049989   0.303920  0.164481 8.6969e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.455535     Adj. R2: 0.119833
+                 Within R2: 0.064402
 Warning message:
 In log(effectiveAge) : NaNs produced
 > 
 > # non-laneway
 > print(summary(feols(use=="duplex" ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023) & use!="laneway"])))
-NOTE: 89 observations removed because of NA and infinite values (RHS: 89, Fixed-effects: 12).
+NOTE: 91 observations removed because of NA and infinite values (RHS: 91, Fixed-effects: 14).
 OLS estimation, Dep. Var.: use == "duplex"
-Observations: 1,057
-Fixed-effects: MB_effective_year: 88
+Observations: 1,064
+Fixed-effects: MB_effective_year: 89
 Standard-errors: Clustered (MB_effective_year) 
                              Estimate Std. Error    t value  Pr(>|t|)    
-meanPPSF                    -0.002666   0.000197 -13.559668 < 2.2e-16 ***
-log(MB_total_finished_area) -0.091767   0.049426  -1.856642  0.066747 .  
-log(LANDAREA)               -0.002286   0.020830  -0.109726  0.912880    
-log(effectiveAge)            0.569398   0.267672   2.127225  0.036232 *  
+meanPPSF                    -0.002794   0.000196 -14.283264 < 2.2e-16 ***
+log(MB_total_finished_area) -0.062925   0.049992  -1.258701   0.21147    
+log(LANDAREA)                0.000958   0.020085   0.047674   0.96208    
+log(effectiveAge)            0.517275   0.256323   2.018063   0.04663 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.370737     Adj. R2: 0.398132
-                 Within R2: 0.222028
+RMSE: 0.370085     Adj. R2: 0.400135
+                 Within R2: 0.224804
 Warning message:
 In log(effectiveAge) : NaNs produced
 > print(summary(feols(use=="duplex" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023) & use!="laneway"])))
-NOTE: 89 observations removed because of NA and infinite values (RHS: 89, Fixed-effects: 12).
+NOTE: 91 observations removed because of NA and infinite values (RHS: 91, Fixed-effects: 14).
 OLS estimation, Dep. Var.: use == "duplex"
-Observations: 1,057
-Fixed-effects: MB_effective_year: 88
-Standard-errors: Clustered (MB_effective_year) 
-                             Estimate Std. Error    t value  Pr(>|t|)    
-meanPPSF                    -0.002794   0.000221 -12.629964 < 2.2e-16 ***
-slope                        0.387505   0.549996   0.704559  0.482966    
-log(MB_total_finished_area) -0.095875   0.048816  -1.963997  0.052723 .  
-log(LANDAREA)               -0.005235   0.021334  -0.245403  0.806722    
-log(effectiveAge)            0.580390   0.268019   2.165475  0.033088 *  
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.370573     Adj. R2: 0.398043
-                 Within R2: 0.222718
-Warning message:
-In log(effectiveAge) : NaNs produced
-> print(summary(feols(use=="duplex" ~ meanPPSF+slopeMean + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023) & use!="laneway"])))
-NOTE: 89 observations removed because of NA and infinite values (RHS: 89, Fixed-effects: 12).
-OLS estimation, Dep. Var.: use == "duplex"
-Observations: 1,057
-Fixed-effects: MB_effective_year: 88
+Observations: 1,064
+Fixed-effects: MB_effective_year: 89
 Standard-errors: Clustered (MB_effective_year) 
                              Estimate Std. Error   t value   Pr(>|t|)    
-meanPPSF                    -0.002139   0.000367 -5.826123 9.3719e-08 ***
-slopeMean                   -1.656889   0.917262 -1.806341 7.4323e-02 .  
-log(MB_total_finished_area) -0.071618   0.049413 -1.449399 1.5082e-01    
-log(LANDAREA)                0.004839   0.020469  0.236380 8.1369e-01    
-log(effectiveAge)            0.526555   0.257116  2.047925 4.3583e-02 *  
+meanPPSF                    -0.003314   0.000409 -8.107436 2.7959e-12 ***
+slope                        1.624374   1.021226  1.590612 1.1528e-01    
+log(MB_total_finished_area) -0.081930   0.049524 -1.654358 1.0162e-01    
+log(LANDAREA)               -0.002236   0.019480 -0.114773 9.0889e-01    
+log(effectiveAge)            0.541898   0.264576  2.048173 4.3523e-02 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.370044     Adj. R2: 0.399761
-                 Within R2: 0.224937
+RMSE: 0.36941     Adj. R2: 0.401708
+                Within R2: 0.227633
 Warning message:
 In log(effectiveAge) : NaNs produced
 > 
@@ -311,14 +353,14 @@ Observations: 1,464
 Fixed-effects: MB_effective_year: 95
 Standard-errors: Clustered (MB_effective_year) 
                              Estimate Std. Error   t value  Pr(>|t|)    
-meanPPSF                    -0.000103   0.000191 -0.539608 0.5907434    
-log(MB_total_finished_area) -0.189649   0.058289 -3.253591 0.0015839 ** 
-log(LANDAREA)                0.015312   0.032457  0.471770 0.6381845    
-log(effectiveAge)            0.627321   0.272567  2.301527 0.0235707 *  
+meanPPSF                    -0.000173   0.000189 -0.916768 0.3616102    
+log(MB_total_finished_area) -0.184215   0.056594 -3.255043 0.0015767 ** 
+log(LANDAREA)                0.017658   0.032207  0.548265 0.5848096    
+log(effectiveAge)            0.629812   0.274342  2.295723 0.0239146 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.42527     Adj. R2: 0.166715
-                Within R2: 0.016972
+RMSE: 0.425188     Adj. R2: 0.167038
+                 Within R2: 0.017352
 Warning message:
 In log(effectiveAge) : NaNs produced
 > print(summary(feols(use=="duplex" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023) & use!="single"])))
@@ -328,66 +370,51 @@ Observations: 1,464
 Fixed-effects: MB_effective_year: 95
 Standard-errors: Clustered (MB_effective_year) 
                              Estimate Std. Error   t value  Pr(>|t|)    
-meanPPSF                     0.000095   0.000211  0.450016 0.6537352    
-slope                       -0.614613   0.378963 -1.621831 0.1081891    
-log(MB_total_finished_area) -0.184931   0.057754 -3.202036 0.0018626 ** 
-log(LANDAREA)                0.018587   0.032656  0.569173 0.5705966    
-log(effectiveAge)            0.623576   0.273847  2.277098 0.0250481 *  
+meanPPSF                     0.000439   0.000260  1.688059 0.0947152 .  
+slope                       -2.106930   0.715998 -2.942649 0.0040985 ** 
+log(MB_total_finished_area) -0.160081   0.055497 -2.884506 0.0048608 ** 
+log(LANDAREA)                0.016344   0.031718  0.515296 0.6075560    
+log(effectiveAge)            0.612874   0.272374  2.250118 0.0267738 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.424838     Adj. R2: 0.167801
-                 Within R2: 0.018972
+RMSE: 0.424113     Adj. R2: 0.170636
+                 Within R2: 0.022314
 Warning message:
 In log(effectiveAge) : NaNs produced
 > 
 > # multiplex era
 > print(summary(feols(use=="multi" ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2024,2025)])))
 OLS estimation, Dep. Var.: use == "multi"
-Observations: 1,020
+Observations: 1,023
 Fixed-effects: MB_effective_year: 90
 Standard-errors: Clustered (MB_effective_year) 
                              Estimate Std. Error   t value  Pr(>|t|)    
-meanPPSF                    -0.000326   0.000186 -1.753958 0.0828800 .  
-log(MB_total_finished_area)  0.139047   0.043214  3.217664 0.0018032 ** 
-log(LANDAREA)               -0.025445   0.024799 -1.026028 0.3076591    
-log(effectiveAge)            0.378519   0.469280  0.806595 0.4220503    
+meanPPSF                    -0.000286   0.000200 -1.433778 0.1551397    
+log(MB_total_finished_area)  0.137291   0.045701  3.004084 0.0034591 ** 
+log(LANDAREA)               -0.028051   0.024186 -1.159830 0.2492200    
+log(effectiveAge)            0.361195   0.470677  0.767394 0.4448783    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.34119     Adj. R2: 0.077665
-                Within R2: 0.013312
+RMSE: 0.340874     Adj. R2: 0.077479
+                 Within R2: 0.012244
 > print(summary(feols(use=="multi" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2024,2025)])))
 OLS estimation, Dep. Var.: use == "multi"
-Observations: 1,020
+Observations: 1,023
 Fixed-effects: MB_effective_year: 90
 Standard-errors: Clustered (MB_effective_year) 
                              Estimate Std. Error   t value Pr(>|t|)    
-meanPPSF                    -0.000401   0.000170 -2.364264 0.020241 *  
-slope                        0.232658   0.409498  0.568155 0.571361    
-log(MB_total_finished_area)  0.134463   0.044826  2.999655 0.003505 ** 
-log(LANDAREA)               -0.025862   0.025174 -1.027343 0.307043    
-log(effectiveAge)            0.390615   0.476062  0.820513 0.414116    
+meanPPSF                    -0.000168   0.000281 -0.597776 0.551508    
+slope                       -0.367293   0.560004 -0.655876 0.513596    
+log(MB_total_finished_area)  0.142981   0.046094  3.101931 0.002576 ** 
+log(LANDAREA)               -0.028905   0.024321 -1.188457 0.237815    
+log(effectiveAge)            0.377970   0.461193  0.819548 0.414663    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.341126     Adj. R2: 0.077014
-                 Within R2: 0.013683
-> print(summary(feols(use=="multi" ~ meanPPSF+slopeMean + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2024,2025)])))
-OLS estimation, Dep. Var.: use == "multi"
-Observations: 1,020
-Fixed-effects: MB_effective_year: 90
-Standard-errors: Clustered (MB_effective_year) 
-                             Estimate Std. Error   t value  Pr(>|t|)    
-meanPPSF                    -0.000391   0.000282 -1.386428 0.1690796    
-slopeMean                    0.200683   0.847810  0.236707 0.8134278    
-log(MB_total_finished_area)  0.135655   0.050893  2.665500 0.0091286 ** 
-log(LANDAREA)               -0.025504   0.024878 -1.025168 0.3080625    
-log(effectiveAge)            0.378757   0.469991  0.805882 0.4224590    
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.341179     Adj. R2: 0.076731
-                 Within R2: 0.01338 
+RMSE: 0.340838     Adj. R2: 0.07668 
+                 Within R2: 0.012453
 > 
 > 
 > 
 > proc.time()
    user  system elapsed 
-  1.030   0.095   0.633 
+  1.051   0.082   0.570 

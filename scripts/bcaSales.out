@@ -1,6 +1,6 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
-Copyright (C) 2025 The R Foundation for Statistical Computing
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -28,8 +28,10 @@ Type 'q()' to quit R.
 > # Regress coefficients, etc.
 > 
 > library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
 > library(sf)
-Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > library(RSQLite)
 > library(fixest)
 > library(ggplot2)
@@ -62,18 +64,16 @@ The following object is masked from ‘package:fixest’:
 +   print(head(desc26))
 +   stDesc <- st_crs(desc26)
 +   roll_pt <- st_point_on_surface(desc26)
-+ # convert geom to centroid
-+ # --- 2021 Census Tracts (cartographic) via download
++   # convert geom to centroid
++   # --- 2021 Census Tracts (cartographic) via download
 +   ct_file <- "~/OneDrive - UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
 +   sCT <- st_read(ct_file, quiet = TRUE)
-+   # sCT: your census tract sf (currently 3347)
 +   sCT <- st_make_valid(sCT)
-+   sCT<- st_transform(sCT, stDesc)
++   sCT <- st_transform(sCT, stDesc)
 + 
-+   roll_ct <- st_join( roll_pt, sCT[, c("CTUID", "DGUID", "CTNAME", "PRUID")], join = st_within, left = TRUE)
++   roll_ct <- st_join(roll_pt, sCT[, c("CTUID", "DGUID", "CTNAME", "PRUID")], join = st_within, left = TRUE)
 +   print(head(roll_ct))
-+   saveRDS(roll_ct,fRollLatLon)
-+ 
++   saveRDS(roll_ct, fRollLatLon)
 + }
 > 
 > # Load BCA 2019 sales data (all residential)
@@ -95,8 +95,8 @@ The following object is masked from ‘package:fixest’:
 +         AND (d.actualUseDescription IN ('Residential Dwelling with Suite','Single Family Dwelling') OR INSTR(d.actualUseDescription, 'uplex') > 0)
 +   "))
 +   dbDisconnect(db)
-+   saveRDS(dtBCA2019,fSales)
-+   } 
++   saveRDS(dtBCA2019, fSales)
++ } 
 > dtBCA2019 <- readRDS(fSales)
 > print(head(dtBCA2019))
       folioID conveyancePrice conveyanceDate MB_effective_year
@@ -168,11 +168,25 @@ Duplex, Non-Strata Side by Side or Front / Back
 > 
 > 
 > # Numeric conversion and cleaning
-> cols <- c("conveyancePrice", "MB_effective_year", "MB_total_finished_area")
+> print(dtBCA2019[,.(land_area,land_width,land_depth)])
+        land_area land_width land_depth
+           <char>     <char>     <char>
+     1:                                
+     2:                  195      251.9
+     3:                  195      251.9
+     4:                  150        250
+     5:                  150        250
+    ---                                
+166845:                                
+166846:                                
+166847:                                
+166848:                                
+166849:                                
+> cols <- c("conveyancePrice", "MB_effective_year", "MB_total_finished_area","land_area","land_width","land_depth")
 > dtBCA2019[, (cols) := lapply(.SD, as.numeric), .SDcols = cols]
 > dtBCA2019 <- dtBCA2019[!is.na(MB_total_finished_area) & conveyancePrice > 100000]
+> dtBCA2019[,land_area_approximate:=land_width*land_depth]
 > 
-> # filter types to only single and duplex 
 > # Metrics & Outliers
 > CUT <- 0.05
 > 
@@ -185,7 +199,7 @@ Duplex, Non-Strata Side by Side or Front / Back
 [11] "zoning"                   "actualUseDescription"    
 [13] "neighbourhoodDescription" "postalCode"              
 [15] "CTUID"                    "DGUID"                   
-[17] "CTNAME"                  
+[17] "CTNAME"                   "land_area_approximate"   
 > print(head(dtBCA2019))
 Key: <roll_base>
     roll_base    folioID conveyancePrice conveyanceDate MB_effective_year
@@ -197,13 +211,13 @@ Key: <roll_base>
 5: 1019632450 A00000000B          190000     1977-04-15              1945
 6: 1019632650 A00000000C         2308000     1991-09-03              2011
    MB_total_finished_area land_width land_depth land_area     roll_number
-                    <num>     <char>     <char>    <char>          <char>
-1:                  11895                                 001019632060000
-2:                   7760        195      251.9           001019632290000
-3:                   7760        195      251.9           001019632290000
-4:                   3215        150        250           001019632450000
-5:                   3215        150        250           001019632450000
-6:                   8673        150        250           001019632650000
+                    <num>      <num>      <num>     <num>          <char>
+1:                  11895         NA         NA        NA 001019632060000
+2:                   7760        195      251.9        NA 001019632290000
+3:                   7760        195      251.9        NA 001019632290000
+4:                   3215        150      250.0        NA 001019632450000
+5:                   3215        150      250.0        NA 001019632450000
+6:                   8673        150      250.0        NA 001019632650000
    zoning   actualUseDescription neighbourhoodDescription postalCode      CTUID
    <char>                 <char>                   <char>     <char>     <char>
 1:    RS1 Single Family Dwelling               POINT GREY    V6T 1A9 9330044.00
@@ -212,24 +226,24 @@ Key: <roll_base>
 4:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2 9330044.00
 5:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2 9330044.00
 6:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2 9330044.00
-                 DGUID  CTNAME
-                <char>  <char>
-1: 2021S05079330044.00 0044.00
-2: 2021S05079330044.00 0044.00
-3: 2021S05079330044.00 0044.00
-4: 2021S05079330044.00 0044.00
-5: 2021S05079330044.00 0044.00
-6: 2021S05079330044.00 0044.00
+                 DGUID  CTNAME land_area_approximate
+                <char>  <char>                 <num>
+1: 2021S05079330044.00 0044.00                    NA
+2: 2021S05079330044.00 0044.00               49120.5
+3: 2021S05079330044.00 0044.00               49120.5
+4: 2021S05079330044.00 0044.00               37500.0
+5: 2021S05079330044.00 0044.00               37500.0
+6: 2021S05079330044.00 0044.00               37500.0
 > dtBCA2019[, `:=`(
 +     age = year(conveyanceDate) - MB_effective_year, 
 +     ppsf = conveyancePrice / MB_total_finished_area, 
-+     dwelling_type = ifelse(grepl("uplex", actualUseDescription, ignore.case = TRUE), "duplex", "single")
++     dwelling_type = fifelse(grepl("uplex", actualUseDescription, ignore.case = TRUE), "duplex", "single")
 + )]
 > 
 > dtBCA2019 <- dtBCA2019[
 +     age >= 0 &
 +     MB_total_finished_area %between% quantile(MB_total_finished_area, c(CUT, 1-CUT)) &
-+     ppsf %between% quantile(ppsf,c(CUT,1-CUT))
++     ppsf %between% quantile(ppsf, c(CUT, 1-CUT))
 + ]
 > 
 > cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
@@ -240,12 +254,8 @@ BCA 2019 transactions loaded: 96060
   Duplex: 7937 
 > 
 > # ==========================================
-> # Exclude from the sales homes with laneways in some (all?) specifications
+> # Exclude from the sales homes with laneways
 > # ==========================================
-> cat("\n=== PART 2: Loading BCA 2025 inventory for FSR analysis ===\n")
-
-=== PART 2: Loading BCA 2025 inventory for FSR analysis ===
-> # Load laneway data
 > 
 > dtLaneway <- as.data.table(read_excel(fLaneway, sheet = "DATA"))
 > setnames(dtLaneway, "ROLL_NUM", "Roll_Number_char")
@@ -287,8 +297,8 @@ BCA 2019 transactions loaded: 96060
 5: 1637022770
 6: 1638037950
 > 
-> dtBCA2019 <- merge(dtBCA2019,dtLaneway[,.(roll_base,lanewayBuilt=YEAR_BUILT)],by="roll_base",all.x=TRUE)
-> dtBCA2019[, hasLaneway := !is.na(lanewayBuilt) & (year(conveyanceDate) >= lanewayBuilt) ]
+> dtBCA2019 <- merge(dtBCA2019, dtLaneway[, .(roll_base, lanewayBuilt = YEAR_BUILT)], by = "roll_base", all.x = TRUE)
+> dtBCA2019[, hasLaneway := !is.na(lanewayBuilt) & (year(conveyanceDate) >= lanewayBuilt)]
 > print(names(dtBCA2019))
  [1] "roll_base"                "folioID"                 
  [3] "conveyancePrice"          "conveyanceDate"          
@@ -298,9 +308,10 @@ BCA 2019 transactions loaded: 96060
 [11] "zoning"                   "actualUseDescription"    
 [13] "neighbourhoodDescription" "postalCode"              
 [15] "CTUID"                    "DGUID"                   
-[17] "CTNAME"                   "age"                     
-[19] "ppsf"                     "dwelling_type"           
-[21] "lanewayBuilt"             "hasLaneway"              
+[17] "CTNAME"                   "land_area_approximate"   
+[19] "age"                      "ppsf"                    
+[21] "dwelling_type"            "lanewayBuilt"            
+[23] "hasLaneway"              
 > print(head(dtBCA2019))
 Key: <roll_base>
     roll_base    folioID conveyancePrice conveyanceDate MB_effective_year
@@ -312,13 +323,13 @@ Key: <roll_base>
 5: 1020636620 D00002YZLV         2150000     2011-08-22              2004
 6: 1020674600 A00000001B         1705500     2019-04-04              1941
    MB_total_finished_area land_width land_depth land_area     roll_number
-                    <num>     <char>     <char>    <char>          <char>
-1:                   3215        150        250           001019632450000
-2:                   3940                                 001019635500000
-3:                   3599                                 001019636570000
-4:                   2431       82.6         66           001020636620001
-5:                   2431       82.6         66           001020636620001
-6:                   2448         61         66           001020674600000
+                    <num>      <num>      <num>     <num>          <char>
+1:                   3215      150.0        250        NA 001019632450000
+2:                   3940         NA         NA        NA 001019635500000
+3:                   3599         NA         NA        NA 001019636570000
+4:                   2431       82.6         66        NA 001020636620001
+5:                   2431       82.6         66        NA 001020636620001
+6:                   2448       61.0         66        NA 001020674600000
    zoning            actualUseDescription neighbourhoodDescription postalCode
    <char>                          <char>                   <char>     <char>
 1:    RS1          Single Family Dwelling               POINT GREY    V6T 1B2
@@ -327,30 +338,32 @@ Key: <roll_base>
 4:    RS1     Duplex, Strata Side by Side               POINT GREY    V6R 4E5
 5:    RS1     Duplex, Strata Side by Side               POINT GREY    V6R 4E5
 6:    RS1          Single Family Dwelling               POINT GREY    V6R 4E8
-        CTUID               DGUID  CTNAME   age      ppsf dwelling_type
-       <char>              <char>  <char> <num>     <num>        <char>
-1: 9330044.00 2021S05079330044.00 0044.00    32  59.09798        single
-2: 9330044.00 2021S05079330044.00 0044.00    29 393.40102        single
-3: 9330044.00 2021S05079330044.00 0044.00    38 701.58377        single
-4: 9330044.00 2021S05079330044.00 0044.00     7 884.40971        duplex
-5: 9330044.00 2021S05079330044.00 0044.00     7 884.40971        duplex
-6: 9330043.01 2021S05079330043.01 0043.01    78 696.69118        single
-   lanewayBuilt hasLaneway
-          <num>     <lgcl>
-1:           NA      FALSE
-2:           NA      FALSE
-3:           NA      FALSE
-4:           NA      FALSE
-5:           NA      FALSE
-6:           NA      FALSE
+        CTUID               DGUID  CTNAME land_area_approximate   age      ppsf
+       <char>              <char>  <char>                 <num> <num>     <num>
+1: 9330044.00 2021S05079330044.00 0044.00               37500.0    32  59.09798
+2: 9330044.00 2021S05079330044.00 0044.00                    NA    29 393.40102
+3: 9330044.00 2021S05079330044.00 0044.00                    NA    38 701.58377
+4: 9330044.00 2021S05079330044.00 0044.00                5451.6     7 884.40971
+5: 9330044.00 2021S05079330044.00 0044.00                5451.6     7 884.40971
+6: 9330043.01 2021S05079330043.01 0043.01                4026.0    78 696.69118
+   dwelling_type lanewayBuilt hasLaneway
+          <char>        <num>     <lgcl>
+1:        single           NA      FALSE
+2:        single           NA      FALSE
+3:        single           NA      FALSE
+4:        duplex           NA      FALSE
+5:        duplex           NA      FALSE
+6:        single           NA      FALSE
 > 
 > MINYEAR <- 2012
 > 
-> dtBCA2019[,duplex:= ifelse(dwelling_type=="duplex",1,0)]
-> dtBCA2019[,nDuplex:=sum(duplex),by=.(CTUID)]
-> dtBCA2019 <- dtBCA2019[ grepl("RS",zoning)]
-> dtbca2019 <- dtBCA2019[ neighbourhoodDescription %chin% c("SHAUGNESSY","WEST END")==FALSE]
-> print(dtBCA2019[year(conveyanceDate)>MINYEAR,quantile(ppsf),by=year(conveyanceDate)])
+> dtBCA2019[, duplex := fifelse(dwelling_type == "duplex", 1L, 0L)]
+> dtBCA2019[, nDuplex := sum(duplex), by = .(CTUID)]
+> dtBCA2019 <- dtBCA2019[grepl("RS", zoning)]
+> # Exclude Shaughnessy and West End
+> dtBCA2019 <- dtBCA2019[!neighbourhoodDescription %chin% c("SHAUGNESSY", "WEST END")]
+> 
+> print(dtBCA2019[year(conveyanceDate) > MINYEAR, quantile(ppsf), by = year(conveyanceDate)])
      year       V1
     <int>    <num>
  1:  2019 348.0445
@@ -390,11 +403,14 @@ Key: <roll_base>
 35:  2018 928.7097
      year       V1
 > 
-> m_dwelling <- feols(ppsf ~ duplex + log(age + 1) | CTUID, data = dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >= MINYEAR])
+> # Analysis sample: no laneways, post-MINYEAR
+> dtAnalysis <- dtBCA2019[hasLaneway == FALSE & year(conveyanceDate) >= MINYEAR]
+> 
+> m_dwelling <- feols(ppsf ~ duplex + log(age + 1) | CTUID, data = dtAnalysis)
 NOTE: 52 observations removed because of NA values (Fixed-effects: 52).
-> m_sf <- feols(ppsf ~ log(age + 1) + MB_total_finished_area | CTUID, data = dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >= MINYEAR & nDuplex>20])
+> m_sf <- feols(ppsf ~ log(age + 1) + MB_total_finished_area | CTUID, data = dtAnalysis[nDuplex > 20])
 NOTE: 52 observations removed because of NA values (Fixed-effects: 52).
-> print(etable(m_dwelling,m_sf))
+> print(etable(m_dwelling, m_sf))
                             m_dwelling                m_sf
 Dependent Var.:                   ppsf                ppsf
                                                           
@@ -411,11 +427,10 @@ Within R2                      0.00280             0.01965
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
-> m_dwellingNbhd <- feols(ppsf ~ neighbourhoodDescription + duplex + neighbourhoodDescription:duplex + log(age + 1) | year(conveyanceDate) , data = dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >= MINYEAR])
+> m_dwellingNbhd <- feols(ppsf ~ neighbourhoodDescription + duplex + neighbourhoodDescription:duplex + log(age + 1) | year(conveyanceDate), data = dtAnalysis)
 The variables 'neighbourhoodDescriptionCOLLINGWOOD:duplex', 'neighbourhoodDescriptionDUNBAR:duplex', 'neighbourhoodDescriptionGRANDVIEW:duplex', 'neighbourhoodDescriptionKERRISDALE:duplex', 'neighbourhoodDescriptionKNIGHT:duplex', 'neighbourhoodDescriptionMARINE DRIVE:duplex' and 7 others have been removed because of collinearity (see $collin.var).
-> 
-> m_sqftNbhd <- feols(ppsf ~ neighbourhoodDescription + log(MB_total_finished_area) + neighbourhoodDescription:log(MB_total_finished_area) + log(age + 1) | year(conveyanceDate) , data = dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >= MINYEAR])
-> print(etable(m_dwellingNbhd,m_sqftNbhd))
+> m_sqftNbhd <- feols(ppsf ~ neighbourhoodDescription + log(MB_total_finished_area) + neighbourhoodDescription:log(MB_total_finished_area) + log(age + 1) | year(conveyanceDate), data = dtAnalysis)
+> print(etable(m_dwellingNbhd, m_sqftNbhd))
                                                                         m_dwellingNbhd
 Dependent Var.:                                                                   ppsf
                                                                                       
@@ -552,9 +567,9 @@ Within R2                                                                      0
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
-> print(dtBCA2019[ , mean(ppsf), by = .(neighbourhoodDescription, duplex) ])
+> print(dtBCA2019[, mean(ppsf), by = .(neighbourhoodDescription, duplex)])
      neighbourhoodDescription duplex        V1
-                       <char>  <num>     <num>
+                       <char>  <int>     <num>
  1:                POINT GREY      0 351.20704
  2:                POINT GREY      1 480.97227
  3:                 KITSILANO      0 324.55579
@@ -595,26 +610,195 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 38:                FRASERVIEW      0 260.25026
 39:                FRASERVIEW      1 253.30289
      neighbourhoodDescription duplex        V1
-> 
-> print(dtBCA2019[,median(MB_total_finished_area),by=.(duplex)])
+> print(dtBCA2019[, median(MB_total_finished_area), by = .(duplex)])
    duplex    V1
-    <num> <num>
+    <int> <num>
 1:      0  2361
 2:      1  1808
-> 
-> print(table(dtBCA2019[,.(zoning)]))
+> print(table(dtBCA2019[, .(zoning)]))
 zoning
  RS05   RS1  RS1A  RS1B  RS1S   RS2   RS3  RS3A   RS4   RS5  RS5S   RS6   RS7 
     1 53593   212   423    97   127   279    95    19 12420     3  1033  2156 
 > 
-> mainReg <- feols(ppsf ~ i(CTUID,MB_total_finished_area) + log(age+1) + MB_total_finished_area | CTUID + duplex, data=dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >=MINYEAR])
+> # ==========================================
+> # Census tract slopes and means
+> # ==========================================
+> 
+> mainRegTract <- feols(ppsf ~ i(CTUID, MB_total_finished_area) + log(age + 1) + MB_total_finished_area | CTUID + duplex, data = dtAnalysis)
 NOTE: 52 observations removed because of NA values (RHS: 52, Fixed-effects: 52).
 The variable 'MB_total_finished_area' has been removed because of collinearity (see $collin.var).
-> # extract interaction coefficients by CTUID into a data.table
-> dtSlopes <- as.data.table(broom::tidy(mainReg))[grepl("MB_total_finished_area", term)]
-> dtSlopes[, CTUID := gsub("CTUID::(.*):MB_total_finished_area", "\\1", term)]
-> print(head(dtSlopes))
-                                       term    estimate    std.error
+> print(summary(mainRegTract))
+OLS estimation, Dep. Var.: ppsf
+Observations: 13,103
+Fixed-effects: CTUID: 76,  duplex: 2
+Standard-errors: Clustered (CTUID) 
+                                          Estimate Std. Error     t value
+CTUID::9330001.01:MB_total_finished_area -0.248056   0.000647 -383.641062
+CTUID::9330001.02:MB_total_finished_area -0.032850   0.000967  -33.966411
+CTUID::9330002.01:MB_total_finished_area -0.065496   0.001699  -38.557464
+CTUID::9330002.03:MB_total_finished_area -0.080926   0.002121  -38.155079
+CTUID::9330002.04:MB_total_finished_area -0.039113   0.009709   -4.028426
+CTUID::9330003.01:MB_total_finished_area -0.016947   0.002598   -6.524231
+CTUID::9330003.02:MB_total_finished_area -0.098282   0.002121  -46.339682
+CTUID::9330004.01:MB_total_finished_area -0.011513   0.002606   -4.417588
+CTUID::9330004.02:MB_total_finished_area -0.105911   0.001647  -64.322904
+CTUID::9330006.01:MB_total_finished_area -0.026657   0.001003  -26.571200
+CTUID::9330006.02:MB_total_finished_area -0.032709   0.002214  -14.775694
+CTUID::9330007.01:MB_total_finished_area  0.000222   0.001150    0.193320
+CTUID::9330007.02:MB_total_finished_area -0.001743   0.000959   -1.818561
+CTUID::9330008.02:MB_total_finished_area -0.029914   0.000486  -61.608595
+CTUID::9330009.00:MB_total_finished_area  0.005291   0.000154   34.449310
+CTUID::9330010.01:MB_total_finished_area -0.006140   0.001638   -3.747519
+CTUID::9330010.02:MB_total_finished_area -0.018947   0.002102   -9.014712
+CTUID::9330011.00:MB_total_finished_area -0.034535   0.001705  -20.255244
+CTUID::9330012.01:MB_total_finished_area  0.029105   0.001533   18.987831
+CTUID::9330012.02:MB_total_finished_area -0.074316   0.002094  -35.484394
+CTUID::9330013.01:MB_total_finished_area -0.060054   0.002202  -27.269124
+CTUID::9330013.03:MB_total_finished_area -0.082170   0.001245  -65.998851
+CTUID::9330013.04:MB_total_finished_area -0.014435   0.002786   -5.182246
+CTUID::9330014.01:MB_total_finished_area -0.127718   0.003176  -40.207083
+CTUID::9330014.02:MB_total_finished_area -0.061871   0.001772  -34.913087
+CTUID::9330015.01:MB_total_finished_area -0.060401   0.002238  -26.988011
+CTUID::9330015.02:MB_total_finished_area -0.068187   0.002832  -24.080855
+CTUID::9330016.01:MB_total_finished_area -0.050848   0.002141  -23.752506
+CTUID::9330016.04:MB_total_finished_area -0.060966   0.002131  -28.602344
+CTUID::9330016.05:MB_total_finished_area -0.025377   0.002599   -9.765187
+CTUID::9330017.02:MB_total_finished_area -0.086251   0.001062  -81.249381
+CTUID::9330017.03:MB_total_finished_area -0.129711   0.004489  -28.893299
+CTUID::9330017.04:MB_total_finished_area -0.132189   0.003352  -39.438320
+CTUID::9330018.01:MB_total_finished_area -0.029477   0.002184  -13.497055
+CTUID::9330018.02:MB_total_finished_area -0.079601   0.002397  -33.212803
+CTUID::9330019.00:MB_total_finished_area  0.037432   0.001288   29.064935
+CTUID::9330020.00:MB_total_finished_area -0.078799   0.002108  -37.389339
+CTUID::9330021.00:MB_total_finished_area  0.022685   0.001060   21.407851
+CTUID::9330022.00:MB_total_finished_area  0.022784   0.001034   22.039709
+CTUID::9330023.00:MB_total_finished_area -0.010978   0.001308   -8.391931
+CTUID::9330024.00:MB_total_finished_area -0.017187   0.001521  -11.300201
+CTUID::9330025.00:MB_total_finished_area -0.006857   0.001608   -4.263727
+CTUID::9330026.00:MB_total_finished_area -0.023058   0.001119  -20.603958
+CTUID::9330027.01:MB_total_finished_area  0.017666   0.002547    6.936382
+CTUID::9330027.02:MB_total_finished_area  0.023304   0.002152   10.830652
+CTUID::9330028.00:MB_total_finished_area  0.022307   0.002209   10.098929
+CTUID::9330029.00:MB_total_finished_area -0.079155   0.003699  -21.396341
+CTUID::9330030.00:MB_total_finished_area -0.079687   0.001176  -67.777171
+CTUID::9330031.01:MB_total_finished_area -0.041391   0.002654  -15.594231
+CTUID::9330031.02:MB_total_finished_area -0.054925   0.001451  -37.857753
+CTUID::9330032.01:MB_total_finished_area -0.065619   0.002449  -26.794237
+CTUID::9330032.02:MB_total_finished_area -0.138757   0.000604 -229.544794
+CTUID::9330033.01:MB_total_finished_area -0.063918   0.002672  -23.919678
+CTUID::9330033.02:MB_total_finished_area -0.062492   0.003421  -18.265282
+CTUID::9330034.01:MB_total_finished_area -0.132265   0.004215  -31.381184
+CTUID::9330034.02:MB_total_finished_area -0.071820   0.002617  -27.439482
+CTUID::9330035.01:MB_total_finished_area -0.083534   0.002916  -28.643612
+CTUID::9330035.02:MB_total_finished_area -0.071000   0.002961  -23.977922
+CTUID::9330036.01:MB_total_finished_area -0.092581   0.002918  -31.722907
+CTUID::9330036.02:MB_total_finished_area -0.115445   0.002640  -43.731517
+CTUID::9330041.02:MB_total_finished_area  0.018831   0.006573    2.864878
+CTUID::9330042.00:MB_total_finished_area -0.057238   0.003380  -16.932205
+CTUID::9330043.01:MB_total_finished_area  0.009018   0.002693    3.348819
+CTUID::9330043.02:MB_total_finished_area  0.029340   0.001145   25.625818
+CTUID::9330044.00:MB_total_finished_area -0.004090   0.001512   -2.704404
+CTUID::9330051.01:MB_total_finished_area -0.076318   0.002459  -31.032425
+CTUID::9330051.02:MB_total_finished_area -0.085226   0.003051  -27.937871
+CTUID::9330052.01:MB_total_finished_area -0.060052   0.003366  -17.838612
+CTUID::9330052.02:MB_total_finished_area -0.051630   0.003339  -15.462273
+CTUID::9330053.01:MB_total_finished_area -0.078790   0.002804  -28.095514
+CTUID::9330053.02:MB_total_finished_area -0.081051   0.002976  -27.238625
+CTUID::9330054.01:MB_total_finished_area -0.129425   0.002027  -63.860689
+CTUID::9330054.02:MB_total_finished_area -0.065558   0.003754  -17.464554
+CTUID::9330055.01:MB_total_finished_area -0.090207   0.001371  -65.773606
+CTUID::9330055.02:MB_total_finished_area  0.033757   0.002433   13.876349
+CTUID::9330056.02:MB_total_finished_area -1.123963   0.003010 -373.383978
+log(age + 1)                             -4.889118   2.258629   -2.164640
+                                           Pr(>|t|)    
+CTUID::9330001.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330001.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330002.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330002.03:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330002.04:MB_total_finished_area 1.3329e-04 ***
+CTUID::9330003.01:MB_total_finished_area 7.1355e-09 ***
+CTUID::9330003.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330004.01:MB_total_finished_area 3.3076e-05 ***
+CTUID::9330004.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330006.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330006.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330007.01:MB_total_finished_area 8.4723e-01    
+CTUID::9330007.02:MB_total_finished_area 7.2971e-02 .  
+CTUID::9330008.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330009.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330010.01:MB_total_finished_area 3.4870e-04 ***
+CTUID::9330010.02:MB_total_finished_area 1.3959e-13 ***
+CTUID::9330011.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330012.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330012.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330013.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330013.03:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330013.04:MB_total_finished_area 1.7916e-06 ***
+CTUID::9330014.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330014.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330015.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330015.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330016.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330016.04:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330016.05:MB_total_finished_area 5.2875e-15 ***
+CTUID::9330017.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330017.03:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330017.04:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330018.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330018.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330019.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330020.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330021.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330022.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330023.00:MB_total_finished_area 2.1404e-12 ***
+CTUID::9330024.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330025.00:MB_total_finished_area 5.7853e-05 ***
+CTUID::9330026.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330027.01:MB_total_finished_area 1.2216e-09 ***
+CTUID::9330027.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330028.00:MB_total_finished_area 1.2459e-15 ***
+CTUID::9330029.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330030.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330031.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330031.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330032.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330032.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330033.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330033.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330034.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330034.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330035.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330035.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330036.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330036.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330041.02:MB_total_finished_area 5.4088e-03 ** 
+CTUID::9330042.00:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330043.01:MB_total_finished_area 1.2720e-03 ** 
+CTUID::9330043.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330044.00:MB_total_finished_area 8.4629e-03 ** 
+CTUID::9330051.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330051.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330052.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330052.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330053.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330053.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330054.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330054.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330055.01:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330055.02:MB_total_finished_area  < 2.2e-16 ***
+CTUID::9330056.02:MB_total_finished_area  < 2.2e-16 ***
+log(age + 1)                             3.3597e-02 *  
+... 1 variable was removed because of collinearity (MB_total_finished_area)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 146.9     Adj. R2: 0.268281
+              Within R2: 0.050235
+> 
+> 
+> dtSlopesTract <- as.data.table(coeftable(mainRegTract), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
+> dtSlopesTract[, CTUID := gsub("CTUID::(.*):MB_total_finished_area", "\\1", term)]
+> print(head(dtSlopesTract))
+                                       term    Estimate   Std. Error
                                      <char>       <num>        <num>
 1: CTUID::9330001.01:MB_total_finished_area -0.24805602 0.0006465836
 2: CTUID::9330001.02:MB_total_finished_area -0.03285001 0.0009671321
@@ -622,7 +806,7 @@ The variable 'MB_total_finished_area' has been removed because of collinearity (
 4: CTUID::9330002.03:MB_total_finished_area -0.08092621 0.0021209813
 5: CTUID::9330002.04:MB_total_finished_area -0.03911302 0.0097092562
 6: CTUID::9330003.01:MB_total_finished_area -0.01694708 0.0025975600
-     statistic       p.value      CTUID
+       t value      Pr(>|t|)      CTUID
          <num>         <num>     <char>
 1: -383.641062 2.986680e-125 9330001.01
 2:  -33.966411  2.732901e-47 9330001.02
@@ -631,11 +815,12 @@ The variable 'MB_total_finished_area' has been removed because of collinearity (
 5:   -4.028426  1.332890e-04 9330002.04
 6:   -6.524231  7.135477e-09 9330003.01
 > 
-> # Now get mean ppsf by CTUID and merge with slopes
 > MEANYEAR <- 2015
-> dtBcaMeans <- dtBCA2019[hasLaneway==FALSE & year(conveyanceDate) >=MEANYEAR, .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = sum(year(conveyanceDate)>=MINYEAR)), by = CTUID]
-> dtBcaMeans <- merge(dtBcaMeans, dtSlopes[, .(CTUID, slope = estimate)], by = "CTUID", all.x = TRUE)
-> print(head(dtBcaMeans))
+> dtMeansTract <- dtBCA2019[hasLaneway == FALSE & year(conveyanceDate) >= MEANYEAR, 
++                           .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = .N), 
++                           by = CTUID]
+> dtMeansTract <- merge(dtMeansTract, dtSlopesTract[, .(CTUID, slope = Estimate)], by = "CTUID", all.x = TRUE)
+> print(head(dtMeansTract))
 Key: <CTUID>
         CTUID meanPPSF  nobs       slope
        <char>    <num> <int>       <num>
@@ -645,34 +830,545 @@ Key: <CTUID>
 4: 9330002.01 634.0783   116 -0.06549629
 5: 9330002.03 639.3170   110 -0.08092621
 6: 9330002.04 536.1255   122 -0.03911302
-> fwrite(dtBcaMeans, "tables/bca19_mean_ppsf_slope_by_tract.csv")
-> ggplot(dtBcaMeans[nobs>quantile(nobs,.025)], aes(x=slope,y=meanPPSF)) + geom_point() + geom_smooth(method="lm") + labs(title="Mean BCA Price per SqFt vs Pricing Slope by Census Tract", x="BCA Pricing Slope ($/sqft per sqft)", y="Mean Price per SqFt")
+> fwrite(dtMeansTract, "tables/bca19_mean_ppsf_slope_by_tract.csv")
+> 
+> ggplot(dtMeansTract[nobs > quantile(nobs, .025) & !is.na(slope)], aes(x = slope, y = meanPPSF)) + 
++   geom_point() + 
++   geom_smooth(method = "lm") + 
++   labs(title = "Mean BCA Price per SqFt vs Pricing Slope by Census Tract", 
++        x = "BCA Pricing Slope ($/sqft per sqft)", 
++        y = "Mean Price per SqFt")
 `geom_smooth()` using formula = 'y ~ x'
-Warning messages:
-1: Removed 1 row containing non-finite outside the scale range (`stat_smooth()`). 
-2: Removed 1 row containing missing values or values outside the scale range
-(`geom_point()`). 
-> ggsave("text/bca19_mean_ppsf_vs_slope.png")
+> ggsave("text/bca19_mean_ppsf_vs_slope_tract.png")
 Saving 7 x 7 in image
 `geom_smooth()` using formula = 'y ~ x'
-Warning messages:
-1: Removed 1 row containing non-finite outside the scale range (`stat_smooth()`). 
-2: Removed 1 row containing missing values or values outside the scale range
-(`geom_point()`). 
-> print(cor(dtBcaMeans[!is.na(slope),.(slope,meanPPSF)]))
+> 
+> cat("\nCorrelations (tract):\n")
+
+Correlations (tract):
+> print(cor(dtMeansTract[!is.na(slope), .(slope, meanPPSF)]))
               slope   meanPPSF
 slope    1.00000000 0.08640369
 meanPPSF 0.08640369 1.00000000
-> print(cor(dtBcaMeans[!is.na(slope) & nobs>quantile(nobs,.025),.(slope,meanPPSF)]))
+> print(cor(dtMeansTract[!is.na(slope) & nobs > quantile(nobs, .025), .(slope, meanPPSF)]))
              slope  meanPPSF
 slope    1.0000000 0.5229345
 meanPPSF 0.5229345 1.0000000
-> print(cor(dtBcaMeans[!is.na(slope) & nobs>quantile(nobs,.05),.(slope,meanPPSF)]))
+> print(cor(dtMeansTract[!is.na(slope) & nobs > quantile(nobs, .05), .(slope, meanPPSF)]))
              slope  meanPPSF
 slope    1.0000000 0.5030124
 meanPPSF 0.5030124 1.0000000
 > 
+> # ==========================================
+> # Neighbourhood slopes and means
+> # Note much higher correlation slope,mean indicates better measure
+> # ==========================================
+> 
+> mainRegNbhd <- feols(ppsf ~ i(neighbourhoodDescription, MB_total_finished_area) + log(age + 1) + MB_total_finished_area | neighbourhoodDescription + duplex, data = dtAnalysis)
+The variable 'MB_total_finished_area' has been removed because of collinearity (see $collin.var).
+> print(summary(mainRegNbhd))
+OLS estimation, Dep. Var.: ppsf
+Observations: 13,155
+Fixed-effects: neighbourhoodDescription: 23,  duplex: 2
+Standard-errors: Clustered (neighbourhoodDescription) 
+                                                                            Estimate
+neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area -0.014792
+neighbourhoodDescription::CAMBIE:MB_total_finished_area                    -0.048412
+neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area             -0.060152
+neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area               -0.061550
+neighbourhoodDescription::DUNBAR:MB_total_finished_area                    -0.010936
+neighbourhoodDescription::FRASERVIEW:MB_total_finished_area                -0.064264
+neighbourhoodDescription::GRANDVIEW:MB_total_finished_area                 -0.071657
+neighbourhoodDescription::HASTINGS EAST:MB_total_finished_area             -0.073676
+neighbourhoodDescription::KERRISDALE:MB_total_finished_area                -0.012308
+neighbourhoodDescription::KILLARNEY:MB_total_finished_area                 -0.064062
+neighbourhoodDescription::KITSILANO:MB_total_finished_area                 -0.038952
+neighbourhoodDescription::KNIGHT:MB_total_finished_area                    -0.074788
+neighbourhoodDescription::MAIN/FRASER:MB_total_finished_area               -0.077049
+neighbourhoodDescription::MARINE DRIVE:MB_total_finished_area              -0.077723
+neighbourhoodDescription::MARPOLE:MB_total_finished_area                   -0.030926
+neighbourhoodDescription::OAKRIDGE:MB_total_finished_area                  -0.002100
+neighbourhoodDescription::POINT GREY:MB_total_finished_area                 0.009656
+neighbourhoodDescription::RENFREW:MB_total_finished_area                   -0.068371
+neighbourhoodDescription::RENFREW HEIGHTS:MB_total_finished_area           -0.096203
+neighbourhoodDescription::SHAUGHNESSY:MB_total_finished_area               -0.002603
+neighbourhoodDescription::SOUTH GRANVILLE:MB_total_finished_area           -0.008768
+neighbourhoodDescription::SOUTH VANCOUVER:MB_total_finished_area           -0.053805
+neighbourhoodDescription::SOUTHLANDS:MB_total_finished_area                -0.025442
+log(age + 1)                                                               -6.125510
+                                                                           Std. Error
+neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area   0.001183
+neighbourhoodDescription::CAMBIE:MB_total_finished_area                      0.002142
+neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area               0.001973
+neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area                 0.002618
+neighbourhoodDescription::DUNBAR:MB_total_finished_area                      0.001555
+neighbourhoodDescription::FRASERVIEW:MB_total_finished_area                  0.006960
+neighbourhoodDescription::GRANDVIEW:MB_total_finished_area                   0.002389
+neighbourhoodDescription::HASTINGS EAST:MB_total_finished_area               0.003625
+neighbourhoodDescription::KERRISDALE:MB_total_finished_area                  0.000795
+neighbourhoodDescription::KILLARNEY:MB_total_finished_area                   0.002789
+neighbourhoodDescription::KITSILANO:MB_total_finished_area                   0.003054
+neighbourhoodDescription::KNIGHT:MB_total_finished_area                      0.003007
+neighbourhoodDescription::MAIN/FRASER:MB_total_finished_area                 0.002507
+neighbourhoodDescription::MARINE DRIVE:MB_total_finished_area                0.000679
+neighbourhoodDescription::MARPOLE:MB_total_finished_area                     0.002495
+neighbourhoodDescription::OAKRIDGE:MB_total_finished_area                    0.001300
+neighbourhoodDescription::POINT GREY:MB_total_finished_area                  0.001386
+neighbourhoodDescription::RENFREW:MB_total_finished_area                     0.003686
+neighbourhoodDescription::RENFREW HEIGHTS:MB_total_finished_area             0.003239
+neighbourhoodDescription::SHAUGHNESSY:MB_total_finished_area                 0.001561
+neighbourhoodDescription::SOUTH GRANVILLE:MB_total_finished_area             0.001434
+neighbourhoodDescription::SOUTH VANCOUVER:MB_total_finished_area             0.002467
+neighbourhoodDescription::SOUTHLANDS:MB_total_finished_area                  0.000930
+log(age + 1)                                                                 2.601392
+                                                                              t value
+neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area  -12.50455
+neighbourhoodDescription::CAMBIE:MB_total_finished_area                     -22.60356
+neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area              -30.48287
+neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area                -23.51372
+neighbourhoodDescription::DUNBAR:MB_total_finished_area                      -7.03370
+neighbourhoodDescription::FRASERVIEW:MB_total_finished_area                  -9.23389
+neighbourhoodDescription::GRANDVIEW:MB_total_finished_area                  -29.99521
+neighbourhoodDescription::HASTINGS EAST:MB_total_finished_area              -20.32462
+neighbourhoodDescription::KERRISDALE:MB_total_finished_area                 -15.48706
+neighbourhoodDescription::KILLARNEY:MB_total_finished_area                  -22.97034
+neighbourhoodDescription::KITSILANO:MB_total_finished_area                  -12.75359
+neighbourhoodDescription::KNIGHT:MB_total_finished_area                     -24.87531
+neighbourhoodDescription::MAIN/FRASER:MB_total_finished_area                -30.73248
+neighbourhoodDescription::MARINE DRIVE:MB_total_finished_area              -114.41521
+neighbourhoodDescription::MARPOLE:MB_total_finished_area                    -12.39623
+neighbourhoodDescription::OAKRIDGE:MB_total_finished_area                    -1.61583
+neighbourhoodDescription::POINT GREY:MB_total_finished_area                   6.96682
+neighbourhoodDescription::RENFREW:MB_total_finished_area                    -18.54744
+neighbourhoodDescription::RENFREW HEIGHTS:MB_total_finished_area            -29.70531
+neighbourhoodDescription::SHAUGHNESSY:MB_total_finished_area                 -1.66813
+neighbourhoodDescription::SOUTH GRANVILLE:MB_total_finished_area             -6.11556
+neighbourhoodDescription::SOUTH VANCOUVER:MB_total_finished_area            -21.81054
+neighbourhoodDescription::SOUTHLANDS:MB_total_finished_area                 -27.34885
+log(age + 1)                                                                 -2.35470
+                                                                             Pr(>|t|)
+neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area 1.7953e-11
+neighbourhoodDescription::CAMBIE:MB_total_finished_area                     < 2.2e-16
+neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area              < 2.2e-16
+neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area                < 2.2e-16
+neighbourhoodDescription::DUNBAR:MB_total_finished_area                    4.6670e-07
+neighbourhoodDescription::FRASERVIEW:MB_total_finished_area                5.0431e-09
+neighbourhoodDescription::GRANDVIEW:MB_total_finished_area                  < 2.2e-16
+neighbourhoodDescription::HASTINGS EAST:MB_total_finished_area             9.5144e-16
+neighbourhoodDescription::KERRISDALE:MB_total_finished_area                2.5781e-13
+neighbourhoodDescription::KILLARNEY:MB_total_finished_area                  < 2.2e-16
+neighbourhoodDescription::KITSILANO:MB_total_finished_area                 1.2236e-11
+neighbourhoodDescription::KNIGHT:MB_total_finished_area                     < 2.2e-16
+neighbourhoodDescription::MAIN/FRASER:MB_total_finished_area                < 2.2e-16
+neighbourhoodDescription::MARINE DRIVE:MB_total_finished_area               < 2.2e-16
+neighbourhoodDescription::MARPOLE:MB_total_finished_area                   2.1250e-11
+neighbourhoodDescription::OAKRIDGE:MB_total_finished_area                  1.2038e-01
+neighbourhoodDescription::POINT GREY:MB_total_finished_area                5.4099e-07
+neighbourhoodDescription::RENFREW:MB_total_finished_area                   6.4027e-15
+neighbourhoodDescription::RENFREW HEIGHTS:MB_total_finished_area            < 2.2e-16
+neighbourhoodDescription::SHAUGHNESSY:MB_total_finished_area               1.0946e-01
+neighbourhoodDescription::SOUTH GRANVILLE:MB_total_finished_area           3.7251e-06
+neighbourhoodDescription::SOUTH VANCOUVER:MB_total_finished_area            < 2.2e-16
+neighbourhoodDescription::SOUTHLANDS:MB_total_finished_area                 < 2.2e-16
+log(age + 1)                                                               2.7874e-02
+                                                                              
+neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area ***
+neighbourhoodDescription::CAMBIE:MB_total_finished_area                    ***
+neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area             ***
+neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area               ***
+neighbourhoodDescription::DUNBAR:MB_total_finished_area                    ***
+neighbourhoodDescription::FRASERVIEW:MB_total_finished_area                ***
+neighbourhoodDescription::GRANDVIEW:MB_total_finished_area                 ***
+neighbourhoodDescription::HASTINGS EAST:MB_total_finished_area             ***
+neighbourhoodDescription::KERRISDALE:MB_total_finished_area                ***
+neighbourhoodDescription::KILLARNEY:MB_total_finished_area                 ***
+neighbourhoodDescription::KITSILANO:MB_total_finished_area                 ***
+neighbourhoodDescription::KNIGHT:MB_total_finished_area                    ***
+neighbourhoodDescription::MAIN/FRASER:MB_total_finished_area               ***
+neighbourhoodDescription::MARINE DRIVE:MB_total_finished_area              ***
+neighbourhoodDescription::MARPOLE:MB_total_finished_area                   ***
+neighbourhoodDescription::OAKRIDGE:MB_total_finished_area                     
+neighbourhoodDescription::POINT GREY:MB_total_finished_area                ***
+neighbourhoodDescription::RENFREW:MB_total_finished_area                   ***
+neighbourhoodDescription::RENFREW HEIGHTS:MB_total_finished_area           ***
+neighbourhoodDescription::SHAUGHNESSY:MB_total_finished_area                  
+neighbourhoodDescription::SOUTH GRANVILLE:MB_total_finished_area           ***
+neighbourhoodDescription::SOUTH VANCOUVER:MB_total_finished_area           ***
+neighbourhoodDescription::SOUTHLANDS:MB_total_finished_area                ***
+log(age + 1)                                                               *  
+... 1 variable was removed because of collinearity (MB_total_finished_area)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 148.4     Adj. R2: 0.259872
+              Within R2: 0.043068
+> 
+> dtSlopesNbhd <- as.data.table(coeftable(mainRegNbhd), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
+> dtSlopesNbhd[, neighbourhoodDescription := gsub("neighbourhoodDescription::(.*):MB_total_finished_area", "\\1", term)]
+> print(head(dtSlopesNbhd))
+                                                                         term
+                                                                       <char>
+1: neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area
+2:                    neighbourhoodDescription::CAMBIE:MB_total_finished_area
+3:             neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area
+4:               neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area
+5:                    neighbourhoodDescription::DUNBAR:MB_total_finished_area
+6:                neighbourhoodDescription::FRASERVIEW:MB_total_finished_area
+      Estimate  Std. Error    t value     Pr(>|t|)  neighbourhoodDescription
+         <num>       <num>      <num>        <num>                    <char>
+1: -0.01479152 0.001182891 -12.504548 1.795335e-11 ARBUTUS/MACKENZIE HEIGHTS
+2: -0.04841163 0.002141770 -22.603558 1.017498e-16                    CAMBIE
+3: -0.06015174 0.001973296 -30.482869 1.722193e-19             CEDAR COTTAGE
+4: -0.06155029 0.002617633 -23.513716 4.412938e-17               COLLINGWOOD
+5: -0.01093593 0.001554790  -7.033701 4.667036e-07                    DUNBAR
+6: -0.06426389 0.006959566  -9.233894 5.043120e-09                FRASERVIEW
+> 
+> dtMeansNbhd <- dtBCA2019[hasLaneway == FALSE & year(conveyanceDate) >= MEANYEAR, 
++                          .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = .N), 
++                          by = neighbourhoodDescription]
+> dtMeansNbhd <- merge(dtMeansNbhd, dtSlopesNbhd[, .(neighbourhoodDescription, slope = Estimate)], by = "neighbourhoodDescription", all.x = TRUE)
+> print(head(dtMeansNbhd))
+Key: <neighbourhoodDescription>
+    neighbourhoodDescription meanPPSF  nobs       slope
+                      <char>    <num> <int>       <num>
+1: ARBUTUS/MACKENZIE HEIGHTS 817.7070   128 -0.01479152
+2:                    CAMBIE 786.6326   133 -0.04841163
+3:             CEDAR COTTAGE 710.8595   195 -0.06015174
+4:               COLLINGWOOD 625.0172   380 -0.06155029
+5:                    DUNBAR 814.5198   192 -0.01093593
+6:                FRASERVIEW 603.7006   361 -0.06426389
+> fwrite(dtMeansNbhd, "tables/bca19_mean_ppsf_slope_by_neighbourhood.csv")
+> 
+> ggplot(dtMeansNbhd[nobs > quantile(nobs, .025) & !is.na(slope)], aes(x = slope, y = meanPPSF)) + 
++   geom_point() + 
++   geom_smooth(method = "lm") + 
++   labs(title = "Mean BCA Price per SqFt vs Pricing Slope by Neighbourhood", 
++        x = "BCA Pricing Slope ($/sqft per sqft)", 
++        y = "Mean Price per SqFt")
+`geom_smooth()` using formula = 'y ~ x'
+> ggsave("text/bca19_mean_ppsf_vs_slope_neighbourhood.png")
+Saving 7 x 7 in image
+`geom_smooth()` using formula = 'y ~ x'
+> 
+> # ============
+> # Do neighbourhood regression but exclude duplexes, limit to newer homes, and include land area
+> # ============
+> 
+> print(summary(dtAnalysis))
+   roll_base           folioID          conveyancePrice   conveyanceDate    
+ Min.   :1.021e+09   Length:13155       Min.   : 176750   Length:13155      
+ 1st Qu.:1.175e+10   Class :character   1st Qu.:1096472   Class :character  
+ Median :1.781e+10   Mode  :character   Median :1470000   Mode  :character  
+ Mean   :1.634e+10                      Mean   :1611518                     
+ 3rd Qu.:2.165e+10                      3rd Qu.:1990476                     
+ Max.   :2.584e+10                      Max.   :4300000                     
+                                                                            
+ MB_effective_year MB_total_finished_area   land_width       land_depth   
+ Min.   :1910      Min.   :1296           Min.   : 17.00   Min.   : 34.3  
+ 1st Qu.:1980      1st Qu.:2112           1st Qu.: 33.00   1st Qu.:110.4  
+ Median :1995      Median :2469           Median : 33.00   Median :122.0  
+ Mean   :1992      Mean   :2622           Mean   : 38.97   Mean   :119.8  
+ 3rd Qu.:2010      3rd Qu.:2996           3rd Qu.: 44.00   3rd Qu.:124.7  
+ Max.   :2019      Max.   :4639           Max.   :111.30   Max.   :342.1  
+                                          NA's   :4        NA's   :4      
+   land_area     roll_number           zoning          actualUseDescription
+ Min.   :0.218   Length:13155       Length:13155       Length:13155        
+ 1st Qu.:0.248   Class :character   Class :character   Class :character    
+ Median :0.329   Mode  :character   Mode  :character   Mode  :character    
+ Mean   :0.341                                                             
+ 3rd Qu.:0.359                                                             
+ Max.   :0.551                                                             
+ NA's   :13150                                                             
+ neighbourhoodDescription  postalCode           CTUID          
+ Length:13155             Length:13155       Length:13155      
+ Class :character         Class :character   Class :character  
+ Mode  :character         Mode  :character   Mode  :character  
+                                                               
+                                                               
+                                                               
+                                                               
+    DGUID              CTNAME          land_area_approximate      age        
+ Length:13155       Length:13155       Min.   : 1515         Min.   :  0.00  
+ Class :character   Class :character   1st Qu.: 3840         1st Qu.:  5.00  
+ Mode  :character   Mode  :character   Median : 4092         Median : 20.00  
+                                       Mean   : 4677         Mean   : 22.45  
+                                       3rd Qu.: 5274         3rd Qu.: 36.00  
+                                       Max.   :24000         Max.   :108.00  
+                                       NA's   :4                             
+      ppsf        dwelling_type       lanewayBuilt   hasLaneway     
+ Min.   : 66.65   Length:13155       Min.   :2021    Mode :logical  
+ 1st Qu.:474.04   Class :character   1st Qu.:2021    FALSE:13155    
+ Median :613.97   Mode  :character   Median :2022                   
+ Mean   :610.85                      Mean   :2022                   
+ 3rd Qu.:750.28                      3rd Qu.:2022                   
+ Max.   :929.03                      Max.   :2023                   
+                                     NA's   :12945                  
+     duplex            nDuplex     
+ Min.   :0.000000   Min.   :  0.0  
+ 1st Qu.:0.000000   1st Qu.:  0.0  
+ Median :0.000000   Median :  8.0  
+ Mean   :0.006537   Mean   : 35.1  
+ 3rd Qu.:0.000000   3rd Qu.: 48.0  
+ Max.   :1.000000   Max.   :729.0  
+                                   
+> print(table(dtAnalysis[,.(is.na(land_area_approximate),duplex)]))
+       duplex
+V1          0     1
+  FALSE 13065    86
+  TRUE      4     0
+> dtLimit <- dtAnalysis[duplex==0  & !is.na(land_area_approximate) & land_area_approximate>0 & age<quantile(age,.75)]
+> print(summary(dtLimit))
+   roll_base           folioID          conveyancePrice   conveyanceDate    
+ Min.   :1.023e+09   Length:9726        Min.   : 176750   Length:9726       
+ 1st Qu.:1.012e+10   Class :character   1st Qu.:1165000   Class :character  
+ Median :1.779e+10   Mode  :character   Median :1580000   Mode  :character  
+ Mean   :1.582e+10                      Mean   :1707589                     
+ 3rd Qu.:2.163e+10                      3rd Qu.:2150000                     
+ Max.   :2.583e+10                      Max.   :4300000                     
+                                                                            
+ MB_effective_year MB_total_finished_area   land_width       land_depth   
+ Min.   :1977      Min.   :1302           Min.   : 17.00   Min.   : 34.3  
+ 1st Qu.:1991      1st Qu.:2218           1st Qu.: 33.00   1st Qu.:111.5  
+ Median :2002      Median :2616           Median : 33.00   Median :122.0  
+ Mean   :2001      Mean   :2759           Mean   : 38.65   Mean   :119.6  
+ 3rd Qu.:2012      3rd Qu.:3182           3rd Qu.: 44.00   3rd Qu.:124.5  
+ Max.   :2019      Max.   :4639           Max.   :111.30   Max.   :286.4  
+                                                                          
+   land_area     roll_number           zoning          actualUseDescription
+ Min.   :0.329   Length:9726        Length:9726        Length:9726         
+ 1st Qu.:0.336   Class :character   Class :character   Class :character    
+ Median :0.344   Mode  :character   Mode  :character   Mode  :character    
+ Mean   :0.344                                                             
+ 3rd Qu.:0.352                                                             
+ Max.   :0.359                                                             
+ NA's   :9724                                                              
+ neighbourhoodDescription  postalCode           CTUID          
+ Length:9726              Length:9726        Length:9726       
+ Class :character         Class :character   Class :character  
+ Mode  :character         Mode  :character   Mode  :character  
+                                                               
+                                                               
+                                                               
+                                                               
+    DGUID              CTNAME          land_area_approximate      age       
+ Length:9726        Length:9726        Min.   : 1515         Min.   : 0.00  
+ Class :character   Class :character   1st Qu.: 3848         1st Qu.: 2.00  
+ Mode  :character   Mode  :character   Median : 4085         Median :13.00  
+                                       Mean   : 4629         Mean   :13.65  
+                                       3rd Qu.: 5224         3rd Qu.:23.00  
+                                       Max.   :18000         Max.   :35.00  
+                                                                            
+      ppsf        dwelling_type       lanewayBuilt  hasLaneway          duplex 
+ Min.   : 66.65   Length:9726        Min.   :2021   Mode :logical   Min.   :0  
+ 1st Qu.:476.68   Class :character   1st Qu.:2021   FALSE:9726      1st Qu.:0  
+ Median :621.94   Mode  :character   Median :2022                   Median :0  
+ Mean   :615.51                      Mean   :2022                   Mean   :0  
+ 3rd Qu.:760.26                      3rd Qu.:2022                   3rd Qu.:0  
+ Max.   :929.03                      Max.   :2023                   Max.   :0  
+                                     NA's   :9628                              
+    nDuplex      
+ Min.   :  0.00  
+ 1st Qu.:  0.00  
+ Median :  8.00  
+ Mean   : 35.07  
+ 3rd Qu.: 48.00  
+ Max.   :729.00  
+                 
+> limitRegNbhd <- feols(ppsf ~ i(neighbourhoodDescription, MB_total_finished_area) + log(age + 1) + log(land_area_approximate) + MB_total_finished_area | neighbourhoodDescription + duplex, data = dtLimit)
+> print(summary(limitRegNbhd))
+OLS estimation, Dep. Var.: ppsf
+Observations: 9,726
+Fixed-effects: neighbourhoodDescription: 23,  duplex: 1
+Standard-errors: Clustered (neighbourhoodDescription) 
+                                                                            Estimate
+neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area -0.001392
+neighbourhoodDescription::CAMBIE:MB_total_finished_area                    -0.028343
+neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area             -0.034939
+neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area               -0.036996
+neighbourhoodDescription::DUNBAR:MB_total_finished_area                     0.001114
+neighbourhoodDescription::FRASERVIEW:MB_total_finished_area                -0.033971
+neighbourhoodDescription::GRANDVIEW:MB_total_finished_area                 -0.051445
+neighbourhoodDescription::HASTINGS EAST:MB_total_finished_area             -0.043632
+neighbourhoodDescription::KERRISDALE:MB_total_finished_area                 0.002235
+neighbourhoodDescription::KILLARNEY:MB_total_finished_area                 -0.030849
+neighbourhoodDescription::KITSILANO:MB_total_finished_area                 -0.020587
+neighbourhoodDescription::KNIGHT:MB_total_finished_area                    -0.047482
+neighbourhoodDescription::MAIN/FRASER:MB_total_finished_area               -0.060321
+neighbourhoodDescription::MARINE DRIVE:MB_total_finished_area              -0.059721
+neighbourhoodDescription::MARPOLE:MB_total_finished_area                   -0.028399
+neighbourhoodDescription::OAKRIDGE:MB_total_finished_area                   0.027297
+neighbourhoodDescription::POINT GREY:MB_total_finished_area                 0.021766
+neighbourhoodDescription::RENFREW:MB_total_finished_area                   -0.022812
+neighbourhoodDescription::RENFREW HEIGHTS:MB_total_finished_area           -0.060490
+neighbourhoodDescription::SHAUGHNESSY:MB_total_finished_area               -0.006515
+neighbourhoodDescription::SOUTH GRANVILLE:MB_total_finished_area            0.023839
+neighbourhoodDescription::SOUTH VANCOUVER:MB_total_finished_area           -0.031969
+neighbourhoodDescription::SOUTHLANDS:MB_total_finished_area                -0.012774
+log(age + 1)                                                               -3.762322
+log(land_area_approximate)                                                 16.454354
+MB_total_finished_area                                                     -0.020172
+                                                                           Std. Error
+neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area   0.030985
+neighbourhoodDescription::CAMBIE:MB_total_finished_area                      0.031149
+neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area               0.029598
+neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area                 0.031357
+neighbourhoodDescription::DUNBAR:MB_total_finished_area                      0.030343
+neighbourhoodDescription::FRASERVIEW:MB_total_finished_area                  0.034530
+neighbourhoodDescription::GRANDVIEW:MB_total_finished_area                   0.031870
+neighbourhoodDescription::HASTINGS EAST:MB_total_finished_area               0.033231
+neighbourhoodDescription::KERRISDALE:MB_total_finished_area                  0.029969
+neighbourhoodDescription::KILLARNEY:MB_total_finished_area                   0.031749
+neighbourhoodDescription::KITSILANO:MB_total_finished_area                   0.031871
+neighbourhoodDescription::KNIGHT:MB_total_finished_area                      0.031920
+neighbourhoodDescription::MAIN/FRASER:MB_total_finished_area                 0.030766
+neighbourhoodDescription::MARINE DRIVE:MB_total_finished_area                0.029111
+neighbourhoodDescription::MARPOLE:MB_total_finished_area                     0.031274
+neighbourhoodDescription::OAKRIDGE:MB_total_finished_area                    0.031849
+neighbourhoodDescription::POINT GREY:MB_total_finished_area                  0.031099
+neighbourhoodDescription::RENFREW:MB_total_finished_area                     0.033245
+neighbourhoodDescription::RENFREW HEIGHTS:MB_total_finished_area             0.032243
+neighbourhoodDescription::SHAUGHNESSY:MB_total_finished_area                 0.034632
+neighbourhoodDescription::SOUTH GRANVILLE:MB_total_finished_area             0.032776
+neighbourhoodDescription::SOUTH VANCOUVER:MB_total_finished_area             0.031724
+neighbourhoodDescription::SOUTHLANDS:MB_total_finished_area                  0.035438
+log(age + 1)                                                                 2.592564
+log(land_area_approximate)                                                  19.572792
+MB_total_finished_area                                                       0.036382
+                                                                             t value
+neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area -0.044911
+neighbourhoodDescription::CAMBIE:MB_total_finished_area                    -0.909922
+neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area             -1.180432
+neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area               -1.179830
+neighbourhoodDescription::DUNBAR:MB_total_finished_area                     0.036718
+neighbourhoodDescription::FRASERVIEW:MB_total_finished_area                -0.983797
+neighbourhoodDescription::GRANDVIEW:MB_total_finished_area                 -1.614190
+neighbourhoodDescription::HASTINGS EAST:MB_total_finished_area             -1.313000
+neighbourhoodDescription::KERRISDALE:MB_total_finished_area                 0.074563
+neighbourhoodDescription::KILLARNEY:MB_total_finished_area                 -0.971634
+neighbourhoodDescription::KITSILANO:MB_total_finished_area                 -0.645930
+neighbourhoodDescription::KNIGHT:MB_total_finished_area                    -1.487538
+neighbourhoodDescription::MAIN/FRASER:MB_total_finished_area               -1.960677
+neighbourhoodDescription::MARINE DRIVE:MB_total_finished_area              -2.051509
+neighbourhoodDescription::MARPOLE:MB_total_finished_area                   -0.908061
+neighbourhoodDescription::OAKRIDGE:MB_total_finished_area                   0.857072
+neighbourhoodDescription::POINT GREY:MB_total_finished_area                 0.699897
+neighbourhoodDescription::RENFREW:MB_total_finished_area                   -0.686182
+neighbourhoodDescription::RENFREW HEIGHTS:MB_total_finished_area           -1.876030
+neighbourhoodDescription::SHAUGHNESSY:MB_total_finished_area               -0.188117
+neighbourhoodDescription::SOUTH GRANVILLE:MB_total_finished_area            0.727325
+neighbourhoodDescription::SOUTH VANCOUVER:MB_total_finished_area           -1.007744
+neighbourhoodDescription::SOUTHLANDS:MB_total_finished_area                -0.360460
+log(age + 1)                                                               -1.451198
+log(land_area_approximate)                                                  0.840675
+MB_total_finished_area                                                     -0.554440
+                                                                           Pr(>|t|)
+neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area 0.964583
+neighbourhoodDescription::CAMBIE:MB_total_finished_area                    0.372725
+neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area             0.250434
+neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area               0.250669
+neighbourhoodDescription::DUNBAR:MB_total_finished_area                    0.971041
+neighbourhoodDescription::FRASERVIEW:MB_total_finished_area                0.335912
+neighbourhoodDescription::GRANDVIEW:MB_total_finished_area                 0.120739
+neighbourhoodDescription::HASTINGS EAST:MB_total_finished_area             0.202715
+neighbourhoodDescription::KERRISDALE:MB_total_finished_area                0.941236
+neighbourhoodDescription::KILLARNEY:MB_total_finished_area                 0.341795
+neighbourhoodDescription::KITSILANO:MB_total_finished_area                 0.525006
+neighbourhoodDescription::KNIGHT:MB_total_finished_area                    0.151067
+neighbourhoodDescription::MAIN/FRASER:MB_total_finished_area               0.062700
+neighbourhoodDescription::MARINE DRIVE:MB_total_finished_area              0.052310
+neighbourhoodDescription::MARPOLE:MB_total_finished_area                   0.373686
+neighbourhoodDescription::OAKRIDGE:MB_total_finished_area                  0.400645
+neighbourhoodDescription::POINT GREY:MB_total_finished_area                0.491327
+neighbourhoodDescription::RENFREW:MB_total_finished_area                   0.499767
+neighbourhoodDescription::RENFREW HEIGHTS:MB_total_finished_area           0.073982
+neighbourhoodDescription::SHAUGHNESSY:MB_total_finished_area               0.852509
+neighbourhoodDescription::SOUTH GRANVILLE:MB_total_finished_area           0.474696
+neighbourhoodDescription::SOUTH VANCOUVER:MB_total_finished_area           0.324534
+neighbourhoodDescription::SOUTHLANDS:MB_total_finished_area                0.721941
+log(age + 1)                                                               0.160836
+log(land_area_approximate)                                                 0.409574
+MB_total_finished_area                                                     0.584871
+                                                                              
+neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area    
+neighbourhoodDescription::CAMBIE:MB_total_finished_area                       
+neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area                
+neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area                  
+neighbourhoodDescription::DUNBAR:MB_total_finished_area                       
+neighbourhoodDescription::FRASERVIEW:MB_total_finished_area                   
+neighbourhoodDescription::GRANDVIEW:MB_total_finished_area                    
+neighbourhoodDescription::HASTINGS EAST:MB_total_finished_area                
+neighbourhoodDescription::KERRISDALE:MB_total_finished_area                   
+neighbourhoodDescription::KILLARNEY:MB_total_finished_area                    
+neighbourhoodDescription::KITSILANO:MB_total_finished_area                    
+neighbourhoodDescription::KNIGHT:MB_total_finished_area                       
+neighbourhoodDescription::MAIN/FRASER:MB_total_finished_area               .  
+neighbourhoodDescription::MARINE DRIVE:MB_total_finished_area              .  
+neighbourhoodDescription::MARPOLE:MB_total_finished_area                      
+neighbourhoodDescription::OAKRIDGE:MB_total_finished_area                     
+neighbourhoodDescription::POINT GREY:MB_total_finished_area                   
+neighbourhoodDescription::RENFREW:MB_total_finished_area                      
+neighbourhoodDescription::RENFREW HEIGHTS:MB_total_finished_area           .  
+neighbourhoodDescription::SHAUGHNESSY:MB_total_finished_area                  
+neighbourhoodDescription::SOUTH GRANVILLE:MB_total_finished_area              
+neighbourhoodDescription::SOUTH VANCOUVER:MB_total_finished_area              
+neighbourhoodDescription::SOUTHLANDS:MB_total_finished_area                   
+log(age + 1)                                                                  
+log(land_area_approximate)                                                    
+MB_total_finished_area                                                        
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 149.6     Adj. R2: 0.268968
+              Within R2: 0.034141
+> 
+> dtSlopesNbhdLimit <- as.data.table(coeftable(limitRegNbhd), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
+> dtSlopesNbhdLimit[, neighbourhoodDescription := gsub("neighbourhoodDescription::(.*):MB_total_finished_area", "\\1", term)]
+> print(head(dtSlopesNbhdLimit))
+                                                                         term
+                                                                       <char>
+1: neighbourhoodDescription::ARBUTUS/MACKENZIE HEIGHTS:MB_total_finished_area
+2:                    neighbourhoodDescription::CAMBIE:MB_total_finished_area
+3:             neighbourhoodDescription::CEDAR COTTAGE:MB_total_finished_area
+4:               neighbourhoodDescription::COLLINGWOOD:MB_total_finished_area
+5:                    neighbourhoodDescription::DUNBAR:MB_total_finished_area
+6:                neighbourhoodDescription::FRASERVIEW:MB_total_finished_area
+       Estimate Std. Error     t value  Pr(>|t|)  neighbourhoodDescription
+          <num>      <num>       <num>     <num>                    <char>
+1: -0.001391555 0.03098463 -0.04491113 0.9645833 ARBUTUS/MACKENZIE HEIGHTS
+2: -0.028343143 0.03114897 -0.90992242 0.3727252                    CAMBIE
+3: -0.034938504 0.02959806 -1.18043206 0.2504344             CEDAR COTTAGE
+4: -0.036995990 0.03135705 -1.17983023 0.2506688               COLLINGWOOD
+5:  0.001114117 0.03034255  0.03671795 0.9710410                    DUNBAR
+6: -0.033970740 0.03453023 -0.98379698 0.3359118                FRASERVIEW
+> 
+> dtMeansNbhdLimit <- dtLimit[hasLaneway == FALSE & year(conveyanceDate) >= MEANYEAR, 
++                          .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = .N), 
++                          by = neighbourhoodDescription]
+> dtMeansNbhdLimit <- merge(dtMeansNbhdLimit, dtSlopesNbhdLimit[, .(neighbourhoodDescription, slope = Estimate)], by = "neighbourhoodDescription", all.x = TRUE)
+> print(head(dtMeansNbhdLimit))
+Key: <neighbourhoodDescription>
+    neighbourhoodDescription meanPPSF  nobs        slope
+                      <char>    <num> <int>        <num>
+1: ARBUTUS/MACKENZIE HEIGHTS 814.7083   104 -0.001391555
+2:                    CAMBIE 788.2405    96 -0.028343143
+3:             CEDAR COTTAGE 720.8051   143 -0.034938504
+4:               COLLINGWOOD 637.5945   206 -0.036995990
+5:                    DUNBAR 827.7869   128  0.001114117
+6:                FRASERVIEW 607.6215   215 -0.033970740
+> fwrite(dtMeansNbhdLimit, "tables/bca19_mean_ppsf_slope_by_neighbourhood_limit.csv")
+> 
+> 
+> cat("\nLimited Correlations (neighbourhood):\n")
+
+Limited Correlations (neighbourhood):
+> print(cor(dtMeansNbhd[!is.na(slope), .(slope, meanPPSF)]))
+             slope  meanPPSF
+slope    1.0000000 0.8666257
+meanPPSF 0.8666257 1.0000000
+> print(cor(dtMeansNbhdLimit[!is.na(slope), .(slope, meanPPSF)]))
+            slope meanPPSF
+slope    1.000000 0.747069
+meanPPSF 0.747069 1.000000
+> 
 > q("no")
 > proc.time()
    user  system elapsed 
- 15.068   4.273  11.485 
+ 12.715   0.554   5.397 
