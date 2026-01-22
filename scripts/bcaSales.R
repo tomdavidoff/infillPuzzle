@@ -24,12 +24,12 @@ BCA26 <- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
 fRollLatLon <- "~/OneDrive - UBC/dataProcessed/bca26RollCensusTract.rds"
 fLaneway <-  "~/OneDrive - UBC/dataRaw/20231231_UBC_CustomLanewayReport.xlsx"
 
-
+# drop duplex
 if (!file.exists(fRollLatLon)) {
   cat("Extracting lot centroids from BCA 2026 data...\n")
   desc26 <- st_read(BCA26,
       layer="WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
-      query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV WHERE JURISDICTION_CODE=='200' AND (ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling') OR INSTR(ACTUAL_USE_DESCRIPTION, 'uplex') > 0)", 
+      query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV WHERE JURISDICTION_CODE=='200' AND ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling')  > 0", 
       quiet = TRUE
   )
   print(head(desc26))
@@ -87,6 +87,19 @@ cols <- c("conveyancePrice", "MB_effective_year", "MB_total_finished_area","land
 dtBCA2019[, (cols) := lapply(.SD, as.numeric), .SDcols = cols]
 dtBCA2019 <- dtBCA2019[!is.na(MB_total_finished_area) & conveyancePrice > 100000]
 dtBCA2019[,land_area_approximate:=land_width*land_depth]
+# Only include reasonable lot sizes
+print(table(dtBCA2019[,.(is.na(land_width),is.na(land_area))]))
+print(quantile(dtBCA2019[,land_width],na.rm=TRUE))
+print(quantile(dtBCA2019[,land_depth],na.rm=TRUE))
+dtBCA2019 <- dtBCA2019[!is.na(land_depth)]
+# See if 33 the norm everywhere, versus 50 in some. It's not
+for (n in unique(dtBCA2019[!is.na(land_width),neighbourhoodDescription])) {
+  print(n)
+  print(quantile(dtBCA2019[neighbourhoodDescription==n & !is.na(land_width),land_width],na.rm=TRUE))
+}
+dtBCA2019[,landWidthMedian:=median(land_width,na.rm=TRUE),by=neighbourhoodDescription]
+WIDTHCUT <- .15
+dtBCA2019 <- dtBCA2019[land_width>=landWidthMedian*(1-WIDTHCUT) & land_depth>=110 & land_width<=landWidthMedian*(1+WIDTHCUT) & land_depth<150]
 
 # Metrics & Outliers
 CUT <- 0.05
@@ -95,8 +108,7 @@ print(names(dtBCA2019))
 print(head(dtBCA2019))
 dtBCA2019[, `:=`(
     age = year(conveyanceDate) - MB_effective_year, 
-    ppsf = conveyancePrice / MB_total_finished_area, 
-    dwelling_type = fifelse(grepl("uplex", actualUseDescription, ignore.case = TRUE), "duplex", "single")
+    ppsf = conveyancePrice / MB_total_finished_area 
 )]
 
 dtBCA2019 <- dtBCA2019[
@@ -106,8 +118,6 @@ dtBCA2019 <- dtBCA2019[
 ]
 
 cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
-cat("  Single:", dtBCA2019[dwelling_type == "single", .N], "\n")
-cat("  Duplex:", dtBCA2019[dwelling_type == "duplex", .N], "\n")
 
 # ==========================================
 # Exclude from the sales homes with laneways
@@ -128,8 +138,6 @@ print(head(dtBCA2019))
 
 MINYEAR <- 2012
 
-dtBCA2019[, duplex := fifelse(dwelling_type == "duplex", 1L, 0L)]
-dtBCA2019[, nDuplex := sum(duplex), by = .(CTUID)]
 dtBCA2019 <- dtBCA2019[grepl("RS", zoning)]
 # Exclude Shaughnessy and West End
 dtBCA2019 <- dtBCA2019[!neighbourhoodDescription %chin% c("SHAUGNESSY", "WEST END")]
@@ -139,37 +147,34 @@ print(dtBCA2019[year(conveyanceDate) > MINYEAR, quantile(ppsf), by = year(convey
 # Analysis sample: no laneways, post-MINYEAR
 dtAnalysis <- dtBCA2019[hasLaneway == FALSE & year(conveyanceDate) >= MINYEAR]
 
-m_dwelling <- feols(ppsf ~ duplex + log(age + 1) | CTUID, data = dtAnalysis)
-m_sf <- feols(ppsf ~ log(age + 1) + MB_total_finished_area | CTUID, data = dtAnalysis[nDuplex > 20])
-print(etable(m_dwelling, m_sf))
-
-m_dwellingNbhd <- feols(ppsf ~ neighbourhoodDescription + duplex + neighbourhoodDescription:duplex + log(age + 1) | year(conveyanceDate), data = dtAnalysis)
-m_sqftNbhd <- feols(ppsf ~ neighbourhoodDescription + log(MB_total_finished_area) + neighbourhoodDescription:log(MB_total_finished_area) + log(age + 1) | year(conveyanceDate), data = dtAnalysis)
-print(etable(m_dwellingNbhd, m_sqftNbhd))
-
-print(dtBCA2019[, mean(ppsf), by = .(neighbourhoodDescription, duplex)])
-print(dtBCA2019[, median(MB_total_finished_area), by = .(duplex)])
+print(dtBCA2019[, mean(ppsf), by = .(neighbourhoodDescription)])
 print(table(dtBCA2019[, .(zoning)]))
 
 # ==========================================
 # Census tract slopes and means
 # ==========================================
 
-mainRegTract <- feols(ppsf ~ i(CTUID, MB_total_finished_area) + log(age + 1) + MB_total_finished_area | CTUID + duplex, data = dtAnalysis)
-print(summary(mainRegTract))
-
+mainRegTract <- feols(ppsf ~ i(CTUID, MB_total_finished_area) + log(age + 1) + MB_total_finished_area + log(land_width) + log(land_depth)| CTUID , data = dtAnalysis)
+print(r2(mainRegTract,typ=c("r2","ar2")))
+logRegTract <- feols(log(ppsf) ~ i(CTUID, log(MB_total_finished_area)) + log(age + 1) + log(MB_total_finished_area) + log(land_width) + log(land_depth)| CTUID , data = dtAnalysis)
+print(r2(logRegTract,typ=c("r2","ar2")))
 
 dtSlopesTract <- as.data.table(coeftable(mainRegTract), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
 dtSlopesTract[, CTUID := gsub("CTUID::(.*):MB_total_finished_area", "\\1", term)]
 print(head(dtSlopesTract))
 
 MEANYEAR <- 2015
-dtMeansTract <- dtBCA2019[hasLaneway == FALSE & year(conveyanceDate) >= MEANYEAR, 
-                          .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = .N), 
+dtMeansTract <- dtBCA2019[hasLaneway == FALSE & year(conveyanceDate) >= MEANYEAR, .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = .N), 
                           by = CTUID]
 dtMeansTract <- merge(dtMeansTract, dtSlopesTract[, .(CTUID, slope = Estimate)], by = "CTUID", all.x = TRUE)
 print(head(dtMeansTract))
 fwrite(dtMeansTract, "tables/bca19_mean_ppsf_slope_by_tract.csv")
+
+dtElasticitiesTract <- as.data.table(coeftable(logRegTract), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
+dtElasticitiesTract[, CTUID := gsub("CTUID::(.*):log\\(MB_total_finished_area\\)", "\\1", term)]
+print(head(dtElasticitiesTract))
+print(head(dtMeansTract))
+dtElasticitiesTract <- merge(dtMeansTract, dtElasticitiesTract[, .(CTUID, elasticity = Estimate)], by = "CTUID", all.x = TRUE)
 
 ggplot(dtMeansTract[nobs > quantile(nobs, .025) & !is.na(slope)], aes(x = slope, y = meanPPSF)) + 
   geom_point() + 
@@ -181,20 +186,28 @@ ggsave("text/bca19_mean_ppsf_vs_slope_tract.png")
 
 cat("\nCorrelations (tract):\n")
 print(cor(dtMeansTract[!is.na(slope), .(slope, meanPPSF)]))
+print(cor(dtElasticitiesTract[!is.na(elasticity), .(elasticity, meanPPSF)]))
 print(cor(dtMeansTract[!is.na(slope) & nobs > quantile(nobs, .025), .(slope, meanPPSF)]))
 print(cor(dtMeansTract[!is.na(slope) & nobs > quantile(nobs, .05), .(slope, meanPPSF)]))
+print(cor(dtElasticitiesTract[!is.na(elasticity) & nobs > quantile(nobs, .05), .(elasticity, meanPPSF)]))
 
 # ==========================================
 # Neighbourhood slopes and means
 # Note much higher correlation slope,mean indicates better measure
 # ==========================================
 
-mainRegNbhd <- feols(ppsf ~ i(neighbourhoodDescription, MB_total_finished_area) + log(age + 1) + MB_total_finished_area | neighbourhoodDescription + duplex, data = dtAnalysis)
-print(summary(mainRegNbhd))
+mainRegNbhd <- feols(ppsf ~ i(neighbourhoodDescription, MB_total_finished_area) + log(age + 1) + MB_total_finished_area + log(land_width) + log(land_depth) | neighbourhoodDescription  , data = dtAnalysis)
+print(r2(mainRegNbhd,typ=c("r2","ar2")))
 
 dtSlopesNbhd <- as.data.table(coeftable(mainRegNbhd), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
 dtSlopesNbhd[, neighbourhoodDescription := gsub("neighbourhoodDescription::(.*):MB_total_finished_area", "\\1", term)]
 print(head(dtSlopesNbhd))
+
+logRegNbhd <- feols(log(ppsf) ~ i(neighbourhoodDescription, log(MB_total_finished_area)) + log(age + 1) + log(MB_total_finished_area) + log(land_width) + log(land_depth) | neighbourhoodDescription , data = dtAnalysis)
+print(r2(logRegNbhd,typ=c("r2","ar2")))
+dtElasticitiesNbhd <- as.data.table(coeftable(logRegNbhd), keep.rownames = "term")[grepl("log\\(MB_total_finished_area\\)", term)]
+dtElasticitiesNbhd[, neighbourhoodDescription := gsub("neighbourhoodDescription::(.*):log\\(MB_total_finished_area\\)", "\\1", term)]
+print(head(dtElasticitiesNbhd))
 
 dtMeansNbhd <- dtBCA2019[hasLaneway == FALSE & year(conveyanceDate) >= MEANYEAR, 
                          .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = .N), 
@@ -212,15 +225,12 @@ ggplot(dtMeansNbhd[nobs > quantile(nobs, .025) & !is.na(slope)], aes(x = slope, 
 ggsave("text/bca19_mean_ppsf_vs_slope_neighbourhood.png")
 
 # ============
-# Do neighbourhood regression but exclude duplexes, limit to newer homes, and include land area
+# Do neighbourhood regression but limit to newer homes, and include land area
 # ============
 
 print(summary(dtAnalysis))
-print(table(dtAnalysis[,.(is.na(land_area_approximate),duplex)]))
-dtLimit <- dtAnalysis[duplex==0  & !is.na(land_area_approximate) & land_area_approximate>0 & age<quantile(age,.75)]
-print(summary(dtLimit))
-limitRegNbhd <- feols(ppsf ~ i(neighbourhoodDescription, MB_total_finished_area) + log(age + 1) + log(land_area_approximate) + MB_total_finished_area | neighbourhoodDescription + duplex, data = dtLimit)
-print(summary(limitRegNbhd))
+dtLimit <- dtAnalysis[age<20]
+limitRegNbhd <- feols(ppsf ~ i(neighbourhoodDescription, MB_total_finished_area) + log(age + 1) + log(land_width) + log(land_depth) + MB_total_finished_area | neighbourhoodDescription , data = dtLimit)
 
 dtSlopesNbhdLimit <- as.data.table(coeftable(limitRegNbhd), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
 dtSlopesNbhdLimit[, neighbourhoodDescription := gsub("neighbourhoodDescription::(.*):MB_total_finished_area", "\\1", term)]
@@ -237,5 +247,7 @@ fwrite(dtMeansNbhdLimit, "tables/bca19_mean_ppsf_slope_by_neighbourhood_limit.cs
 cat("\nLimited Correlations (neighbourhood):\n")
 print(cor(dtMeansNbhd[!is.na(slope), .(slope, meanPPSF)]))
 print(cor(dtMeansNbhdLimit[!is.na(slope), .(slope, meanPPSF)]))
+dtElasticitiesNbhd <- merge(dtMeansNbhd, dtElasticitiesNbhd[, .(neighbourhoodDescription, elasticity = Estimate)], by = "neighbourhoodDescription", all.x = TRUE)
+print(cor(dtElasticitiesNbhd[!is.na(elasticity), .(elasticity, meanPPSF)]))
 
 q("no")

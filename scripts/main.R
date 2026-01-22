@@ -47,6 +47,11 @@ dtMerge[,effectiveAge:=pYear - MB_effective_year]
 print(cor(dtMerge[,meanPPSF],dtMerge[,slope],use="complete.obs"))
 dtMerge[,slopeMean:=mean(slope),by=neighbourhoodDescription]
 
+# combinedera
+dtMerge[,notSingle:=use!="single" & use!="laneway"]
+print(summary(feols(notSingle ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2025)])))
+print(summary(feols(notSingle ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
+
 # duplex era
 print(summary(feols(use=="duplex" ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
 print(summary(feols(use=="duplex" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
