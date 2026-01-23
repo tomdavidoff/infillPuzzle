@@ -9,6 +9,8 @@ library(sf)
 dtBCA <- readRDS("~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.rds")
  #[1] "permitnumber"              "permitnumbercreateddate"  [3] "issuedate"                 "permitelapseddays"        [5] "projectvalue"              "typeofwork"               [7] "address"                   "projectdescription"       [9] "permitcategory"            "applicant"                [11] "applicantaddress"          "propertyuse"              [13] "specificusecategory"       "buildingcontractor"       [15] "buildingcontractoraddress" "issueyear"                [17] "geolocalarea"              "geom"                     [19] "yearmonth"                 "geo_point_2d"             
 dtP <- fread("~/OneDrive - UBC/dataRaw/vancouver_permits_full.csv",select=c("geom","geo_point_2d","permitnumber","permitnumbercreateddate","applicant","typeofwork","projectvalue","specificusecategory","address"))
+# check typofwork and value
+print(dtP[,median(projectvalue,na.rm=TRUE),by=typeofwork])
 dtP <- dtP[typeofwork %in% c("Addition / Alteration","New Building")]
 dtP[,yearCreated:=year(permitnumbercreateddate)]
 MINYEAR <- 2017 # might want to see jump in duplex
@@ -17,7 +19,9 @@ x <- table(dtP[,specificusecategory])
 print(sort(x,decreasing=TRUE))
 dtP <- dtP[specificusecategory %in% c("Single Detached House","Laneway House","Single Detached House w/ Sec Suite","Multiple Dwelling","Duplex","Duplex w/Secondary Suite")]
 print(quantile(dtP[typeofwork=="Addition / Alteration",projectvalue]))
-MINVAL <- quantile(dtP[typeofwork=="Addition / Alteration",projectvalue],.75)
+print(quantile(dtP[typeofwork=="New Building",projectvalue]))
+MINVAL <- 250000 #quantile(dtP[typeofwork=="New Building",projectvalue],.10) # only 
+print(MINVAL)
 dtP <- dtP[projectvalue>=MINVAL]
 print(head(dtP[,.(geo_point_2d)]))
 print(head(dtBCA[,.(geom)]))
@@ -93,7 +97,7 @@ print(names(dtSpatial))
 #[33] "maxDuplex"                "maxLaneway"              
 #[35] "use"                      "uniqueLot"               
 #[37] "matcha"                  
-dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA)]
+dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA,geo_point_2d)]
 outfile <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
 saveRDS(dtSpatial,outfile)
 

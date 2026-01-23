@@ -9,12 +9,15 @@ library(fixest)
 
 # Vancouver analysis # note neighbourhoodDescription better than tract for analysis level
 # get slopes and mean values from BCA sales analysis by census tract merge
-nameSlope <- "tables/bca19_mean_ppsf_slope_by_neighbourhood.csv"
+nameSlope <- "tables/bca19_mean_ppsf_slope_by_tract.csv"
 if (!file.exists(nameSlope)) {
   source("scripts/bcaSales.R")
 }
 # specify column CTUID is a number
-dtSlope <- fread(nameSlope)
+dtSlope <- fread(nameSlope,colClasses=c(CTUID="character"))
+# giant outlier at low obs
+CUTOFFN <- .05
+dtSlope <- dtSlope[nobs>quantile(nobs,CUTOFFN)]
 
 # Now get projects merged with BCA and census tracts
 nameSpatial <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
@@ -26,7 +29,7 @@ dtSpatial <- readRDS(nameSpatial)
 print(head(dtSpatial))
 print(head(dtSlope))
 
-dtMerge <- merge(dtSpatial,dtSlope,by="neighbourhoodDescription")
+dtMerge <- merge(dtSpatial,dtSlope,by="CTUID")
 print(head(dtMerge))
 print(summary(dtMerge))
 print(table(dtMerge[,use]))
@@ -44,32 +47,68 @@ dtMerge[,MB_total_finished_area:=as.numeric(MB_total_finished_area)]
 dtMerge[,MB_effective_year:=as.numeric(MB_effective_year)]
 dtMerge[,effectiveAge:=pYear - MB_effective_year]
 
-print(cor(dtMerge[,meanPPSF],dtMerge[,slope],use="complete.obs"))
-dtMerge[,slopeMean:=mean(slope),by=neighbourhoodDescription]
+dtMerge[,notSingle:=use!="single" & use!="laneway"]
+# use geo_point_2d to plot variable notSingle by lon,lat
+ggplot(dtMerge,aes(x=as.numeric(tstrsplit(geo_point_2d,", ")[[2]]),
+                    y=as.numeric(tstrsplit(geo_point_2d,", ")[[1]]),
+                    color=notSingle)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title="Vancouver Permits 2017-2025",
+       subtitle="Not Single Family (including laneway) Permits")
+  ggsave("text/notSingleLocation.png",width=8,height=6)
+
+  # now plot meanPPSF by lon,lat
+ggplot(dtMerge,aes(x=as.numeric(tstrsplit(geo_point_2d,", ")[[2]]),
+                    y=as.numeric(tstrsplit(geo_point_2d,", ")[[1]]),
+                    color=meanPPSF)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title="Vancouver Permits 2017-2025",
+       subtitle="Mean PPSF from BCA Sales 2019-2021 by Census Tract")
+  ggsave("text/meanPPSFLocation.png",width=8,height=6)
+
+  # now plot elasticity by lon,lat
+ggplot(dtMerge,aes(x=as.numeric(tstrsplit(geo_point_2d,", ")[[2]]),
+                    y=as.numeric(tstrsplit(geo_point_2d,", ")[[1]]),
+                    color=elasticity)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title="Vancouver Permits 2017-2025",
+       subtitle="Elasticity from BCA Sales 2019-2021 by Census Tract")
+  ggsave("text/elasticityLocation.png",width=8,height=6)
+
+  # and slope
+ggplot(dtMerge,aes(x=as.numeric(tstrsplit(geo_point_2d,", ")[[2]]),
+                    y=as.numeric(tstrsplit(geo_point_2d,", ")[[1]]),
+                    color=slope)) +
+  geom_point() +
+  theme_minimal() +
+  labs(title="Vancouver Permits 2017-2025",
+       subtitle="Slope from BCA Sales 2019-2021 by Census Tract")
+  ggsave("text/slopeLocation.png",width=8,height=6)
 
 # combinedera
-dtMerge[,notSingle:=use!="single" & use!="laneway"]
-print(summary(feols(notSingle ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2025)])))
-print(summary(feols(notSingle ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
+print(summary(feols(notSingle ~ meanPPSF  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ slope  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ elasticity  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ meanPPSF + elasticity  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ meanPPSF + slope  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ meanPPSF+elasticity + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
 
-# duplex era
-print(summary(feols(use=="duplex" ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
-print(summary(feols(use=="duplex" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
-print(summary(feols(use=="single" ~ meanPPSF+ log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
-print(summary(feols(use=="single" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
-print(summary(feols(use=="laneway" ~ meanPPSF+ log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
-print(summary(feols(use=="laneway" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023)])))
+# aggregate
+dtAgg <- dtMerge[,.(nPermits=.N,
+                      nNotSingle=sum(use!="single" & use!="laneway"),
+                      meanPPSF=mean(meanPPSF,na.rm=TRUE),
+                      slope=mean(slope,na.rm=TRUE),
+                      elasticity=mean(elasticity,na.rm=TRUE),
+                      meanFinishedArea=mean(MB_total_finished_area,na.rm=TRUE),
+                      meanLandArea=mean(LANDAREA,na.rm=TRUE),
+                      meanEffectiveAge=mean(effectiveAge,na.rm=TRUE)),
+                  by=.(CTUID)]
 
-# non-laneway
-print(summary(feols(use=="duplex" ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023) & use!="laneway"])))
-print(summary(feols(use=="duplex" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023) & use!="laneway"])))
-
-# non-single
-print(summary(feols(use=="duplex" ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023) & use!="single"])))
-print(summary(feols(use=="duplex" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2019,2023) & use!="single"])))
-
-# multiplex era
-print(summary(feols(use=="multi" ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2024,2025)])))
-print(summary(feols(use=="multi" ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | + MB_effective_year,data=dtMerge[pYear %between% c(2024,2025)])))
-
-
+print(summary(feols(nNotSingle/nPermits ~ meanPPSF + log(meanLandArea) + log(meanEffectiveAge) | 1,data=dtAgg)))
+print(summary(feols(nNotSingle/nPermits ~ meanPPSF + slope + log(meanLandArea) + log(meanEffectiveAge) | 1,data=dtAgg)))
+print(summary(feols(nNotSingle/nPermits ~ meanPPSF + elasticity + log(meanLandArea) + log(meanEffectiveAge) | 1,data=dtAgg)))
