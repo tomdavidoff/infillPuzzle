@@ -45,7 +45,12 @@ for (y in sort(unique(dtMerge[,pYear]))) {
 
 dtMerge[,MB_total_finished_area:=as.numeric(MB_total_finished_area)]
 dtMerge[,MB_effective_year:=as.numeric(MB_effective_year)]
+dtMerge[,landWidth:=as.numeric(landWidth)]
+dtMerge[,landDepth:=as.numeric(landDepth)]
 dtMerge[,effectiveAge:=pYear - MB_effective_year]
+# No duplexes under 25 years old (?)
+dtMerge <- dtMerge[effectiveAge>25]
+print(summary(dtMerge[,.(MB_total_finished_area,landWidth,landDepth,effectiveAge)]))
 
 dtMerge[,notSingle:=use!="single" & use!="laneway"]
 # use geo_point_2d to plot variable notSingle by lon,lat
@@ -88,6 +93,22 @@ ggplot(dtMerge,aes(x=as.numeric(tstrsplit(geo_point_2d,", ")[[2]]),
        subtitle="Slope from BCA Sales 2019-2021 by Census Tract")
   ggsave("text/slopeLocation.png",width=8,height=6)
 
+  # mean notSingle by meanPPSF x-y plot
+  dtTract <- dtMerge[pYear>2020,.(notSingle=mean(notSingle,na.rm=TRUE), nobs=mean(nobs),
+                          meanPPSF=mean(meanPPSF,na.rm=TRUE), slope=mean(slope,na.rm=TRUE), elasticity=mean(elasticity,na.rm=TRUE)),
+                      by=.(neighbourhoodDescription)]
+  ggplot(dtTract,aes(x=meanPPSF,y=notSingle)) + geom_point() 
+  ggsave("text/notSingle_vs_meanPPSF.png",width=8,height=6)
+
+  # ppsf and slope -- make points proportional to nobs
+  ggplot(dtTract,aes(x=meanPPSF,y=slope)) + geom_point(aes(size=nobs)) +
+    theme_minimal() 
+  ggsave("text/ppsfSlopeTract.png",width=8,height=6)
+
+print(cor(dtTract[,.(notSingle,meanPPSF,slope,elasticity)],use="complete.obs"))
+print(summary(lm(notSingle ~ meanPPSF,data=dtTract)))
+print(summary(lm(notSingle ~ meanPPSF + slope ,data=dtTract)))
+print(summary(lm(notSingle ~ meanPPSF + elasticity ,data=dtTract)))
 # combinedera
 print(summary(feols(notSingle ~ meanPPSF  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
 print(summary(feols(notSingle ~ slope  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
@@ -95,8 +116,18 @@ print(summary(feols(notSingle ~ elasticity  | pYear,data=dtMerge[pYear %between%
 print(summary(feols(notSingle ~ meanPPSF + elasticity  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
 print(summary(feols(notSingle ~ meanPPSF + slope  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
 print(summary(feols(notSingle ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(48,56) & pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ meanPPSF+ log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(48,56) & pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ meanPPSF+elasticity + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(48,56) & pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(30,36) & pYear %between% c(2021,2025)])))
+print(summary(feols(notSingle ~ meanPPSF+elasticity + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(30,36) & pYear %between% c(2021,2025)])))
 print(summary(feols(notSingle ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
 print(summary(feols(notSingle ~ meanPPSF+elasticity + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
+
+print(cor(dtMerge[effectiveAge>2,.(MB_total_finished_area/landWidth,effectiveAge,notSingle,meanPPSF)],use="complete.obs"))
+print(dtMerge[order(effectiveAge),.(mean(notSingle,na.rm=TRUE),.N),by=effectiveAge][1:50])
+
+  ##############
 
 # aggregate
 dtAgg <- dtMerge[,.(nPermits=.N,

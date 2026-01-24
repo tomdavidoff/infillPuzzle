@@ -97,7 +97,7 @@ print(names(dtSpatial))
 #[33] "maxDuplex"                "maxLaneway"              
 #[35] "use"                      "uniqueLot"               
 #[37] "matcha"                  
-dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA,geo_point_2d)]
+dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA,landWidth,landDepth,geo_point_2d)]
 outfile <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
 saveRDS(dtSpatial,outfile)
 

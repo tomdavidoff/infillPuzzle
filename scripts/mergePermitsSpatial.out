@@ -1,6 +1,6 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
-Copyright (C) 2025 The R Foundation for Statistical Computing
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -23,8 +23,10 @@ Type 'q()' to quit R.
 > # 01/16/26
 > 
 > library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
 > library(sf)
-Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > 
 > dtBCA <- readRDS("~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.rds")
 >  #[1] "permitnumber"              "permitnumbercreateddate"  [3] "issuedate"                 "permitelapseddays"        [5] "projectvalue"              "typeofwork"               [7] "address"                   "projectdescription"       [9] "permitcategory"            "applicant"                [11] "applicantaddress"          "propertyuse"              [13] "specificusecategory"       "buildingcontractor"       [15] "buildingcontractoraddress" "issueyear"                [17] "geolocalarea"              "geom"                     [19] "yearmonth"                 "geo_point_2d"             
@@ -1565,7 +1567,7 @@ PROJCRS["NAD83 / BC Albers",
 > # 3. Spatial join (points within polygons)
 > merged <- st_join(sfP, sfBCA, join = st_within)
 > print(head(merged))
-Simple feature collection with 6 features and 20 fields
+Simple feature collection with 6 features and 22 fields
 Geometry type: POINT
 Dimension:     XY
 Bounding box:  xmin: 1202978 ymin: 474235 xmax: 1212168 ymax: 477992
@@ -1612,13 +1614,13 @@ Projected CRS: NAD83 / BC Albers
 4                   4002 Single Family Dwelling               POINT GREY
 5                        Single Family Dwelling                   CAMBIE
 6                   3342 Single Family Dwelling              MAIN/FRASER
-      ROLL_NUMBER Nlot                 geometry
-1            <NA>   NA   POINT (1207532 477324)
-2            <NA>   NA POINT (1207545 475122.9)
-3            <NA>   NA   POINT (1212168 477992)
-4 001633021620000    1   POINT (1202978 476948)
-5 009697153290000    1   POINT (1209527 475077)
-6 016185716270000    1   POINT (1210988 474235)
+  landWidth landDepth     ROLL_NUMBER Nlot                 geometry
+1      <NA>      <NA>            <NA>   NA   POINT (1207532 477324)
+2      <NA>      <NA>            <NA>   NA POINT (1207545 475122.9)
+3      <NA>      <NA>            <NA>   NA   POINT (1212168 477992)
+4        65       110 001633021620000    1   POINT (1202978 476948)
+5        33       122 009697153290000    1   POINT (1209527 475077)
+6      49.5       111 016185716270000    1   POINT (1210988 474235)
 > print(nrow(sfP))
 [1] 4929
 > print(nrow(dtBCA))
@@ -1630,7 +1632,7 @@ Projected CRS: NAD83 / BC Albers
 > fCT <- "~/OneDrive - UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
 > dCT <- st_read(fCT)
 Reading layer `lct_000b21a_e' from data source 
-  `/Users/tdavidof/Library/CloudStorage/OneDrive-UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
+  `/Users/davidoff/Library/CloudStorage/OneDrive-UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
   using driver `ESRI Shapefile'
 Simple feature collection with 6247 features and 5 fields
 Geometry type: MULTIPOLYGON
@@ -1752,7 +1754,7 @@ PROJCRS["NAD83 / BC Albers",
 > 
 > mergedCT <- st_join(merged,dCT,join=st_within)
 > print(head(mergedCT))
-Simple feature collection with 6 features and 25 fields
+Simple feature collection with 6 features and 27 fields
 Geometry type: POINT
 Dimension:     XY
 Bounding box:  xmin: 1202978 ymin: 474235 xmax: 1212168 ymax: 477992
@@ -1799,20 +1801,20 @@ Projected CRS: NAD83 / BC Albers
 4                   4002 Single Family Dwelling               POINT GREY
 5                        Single Family Dwelling                   CAMBIE
 6                   3342 Single Family Dwelling              MAIN/FRASER
-      ROLL_NUMBER Nlot      CTUID               DGUID  CTNAME LANDAREA PRUID
-1            <NA>   NA 9330048.01 2021S05079330048.01 0048.01   0.8336    59
-2            <NA>   NA 9330027.01 2021S05079330027.01 0027.01   1.2742    59
-3            <NA>   NA 9330057.02 2021S05079330057.02 0057.02   1.6262    59
-4 001633021620000    1 9330044.00 2021S05079330044.00 0044.00   2.8772    59
-5 009697153290000    1 9330029.00 2021S05079330029.00 0029.00   1.5016    59
-6 016185716270000    1 9330030.00 2021S05079330030.00 0030.00   1.4562    59
-                  geometry
-1   POINT (1207532 477324)
-2 POINT (1207545 475122.9)
-3   POINT (1212168 477992)
-4   POINT (1202978 476948)
-5   POINT (1209527 475077)
-6   POINT (1210988 474235)
+  landWidth landDepth     ROLL_NUMBER Nlot      CTUID               DGUID
+1      <NA>      <NA>            <NA>   NA 9330048.01 2021S05079330048.01
+2      <NA>      <NA>            <NA>   NA 9330027.01 2021S05079330027.01
+3      <NA>      <NA>            <NA>   NA 9330057.02 2021S05079330057.02
+4        65       110 001633021620000    1 9330044.00 2021S05079330044.00
+5        33       122 009697153290000    1 9330029.00 2021S05079330029.00
+6      49.5       111 016185716270000    1 9330030.00 2021S05079330030.00
+   CTNAME LANDAREA PRUID                 geometry
+1 0048.01   0.8336    59   POINT (1207532 477324)
+2 0027.01   1.2742    59 POINT (1207545 475122.9)
+3 0057.02   1.6262    59   POINT (1212168 477992)
+4 0044.00   2.8772    59   POINT (1202978 476948)
+5 0029.00   1.5016    59   POINT (1209527 475077)
+6 0030.00   1.4562    59   POINT (1210988 474235)
 > 
 > ##
 > dtSpatial <- as.data.table(mergedCT)
@@ -1864,16 +1866,17 @@ TRUE
 [13] "rollNumber"               "zoning"                  
 [15] "MB_effective_year"        "MB_total_finished_area"  
 [17] "actualUseDescription"     "neighbourhoodDescription"
-[19] "ROLL_NUMBER"              "Nlot"                    
-[21] "CTUID"                    "DGUID"                   
-[23] "CTNAME"                   "LANDAREA"                
-[25] "PRUID"                    "geometry"                
-[27] "matched"                  "nLot"                    
-[29] "duplex"                   "laneway"                 
-[31] "multi"                    "maxMulti"                
-[33] "maxDuplex"                "maxLaneway"              
-[35] "use"                      "uniqueLot"               
-[37] "matcha"                  
+[19] "landWidth"                "landDepth"               
+[21] "ROLL_NUMBER"              "Nlot"                    
+[23] "CTUID"                    "DGUID"                   
+[25] "CTNAME"                   "LANDAREA"                
+[27] "PRUID"                    "geometry"                
+[29] "matched"                  "nLot"                    
+[31] "duplex"                   "laneway"                 
+[33] "multi"                    "maxMulti"                
+[35] "maxDuplex"                "maxLaneway"              
+[37] "use"                      "uniqueLot"               
+[39] "matcha"                  
 > # [1] "geom"                     "geo_point_2d"            
 > # [3] "permitnumber"             "permitnumbercreateddate" 
 > # [5] "applicant"                "typeofwork"              
@@ -1893,7 +1896,7 @@ TRUE
 > #[33] "maxDuplex"                "maxLaneway"              
 > #[35] "use"                      "uniqueLot"               
 > #[37] "matcha"                  
-> dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA,geo_point_2d)]
+> dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA,landWidth,landDepth,geo_point_2d)]
 > outfile <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
 > saveRDS(dtSpatial,outfile)
 > 
@@ -1901,4 +1904,4 @@ TRUE
 > 
 > proc.time()
    user  system elapsed 
-  3.337   0.825   1.923 
+  5.656   0.255   3.518 

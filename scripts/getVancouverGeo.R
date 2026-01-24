@@ -48,7 +48,7 @@ bca19 <- "~/OneDrive - UBC/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 con <- dbConnect(RSQLite::SQLite(), bca19)
 dfFolio <- dbGetQuery(con, "SELECT folioID, rollNumber FROM folio WHERE jurisdictionCode=='200'")
 dfInventory <- dbGetQuery(con, "SELECT roll_number, zoning, MB_effective_year, MB_total_finished_area FROM residentialInventory") 
-dfDescription <- dbGetQuery(con, "SELECT folioID, actualUseDescription, neighbourhoodDescription FROM folioDescription")
+dfDescription <- dbGetQuery(con, "SELECT folioID, actualUseDescription, neighbourhoodDescription, landWidth, landDepth FROM folioDescription")
 dfBCA19 <- merge(dfFolio, dfInventory, by.x="rollNumber", by.y="roll_number")
 dtBCA19 <- data.table(merge(dfBCA19, dfDescription, by="folioID"))
 print(head(dtBCA19))

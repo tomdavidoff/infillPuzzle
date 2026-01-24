@@ -1,6 +1,6 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
-Copyright (C) 2025 The R Foundation for Statistical Computing
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -28,8 +28,10 @@ Type 'q()' to quit R.
 > # Regress coefficients, etc.
 > 
 > library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
 > library(sf)
-Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > library(RSQLite)
 > library(fixest)
 > library(ggplot2)
@@ -73,6 +75,42 @@ The following object is masked from ‘package:fixest’:
 +   print(head(roll_ct))
 +   saveRDS(roll_ct, fRollLatLon)
 + }
+Extracting lot centroids from BCA 2026 data...
+Simple feature collection with 6 features and 1 field
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 1203371 ymin: 476858.2 xmax: 1204882 ymax: 477155.1
+Projected CRS: NAD83 / BC Albers
+      ROLL_NUMBER                           geom
+1 001630024560000 POLYGON ((1203371 477104.1,...
+2 001630024660000 POLYGON ((1203408 477104.6,...
+3 001630036040000 POLYGON ((1204728 476885.1,...
+4 001630036800000 POLYGON ((1204778 476914, 1...
+5 001630036940000 POLYGON ((1204797 476886, 1...
+6 001630037420000 POLYGON ((1204878 476903.6,...
+Simple feature collection with 6 features and 5 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: 1203380 ymin: 476870.4 xmax: 1204872 ymax: 477127.3
+Projected CRS: NAD83 / BC Albers
+      ROLL_NUMBER      CTUID               DGUID  CTNAME PRUID
+1 001630024560000 9330044.00 2021S05079330044.00 0044.00    59
+2 001630024660000 9330044.00 2021S05079330044.00 0044.00    59
+3 001630036040000 9330044.00 2021S05079330044.00 0044.00    59
+4 001630036800000 9330044.00 2021S05079330044.00 0044.00    59
+5 001630036940000 9330044.00 2021S05079330044.00 0044.00    59
+6 001630037420000 9330044.00 2021S05079330044.00 0044.00    59
+                      geom
+1 POINT (1203380 477124.5)
+2 POINT (1203398 477127.3)
+3 POINT (1204718 476870.4)
+4 POINT (1204774 476894.1)
+5   POINT (1204789 476900)
+6 POINT (1204872 476923.7)
+Warning messages:
+1: In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
+  argument layer is ignored when query is specified
+2: st_point_on_surface assumes attributes are constant over geometries 
 > 
 > # Load BCA 2019 sales data (all residential)
 > fSales <- "~/OneDrive - UBC/dataProcessed/bca19Sales.rds"
@@ -130,39 +168,37 @@ The following object is masked from ‘package:fixest’:
 > print(table(is.na(dtBCA2019[, CTUID])))
 
  FALSE   TRUE 
-165645   1204 
+148653  10995 
 > print(table(dtBCA2019[is.na(CTUID), actualUseDescription]))
 
-Duplex, Non-Strata Side by Side or Front / Back 
-                                             43 
-                   Duplex, Non-Strata Up / Down 
-                                              2 
-                    Duplex, Strata Front / Back 
-                                             24 
-                    Duplex, Strata Side by Side 
-                                              7 
-                Residential Dwelling with Suite 
-                                            530 
-                         Single Family Dwelling 
-                                            598 
-> print(table(dtBCA2019[!is.na(CTUID), actualUseDescription]))
-
 2 Acres Or More (Single Family Dwelling, Duplex) 
-                                              86 
+                                              75 
  Duplex, Non-Strata Side by Side or Front / Back 
-                                            2098 
+                                            2100 
                     Duplex, Non-Strata Up / Down 
                                              254 
                      Duplex, Strata Front / Back 
-                                            8357 
+                                            4207 
                      Duplex, Strata Side by Side 
-                                            4964 
+                                            2497 
                         Duplex, Strata Up / Down 
-                                             478 
+                                             239 
                  Residential Dwelling with Suite 
-                                           79320 
+                                             753 
                           Single Family Dwelling 
-                                           70088 
+                                             870 
+> print(table(dtBCA2019[!is.na(CTUID), actualUseDescription]))
+
+2 Acres Or More (Single Family Dwelling, Duplex) 
+                                               2 
+ Duplex, Non-Strata Side by Side or Front / Back 
+                                               9 
+                     Duplex, Strata Front / Back 
+                                              18 
+                 Residential Dwelling with Suite 
+                                           78968 
+                          Single Family Dwelling 
+                                           69656 
 > 
 > 
 > # Numeric conversion and cleaning
@@ -187,10 +223,11 @@ Duplex, Non-Strata Side by Side or Front / Back
 + ]
 > 
 > cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
-BCA 2019 transactions loaded: 89950 
+BCA 2019 transactions loaded: 84520 
 > 
 > # ==========================================
 > # Exclude from the sales homes with laneways
+> # NO, don't because this is about MB slope
 > # ==========================================
 > 
 > dtLaneway <- as.data.table(read_excel(fLaneway, sheet = "DATA"))
@@ -233,8 +270,9 @@ BCA 2019 transactions loaded: 89950
 +     land_depth < DEPTHMAX
 +   ]
 +   
-+   # Analysis sample: no laneways, post-MINYEAR
-+   dtAnalysis <- dtFiltered[hasLaneway == FALSE & year(conveyanceDate) >= MINYEAR]
++   # Analysis sample: newer builds , post-MINYEAR
++   MAXAGE <- 15
++   dtAnalysis <- dtFiltered[age<15 & year(conveyanceDate) >= MINYEAR]
 +   cat("Analysis sample size:", nrow(dtAnalysis), "\n")
 +   
 +   # Build formulas dynamically
@@ -317,113 +355,113 @@ BCA 2019 transactions loaded: 89950
 ==========================================
 Running analysis at tract level
 ==========================================
-Analysis sample size: 7202 
-NOTE: 12 observations removed because of NA values (RHS: 12, Fixed-effects: 12).
+Analysis sample size: 3081 
+NOTE: 1 observation removed because of NA values (RHS: 1, Fixed-effects: 1).
+The variables 'CTUID::9330001.02:MB_total_finished_area', 'CTUID::9330017.02:MB_total_finished_area', 'CTUID::9330021.00:MB_total_finished_area', 'CTUID::9330032.02:MB_total_finished_area' and 'MB_total_finished_area' have been removed because of collinearity (see $collin.var).
        r2       ar2 
-0.2969622 0.2816745 
-NOTE: 12 observations removed because of NA values (RHS: 12, Fixed-effects: 12).
-The variable 'log(MB_total_finished_area)' has been removed because of collinearity (see $collin.var).
+0.3645173 0.3328840 
+NOTE: 1 observation removed because of NA values (RHS: 1, Fixed-effects: 1).
+The variables 'CTUID::9330001.02:log(MB_total_finished_area)', 'CTUID::9330017.02:log(MB_total_finished_area)', 'CTUID::9330021.00:log(MB_total_finished_area)', 'CTUID::9330032.02:log(MB_total_finished_area)' and 'log(MB_total_finished_area)' have been removed because of collinearity (see $collin.var).
        r2       ar2 
-0.2806088 0.2650698 
-NOTE: 12 observations removed because of NA values (Fixed-effects: 12).
+0.3484458 0.3160124 
+NOTE: 1 observation removed because of NA values (Fixed-effects: 1).
        r2       ar2 
-0.2613159 0.2532133 
+0.3158859 0.2983387 
 Saving 7 x 7 in image
 `geom_smooth()` using formula = 'y ~ x'
 
 Correlations (tract):
             slope meanPPSF
-slope    1.000000 0.332441
-meanPPSF 0.332441 1.000000
+slope    1.000000 0.156728
+meanPPSF 0.156728 1.000000
            elasticity  meanPPSF
-elasticity  1.0000000 0.3812883
-meanPPSF    0.3812883 1.0000000
-             slope  meanPPSF
-slope    1.0000000 0.4720291
-meanPPSF 0.4720291 1.0000000
+elasticity  1.0000000 0.3113658
+meanPPSF    0.3113658 1.0000000
+            slope meanPPSF
+slope    1.000000 0.156728
+meanPPSF 0.156728 1.000000
            elasticity  meanPPSF
-elasticity  1.0000000 0.5422212
-meanPPSF    0.5422212 1.0000000
+elasticity  1.0000000 0.2975906
+meanPPSF    0.2975906 1.0000000
            elasticity  meanPPSF
-elasticity  1.0000000 0.5109796
-meanPPSF    0.5109796 1.0000000
-   elasticity         meanPPSF    
- Min.   :-0.8065   Min.   :586.1  
- 1st Qu.:-0.4579   1st Qu.:648.6  
- Median :-0.3284   Median :688.3  
- Mean   :-0.3002   Mean   :712.7  
- 3rd Qu.:-0.1020   3rd Qu.:786.8  
- Max.   : 0.3279   Max.   :870.8  
-   elasticity         meanPPSF    
- Min.   :-0.8065   Min.   :586.1  
- 1st Qu.:-0.4579   1st Qu.:648.6  
- Median :-0.3284   Median :688.3  
- Mean   :-0.3002   Mean   :712.7  
- 3rd Qu.:-0.1020   3rd Qu.:786.8  
- Max.   : 0.3279   Max.   :870.8  
-   elasticity         meanPPSF    
- Min.   :-0.7916   Min.   :586.1  
- 1st Qu.:-0.4628   1st Qu.:651.7  
- Median :-0.3350   Median :686.5  
- Mean   :-0.3026   Mean   :712.7  
- 3rd Qu.:-0.1062   3rd Qu.:786.2  
- Max.   : 0.3279   Max.   :870.8  
+elasticity  1.0000000 0.3216352
+meanPPSF    0.3216352 1.0000000
+   elasticity           meanPPSF    
+ Min.   :-0.927130   Min.   :587.9  
+ 1st Qu.: 0.002237   1st Qu.:651.3  
+ Median : 0.259418   Median :680.1  
+ Mean   : 0.399546   Mean   :709.3  
+ 3rd Qu.: 0.742226   3rd Qu.:777.5  
+ Max.   : 2.408728   Max.   :867.2  
+   elasticity          meanPPSF    
+ Min.   :-0.92713   Min.   :587.9  
+ 1st Qu.: 0.01685   1st Qu.:652.6  
+ Median : 0.26257   Median :681.0  
+ Mean   : 0.41365   Mean   :710.3  
+ 3rd Qu.: 0.75726   3rd Qu.:778.2  
+ Max.   : 2.40873   Max.   :867.2  
+   elasticity           meanPPSF    
+ Min.   :-0.927130   Min.   :587.9  
+ 1st Qu.: 0.002237   1st Qu.:651.3  
+ Median : 0.263558   Median :677.3  
+ Mean   : 0.419539   Mean   :707.4  
+ 3rd Qu.: 0.813470   3rd Qu.:777.1  
+ Max.   : 2.408728   Max.   :867.2  
 > dtResultsNbhd <- runAnalysis(copy(dtBCA2019), "neighbourhoodDescription", "neighbourhood")
 
 ==========================================
 Running analysis at neighbourhood level
 ==========================================
-Analysis sample size: 7037 
-The variable 'MB_total_finished_area' has been removed because of collinearity (see $collin.var).
+Analysis sample size: 2949 
        r2       ar2 
-0.2553175 0.2502023 
+0.2832575 0.2716453 
 The variable 'log(MB_total_finished_area)' has been removed because of collinearity (see $collin.var).
        r2       ar2 
-0.2388709 0.2336427 
+0.2696992 0.2581231 
        r2       ar2 
-0.2305034 0.2276494 
+0.2579114 0.2515644 
 Saving 7 x 7 in image
 `geom_smooth()` using formula = 'y ~ x'
 
 Correlations (neighbourhood):
              slope  meanPPSF
-slope    1.0000000 0.5722268
-meanPPSF 0.5722268 1.0000000
+slope    1.0000000 0.2539309
+meanPPSF 0.2539309 1.0000000
            elasticity  meanPPSF
-elasticity  1.0000000 0.6458095
-meanPPSF    0.6458095 1.0000000
+elasticity  1.0000000 0.3621075
+meanPPSF    0.3621075 1.0000000
              slope  meanPPSF
-slope    1.0000000 0.6734513
-meanPPSF 0.6734513 1.0000000
+slope    1.0000000 0.2539309
+meanPPSF 0.2539309 1.0000000
+           elasticity meanPPSF
+elasticity   1.000000 0.511793
+meanPPSF     0.511793 1.000000
            elasticity  meanPPSF
-elasticity  1.0000000 0.7102436
-meanPPSF    0.7102436 1.0000000
-           elasticity  meanPPSF
-elasticity  1.0000000 0.7924633
-meanPPSF    0.7924633 1.0000000
+elasticity  1.0000000 0.5205638
+meanPPSF    0.5205638 1.0000000
    elasticity          meanPPSF    
- Min.   :-0.66057   Min.   :618.8  
- 1st Qu.:-0.38411   1st Qu.:656.9  
- Median :-0.26497   Median :747.5  
- Mean   :-0.26360   Mean   :738.3  
- 3rd Qu.:-0.12913   3rd Qu.:805.9  
- Max.   : 0.09305   Max.   :846.4  
+ Min.   :-0.51796   Min.   :616.9  
+ 1st Qu.: 0.01066   1st Qu.:654.5  
+ Median : 0.28052   Median :740.2  
+ Mean   : 0.36143   Mean   :732.4  
+ 3rd Qu.: 0.53328   3rd Qu.:790.5  
+ Max.   : 1.58288   Max.   :834.4  
    elasticity          meanPPSF    
- Min.   :-0.66057   Min.   :618.8  
- 1st Qu.:-0.39205   1st Qu.:654.5  
- Median :-0.27582   Median :722.4  
- Mean   :-0.26994   Mean   :734.5  
- 3rd Qu.:-0.12868   3rd Qu.:799.5  
- Max.   : 0.09305   Max.   :846.4  
+ Min.   :-0.23661   Min.   :616.9  
+ 1st Qu.: 0.02682   1st Qu.:651.6  
+ Median : 0.29451   Median :717.1  
+ Mean   : 0.40331   Mean   :728.7  
+ 3rd Qu.: 0.53472   3rd Qu.:788.6  
+ Max.   : 1.58288   Max.   :834.4  
    elasticity          meanPPSF    
- Min.   :-0.66057   Min.   :618.8  
- 1st Qu.:-0.40015   1st Qu.:654.2  
- Median :-0.25412   Median :719.9  
- Mean   :-0.26685   Mean   :725.2  
- 3rd Qu.:-0.12567   3rd Qu.:792.0  
- Max.   : 0.09305   Max.   :832.9  
+ Min.   :-0.23661   Min.   :616.9  
+ 1st Qu.: 0.02144   1st Qu.:650.9  
+ Median : 0.28052   Median :715.7  
+ Mean   : 0.39702   Mean   :723.5  
+ 3rd Qu.: 0.61422   3rd Qu.:786.6  
+ Max.   : 1.58288   Max.   :834.4  
 > 
 > q("no")
 > proc.time()
    user  system elapsed 
-  7.236   2.135   3.107 
+ 22.040   1.504  19.504 

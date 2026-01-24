@@ -106,6 +106,7 @@ cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
 
 # ==========================================
 # Exclude from the sales homes with laneways
+# NO, don't because this is about MB slope
 # ==========================================
 
 dtLaneway <- as.data.table(read_excel(fLaneway, sheet = "DATA"))
@@ -148,8 +149,9 @@ runAnalysis <- function(dt, groupVar, label) {
     land_depth < DEPTHMAX
   ]
   
-  # Analysis sample: no laneways, post-MINYEAR
-  dtAnalysis <- dtFiltered[hasLaneway == FALSE & year(conveyanceDate) >= MINYEAR]
+  # Analysis sample: newer builds , post-MINYEAR
+  MAXAGE <- 15
+  dtAnalysis <- dtFiltered[age<15 & year(conveyanceDate) >= MINYEAR]
   cat("Analysis sample size:", nrow(dtAnalysis), "\n")
   
   # Build formulas dynamically
