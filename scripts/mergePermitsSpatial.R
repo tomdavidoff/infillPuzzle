@@ -62,6 +62,8 @@ dtSpatial[,nLot:=.N,by=ROLL_NUMBER]
 dtSpatial[,duplex:=grepl("uplex",specificusecategory)]
 dtSpatial[,laneway:=grepl("aneway",specificusecategory)]
 dtSpatial[,multi:=grepl("ultiple",specificusecategory)]
+dtSpatial[,single:=grepl("Single Detached",specificusecategory)]
+dtSpatial[,maxSingle:=max(single),by=ROLL_NUMBER]
 dtSpatial[,maxMulti:=max(multi),by=ROLL_NUMBER]
 dtSpatial[,maxDuplex:=max(duplex),by=ROLL_NUMBER]
 dtSpatial[,maxLaneway:=max(laneway),by=ROLL_NUMBER]
@@ -97,7 +99,7 @@ print(names(dtSpatial))
 #[33] "maxDuplex"                "maxLaneway"              
 #[35] "use"                      "uniqueLot"               
 #[37] "matcha"                  
-dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA,landWidth,landDepth,geo_point_2d)]
+dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,maxSingle,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA,landWidth,landDepth,geo_point_2d,typeofwork)]
 outfile <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
 saveRDS(dtSpatial,outfile)
 

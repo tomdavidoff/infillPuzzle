@@ -1,4 +1,4 @@
-# main.vancouver_permits_
+# main.R
 # main analysis script
 # Tom Davidoff
 # 01/16/26
@@ -48,11 +48,16 @@ dtMerge[,MB_effective_year:=as.numeric(MB_effective_year)]
 dtMerge[,landWidth:=as.numeric(landWidth)]
 dtMerge[,landDepth:=as.numeric(landDepth)]
 dtMerge[,effectiveAge:=pYear - MB_effective_year]
+dtMerge[maxSingle==0 & use=="laneway",use:="lanewayOnly"]
 # No duplexes under 25 years old (?)
-dtMerge <- dtMerge[effectiveAge>25]
 print(summary(dtMerge[,.(MB_total_finished_area,landWidth,landDepth,effectiveAge)]))
 
 dtMerge[,notSingle:=use!="single" & use!="laneway"]
+## KEY: Drop Laneway only
+print(dtMerge[effectiveAge>0,summary(effectiveAge),by="use"])
+print(dtMerge[effectiveAge>0,table(typeofwork),by="use"])
+dtMerge <- dtMerge[effectiveAge>25]
+dtMerge <- dtMerge[use!="lanewayOnly" & typeofwork=="New Building"]
 # use geo_point_2d to plot variable notSingle by lon,lat
 ggplot(dtMerge,aes(x=as.numeric(tstrsplit(geo_point_2d,", ")[[2]]),
                     y=as.numeric(tstrsplit(geo_point_2d,", ")[[1]]),
@@ -125,7 +130,7 @@ print(summary(feols(notSingle ~ meanPPSF+slope + log(MB_total_finished_area) + l
 print(summary(feols(notSingle ~ meanPPSF+elasticity + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
 
 print(cor(dtMerge[effectiveAge>2,.(MB_total_finished_area/landWidth,effectiveAge,notSingle,meanPPSF)],use="complete.obs"))
-print(dtMerge[order(effectiveAge),.(mean(notSingle,na.rm=TRUE),.N),by=effectiveAge][1:50])
+print(dtMerge[order(effectiveAge),.(mean(notSingle,na.rm=TRUE),mean(maxSingle,na.rm=TRUE),.N),by=effectiveAge][1:50])
 
   ##############
 
