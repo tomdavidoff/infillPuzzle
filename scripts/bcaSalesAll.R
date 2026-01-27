@@ -19,7 +19,6 @@ BCA26 <- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
 fRollLatLon <- "~/OneDrive - UBC/dataProcessed/bca26RollCensusTractAll.rds"
 fLaneway <-  "~/OneDrive - UBC/dataRaw/20231231_UBC_CustomLanewayReport.xlsx"
 
-# drop duplex
 if (!file.exists(fRollLatLon)) {
   cat("Extracting lot centroids from BCA 2026 data...\n")
   desc26 <- st_read(BCA26,
@@ -69,6 +68,11 @@ print(head(dtBCA2019))
 dtRollLatLon <- as.data.table(readRDS(fRollLatLon))
 dtBCA2019[, roll_base := floor(as.numeric(roll_number) / 1000)]
 dtRollLatLon[, roll_base := floor(as.numeric(ROLL_NUMBER) / 1000)]
+# print variance of as.numeric CTUID within roll_base to check
+dTest <- dtRollLatLon[, .(nCTUID = uniqueN(CTUID),nGeom=uniqueN(geom)), by = roll_base]
+print(summary(dTest[, nCTUID]))
+print(dtRollLatLon[, .(nCTUID = uniqueN(CTUID)), by = roll_base][nCTUID > 1])
+q("no")
 dtBCA2019 <- merge(dtBCA2019, dtRollLatLon[, .(roll_base, CTUID, DGUID, CTNAME)], by = "roll_base", all.x = TRUE)
 print(table(is.na(dtBCA2019[, CTUID])))
 print(table(dtBCA2019[is.na(CTUID), actualUseDescription]))

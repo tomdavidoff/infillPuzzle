@@ -1,6 +1,6 @@
 
-R version 4.4.0 (2024-04-24) -- "Puppy Cup"
-Copyright (C) 2024 The R Foundation for Statistical Computing
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -23,11 +23,9 @@ Type 'q()' to quit R.
 > 
 > # 01/26/26
 > library(data.table)
-Warning message:
-package ‘data.table’ was built under R version 4.4.1 
 > library(ggplot2)
 > library(sf)
-Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(RSQLite)
 > library(fixest)
 > library(scales)
@@ -70,42 +68,6 @@ The following object is masked from ‘package:fixest’:
 +   print(head(roll_ct))
 +   saveRDS(roll_ct, fRollLatLon)
 + }
-Extracting lot centroids from BCA 2026 data...
-Simple feature collection with 6 features and 1 field
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: 1203371 ymin: 476706.6 xmax: 1204628 ymax: 477155.1
-Projected CRS: NAD83 / BC Albers
-      ROLL_NUMBER                           geom
-1 001630024560000 POLYGON ((1203371 477104.1,...
-2 001630024660000 POLYGON ((1203408 477104.6,...
-3 001630033120000 POLYGON ((1204517 476707.5,...
-4 001630033160000 POLYGON ((1204545 476751, 1...
-5 001630033420000 POLYGON ((1204543 476807, 1...
-6 001630033470000 POLYGON ((1204485 476811.5,...
-Simple feature collection with 6 features and 5 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: 1203380 ymin: 476762.9 xmax: 1204571 ymax: 477127.3
-Projected CRS: NAD83 / BC Albers
-      ROLL_NUMBER      CTUID               DGUID  CTNAME PRUID
-1 001630024560000 9330044.00 2021S05079330044.00 0044.00    59
-2 001630024660000 9330044.00 2021S05079330044.00 0044.00    59
-3 001630033120000 9330044.00 2021S05079330044.00 0044.00    59
-4 001630033160000 9330044.00 2021S05079330044.00 0044.00    59
-5 001630033420000 9330044.00 2021S05079330044.00 0044.00    59
-6 001630033470000 9330044.00 2021S05079330044.00 0044.00    59
-                      geom
-1 POINT (1203380 477124.5)
-2 POINT (1203398 477127.3)
-3 POINT (1204501 476762.9)
-4 POINT (1204529 476781.5)
-5 POINT (1204571 476788.4)
-6 POINT (1204554 476911.3)
-Warning messages:
-1: In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
-  argument layer is ignored when query is specified
-2: st_point_on_surface assumes attributes are constant over geometries 
 > 
 > # Load BCA 2019 sales data (all residential)
 > fSales <- "~/OneDrive - UBC/dataProcessed/bca19SalesAll.rds"
@@ -127,7 +89,6 @@ Warning messages:
 +   dbDisconnect(db)
 +   saveRDS(dtBCA2019, fSales)
 + } 
-Extracting BCA 2019 sales data...
 > dtBCA2019 <- readRDS(fSales)
 > print(head(dtBCA2019))
       folioID conveyancePrice conveyanceDate MB_effective_year
@@ -159,8 +120,9 @@ Extracting BCA 2019 sales data...
 > dtRollLatLon <- as.data.table(readRDS(fRollLatLon))
 > dtBCA2019[, roll_base := floor(as.numeric(roll_number) / 1000)]
 > dtRollLatLon[, roll_base := floor(as.numeric(ROLL_NUMBER) / 1000)]
-> dtBCA2019 <- merge(dtBCA2019, dtRollLatLon[, .(roll_base, CTUID, DGUID, CTNAME)], by = "roll_base", all.x = TRUE)
-Error in vecseq(f__, len__, if (allow.cartesian || notjoin || !anyDuplicated(f__,  : 
-  Join results in 28272950 rows; more than 564909 = nrow(x)+nrow(i). Check for duplicate key values in i each of which join to the same group in x over and over again. If that's ok, try by=.EACHI to run j for each group to avoid the large allocation. If you are sure you wish to proceed, rerun with allow.cartesian=TRUE. Otherwise, please search for this error message in the FAQ, Wiki, Stack Overflow and data.table issue tracker for advice.
-Calls: merge -> merge.data.table -> [ -> [.data.table -> vecseq
+> # print variance of as.numeric CTUID within roll_base to check
+> dTest <- dtRollLatLon[, .(nCTUID = uniqueN(CTUID),nGeom=uniqueN(geom)), by = roll_base]
+Error in uniqueN(geom) : 
+  x must be an atomic vector or a data.frame/data.table
+Calls: [ ... [.data.table -> uniqueN -> stopf -> raise_condition -> signal
 Execution halted
