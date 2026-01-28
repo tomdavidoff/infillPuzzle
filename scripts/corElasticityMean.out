@@ -1,0 +1,91 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # corElasticityMean.R
+> # how correlated are different elasticity measures
+> # Tom Davidoff
+> # 01/27/26
+> 
+> library(data.table)
+> 
+> dtE1 <- fread("tables/bca19_mean_ppsf_slope_All_by_neighbourhood.csv")
+> dtE2 <- fread("tables/bca19_mean_ppsf_slope_by_neighbourhood.csv")
+> print(head(dtE1))
+    neighbourhoodDescription meanPPSF  nobs      slope  elasticity
+                      <char>    <num> <int>      <num>       <num>
+1: ARBUTUS/MACKENZIE HEIGHTS 868.8378   148 -0.1057823  0.61892479
+2:                    CAMBIE 847.4542   179 -0.1349745  0.30759901
+3:             CEDAR COTTAGE 741.9518   222 -0.1739847 -0.03167608
+4:               COLLINGWOOD 636.5955   384 -0.1918768 -0.15257106
+5:                    DUNBAR 886.2351   305 -0.1075784  0.48813395
+6:                FRASERVIEW 618.8797   313 -0.1682823  0.09572774
+> print(head(dtE2))
+    neighbourhoodDescription meanPPSF  nobs       slope  elasticity
+                      <char>    <num> <int>       <num>       <num>
+1: ARBUTUS/MACKENZIE HEIGHTS 815.8970    72  0.01883883  0.09305465
+2:                    CAMBIE 784.9719    73 -0.06053328 -0.21146163
+3:             CEDAR COTTAGE 722.4172    81 -0.02163822 -0.07033238
+4:               COLLINGWOOD 653.8939   134 -0.11629736 -0.51384950
+5:                    DUNBAR 832.6617    88 -0.03729668 -0.12266190
+6:                FRASERVIEW 618.7902   170 -0.11547143 -0.66056781
+> setnames(dtE1, c("slope", "elasticity","meanPPSF","nobs"), c("slope_all", "elasticity_all","meanPPSF_all","nobs_all"))
+> dtMerged <- merge(dtE1, dtE2, by = "neighbourhoodDescription", suffixes = c("_all", "_grouped"))
+> print(head(dtMerged))
+Key: <neighbourhoodDescription>
+    neighbourhoodDescription meanPPSF_all nobs_all  slope_all elasticity_all
+                      <char>        <num>    <int>      <num>          <num>
+1: ARBUTUS/MACKENZIE HEIGHTS     868.8378      148 -0.1057823     0.61892479
+2:                    CAMBIE     847.4542      179 -0.1349745     0.30759901
+3:             CEDAR COTTAGE     741.9518      222 -0.1739847    -0.03167608
+4:               COLLINGWOOD     636.5955      384 -0.1918768    -0.15257106
+5:                    DUNBAR     886.2351      305 -0.1075784     0.48813395
+6:                FRASERVIEW     618.8797      313 -0.1682823     0.09572774
+   meanPPSF  nobs       slope  elasticity
+      <num> <int>       <num>       <num>
+1: 815.8970    72  0.01883883  0.09305465
+2: 784.9719    73 -0.06053328 -0.21146163
+3: 722.4172    81 -0.02163822 -0.07033238
+4: 653.8939   134 -0.11629736 -0.51384950
+5: 832.6617    88 -0.03729668 -0.12266190
+6: 618.7902   170 -0.11547143 -0.66056781
+> print(cor(dtMerged[,.(meanPPSF, meanPPSF_all,elasticity, elasticity_all,slope,slope_all)], use="pairwise.complete.obs"))
+                meanPPSF meanPPSF_all elasticity elasticity_all     slope
+meanPPSF       1.0000000    0.9913316  0.6577572      0.7076022 0.5750436
+meanPPSF_all   0.9913316    1.0000000  0.6838169      0.7204980 0.6103108
+elasticity     0.6577572    0.6838169  1.0000000      0.5162914 0.9834200
+elasticity_all 0.7076022    0.7204980  0.5162914      1.0000000 0.4401102
+slope          0.5750436    0.6103108  0.9834200      0.4401102 1.0000000
+slope_all      0.6568053    0.6598550  0.4374581      0.9583440 0.3414726
+               slope_all
+meanPPSF       0.6568053
+meanPPSF_all   0.6598550
+elasticity     0.4374581
+elasticity_all 0.9583440
+slope          0.3414726
+slope_all      1.0000000
+> print(cor(dtMerged[nobs>quantile(nobs,.1),.(meanPPSF, meanPPSF_all,elasticity, elasticity_all)], use="pairwise.complete.obs"))
+                meanPPSF meanPPSF_all elasticity elasticity_all
+meanPPSF       1.0000000    0.9916897  0.7924633      0.7119918
+meanPPSF_all   0.9916897    1.0000000  0.7836898      0.7349174
+elasticity     0.7924633    0.7836898  1.0000000      0.6855057
+elasticity_all 0.7119918    0.7349174  0.6855057      1.0000000
+> 
+> proc.time()
+   user  system elapsed 
+  0.096   0.031   0.236 

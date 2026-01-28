@@ -37,11 +37,19 @@ if (!file.exists(fSales)) {
   saveRDS(dtBCA2019, fSales)
 } 
 dtBCA2019 <- readRDS(fSales)
+dtBCA2019[, duplexTownhome:=(grepl("uplex", actualUseDescription, ignore.case=TRUE) | actualUseDescription=="Row Housing (Single Unit Ownership)")]
+dtBCA2019[, single:=(actualUseDescription %in% c("Residential Dwelling with Suite","Single Family Dwelling"))]
+print(summary(dtBCA2019))
+
+print(table(dtBCA2019$actualUseDescription))
 
 # Numeric conversion and cleaning
 cols <- c("conveyancePrice", "MB_effective_year", "MB_total_finished_area")
 dtBCA2019[, (cols) := lapply(.SD, as.numeric), .SDcols = cols]
 dtBCA2019 <- dtBCA2019[!is.na(MB_total_finished_area) & conveyancePrice > 100000]
+print(dtBCA2019[,mean(is.na(MB_total_finished_area)),by=single])
+print(summary(dtBCA2019$MB_total_finished_area))
+print(dtBCA2019[!is.na(MB_total_finished_area) ,.N,by=c("single","neighbourhoodDescription")])
 
 # Metrics
 dtBCA2019[, `:=`(
@@ -60,10 +68,8 @@ dtBCA2019 <- dtBCA2019[
 cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
 
 MINYEAR <- 2012
-MEANYEAR <- 2015
+MEANYEAR <- 2012
 WIDTHCUT <- 0.15
-DEPTHMIN <- 110
-DEPTHMAX <- 150
 
 dtBCA2019 <- dtBCA2019[grepl("RS", zoning)]
 # Exclude Shaughnessy and West End
@@ -113,12 +119,17 @@ dtAnalysis <- dt
   dtMeans <- dtAnalysis[year(conveyanceDate) >= MEANYEAR, 
                         .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = .N), 
                         by = groupVar]
+  dtMeanDuplex <- dtAnalysis[year(conveyanceDate) >= MEANYEAR & single==0, .(meanPPSF_duplex = mean(ppsf, na.rm = TRUE), nobs_duplex = .N), by = groupVar]
+  dtMeanSingle <- dtAnalysis[year(conveyanceDate) >= MEANYEAR & single==1, .(meanPPSF_single = mean(ppsf, na.rm = TRUE), nobs_single = .N), by = groupVar]
+  dtMeans <- merge(dtMeans, dtMeanDuplex, by = groupVar, all.x = TRUE)
+  dtMeans <- merge(dtMeans, dtMeanSingle, by = groupVar, all.x = TRUE)
   
   # Merge slopes and elasticities
   dtMeans <- merge(dtMeans, dtSlopes[, c(groupVar, "Estimate"), with = FALSE], by = groupVar, all.x = TRUE)
   setnames(dtMeans, "Estimate", "slope")
   dtMeans <- merge(dtMeans, dtElasticities[, c(groupVar, "Estimate"), with = FALSE], by = groupVar, all.x = TRUE)
   setnames(dtMeans, "Estimate", "elasticity")
+  print(dtAnalysis[year(conveyanceDate) >= MEANYEAR & duplexTownhome==1, .N, by = neighbourhoodDescription][order(N)])
   
   # Output
   fwrite(dtMeans, paste0("tables/bca19_mean_ppsf_slope_All_by_", label, ".csv"))
