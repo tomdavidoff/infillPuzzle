@@ -9,15 +9,12 @@ library(fixest)
 
 # Vancouver analysis # note neighbourhoodDescription better than tract for analysis level
 # get slopes and mean values from BCA sales analysis by census tract merge
-nameSlope <- "tables/bca19_mean_ppsf_slope_by_tract.csv"
+nameSlope <- "tables/bca19_mean_ppsf_slope_All_by_neighbourhood.csv"
 if (!file.exists(nameSlope)) {
-  source("scripts/bcaSales.R")
+  source("scripts/bcaSalesAll.R")
 }
 # specify column CTUID is a number
-dtSlope <- fread(nameSlope,colClasses=c(CTUID="character"))
-# giant outlier at low obs
-CUTOFFN <- .05
-dtSlope <- dtSlope[nobs>quantile(nobs,CUTOFFN)]
+dtSlope <- fread(nameSlope)
 
 # Now get projects merged with BCA and census tracts
 nameSpatial <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
@@ -28,8 +25,7 @@ dtSpatial <- readRDS(nameSpatial)
 
 print(head(dtSpatial))
 print(head(dtSlope))
-
-dtMerge <- merge(dtSpatial,dtSlope,by="CTUID")
+dtMerge <- merge(dtSpatial,dtSlope,by="neighbourhoodDescription")
 print(head(dtMerge))
 print(summary(dtMerge))
 print(table(dtMerge[,use]))

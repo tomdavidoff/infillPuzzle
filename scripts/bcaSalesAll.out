@@ -1,6 +1,6 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
-Copyright (C) 2025 The R Foundation for Statistical Computing
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -18,14 +18,16 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > # bcaSalesAll.R
-> # R to evaluate elasticity of price per square foot among *all* BCA sales by census tract
+> # R to evaluate elasticity of price per square foot among *all* BCA sales by neighbourhood description (not tract as need obs of all types...)
 > # Tom Davidoff
 > 
 > # 01/26/26
 > library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
 > library(ggplot2)
 > library(sf)
-Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > library(RSQLite)
 > library(fixest)
 > library(scales)
@@ -40,34 +42,8 @@ The following object is masked from ‘package:fixest’:
 > library(readxl)
 > 
 > BCA19    <- "~/OneDrive - UBC/dataRaw/REVD19_and_inventory_extracts.sqlite3"
-> BCA26 <- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
 > 
 > # use 2026 data to get floor(roll number/1000) to get lot polygons -> centroid , maybe zoning 
-> fRollLatLon <- "~/OneDrive - UBC/dataProcessed/bca26RollCensusTractAll.rds"
-> fLaneway <-  "~/OneDrive - UBC/dataRaw/20231231_UBC_CustomLanewayReport.xlsx"
-> 
-> # drop duplex
-> if (!file.exists(fRollLatLon)) {
-+   cat("Extracting lot centroids from BCA 2026 data...\n")
-+   desc26 <- st_read(BCA26,
-+       layer="WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
-+       query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV WHERE JURISDICTION_CODE=='200' ", 
-+       quiet = TRUE
-+   )
-+   print(head(desc26))
-+   stDesc <- st_crs(desc26)
-+   roll_pt <- st_point_on_surface(desc26)
-+   # convert geom to centroid
-+   # --- 2021 Census Tracts (cartographic) via download
-+   ct_file <- "~/OneDrive - UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
-+   sCT <- st_read(ct_file, quiet = TRUE)
-+   sCT <- st_make_valid(sCT)
-+   sCT <- st_transform(sCT, stDesc)
-+ 
-+   roll_ct <- st_join(roll_pt, sCT[, c("CTUID", "DGUID", "CTNAME", "PRUID")], join = st_within, left = TRUE)
-+   print(head(roll_ct))
-+   saveRDS(roll_ct, fRollLatLon)
-+ }
 > 
 > # Load BCA 2019 sales data (all residential)
 > fSales <- "~/OneDrive - UBC/dataProcessed/bca19SalesAll.rds"
@@ -76,8 +52,8 @@ The following object is masked from ‘package:fixest’:
 +   db <- dbConnect(SQLite(), BCA19)
 +   dtBCA2019 <- as.data.table(dbGetQuery(db, "
 +       SELECT s.folioID, s.conveyancePrice, s.conveyanceDate,
-+              i.MB_effective_year, i.MB_total_finished_area, i.land_width, i.land_depth, i.land_area, i.roll_number, i.zoning,
-+              d.actualUseDescription, d.neighbourhoodDescription, a.postalCode
++              i.MB_effective_year, i.MB_total_finished_area, i.roll_number, i.zoning,
++              d.actualUseDescription, d.neighbourhoodDescription, 
 +       FROM sales s
 +       JOIN folio f ON s.folioID = f.folioID
 +       JOIN residentialInventory i ON f.rollNumber = i.roll_number
@@ -90,39 +66,144 @@ The following object is masked from ‘package:fixest’:
 +   saveRDS(dtBCA2019, fSales)
 + } 
 > dtBCA2019 <- readRDS(fSales)
-> print(head(dtBCA2019))
-      folioID conveyancePrice conveyanceDate MB_effective_year
-       <char>          <char>         <char>            <char>
-1: A000000009         9450000     2014-06-16              2019
-2: A00000000A         8800000     2013-02-08              1997
-3: A00000000A         1700000     1991-07-09              1997
-4: A00000000B         3850000     2006-12-04              1945
-5: A00000000B          190000     1977-04-15              1945
-6: A00000000C         2308000     1991-09-03              2011
-   MB_total_finished_area land_width land_depth land_area     roll_number
-                   <char>     <char>     <char>    <char>          <char>
-1:                  11895                                 001019632060000
-2:                   7760        195      251.9           001019632290000
-3:                   7760        195      251.9           001019632290000
-4:                   3215        150        250           001019632450000
-5:                   3215        150        250           001019632450000
-6:                   8673        150        250           001019632650000
-   zoning   actualUseDescription neighbourhoodDescription postalCode
-   <char>                 <char>                   <char>     <char>
-1:    RS1 Single Family Dwelling               POINT GREY    V6T 1A9
-2:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2
-3:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2
-4:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2
-5:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2
-6:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2
 > 
-> # merge back with census tract on roll number/1000
-> dtRollLatLon <- as.data.table(readRDS(fRollLatLon))
-> dtBCA2019[, roll_base := floor(as.numeric(roll_number) / 1000)]
-> dtRollLatLon[, roll_base := floor(as.numeric(ROLL_NUMBER) / 1000)]
-> # print variance of as.numeric CTUID within roll_base to check
-> dTest <- dtRollLatLon[, .(nCTUID = uniqueN(CTUID),nGeom=uniqueN(geom)), by = roll_base]
-Error in uniqueN(geom) : 
-  x must be an atomic vector or a data.frame/data.table
-Calls: [ ... [.data.table -> uniqueN -> stopf -> raise_condition -> signal
-Execution halted
+> # Numeric conversion and cleaning
+> cols <- c("conveyancePrice", "MB_effective_year", "MB_total_finished_area")
+> dtBCA2019[, (cols) := lapply(.SD, as.numeric), .SDcols = cols]
+> dtBCA2019 <- dtBCA2019[!is.na(MB_total_finished_area) & conveyancePrice > 100000]
+> 
+> # Metrics
+> dtBCA2019[, `:=`(
++     age = year(conveyanceDate) - MB_effective_year, 
++     ppsf = conveyancePrice / MB_total_finished_area 
++ )]
+> 
+> # Outlier removal (global)
+> CUT <- 0.05
+> dtBCA2019 <- dtBCA2019[
++     age >= 0 &
++     MB_total_finished_area %between% quantile(MB_total_finished_area, c(CUT, 1-CUT)) &
++     ppsf %between% quantile(ppsf, c(CUT, 1-CUT))
++ ]
+> 
+> cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
+BCA 2019 transactions loaded: 240759 
+> 
+> MINYEAR <- 2012
+> MEANYEAR <- 2015
+> WIDTHCUT <- 0.15
+> DEPTHMIN <- 110
+> DEPTHMAX <- 150
+> 
+> dtBCA2019 <- dtBCA2019[grepl("RS", zoning)]
+> # Exclude Shaughnessy and West End
+> dtBCA2019 <- dtBCA2019[!neighbourhoodDescription %chin% c("SHAUGNESSY", "WEST END","SOUTHLANDS")]
+> 
+> # ==========================================
+> # Function to run analysis at a given geographic level
+> # ==========================================
+> 
+> runAnalysis <- function(dt, groupVar, label) {
++   cat("\n==========================================\n")
++   cat("Running analysis at", label, "level\n")
++   cat("==========================================\n")
++   
++ dtAnalysis <- dt
++   
++   
++   # Build formulas dynamically
++   fmlaMain <- as.formula(paste0(
++     "ppsf ~ i(", groupVar, ", MB_total_finished_area) + log(age + 1) + MB_total_finished_area | ", groupVar
++   ))
++ 
++   fmlaLog <- as.formula(paste0(
++     "log(ppsf) ~ i(", groupVar, ", log(MB_total_finished_area)) + log(age + 1) + log(MB_total_finished_area)  | ", groupVar 
++   ))# no main effect for Wald purposes
++   
++ 
++   # Run regressions
++   mainReg <- feols(fmlaMain, data = dtAnalysis)
++   print(r2(mainReg, typ = c("r2", "ar2")))
++   
++   logReg <- feols(fmlaLog, data = dtAnalysis)
++   print(r2(logReg, typ = c("r2", "ar2")))
++ 
++   # Extract slopes
++   dtSlopes <- as.data.table(coeftable(mainReg), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
++   # Extract group identifier from term
++   pattern <- paste0(groupVar, "::(.*):MB_total_finished_area")
++   dtSlopes[, (groupVar) := gsub(pattern, "\\1", term)]
++   
++   # Extract elasticities
++   dtElasticities <- as.data.table(coeftable(logReg), keep.rownames = "term")[grepl("log\\(MB_total_finished_area\\)", term)]
++   patternLog <- paste0(groupVar, "::(.*):log\\(MB_total_finished_area\\)")
++   dtElasticities[, (groupVar) := gsub(patternLog, "\\1", term)]
++   
++   # Compute means
++   dtMeans <- dtAnalysis[year(conveyanceDate) >= MEANYEAR, 
++                         .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = .N), 
++                         by = groupVar]
++   
++   # Merge slopes and elasticities
++   dtMeans <- merge(dtMeans, dtSlopes[, c(groupVar, "Estimate"), with = FALSE], by = groupVar, all.x = TRUE)
++   setnames(dtMeans, "Estimate", "slope")
++   dtMeans <- merge(dtMeans, dtElasticities[, c(groupVar, "Estimate"), with = FALSE], by = groupVar, all.x = TRUE)
++   setnames(dtMeans, "Estimate", "elasticity")
++   
++   # Output
++   fwrite(dtMeans, paste0("tables/bca19_mean_ppsf_slope_All_by_", label, ".csv"))
++   
++   # Plot
++   p <- ggplot(dtMeans[nobs > quantile(nobs, .025) & !is.na(slope)], aes(x = slope, y = meanPPSF)) + 
++     geom_point() + 
++     geom_smooth(method = "lm") + 
++     labs(title = paste("Mean BCA Price per SqFt vs Pricing Slope by", label), 
++          x = "BCA Pricing Slope ($/sqft per sqft)", 
++          y = "Mean Price per SqFt")
++   ggsave(paste0("text/bca19_mean_ppsf_vs_slope_", label, ".png"), plot = p)
++   
++   # Correlations
++   cat("\nCorrelations (", label, "):\n", sep = "")
++   print(cor(dtMeans[!is.na(slope), .(slope, meanPPSF)]))
++   print(cor(dtMeans[!is.na(elasticity), .(elasticity, meanPPSF)]))
++   print(cor(dtMeans[!is.na(slope) & nobs > quantile(nobs, .025), .(slope, meanPPSF)]))
++   print(cor(dtMeans[!is.na(elasticity) & nobs > quantile(nobs, .1), .(elasticity, meanPPSF)]))
++   
++   return(dtMeans)
++ }
+> 
+> # ==========================================
+> # Run analyses
+> # ==========================================
+> 
+> dtResultsNbhd <- runAnalysis(copy(dtBCA2019), "neighbourhoodDescription", "neighbourhood")
+
+==========================================
+Running analysis at neighbourhood level
+==========================================
+        r2        ar2 
+0.04970327 0.04902677 
+The variable 'log(MB_total_finished_area)' has been removed because of collinearity (see $collin.var).
+        r2        ar2 
+0.04284548 0.04217925 
+Saving 7 x 7 in image
+`geom_smooth()` using formula = 'y ~ x'
+
+Correlations (neighbourhood):
+            slope meanPPSF
+slope    1.000000 0.659855
+meanPPSF 0.659855 1.000000
+           elasticity meanPPSF
+elasticity   1.000000 0.720498
+meanPPSF     0.720498 1.000000
+             slope  meanPPSF
+slope    1.0000000 0.6842739
+meanPPSF 0.6842739 1.0000000
+           elasticity  meanPPSF
+elasticity  1.0000000 0.7827374
+meanPPSF    0.7827374 1.0000000
+> 
+> q("no")
+> proc.time()
+   user  system elapsed 
+  6.143   0.246   3.794 
