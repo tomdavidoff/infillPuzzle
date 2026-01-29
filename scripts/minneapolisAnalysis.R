@@ -1,41 +1,44 @@
-# portlandAnalysis.R
-q("no")
+# minneapolisAnalysis.R
 # Analyze the ppsf slope in sf and infill, as in Vancouver
 # Tom Davidoff
-# 12/26/25
-
+# Adapted from Portland code for Minneapolis 2040 analysis
 
 library(data.table)
 library(fixest)
 library(ggplot2)
 
 # 1. Load ------------------------------------------------------------------
-permits <- readRDS("~/OneDrive - UBC/dataProcessed/portland_zip_propensity.rds")
-slopes  <- readRDS("~/OneDrive - UBC/dataProcessed/portland_attom_slopes_by_zip.rds")
+permits <- readRDS("~/OneDrive - UBC/dataProcessed/minneapolis_zip_propensity.rds")
+slopes  <- readRDS("~/OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds")
 
 setDT(permits); setDT(slopes)
+
+
 
 # 2. Align -----------------------------------------------------------------
 # Ensure ZIPs are 5-character strings and types match
 print(head(permits))
 print(head(slopes))
-setnames(permits,"geo_id","zip")
+
+
+setnames(permits, "geo_id", "zip")
 permits[, zip := sprintf("%05s", as.character(zip))]
 slopes[,  zip := sprintf("%05s", as.character(zip))]
 
 # Merge on Zip
 dt <- merge(permits, slopes, by = "zip")
+print(head(dt))
+print(summary(dt))
 
 # 3. Clean -----------------------------------------------------------------
 # Convert slope to numeric (it was <char>) and take absolute value
 # (A larger negative slope = a steeper 'size discount')
-dt[, size_slope := abs(as.numeric(slope))]
 dt[, price_level := as.numeric(mean_ppsf)]
 
 # Focus on Zips with enough data to be credible
-MINOBS <- 50
-dt <- dt[N >= MINOBS & total_lots_active>=MINOBS]
-print(cor(dt[,.(slope,price_level,propensity)]))
+MINOBS <- 2
+dt <- dt[N >= MINOBS & total_lots_active >= MINOBS]
+print(cor(dt[, .(slope, price_level, propensity)]))
 
 # 4. Model -----------------------------------------------------------------
 # Does the price-size gradient predict development propensity?
@@ -45,16 +48,19 @@ m2 <- feols(propensity ~ slope + price_level, dt, vcov = "hc1")
 m3 <- feols(propensity ~ price_level, dt, vcov = "hc1")
 
 # Zen summary: No complex tables, just the facts
-print(etable(m1, m2,m3))
+print(etable(m1, m2, m3))
 
 # 5. Plot ------------------------------------------------------------------
-ggplot(dt, aes(size_slope, propensity)) +
+ggplot(dt, aes(slope, propensity)) +
   geom_point(alpha = 0.5) +
   geom_smooth(method = "lm", color = "black", fill = "gray80") +
   theme_minimal() +
   labs(x = "Price-Size Gradient (Absolute)", 
        y = "Permit Propensity",
-       title = "Portland Supply Response")
+       title = "Minneapolis Supply Response")
+
+ggsave("~/OneDrive - UBC/dataProcessed/minneapolis_supply_response.png", 
+       width = 8, height = 6)
 
 # 6. Export ----------------------------------------------------------------
-saveRDS(dt, "~/OneDrive - UBC/dataProcessed/portland_analysis_final.rds")
+saveRDS(dt, "~/OneDrive - UBC/dataProcessed/minneapolis_analysis_final.rds")

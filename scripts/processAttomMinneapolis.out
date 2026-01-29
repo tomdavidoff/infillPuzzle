@@ -1,0 +1,338 @@
+
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # processAttom_Minneapolis.R
+> # Tom Davidoff
+> # Purpose: Pricing slopes by ZIP for Minneapolis/Hennepin County (FIPS 27053)
+> # Adapted from Portland code
+> 
+> library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
+> library(arrow)
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+Warning message:
+package ‘arrow’ was built under R version 4.4.1 
+> library(fixest)
+> 
+> options(timeout = 600)
+> 
+> # ==========================================
+> # 1) LOAD SALES (27053.txt) - Hennepin County, MN
+> # ==========================================
+> message("Reading Sales data...")
+Reading Sales data...
+> 
+> raw_txt <- readLines("~/OneDrive - UBC/dataProcessed/27053.txt", warn = FALSE, encoding = "latin1")
+> header_line <- raw_txt[1]
+> data_body   <- raw_txt[-1]
+> 
+> header_names <- unlist(strsplit(header_line, "|", fixed = TRUE))
+> header_names <- make.names(tolower(header_names))
+> 
+> message("Splitting pipes...")
+Splitting pipes...
+> dtSales <- data.table(raw = data_body)
+> dtSales <- dtSales[, tstrsplit(raw, "|", fixed = TRUE, fill = NA)]
+> 
+> names(dtSales)[1:length(header_names)] <- header_names
+> setnames(dtSales, "X.attom.id.", "attom_id", skip_absent = TRUE)
+> setnames(dtSales, "transferamount", "price", skip_absent = TRUE)
+> setnames(dtSales, "transactiondate", "date", skip_absent = TRUE)
+> 
+> # normalize names after setnames
+> setnames(dtSales, tolower(make.names(names(dtSales))))
+> 
+> # types
+> dtSales[, attom_id := as.character(attom_id)]
+> dtSales[, price := as.numeric(price)]
+> dtSales[, date  := as.IDate(date)]
+> 
+> # filter years - around 2018 zoning change
+> # Minneapolis 2040 plan adopted Dec 2018, implemented Jan 2020
+> # Adjust as needed for your research question
+> dtSales <- dtSales[year(date) >= 2016 & year(date) <= 2020]
+> 
+> # ZIP from sales (clean)
+> if (!"propertyaddresszip" %in% names(dtSales)) stop("propertyaddresszip not found in dtSales.")
+> dtSales[, zip := gsub("[^0-9]", "", as.character(propertyaddresszip))]
+> dtSales[nchar(zip) == 9, zip := substr(zip, 1, 5)]
+> dtSales[zip == "", zip := NA_character_]
+> 
+> # OPTIONAL: Filter to Minneapolis-area ZIPs only (554xx range)
+> # Uncomment if you want to restrict to Minneapolis proper
+> # dtSales <- dtSales[grepl("^554", zip)]
+> 
+> message("Sales rows after date filter: ", nrow(dtSales))
+Sales rows after date filter: 104702
+> 
+> # ==========================================
+> # 2) LOAD ASSESSOR (sqft) from Parquet - Minnesota
+> # ==========================================
+> message("Opening Assessor Parquet...")
+Opening Assessor Parquet...
+> ds <- open_dataset("~/OneDrive - UBC/dataProcessed/AH_state_MN.parquet")
+> 
+> # Pull only what we need - Hennepin County FIPS muni code is "053"
+> scanner <- ds$NewScan()$
++   Filter(Expression$field_ref("MM_FIPS_MUNI_CODE") == "053")$
++   Project(c("[ATTOM ID]", "SA_FIN_SQFT_TOT"))$
++   Finish()
+> 
+> dtAssessor <- as.data.table(scanner$ToTable())
+> setnames(dtAssessor, c("[ATTOM ID]", "SA_FIN_SQFT_TOT"), c("attom_id", "sqft"))
+> 
+> dtAssessor[, attom_id := as.character(attom_id)]
+> dtAssessor[, sqft := as.numeric(sqft)]
+> 
+> # Deduplicate: multiple records per ATTOM id
+> dtAssessor_Final <- dtAssessor[, .(
++   sqft = max(sqft, na.rm = TRUE)
++ ), by = attom_id]
+> 
+> dtAssessor_Final[is.infinite(sqft), sqft := NA_real_]
+> 
+> message("Unique assessor ATTOM IDs: ", uniqueN(dtAssessor_Final$attom_id))
+Unique assessor ATTOM IDs: 442511
+> 
+> # ==========================================
+> # 3) MERGE + SLOPE ESTIMATION BY ZIP
+> # ==========================================
+> message("Merging sales + assessor...")
+Merging sales + assessor...
+> dtFinal <- merge(dtSales, dtAssessor_Final, by = "attom_id", all = FALSE)
+> 
+> # clean
+> dtFinal <- dtFinal[!is.na(price) & !is.na(sqft) & !is.na(zip)]
+> dtFinal <- dtFinal[price > 100000 & sqft > 400]
+> 
+> dtFinal[, ppsf := price / sqft]
+> 
+> # keep plausible ZIPs
+> dtFinal <- dtFinal[nchar(zip) == 5]
+> 
+> # Filter to ZIPs with enough observations to estimate slopes
+> # This avoids collinearity issues from ZIPs with only 1-2 sales
+> min_obs <- 20  # adjust as needed
+> zip_counts <- dtFinal[, .N, by = zip]
+> good_zips <- zip_counts[N >= min_obs, zip]
+> dtFinal <- dtFinal[zip %in% good_zips]
+> 
+> message("Final rows for regression: ", nrow(dtFinal),
++         " | ZIPs: ", uniqueN(dtFinal$zip))
+Final rows for regression: 36155 | ZIPs: 66
+> 
+> # Slope by ZIP: ZIP-specific intercept and ZIP-specific slope on sqft
+> # (ppsf = a_zip + b_zip * sqft + error)
+> dtFinal[, zip := as.factor(zip)]
+> dtFinal[,lppsf := log(ppsf)]
+> dtFinal[,lsqft := log(sqft)]
+> m <- feols(lppsf ~ 0 + zip + zip:lsqft, data = dtFinal)
+> print(summary(m))
+OLS estimation, Dep. Var.: lppsf
+Observations: 36,155
+Standard-errors: IID 
+                Estimate Std. Error    t value   Pr(>|t|)    
+zip13560        6.947841   1.915664   3.626858 2.8729e-04 ***
+zip13580        6.871129   1.884221   3.646668 2.6604e-04 ***
+zip55305        5.128970   0.243150  21.093823  < 2.2e-16 ***
+zip55311        7.040822   0.200096  35.187163  < 2.2e-16 ***
+zip55316        8.582838   0.321494  26.696752  < 2.2e-16 ***
+zip55327        7.252225   0.679035  10.680196  < 2.2e-16 ***
+zip55331        6.947167   0.307875  22.564887  < 2.2e-16 ***
+zip55340        5.731763   0.465149  12.322425  < 2.2e-16 ***
+zip55343        7.180875   0.262173  27.389858  < 2.2e-16 ***
+zip55344        6.302529   0.342061  18.425144  < 2.2e-16 ***
+zip55345        7.761760   0.291208  26.653647  < 2.2e-16 ***
+zip55346        6.838092   0.309296  22.108551  < 2.2e-16 ***
+zip55347        5.770375   0.172998  33.355152  < 2.2e-16 ***
+zip55356        4.970595   0.442283  11.238486  < 2.2e-16 ***
+zip55357        6.328434   0.901669   7.018576 2.2810e-12 ***
+zip55359        6.815896   0.488427  13.954801  < 2.2e-16 ***
+zip55364        5.906103   0.226689  26.053730  < 2.2e-16 ***
+zip55369        8.877797   0.202355  43.872426  < 2.2e-16 ***
+zip55373        4.766587   1.651064   2.886980 3.8919e-03 ** 
+zip55374        7.350053   0.391246  18.786279  < 2.2e-16 ***
+zip55375        6.908329   0.656225  10.527384  < 2.2e-16 ***
+zip55384        5.759418   0.968870   5.944468 2.7990e-09 ***
+zip55391        5.178841   0.202544  25.568995  < 2.2e-16 ***
+zip55401        4.324666   0.220093  19.649249  < 2.2e-16 ***
+zip55403        5.004144   0.187477  26.691989  < 2.2e-16 ***
+zip55404        9.487328   0.187165  50.689632  < 2.2e-16 ***
+zip55405        6.614981   0.241397  27.402958  < 2.2e-16 ***
+zip55406        9.096917   0.182869  49.745501  < 2.2e-16 ***
+zip55407        9.590466   0.157031  61.073673  < 2.2e-16 ***
+zip55408        7.263209   0.150022  48.414200  < 2.2e-16 ***
+zip55409        7.171840   0.251029  28.569783  < 2.2e-16 ***
+zip55410        7.172517   0.237179  30.240967  < 2.2e-16 ***
+zip55411        9.644857   0.195665  49.292599  < 2.2e-16 ***
+zip55412        9.516235   0.183550  51.845457  < 2.2e-16 ***
+zip55413        8.464354   0.232954  36.334797  < 2.2e-16 ***
+zip55414        7.086212   0.288379  24.572542  < 2.2e-16 ***
+zip55415        3.438448   0.386651   8.892889  < 2.2e-16 ***
+zip55416        7.135207   0.173966  41.014919  < 2.2e-16 ***
+zip55417        7.825611   0.203968  38.366788  < 2.2e-16 ***
+zip55418        8.985099   0.190363  47.199858  < 2.2e-16 ***
+zip55419        7.708435   0.226823  33.984428  < 2.2e-16 ***
+zip55420        9.982601   0.340569  29.311562  < 2.2e-16 ***
+zip55421       10.246348   1.521403   6.734804 1.6661e-11 ***
+zip55422        7.924287   0.205975  38.472022  < 2.2e-16 ***
+zip55423        9.052934   0.280942  32.223527  < 2.2e-16 ***
+zip55424        5.388555   0.553206   9.740601  < 2.2e-16 ***
+zip55425        9.182695   0.494320  18.576415  < 2.2e-16 ***
+zip55426        9.655172   0.256037  37.710126  < 2.2e-16 ***
+zip55427        7.608756   0.333383  22.822867  < 2.2e-16 ***
+zip55428        9.459981   0.286301  33.042084  < 2.2e-16 ***
+zip55429       10.417329   0.325474  32.006649  < 2.2e-16 ***
+zip55430        9.926776   0.268661  36.949111  < 2.2e-16 ***
+zip55431        8.633699   0.451822  19.108626  < 2.2e-16 ***
+zip55435        3.260903   0.371156   8.785809  < 2.2e-16 ***
+zip55436        3.266581   0.301454  10.836077  < 2.2e-16 ***
+zip55437        8.007118   0.342589  23.372377  < 2.2e-16 ***
+zip55438        6.103549   0.309791  19.702121  < 2.2e-16 ***
+zip55439        4.774661   0.458655  10.410141  < 2.2e-16 ***
+zip55441        6.714688   0.282062  23.805758  < 2.2e-16 ***
+zip55442        5.070139   0.344614  14.712502  < 2.2e-16 ***
+zip55443        7.437950   0.199112  37.355595  < 2.2e-16 ***
+zip55444        8.347771   0.394994  21.133915  < 2.2e-16 ***
+zip55445        6.686174   0.329460  20.294344  < 2.2e-16 ***
+zip55446        5.683941   0.207292  27.419914  < 2.2e-16 ***
+zip55447        6.493391   0.281892  23.035026  < 2.2e-16 ***
+zip55454        6.996443   0.736999   9.493151  < 2.2e-16 ***
+zip13560:lsqft -0.256570   0.276380  -0.928324 3.5325e-01    
+zip13580:lsqft -0.239283   0.276178  -0.866409 3.8627e-01    
+zip55305:lsqft  0.010771   0.033734   0.319281 7.4952e-01    
+zip55311:lsqft -0.261301   0.027295  -9.573333  < 2.2e-16 ***
+zip55316:lsqft -0.476433   0.045167 -10.548189  < 2.2e-16 ***
+zip55327:lsqft -0.270736   0.094012  -2.879792 3.9817e-03 ** 
+zip55331:lsqft -0.179527   0.041139  -4.363932 1.2810e-05 ***
+zip55340:lsqft -0.053018   0.061612  -0.860500 3.8952e-01    
+zip55343:lsqft -0.277064   0.036979  -7.492410 6.9167e-14 ***
+zip55344:lsqft -0.158051   0.047950  -3.296126 9.8123e-04 ***
+zip55345:lsqft -0.327358   0.040190  -8.145285 3.9047e-16 ***
+zip55346:lsqft -0.212770   0.043269  -4.917339 8.8114e-07 ***
+zip55347:lsqft -0.071948   0.023561  -3.053747 2.2617e-03 ** 
+zip55356:lsqft  0.069910   0.059183   1.181260 2.3751e-01    
+zip55357:lsqft -0.156034   0.123491  -1.263525 2.0641e-01    
+zip55359:lsqft -0.194366   0.066957  -2.902864 3.6999e-03 ** 
+zip55364:lsqft -0.073124   0.031736  -2.304101 2.1223e-02 *  
+zip55369:lsqft -0.508460   0.028711 -17.709309  < 2.2e-16 ***
+zip55373:lsqft  0.041908   0.227669   0.184076 8.5396e-01    
+zip55374:lsqft -0.303557   0.053405  -5.684015 1.3258e-08 ***
+zip55375:lsqft -0.254197   0.090175  -2.818927 4.8211e-03 ** 
+zip55384:lsqft -0.022406   0.133599  -0.167708 8.6681e-01    
+zip55391:lsqft  0.057338   0.026922   2.129819 3.3193e-02 *  
+zip55401:lsqft  0.202808   0.031707   6.396245 1.6119e-10 ***
+zip55403:lsqft  0.059916   0.026929   2.224930 2.6092e-02 *  
+zip55404:lsqft -0.590844   0.026606 -22.207172  < 2.2e-16 ***
+zip55405:lsqft -0.169138   0.033222  -5.091186 3.5762e-07 ***
+zip55406:lsqft -0.528613   0.026180 -20.191410  < 2.2e-16 ***
+zip55407:lsqft -0.613779   0.022069 -27.811792  < 2.2e-16 ***
+zip55408:lsqft -0.270758   0.020950 -12.923757  < 2.2e-16 ***
+zip55409:lsqft -0.257933   0.035451  -7.275765 3.5148e-13 ***
+zip55410:lsqft -0.200975   0.033240  -6.046160 1.4979e-09 ***
+zip55411:lsqft -0.665767   0.026969 -24.686011  < 2.2e-16 ***
+zip55412:lsqft -0.641281   0.026055 -24.612920  < 2.2e-16 ***
+zip55413:lsqft -0.434917   0.032674 -13.310710  < 2.2e-16 ***
+zip55414:lsqft -0.234150   0.040539  -5.775844 7.7197e-09 ***
+zip55415:lsqft  0.321058   0.055683   5.765869 8.1900e-09 ***
+zip55416:lsqft -0.223676   0.024424  -9.158105  < 2.2e-16 ***
+zip55417:lsqft -0.341112   0.029247 -11.662939  < 2.2e-16 ***
+zip55418:lsqft -0.519396   0.026891 -19.315131  < 2.2e-16 ***
+zip55419:lsqft -0.301799   0.031931  -9.451443  < 2.2e-16 ***
+zip55420:lsqft -0.662479   0.049143 -13.480658  < 2.2e-16 ***
+zip55421:lsqft -0.723743   0.213001  -3.397842 6.7993e-04 ***
+zip55422:lsqft -0.379208   0.029112 -13.025892  < 2.2e-16 ***
+zip55423:lsqft -0.529373   0.040148 -13.185450  < 2.2e-16 ***
+zip55424:lsqft  0.058967   0.073887   0.798076 4.2483e-01    
+zip55425:lsqft -0.547105   0.071550  -7.646466 2.1170e-14 ***
+zip55426:lsqft -0.590626   0.036669 -16.107071  < 2.2e-16 ***
+zip55427:lsqft -0.327415   0.046993  -6.967325 3.2857e-12 ***
+zip55428:lsqft -0.602644   0.040734 -14.794582  < 2.2e-16 ***
+zip55429:lsqft -0.752001   0.046509 -16.168887  < 2.2e-16 ***
+zip55430:lsqft -0.689059   0.038464 -17.914181  < 2.2e-16 ***
+zip55431:lsqft -0.457885   0.064263  -7.125221 1.0586e-12 ***
+zip55435:lsqft  0.279995   0.052866   5.296308 1.1886e-07 ***
+zip55436:lsqft  0.303935   0.041450   7.332488 2.3066e-13 ***
+zip55437:lsqft -0.380581   0.048973  -7.771242 7.9777e-15 ***
+zip55438:lsqft -0.116409   0.044391  -2.622364 8.7359e-03 ** 
+zip55439:lsqft  0.089019   0.062127   1.432862 1.5191e-01    
+zip55441:lsqft -0.196819   0.039030  -5.042695 4.6124e-07 ***
+zip55442:lsqft  0.018447   0.047963   0.384614 7.0053e-01    
+zip55443:lsqft -0.323885   0.027442 -11.802425  < 2.2e-16 ***
+zip55444:lsqft -0.445393   0.056390  -7.898480 2.9030e-15 ***
+zip55445:lsqft -0.219907   0.046721  -4.706841 2.5252e-06 ***
+zip55446:lsqft -0.075192   0.028060  -2.679734 7.3714e-03 ** 
+zip55447:lsqft -0.168304   0.039385  -4.273333 1.9307e-05 ***
+zip55454:lsqft -0.267832   0.107927  -2.481614 1.3083e-02 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.288602   Adj. R2: 0.371369
+> 
+> # ==========================================
+> # 4) EXTRACT SLOPES ROBUSTLY (no broom)
+> # ==========================================
+> b <- coef(m)
+> keep <- grepl(":lsqft$", names(b))
+> 
+> dtSlopes <- data.table(
++   zip = sub(":lsqft$", "", sub("^zip", "", names(b)[keep])),
++   slope = unname(b[keep])
++ )
+> 
+> zipStats <- dtFinal[, .(N = .N, mean_ppsf = mean(ppsf, na.rm = TRUE)), by = zip]
+> 
+> # add sample size per ZIP (useful for filtering)
+> dtSlopes <- merge(dtSlopes, zipStats, by = "zip", all.x = TRUE)
+> setorder(dtSlopes, -N)
+> 
+> saveRDS(dtSlopes, "~/OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds")
+> 
+> message("Saved slopes: OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds")
+Saved slopes: OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds
+> print(dtSlopes[1:15])
+       zip      slope     N mean_ppsf
+    <char>      <num> <int>     <num>
+ 1:  55412 -0.6412811  1372  155.8269
+ 2:  55422 -0.3792076  1276  196.9297
+ 3:  55369 -0.5084602  1245  209.6103
+ 4:  55407 -0.6137788  1159  201.5972
+ 5:  55311 -0.2613013  1148  176.1614
+ 6:  55418 -0.5193964  1124  212.3561
+ 7:  55406 -0.5286126  1094  235.5426
+ 8:  55411 -0.6657671  1015  133.3299
+ 9:  55423 -0.5293728  1010  217.6215
+10:  55430 -0.6890591  1008  173.2051
+11:  55443 -0.3238849  1008  167.9902
+12:  55417 -0.3411118   981  240.9739
+13:  55429 -0.7520008   926  180.2454
+14:  55416 -0.2236757   880  271.4458
+15:  55428 -0.6026440   876  192.0144
+> print(cor(dtSlopes$slope, dtSlopes$mean_ppsf, use = "complete.obs"))
+[1] 0.404746
+> 
+> proc.time()
+   user  system elapsed 
+ 20.330   0.885  13.354 

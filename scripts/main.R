@@ -49,6 +49,14 @@ dtMerge[maxSingle==0 & use=="laneway",use:="lanewayOnly"]
 print(summary(dtMerge[,.(MB_total_finished_area,landWidth,landDepth,effectiveAge)]))
 
 dtMerge[,notSingle:=use!="single" & use!="laneway"]
+
+print(names(dtMerge))
+dtMerge[,pDelta:=meanPPSF_single-meanPPSF_duplex]
+print(feols(notSingle ~ meanPPSF + pDelta | pYear, data=dtMerge))
+print(feols(notSingle ~ meanPPSF_single + meanPPSF_duplex | pYear, data=dtMerge[pYear>2020],cluster="neighbourhoodDescription"))
+print(cor(dtMerge[,.(meanPPSF_single,meanPPSF_duplex,pDelta,elasticity)]))
+q("no")
+
 ## KEY: Drop Laneway only
 print(dtMerge[effectiveAge>0,summary(effectiveAge),by="use"])
 print(dtMerge[effectiveAge>0,table(typeofwork),by="use"])

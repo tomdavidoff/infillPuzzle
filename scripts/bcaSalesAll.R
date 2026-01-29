@@ -49,7 +49,7 @@ dtBCA2019[, (cols) := lapply(.SD, as.numeric), .SDcols = cols]
 dtBCA2019 <- dtBCA2019[!is.na(MB_total_finished_area) & conveyancePrice > 100000]
 print(dtBCA2019[,mean(is.na(MB_total_finished_area)),by=single])
 print(summary(dtBCA2019$MB_total_finished_area))
-print(dtBCA2019[!is.na(MB_total_finished_area) ,.N,by=c("single","neighbourhoodDescription")])
+print(dtBCA2019[year(conveyanceDate)>=2015 & !is.na(MB_total_finished_area) ,.N,by=c("single","neighbourhoodDescription")])
 
 # Metrics
 dtBCA2019[, `:=`(
@@ -58,21 +58,19 @@ dtBCA2019[, `:=`(
 )]
 
 # Outlier removal (global)
-CUT <- 0.05
+CUT <- 0.01
 dtBCA2019 <- dtBCA2019[
     age >= 0 &
     MB_total_finished_area %between% quantile(MB_total_finished_area, c(CUT, 1-CUT)) &
     ppsf %between% quantile(ppsf, c(CUT, 1-CUT))
 ]
+print(dtBCA2019[year(conveyanceDate)>2014 & !is.na(MB_total_finished_area) ,.N,by=c("single","neighbourhoodDescription")])
 
 cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
 
-MINYEAR <- 2012
+MINYEAR <- 2015
 MEANYEAR <- 2012
-WIDTHCUT <- 0.15
 
-dtBCA2019 <- dtBCA2019[grepl("RS", zoning)]
-# Exclude Shaughnessy and West End
 dtBCA2019 <- dtBCA2019[!neighbourhoodDescription %chin% c("SHAUGNESSY", "WEST END","SOUTHLANDS")]
 
 # ==========================================
@@ -123,6 +121,7 @@ dtAnalysis <- dt
   dtMeanSingle <- dtAnalysis[year(conveyanceDate) >= MEANYEAR & single==1, .(meanPPSF_single = mean(ppsf, na.rm = TRUE), nobs_single = .N), by = groupVar]
   dtMeans <- merge(dtMeans, dtMeanDuplex, by = groupVar, all.x = TRUE)
   dtMeans <- merge(dtMeans, dtMeanSingle, by = groupVar, all.x = TRUE)
+  print("incoming")
   
   # Merge slopes and elasticities
   dtMeans <- merge(dtMeans, dtSlopes[, c(groupVar, "Estimate"), with = FALSE], by = groupVar, all.x = TRUE)

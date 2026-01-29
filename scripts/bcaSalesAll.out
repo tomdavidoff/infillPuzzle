@@ -1,6 +1,6 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
-Copyright (C) 2025 The R Foundation for Statistical Computing
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -23,9 +23,11 @@ Type 'q()' to quit R.
 > 
 > # 01/26/26
 > library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
 > library(ggplot2)
 > library(sf)
-Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
 > library(RSQLite)
 > library(fixest)
 > library(scales)
@@ -141,66 +143,66 @@ Stratified Rental Apartment (Hi-Rise Construction)
 > print(summary(dtBCA2019$MB_total_finished_area))
    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
     100     762    1250    1676    2327   28794 
-> print(dtBCA2019[,.N,by=c("single","neighbourhoodDescription")])
+> print(dtBCA2019[year(conveyanceDate)>=2015 & !is.na(MB_total_finished_area) ,.N,by=c("single","neighbourhoodDescription")])
     single  neighbourhoodDescription     N
     <lgcl>                    <char> <int>
- 1:   TRUE                POINT GREY  5791
- 2:  FALSE                POINT GREY  1360
- 3:   TRUE                 KITSILANO  5129
- 4:  FALSE                 KITSILANO 19040
- 5:   TRUE                    DUNBAR  7869
- 6:  FALSE                    DUNBAR   746
- 7:   TRUE ARBUTUS/MACKENZIE HEIGHTS  5538
- 8:  FALSE ARBUTUS/MACKENZIE HEIGHTS  2109
- 9:   TRUE                KERRISDALE  4817
-10:  FALSE                KERRISDALE  2344
-11:   TRUE                SOUTHLANDS  3495
-12:  FALSE                SOUTHLANDS   164
-13:  FALSE                  FAIRVIEW 21276
-14:   TRUE                  FAIRVIEW    40
-15:   TRUE               SHAUGHNESSY  3555
-16:  FALSE               SHAUGHNESSY   828
-17:  FALSE                    CAMBIE  3211
-18:   TRUE                    CAMBIE  4339
-19:   TRUE           SOUTH GRANVILLE  4885
-20:  FALSE           SOUTH GRANVILLE   573
-21:  FALSE                  OAKRIDGE  2537
-22:   TRUE                  OAKRIDGE  2076
-23:   TRUE                   MARPOLE  4225
-24:  FALSE                   MARPOLE  4901
-25:  FALSE            MOUNT PLEASANT 18785
-26:   TRUE            MOUNT PLEASANT  2023
-27:  FALSE                 GRANDVIEW  7560
-28:   TRUE                 GRANDVIEW  4899
-29:  FALSE             CEDAR COTTAGE  3490
-30:   TRUE             CEDAR COTTAGE  4155
-31:   TRUE               MAIN/FRASER  8095
-32:  FALSE               MAIN/FRASER  2257
-33:   TRUE           SOUTH VANCOUVER  9555
-34:  FALSE           SOUTH VANCOUVER   562
-35:   TRUE              MARINE DRIVE   126
-36:  FALSE              MARINE DRIVE  4841
-37:   TRUE                    KNIGHT  7002
-38:  FALSE                    KNIGHT   697
-39:  FALSE             HASTINGS EAST  1034
-40:   TRUE             HASTINGS EAST  6885
-41:   TRUE                   RENFREW  4708
-42:  FALSE                   RENFREW   929
-43:  FALSE           RENFREW HEIGHTS    52
-44:   TRUE           RENFREW HEIGHTS  6818
-45:   TRUE               COLLINGWOOD  7738
-46:  FALSE               COLLINGWOOD  9681
-47:   TRUE                 KILLARNEY  7816
-48:  FALSE                 KILLARNEY   531
-49:   TRUE                FRASERVIEW  4171
-50:  FALSE                FRASERVIEW  3777
-51:  FALSE                  DOWNTOWN 24138
-52:  FALSE                  WEST END 13731
-53:   TRUE                  WEST END    40
-54:  FALSE                   HARBOUR  3426
-55:  FALSE            DOWNTOWN SOUTH 23937
-56:   TRUE            DOWNTOWN SOUTH     6
-57:  FALSE         FALSE CREEK NORTH 16638
+ 1:   TRUE                POINT GREY   821
+ 2:  FALSE                POINT GREY   235
+ 3:   TRUE                 KITSILANO   675
+ 4:  FALSE                 KITSILANO  3270
+ 5:   TRUE                    DUNBAR  1222
+ 6:  FALSE                    DUNBAR   195
+ 7:   TRUE ARBUTUS/MACKENZIE HEIGHTS   761
+ 8:  FALSE ARBUTUS/MACKENZIE HEIGHTS   324
+ 9:   TRUE                KERRISDALE   635
+10:  FALSE                KERRISDALE   504
+11:   TRUE                SOUTHLANDS   521
+12:  FALSE                SOUTHLANDS    17
+13:  FALSE                  FAIRVIEW  3090
+14:   TRUE                  FAIRVIEW     5
+15:   TRUE               SHAUGHNESSY   429
+16:  FALSE               SHAUGHNESSY   130
+17:  FALSE                    CAMBIE  1095
+18:   TRUE                    CAMBIE   599
+19:   TRUE           SOUTH GRANVILLE   621
+20:  FALSE           SOUTH GRANVILLE   329
+21:  FALSE                  OAKRIDGE   592
+22:   TRUE                  OAKRIDGE   320
+23:   TRUE                   MARPOLE   516
+24:  FALSE                   MARPOLE  1887
+25:  FALSE            MOUNT PLEASANT  6675
+26:   TRUE            MOUNT PLEASANT   258
+27:   TRUE                 GRANDVIEW   645
+28:  FALSE                 GRANDVIEW  1761
+29:  FALSE             CEDAR COTTAGE   837
+30:   TRUE             CEDAR COTTAGE   508
+31:   TRUE               MAIN/FRASER  1078
+32:  FALSE               MAIN/FRASER   564
+33:   TRUE           SOUTH VANCOUVER  1136
+34:  FALSE           SOUTH VANCOUVER    99
+35:   TRUE              MARINE DRIVE    20
+36:  FALSE              MARINE DRIVE  1931
+37:   TRUE                    KNIGHT   809
+38:  FALSE                    KNIGHT   190
+39:  FALSE             HASTINGS EAST   257
+40:   TRUE             HASTINGS EAST  1008
+41:   TRUE                   RENFREW   630
+42:  FALSE                   RENFREW   175
+43:   TRUE           RENFREW HEIGHTS   794
+44:  FALSE           RENFREW HEIGHTS     7
+45:   TRUE               COLLINGWOOD   738
+46:  FALSE               COLLINGWOOD  3395
+47:  FALSE                 KILLARNEY   155
+48:   TRUE                 KILLARNEY   859
+49:   TRUE                FRASERVIEW   425
+50:  FALSE                FRASERVIEW   274
+51:  FALSE                  DOWNTOWN  5803
+52:  FALSE                  WEST END  1985
+53:   TRUE                  WEST END     5
+54:  FALSE                   HARBOUR   456
+55:  FALSE            DOWNTOWN SOUTH  4383
+56:   TRUE            DOWNTOWN SOUTH     3
+57:  FALSE         FALSE CREEK NORTH  2227
     single  neighbourhoodDescription     N
 > 
 > # Metrics
@@ -210,22 +212,80 @@ Stratified Rental Apartment (Hi-Rise Construction)
 + )]
 > 
 > # Outlier removal (global)
-> CUT <- 0.05
+> CUT <- 0.01
 > dtBCA2019 <- dtBCA2019[
 +     age >= 0 &
 +     MB_total_finished_area %between% quantile(MB_total_finished_area, c(CUT, 1-CUT)) &
 +     ppsf %between% quantile(ppsf, c(CUT, 1-CUT))
 + ]
+> print(dtBCA2019[year(conveyanceDate)>2014 & !is.na(MB_total_finished_area) ,.N,by=c("single","neighbourhoodDescription")])
+    single  neighbourhoodDescription     N
+    <lgcl>                    <char> <int>
+ 1:   TRUE                POINT GREY   407
+ 2:  FALSE                POINT GREY   227
+ 3:   TRUE                 KITSILANO   495
+ 4:  FALSE                 KITSILANO  3106
+ 5:   TRUE                    DUNBAR   856
+ 6:  FALSE                    DUNBAR   178
+ 7:   TRUE ARBUTUS/MACKENZIE HEIGHTS   518
+ 8:  FALSE ARBUTUS/MACKENZIE HEIGHTS   313
+ 9:   TRUE                KERRISDALE   506
+10:  FALSE                KERRISDALE   474
+11:   TRUE                SOUTHLANDS   370
+12:  FALSE                SOUTHLANDS    11
+13:  FALSE                  FAIRVIEW  3026
+14:   TRUE                  FAIRVIEW     5
+15:   TRUE               SHAUGHNESSY   190
+16:  FALSE               SHAUGHNESSY   113
+17:  FALSE                    CAMBIE  1065
+18:   TRUE                    CAMBIE   438
+19:   TRUE           SOUTH GRANVILLE   404
+20:  FALSE           SOUTH GRANVILLE   288
+21:  FALSE                  OAKRIDGE   579
+22:   TRUE                  OAKRIDGE   236
+23:   TRUE                   MARPOLE   427
+24:  FALSE                   MARPOLE  1807
+25:  FALSE            MOUNT PLEASANT  6445
+26:   TRUE            MOUNT PLEASANT   246
+27:   TRUE                 GRANDVIEW   578
+28:  FALSE                 GRANDVIEW  1713
+29:  FALSE             CEDAR COTTAGE   814
+30:   TRUE             CEDAR COTTAGE   425
+31:   TRUE               MAIN/FRASER   806
+32:  FALSE               MAIN/FRASER   555
+33:   TRUE           SOUTH VANCOUVER   834
+34:  FALSE           SOUTH VANCOUVER    99
+35:   TRUE              MARINE DRIVE    20
+36:  FALSE              MARINE DRIVE  1929
+37:   TRUE                    KNIGHT   634
+38:  FALSE                    KNIGHT   183
+39:  FALSE             HASTINGS EAST   253
+40:   TRUE             HASTINGS EAST   785
+41:   TRUE                   RENFREW   449
+42:  FALSE                   RENFREW   174
+43:   TRUE           RENFREW HEIGHTS   602
+44:  FALSE           RENFREW HEIGHTS     7
+45:   TRUE               COLLINGWOOD   620
+46:  FALSE               COLLINGWOOD  3299
+47:  FALSE                 KILLARNEY   152
+48:   TRUE                 KILLARNEY   609
+49:   TRUE                FRASERVIEW   337
+50:  FALSE                FRASERVIEW   274
+51:  FALSE                  DOWNTOWN  5270
+52:  FALSE                  WEST END  1828
+53:   TRUE                  WEST END     3
+54:  FALSE                   HARBOUR   188
+55:  FALSE            DOWNTOWN SOUTH  4119
+56:   TRUE            DOWNTOWN SOUTH     3
+57:  FALSE         FALSE CREEK NORTH  1923
+    single  neighbourhoodDescription     N
 > 
 > cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
-BCA 2019 transactions loaded: 240759 
+BCA 2019 transactions loaded: 278999 
 > 
-> MINYEAR <- 2012
+> MINYEAR <- 2015
 > MEANYEAR <- 2012
-> WIDTHCUT <- 0.15
 > 
-> dtBCA2019 <- dtBCA2019[grepl("RS", zoning)]
-> # Exclude Shaughnessy and West End
 > dtBCA2019 <- dtBCA2019[!neighbourhoodDescription %chin% c("SHAUGNESSY", "WEST END","SOUTHLANDS")]
 > 
 > # ==========================================
@@ -276,6 +336,7 @@ BCA 2019 transactions loaded: 240759
 +   dtMeanSingle <- dtAnalysis[year(conveyanceDate) >= MEANYEAR & single==1, .(meanPPSF_single = mean(ppsf, na.rm = TRUE), nobs_single = .N), by = groupVar]
 +   dtMeans <- merge(dtMeans, dtMeanDuplex, by = groupVar, all.x = TRUE)
 +   dtMeans <- merge(dtMeans, dtMeanSingle, by = groupVar, all.x = TRUE)
++   print("incoming")
 +   
 +   # Merge slopes and elasticities
 +   dtMeans <- merge(dtMeans, dtSlopes[, c(groupVar, "Estimate"), with = FALSE], by = groupVar, all.x = TRUE)
@@ -315,42 +376,61 @@ BCA 2019 transactions loaded: 240759
 ==========================================
 Running analysis at neighbourhood level
 ==========================================
-        r2        ar2 
-0.04970327 0.04902677 
-The variable 'log(MB_total_finished_area)' has been removed because of collinearity (see $collin.var).
-        r2        ar2 
-0.04284548 0.04217925 
-    neighbourhoodDescription     N
-                      <char> <int>
- 1:              MAIN/FRASER     1
- 2:              SHAUGHNESSY     2
- 3:                GRANDVIEW     2
- 4:               POINT GREY     3
- 5:                KILLARNEY     3
- 6:                   CAMBIE     4
- 7:                  MARPOLE     4
- 8:            HASTINGS EAST     4
- 9:            CEDAR COTTAGE     5
-10:                KITSILANO     6
-11:               FRASERVIEW    31
+The variable 'MB_total_finished_area' has been removed because of collinearity (see $collin.var).
+       r2       ar2 
+0.1844127 0.1842392 
+       r2       ar2 
+0.2429681 0.2428042 
+[1] "incoming"
+     neighbourhoodDescription     N
+                       <char> <int>
+ 1:                   RENFREW     6
+ 2:           RENFREW HEIGHTS     9
+ 3:                    DUNBAR    11
+ 4:                POINT GREY    38
+ 5:             HASTINGS EAST    53
+ 6:           SOUTH VANCOUVER    67
+ 7:               SHAUGHNESSY    71
+ 8:                KERRISDALE    80
+ 9: ARBUTUS/MACKENZIE HEIGHTS    86
+10:                  DOWNTOWN   109
+11:                 KILLARNEY   120
+12:                   HARBOUR   126
+13:                    KNIGHT   143
+14:           SOUTH GRANVILLE   190
+15:               MAIN/FRASER   190
+16:         FALSE CREEK NORTH   219
+17:            DOWNTOWN SOUTH   251
+18:              MARINE DRIVE   253
+19:                    CAMBIE   283
+20:                  OAKRIDGE   314
+21:                FRASERVIEW   317
+22:               COLLINGWOOD   348
+23:                   MARPOLE   394
+24:             CEDAR COTTAGE   431
+25:                  FAIRVIEW   591
+26:                 GRANDVIEW   818
+27:            MOUNT PLEASANT  1080
+28:                 KITSILANO  1301
+     neighbourhoodDescription     N
 Saving 7 x 7 in image
 `geom_smooth()` using formula = 'y ~ x'
 
 Correlations (neighbourhood):
              slope  meanPPSF
-slope    1.0000000 0.7074571
-meanPPSF 0.7074571 1.0000000
+slope    1.0000000 0.4215165
+meanPPSF 0.4215165 1.0000000
            elasticity  meanPPSF
-elasticity  1.0000000 0.7710183
-meanPPSF    0.7710183 1.0000000
+elasticity  1.0000000 0.4648948
+meanPPSF    0.4648948 1.0000000
              slope  meanPPSF
-slope    1.0000000 0.7180622
-meanPPSF 0.7180622 1.0000000
+slope    1.0000000 0.4067744
+meanPPSF 0.4067744 1.0000000
            elasticity  meanPPSF
-elasticity  1.0000000 0.7561551
-meanPPSF    0.7561551 1.0000000
+elasticity  1.0000000 0.3744973
+meanPPSF    0.3744973 1.0000000
 > 
 > q("no")
 > proc.time()
    user  system elapsed 
-  6.724   1.683   3.389 
+ 17.597   0.534  11.184 

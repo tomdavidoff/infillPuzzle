@@ -1,6 +1,6 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
-Copyright (C) 2025 The R Foundation for Statistical Computing
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -24,12 +24,14 @@ Type 'q()' to quit R.
 > 
 > 
 > library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
 > library(fixest)
 > library(ggplot2)
 > 
 > # 1. Load ------------------------------------------------------------------
-> permits <- readRDS("data/derived/portland_zip_propensity.rds")
-> slopes  <- readRDS("data/derived/portland_attom_slopes_by_zip.rds")
+> permits <- readRDS("~/OneDrive - UBC/dataProcessed/portland_zip_propensity.rds")
+> slopes  <- readRDS("~/OneDrive - UBC/dataProcessed/portland_attom_slopes_by_zip.rds")
 > 
 > setDT(permits); setDT(slopes)
 > 
@@ -38,12 +40,12 @@ Type 'q()' to quit R.
 > print(head(permits))
    geo_id   zone  geo_name infill_lot_count total_lots_active propensity
    <char> <char>    <char>            <int>             <int>      <num>
-1:  97206     R5 ZIP 97206               41               268  0.1529851
-2:  97202     R5 ZIP 97202               32               213  0.1502347
-3:  97212     R5 ZIP 97212               11               176  0.0625000
-4:  97203     R5 ZIP 97203               41               175  0.2342857
-5:  97211     R5 ZIP 97211               26               166  0.1566265
-6:  97213     R5 ZIP 97213               17               147  0.1156463
+1:  97206     R5 ZIP 97206               31               268 0.11567164
+2:  97202     R5 ZIP 97202               15               213 0.07042254
+3:  97212     R5 ZIP 97212                4               176 0.02272727
+4:  97203     R5 ZIP 97203               32               175 0.18285714
+5:  97211     R5 ZIP 97211               20               166 0.12048193
+6:  97213     R5 ZIP 97213               10               147 0.06802721
 > print(head(slopes))
       zip       slope     N mean_ppsf
    <char>       <num> <int>     <num>
@@ -69,31 +71,32 @@ Type 'q()' to quit R.
 > # Focus on Zips with enough data to be credible
 > MINOBS <- 50
 > dt <- dt[N >= MINOBS & total_lots_active>=MINOBS]
-> print(cor(dt[,.(slope,price_level)]))
-                 slope price_level
-slope        1.0000000  -0.7032061
-price_level -0.7032061   1.0000000
+> print(cor(dt[,.(slope,price_level,propensity)]))
+                 slope price_level propensity
+slope        1.0000000  -0.7032061 -0.6692026
+price_level -0.7032061   1.0000000  0.2919191
+propensity  -0.6692026   0.2919191  1.0000000
 > 
 > # 4. Model -----------------------------------------------------------------
 > # Does the price-size gradient predict development propensity?
 > # we use robust standard errors (hc1)
-> m1 <- feols(propensity ~ size_slope, dt, vcov = "hc1")
-> m2 <- feols(propensity ~ size_slope + price_level, dt, vcov = "hc1")
+> m1 <- feols(propensity ~ slope, dt, vcov = "hc1")
+> m2 <- feols(propensity ~ slope + price_level, dt, vcov = "hc1")
 > m3 <- feols(propensity ~ price_level, dt, vcov = "hc1")
 > 
 > # Zen summary: No complex tables, just the facts
 > print(etable(m1, m2,m3))
-                               m1                m2               m3
-Dependent Var.:        propensity        propensity       propensity
-                                                                    
-Constant          0.0247 (0.0308)   0.1474 (0.1264) -0.0759 (0.1145)
-size_slope      1.086*** (0.2383) 1.356*** (0.3111)                 
-price_level                        -0.0004 (0.0004) 0.0006. (0.0003)
-_______________ _________________ _________________ ________________
-S.E. type       Heteroskeda.-rob. Heteroskeda.-rob. Heterosked.-rob.
-Observations                   23                23               23
-R2                        0.48095           0.51143          0.13216
-Adj. R2                   0.45623           0.46258          0.09084
+                                 m1                 m2               m3
+Dependent Var.:          propensity         propensity       propensity
+                                                                       
+Constant           -0.0075 (0.0230)    0.1594 (0.1083) -0.0642 (0.1047)
+slope           -0.9908*** (0.2190) -1.359*** (0.2963)                 
+price_level                           -0.0005 (0.0003)  0.0004 (0.0003)
+_______________ ___________________ __________________ ________________
+S.E. type       Heteroskedast.-rob. Heteroskedas.-rob. Heterosked.-rob.
+Observations                     23                 23               23
+R2                          0.44783            0.51098          0.08522
+Adj. R2                     0.42154            0.46208          0.04166
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
@@ -108,8 +111,8 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 `geom_smooth()` using formula = 'y ~ x'
 > 
 > # 6. Export ----------------------------------------------------------------
-> saveRDS(dt, "data/derived/portland_analysis_final.rds")
+> saveRDS(dt, "~/OneDrive - UBC/dataProcessed/portland_analysis_final.rds")
 > 
 > proc.time()
    user  system elapsed 
-  0.626   0.052   0.693 
+  0.872   0.078   1.166 

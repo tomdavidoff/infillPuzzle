@@ -1,0 +1,172 @@
+
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # minneapolisAnalysis.R
+> # Analyze the ppsf slope in sf and infill, as in Vancouver
+> # Tom Davidoff
+> # Adapted from Portland code for Minneapolis 2040 analysis
+> 
+> library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
+> library(fixest)
+> library(ggplot2)
+> 
+> # 1. Load ------------------------------------------------------------------
+> permits <- readRDS("~/OneDrive - UBC/dataProcessed/minneapolis_zip_propensity.rds")
+> slopes  <- readRDS("~/OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds")
+> 
+> setDT(permits); setDT(slopes)
+> 
+> 
+> 
+> # 2. Align -----------------------------------------------------------------
+> # Ensure ZIPs are 5-character strings and types match
+> print(head(permits))
+   geo_id land_use_c  geo_name infill_lot_count total_lots_active total_units
+   <char>     <char>    <char>            <int>             <int>       <num>
+1:  55411        UN2 ZIP 55411               14                94         227
+2:  55410        UN1 ZIP 55410               10                56          65
+3:  55414        UN2 ZIP 55414               39                41          98
+4:  55406        UN2 ZIP 55406                9                34          48
+5:  55405        UN2 ZIP 55405               23                32          72
+6:  55412        UN1 ZIP 55412                2                29          32
+   propensity
+        <num>
+1: 0.14893617
+2: 0.17857143
+3: 0.95121951
+4: 0.26470588
+5: 0.71875000
+6: 0.06896552
+> print(head(slopes))
+      zip      slope     N mean_ppsf
+   <char>      <num> <int>     <num>
+1:  55412 -0.6412811  1372  155.8269
+2:  55422 -0.3792076  1276  196.9297
+3:  55369 -0.5084602  1245  209.6103
+4:  55407 -0.6137788  1159  201.5972
+5:  55311 -0.2613013  1148  176.1614
+6:  55418 -0.5193964  1124  212.3561
+> 
+> 
+> setnames(permits, "geo_id", "zip")
+> permits[, zip := sprintf("%05s", as.character(zip))]
+> slopes[,  zip := sprintf("%05s", as.character(zip))]
+> 
+> # Merge on Zip
+> dt <- merge(permits, slopes, by = "zip")
+> print(head(dt))
+Key: <zip>
+      zip land_use_c  geo_name infill_lot_count total_lots_active total_units
+   <char>     <char>    <char>            <int>             <int>       <num>
+1:  55403        UN2 ZIP 55403                1                 2           4
+2:  55404        UN2 ZIP 55404                3                 7          18
+3:  55405        UN2 ZIP 55405               23                32          72
+4:  55405        UN1 ZIP 55405                0                 1           1
+5:  55406        UN2 ZIP 55406                9                34          48
+6:  55406        UN1 ZIP 55406                8                28          34
+   propensity       slope     N mean_ppsf
+        <num>       <num> <int>     <num>
+1:  0.5000000  0.05991602   495  235.5795
+2:  0.4285714 -0.59084398   495  234.7968
+3:  0.7187500 -0.16913812   326  233.6245
+4:  0.0000000 -0.16913812   326  233.6245
+5:  0.2647059 -0.52861261  1094  235.5426
+6:  0.2857143 -0.52861261  1094  235.5426
+> print(summary(dt))
+     zip             land_use_c          geo_name         infill_lot_count
+ Length:29          Length:29          Length:29          Min.   : 0.000  
+ Class :character   Class :character   Class :character   1st Qu.: 1.000  
+ Mode  :character   Mode  :character   Mode  :character   Median : 3.000  
+                                                          Mean   : 5.724  
+                                                          3rd Qu.: 7.000  
+                                                          Max.   :39.000  
+ total_lots_active  total_units       propensity         slope         
+ Min.   : 1.00     Min.   :  1.00   Min.   :0.0000   Min.   :-0.72374  
+ 1st Qu.: 3.00     1st Qu.:  5.00   1st Qu.:0.1489   1st Qu.:-0.59084  
+ Median : 9.00     Median : 23.00   Median :0.2857   Median :-0.34111  
+ Mean   :16.14     Mean   : 46.07   Mean   :0.3804   Mean   :-0.40092  
+ 3rd Qu.:25.00     3rd Qu.: 65.00   3rd Qu.:0.6667   3rd Qu.:-0.25793  
+ Max.   :94.00     Max.   :227.00   Max.   :1.0000   Max.   : 0.05992  
+       N            mean_ppsf    
+ Min.   :  21.0   Min.   :133.3  
+ 1st Qu.: 471.0   1st Qu.:212.4  
+ Median : 729.0   Median :225.4  
+ Mean   : 760.4   Mean   :227.9  
+ 3rd Qu.:1094.0   3rd Qu.:241.0  
+ Max.   :1372.0   Max.   :352.8  
+> 
+> # 3. Clean -----------------------------------------------------------------
+> # Convert slope to numeric (it was <char>) and take absolute value
+> # (A larger negative slope = a steeper 'size discount')
+> dt[, price_level := as.numeric(mean_ppsf)]
+> 
+> # Focus on Zips with enough data to be credible
+> MINOBS <- 2
+> dt <- dt[N >= MINOBS & total_lots_active >= MINOBS]
+> print(cor(dt[, .(slope, price_level, propensity)]))
+                slope price_level propensity
+slope       1.0000000   0.6553173  0.1225146
+price_level 0.6553173   1.0000000 -0.1070583
+propensity  0.1225146  -0.1070583  1.0000000
+> 
+> # 4. Model -----------------------------------------------------------------
+> # Does the price-size gradient predict development propensity?
+> # we use robust standard errors (hc1)
+> m1 <- feols(propensity ~ slope, dt, vcov = "hc1")
+> m2 <- feols(propensity ~ slope + price_level, dt, vcov = "hc1")
+> m3 <- feols(propensity ~ price_level, dt, vcov = "hc1")
+> 
+> # Zen summary: No complex tables, just the facts
+> print(etable(m1, m2, m3))
+                                m1                m2               m3
+Dependent Var.:         propensity        propensity       propensity
+                                                                     
+Constant        0.4871*** (0.1274)  1.021** (0.3142) 0.5526. (0.2972)
+slope              0.1698 (0.3215)   0.4681 (0.3321)                 
+price_level                        -0.0018. (0.0010) -0.0006 (0.0012)
+_______________ __________________ _________________ ________________
+S.E. type       Heteroskedas.-rob. Heteroskeda.-rob. Heterosked.-rob.
+Observations                    24                24               24
+R2                         0.01501           0.07652          0.01146
+Adj. R2                   -0.02976          -0.01142         -0.03347
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> # 5. Plot ------------------------------------------------------------------
+> ggplot(dt, aes(slope, propensity)) +
++   geom_point(alpha = 0.5) +
++   geom_smooth(method = "lm", color = "black", fill = "gray80") +
++   theme_minimal() +
++   labs(x = "Price-Size Gradient (Absolute)", 
++        y = "Permit Propensity",
++        title = "Minneapolis Supply Response")
+`geom_smooth()` using formula = 'y ~ x'
+> 
+> ggsave("~/OneDrive - UBC/dataProcessed/minneapolis_supply_response.png", 
++        width = 8, height = 6)
+`geom_smooth()` using formula = 'y ~ x'
+> 
+> # 6. Export ----------------------------------------------------------------
+> saveRDS(dt, "~/OneDrive - UBC/dataProcessed/minneapolis_analysis_final.rds")
+> 
+> proc.time()
+   user  system elapsed 
+  1.098   0.095   1.240 

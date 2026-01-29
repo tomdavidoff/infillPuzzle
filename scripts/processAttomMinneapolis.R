@@ -1,9 +1,7 @@
-# processAttom.R
-# processAttom_zip.R
+# processAttom_Minneapolis.R
 # Tom Davidoff
-# 12/26/25
-# Purpose: Pricing slopes by ZIP for Portland/Multnomah (FIPS muni 051)
-# started with google AI, this version ChatGPT
+# Purpose: Pricing slopes by ZIP for Minneapolis/Hennepin County (FIPS 27053)
+# Adapted from Portland code
 
 library(data.table)
 library(arrow)
@@ -12,11 +10,11 @@ library(fixest)
 options(timeout = 600)
 
 # ==========================================
-# 1) LOAD SALES (41051.txt)
+# 1) LOAD SALES (27053.txt) - Hennepin County, MN
 # ==========================================
 message("Reading Sales data...")
 
-raw_txt <- readLines("data/derived/41051.txt", warn = FALSE, encoding = "latin1")
+raw_txt <- readLines("~/OneDrive - UBC/dataProcessed/27053.txt", warn = FALSE, encoding = "latin1")
 header_line <- raw_txt[1]
 data_body   <- raw_txt[-1]
 
@@ -40,8 +38,10 @@ dtSales[, attom_id := as.character(attom_id)]
 dtSales[, price := as.numeric(price)]
 dtSales[, date  := as.IDate(date)]
 
-# filter years
-dtSales <- dtSales[year(date) >= 2018 & year(date) <= 2021]
+# filter years - around 2018 zoning change
+# Minneapolis 2040 plan adopted Dec 2018, implemented Jan 2020
+# Adjust as needed for your research question
+dtSales <- dtSales[year(date) >= 2016 & year(date) <= 2020]
 
 # ZIP from sales (clean)
 if (!"propertyaddresszip" %in% names(dtSales)) stop("propertyaddresszip not found in dtSales.")
@@ -49,17 +49,21 @@ dtSales[, zip := gsub("[^0-9]", "", as.character(propertyaddresszip))]
 dtSales[nchar(zip) == 9, zip := substr(zip, 1, 5)]
 dtSales[zip == "", zip := NA_character_]
 
+# OPTIONAL: Filter to Minneapolis-area ZIPs only (554xx range)
+# Uncomment if you want to restrict to Minneapolis proper
+# dtSales <- dtSales[grepl("^554", zip)]
+
 message("Sales rows after date filter: ", nrow(dtSales))
 
 # ==========================================
-# 2) LOAD ASSESSOR (sqft) from Parquet
+# 2) LOAD ASSESSOR (sqft) from Parquet - Minnesota
 # ==========================================
 message("Opening Assessor Parquet...")
-ds <- open_dataset("data/derived/AH_state_OR.parquet")
+ds <- open_dataset("~/OneDrive - UBC/dataProcessed/AH_state_MN.parquet")
 
-# Pull only what we need
+# Pull only what we need - Hennepin County FIPS muni code is "053"
 scanner <- ds$NewScan()$
-  Filter(Expression$field_ref("MM_FIPS_MUNI_CODE") == "051")$
+  Filter(Expression$field_ref("MM_FIPS_MUNI_CODE") == "053")$
   Project(c("[ATTOM ID]", "SA_FIN_SQFT_TOT"))$
   Finish()
 
@@ -93,22 +97,32 @@ dtFinal[, ppsf := price / sqft]
 # keep plausible ZIPs
 dtFinal <- dtFinal[nchar(zip) == 5]
 
+# Filter to ZIPs with enough observations to estimate slopes
+# This avoids collinearity issues from ZIPs with only 1-2 sales
+min_obs <- 20  # adjust as needed
+zip_counts <- dtFinal[, .N, by = zip]
+good_zips <- zip_counts[N >= min_obs, zip]
+dtFinal <- dtFinal[zip %in% good_zips]
+
 message("Final rows for regression: ", nrow(dtFinal),
         " | ZIPs: ", uniqueN(dtFinal$zip))
 
 # Slope by ZIP: ZIP-specific intercept and ZIP-specific slope on sqft
 # (ppsf = a_zip + b_zip * sqft + error)
 dtFinal[, zip := as.factor(zip)]
-m <- feols(ppsf ~ 0 + zip + zip:sqft, data = dtFinal)
+dtFinal[,lppsf := log(ppsf)]
+dtFinal[,lsqft := log(sqft)]
+m <- feols(lppsf ~ 0 + zip + zip:lsqft, data = dtFinal)
+print(summary(m))
 
 # ==========================================
 # 4) EXTRACT SLOPES ROBUSTLY (no broom)
 # ==========================================
 b <- coef(m)
-keep <- grepl(":sqft$", names(b))
+keep <- grepl(":lsqft$", names(b))
 
 dtSlopes <- data.table(
-  zip = sub(":sqft$", "", sub("^zip", "", names(b)[keep])),
+  zip = sub(":lsqft$", "", sub("^zip", "", names(b)[keep])),
   slope = unname(b[keep])
 )
 
@@ -118,9 +132,8 @@ zipStats <- dtFinal[, .(N = .N, mean_ppsf = mean(ppsf, na.rm = TRUE)), by = zip]
 dtSlopes <- merge(dtSlopes, zipStats, by = "zip", all.x = TRUE)
 setorder(dtSlopes, -N)
 
-saveRDS(dtSlopes, "data/derived/portland_attom_slopes_by_zip.rds")
+saveRDS(dtSlopes, "~/OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds")
 
-message("Saved slopes: data/derived/portland_attom_slopes_by_zip.rds")
-print(dtSlopes[1:10])
-print(cor(
-
+message("Saved slopes: OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds")
+print(dtSlopes[1:15])
+print(cor(dtSlopes$slope, dtSlopes$mean_ppsf, use = "complete.obs"))
