@@ -1,0 +1,144 @@
+
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # zipPriceSlopeIncome.R
+> # R to merge income stats by whatever with per square foot price and slope 
+> # Tom Davidoff
+> # 01/29/26
+> 
+> # US Cities
+> library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
+> # 2 header rows, first row is variable names, second descriptions
+> dtCensus <- fread("~/OneDrive - UBC/dataRaw/ACSDT5Y2024/ACSDT5Y2024.B19013-Data.csv", skip=1,select = c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)","Geographic Area Name"),header=TRUE)
+> print(head(dtCensus))
+   Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)
+                                                                                         <char>
+1:                                                                                        19454
+2:                                                                                        21420
+3:                                                                                        20933
+4:                                                                                        20992
+5:                                                                                        24496
+6:                                                                                        20360
+   Geographic Area Name
+                 <char>
+1:          ZCTA5 00601
+2:          ZCTA5 00602
+3:          ZCTA5 00603
+4:          ZCTA5 00606
+5:          ZCTA5 00610
+6:          ZCTA5 00611
+> setnames(dtCensus, old=c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)"), new=c("medianIncome"))
+> dtCensus[, medianIncome := log(as.numeric(medianIncome))]
+Warning message:
+In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+> 
+> dtPM <- readRDS("~/OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds")
+> dtPP <- readRDS("~/OneDrive - UBC/dataProcessed/portland_attom_slopes_by_zip.rds")
+> 
+> dtCensus[, zip := substr(`Geographic Area Name`, nchar(`Geographic Area Name`)-4, nchar(`Geographic Area Name`))]
+> print(head(dtPM))
+      zip      slope     N mean_ppsf
+   <char>      <num> <int>     <num>
+1:  55412 -0.6412811  1372  155.8269
+2:  55422 -0.3792076  1276  196.9297
+3:  55369 -0.5084602  1245  209.6103
+4:  55407 -0.6137788  1159  201.5972
+5:  55311 -0.2613013  1148  176.1614
+6:  55418 -0.5193964  1124  212.3561
+> print(head(dtPP))
+      zip       slope     N mean_ppsf
+   <char>       <num> <int>     <num>
+1:  97206 -0.18288334   854  401.8969
+2:  97217 -0.16115506   620  420.2160
+3:  97203 -0.14871082   589  376.0504
+4:  97230 -0.06212572   546  263.0407
+5:  97266 -0.11562770   543  306.9385
+6:  97219 -0.03137507   531  339.7798
+> 
+> dtMergeM <- merge(dtPM, dtCensus, by="zip")
+> print(head(dtMergeM))
+Key: <zip>
+      zip       slope     N mean_ppsf medianIncome Geographic Area Name
+   <char>       <num> <int>     <num>        <num>               <char>
+1:  55305  0.01077051   610  192.8811     11.56090          ZCTA5 55305
+2:  55311 -0.26130126  1148  176.1614     11.94190          ZCTA5 55311
+3:  55316 -0.47643260   673  187.1791     11.66222          ZCTA5 55316
+4:  55327 -0.27073618    73  211.0486     11.85201          ZCTA5 55327
+5:  55331 -0.17952664   290  309.2326     11.97949          ZCTA5 55331
+6:  55340 -0.05301757   111  214.6148     12.09264          ZCTA5 55340
+> dtMergeP <- merge(dtPP, dtCensus, by="zip")
+> print(head(dtMergeP))
+Key: <zip>
+      zip       slope     N mean_ppsf medianIncome Geographic Area Name
+   <char>       <num> <int>     <num>        <num>               <char>
+1:  10005 -5.28844065     2  442.9256     12.15600          ZCTA5 10005
+2:  10011 -0.10041642     2  299.9459     11.89127          ZCTA5 10011
+3:  10014 -1.09102644     2  367.8445     12.08048          ZCTA5 10014
+4:  10016 -0.41226986     2  349.8917     11.85212          ZCTA5 10016
+5:  10024 -0.05267665     2  432.3649     12.10934          ZCTA5 10024
+6:  10035  0.47791100     2  535.6654     10.71710          ZCTA5 10035
+> print(cor(dtMergeM[, .(slope, mean_ppsf,medianIncome)], use="complete.obs"))
+                 slope mean_ppsf medianIncome
+slope        1.0000000 0.3850342    0.3798923
+mean_ppsf    0.3850342 1.0000000    0.2418363
+medianIncome 0.3798923 0.2418363    1.0000000
+> print(cor(dtMergeP[, .(slope, mean_ppsf,medianIncome)], use="complete.obs"))
+                   slope   mean_ppsf medianIncome
+slope         1.00000000 -0.04644323   -0.2148832
+mean_ppsf    -0.04644323  1.00000000    0.2054594
+medianIncome -0.21488321  0.20545937    1.0000000
+> 
+> # Vancouver
+> library(cancensus)
+Census data is currently stored temporarily.
+
+ In order to speed up performance, reduce API quota usage, and reduce unnecessary network calls, please set up a persistent cache directory via `set_cancensus_cache_path('<local cache path>', install = TRUE)`.
+ This will add your cache directory as environment varianble to your .Renviron to be used across sessions and projects.
+
+
+> set_cancensus_api_key("davidoff")
+API key set for duration of session. To install your API key for use across sessions, run this function with `install = TRUE`.
+> vancouver <- get_census(
++   dataset = "CA21",
++   region = "CMACA/59933",   # Vancouver CMA
++   vectors = c(
++     "v_CA21_906",   # Median total income of households
++     "v_CA21_2466"   # Median value of dwellings
++   ),
++   level = "DA",
++   geo_format = "sf",
++   use_cache = TRUE,
++   api_key = Sys.getenv("CM_API_KEY")
++ )
+Census data is currently stored temporarily.
+
+ In order to speed up performance, reduce API quota usage, and reduce unnecessary network calls, please set up a persistent cache directory via `set_cancensus_cache_path('<local cache path>', install = TRUE)`.
+ This will add your cache directory as environment varianble to your .Renviron to be used across sessions and projects.
+
+
+Error in get_census(dataset = "CA21", region = "CMACA/59933", vectors = c("v_CA21_906",  : 
+  No API key set. Use set_cancensus_api_key('<your API ket>`) to set one, or set_cancensus_api_key('<your API ket>`, install = TRUE) to save is permanently in our .Renviron.
+In addition: Warning messages:
+1: In value[[3L]](cond) :
+  Unable to download recall database at this point.
+2: In get_census(dataset = "CA21", region = "CMACA/59933", vectors = c("v_CA21_906",  :
+  Passing `regions` as a character vector is depreciated, and will be removed in future versions
+Execution halted

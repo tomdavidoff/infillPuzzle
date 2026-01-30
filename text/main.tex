@@ -1,0 +1,61 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{graphicx}
+\usepackage{setspace}
+
+\begin{document}
+
+\title{Where does the infill housing go?}
+\author{Thomas Davidoff\thanks{thomas.davidoff@sauder.ubc.ca} and Tsur Somerville\thanks{tsur.somerville@sauder.ubc.ca}\\Sauder School of Business, University of British Columbia}
+\maketitle
+
+\begin{abstract}
+  Big house for rich people not the poors.
+\end{abstract}
+
+\section{Model}
+
+Consider a developer considering the intensity of development on a parcel of land with area normalized to one unit. Profits are a function of the (continuous, for simplicity) number of units $n$ built on the lot. Zoning regulations impose a schedule of density limits $f(n)$ governing how many square feet $f$ can be built on the lot as a function of $n$. The price $p$ per square foot may also be functions of $n$ and $\theta$, a characteristic of the neighbourhood.
+
+
+\begin{equation}
+  \pi(n) = f(n)\left[p\left(n,\theta\right) - c(n)\right]
+\end{equation}
+
+The benefit from incrementing density is:
+\begin{equation}
+  \label{eq:mb}
+  \frac{\partial \pi}{\partial n} = f'(n)\left[p\left(n,\theta\right) - c(n)\right] + f(n)\left[\partial{p\left(n,\theta\right)}{\partial f} - c'(n)\right]
+\end{equation}
+
+Optimizing for $n^{\star}$ yields the first order condition:
+\begin{equation}
+  \label{eq:foc}
+  f'(n^{\star})\left[p(n^{\star},\theta) - c(n^{\star})\right] + f(n^{\star})\left[\frac{\partial (n^{\star},\theta)}{\partial n} - c'(n^{\star})\right] = 0
+\end{equation}
+
+Implicitly differentiating (\ref{eq:foc}) with respect to $\theta$ yields to find the effect of $\theta$ on optimal density:
+\begin{equation}
+  \frac{d n^{\star}}{d \theta} = -\frac{f'\frac{\partial p}{\partial \theta} + f\frac{\partial^2 p}{\partial n \partial \theta}}{f''\left[p - c\right] + 2f'\left[\frac{\partial p}{\partial n} - c'\right] + f\left[\frac{\partial^2 p}{\partial n^2} - c''\right]}.
+\end{equation}
+
+Assuming second order conditions hold, the denominator is negative, and:
+
+\begin{itemize}
+  \item Infill (increasing $n$) is more attractive where the price per square foot is greater ($\frac{\partial p}{\partial \theta} > 0$) when $f'$ is larger (i.e., where infill is rewarded with bonus density).
+  \item Infill is more attractive where price is declining more rapidly in density ($\frac{\partial^2 p}{\partial n \partial \theta}$ is more positive).
+\end{itemize}
+
+If $\theta$ is overall neighbourhood quality, measured as average price per square foot of (assumed constant quality) structures, infill will be more prevalent in expensive neighbourhoods when bonus density is generous. Whether incoe 
+
+\section{Empirical Analysis}
+
+We consider the following densification programs:
+
+\begin{itemize}
+  \item Vancouver allowing laneway homes in single family zones (RS) starting in 2009. 
+
+
+\end{document}
