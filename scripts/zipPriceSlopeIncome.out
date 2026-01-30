@@ -1,6 +1,6 @@
 
-R version 4.4.0 (2024-04-24) -- "Puppy Cup"
-Copyright (C) 2024 The R Foundation for Statistical Computing
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -24,8 +24,6 @@ Type 'q()' to quit R.
 > 
 > # US Cities
 > library(data.table)
-Warning message:
-package ‘data.table’ was built under R version 4.4.1 
 > # 2 header rows, first row is variable names, second descriptions
 > dtCensus <- fread("~/OneDrive - UBC/dataRaw/ACSDT5Y2024/ACSDT5Y2024.B19013-Data.csv", skip=1,select = c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)","Geographic Area Name"),header=TRUE)
 > print(head(dtCensus))
@@ -106,39 +104,99 @@ slope         1.00000000 -0.04644323   -0.2148832
 mean_ppsf    -0.04644323  1.00000000    0.2054594
 medianIncome -0.21488321  0.20545937    1.0000000
 > 
+> 
 > # Vancouver
-> library(cancensus)
-Census data is currently stored temporarily.
-
- In order to speed up performance, reduce API quota usage, and reduce unnecessary network calls, please set up a persistent cache directory via `set_cancensus_cache_path('<local cache path>', install = TRUE)`.
- This will add your cache directory as environment varianble to your .Renviron to be used across sessions and projects.
-
-
-> set_cancensus_api_key("davidoff")
-API key set for duration of session. To install your API key for use across sessions, run this function with `install = TRUE`.
-> vancouver <- get_census(
-+   dataset = "CA21",
-+   region = "CMACA/59933",   # Vancouver CMA
-+   vectors = c(
-+     "v_CA21_906",   # Median total income of households
-+     "v_CA21_2466"   # Median value of dwellings
-+   ),
-+   level = "DA",
-+   geo_format = "sf",
-+   use_cache = TRUE,
-+   api_key = Sys.getenv("CM_API_KEY")
-+ )
-Census data is currently stored temporarily.
-
- In order to speed up performance, reduce API quota usage, and reduce unnecessary network calls, please set up a persistent cache directory via `set_cancensus_cache_path('<local cache path>', install = TRUE)`.
- This will add your cache directory as environment varianble to your .Renviron to be used across sessions and projects.
-
-
-Error in get_census(dataset = "CA21", region = "CMACA/59933", vectors = c("v_CA21_906",  : 
-  No API key set. Use set_cancensus_api_key('<your API ket>`) to set one, or set_cancensus_api_key('<your API ket>`, install = TRUE) to save is permanently in our .Renviron.
-In addition: Warning messages:
-1: In value[[3L]](cond) :
-  Unable to download recall database at this point.
-2: In get_census(dataset = "CA21", region = "CMACA/59933", vectors = c("v_CA21_906",  :
-  Passing `regions` as a character vector is depreciated, and will be removed in future versions
-Execution halted
+> NEEDVAN <- 0
+> if (NEEDVAN==1) {
++ 	library(cancensus)
++ 	set_cancensus_api_key("davidoff")
++ 	vancouver <- get_census(
++ 	  dataset = "CA21",
++ 	  region = "CMACA/59933",   # Vancouver CMA
++ 	  vectors = c(
++ 	    "v_CA21_906",   # Median total income of households
++ 	    "v_CA21_2466"   # Median value of dwellings
++ 	  ),
++ 	  level = "DA",
++ 	  geo_format = "sf",
++ 	  use_cache = TRUE,
++ 	  api_key = Sys.getenv("CM_API_KEY")
++ 	)
++ 	print(head(vancouver))
++ }
+> dtCan <- fread("~/OneDrive - UBC/dataRaw/9810005801_databaseLoadingData.csv",select=c("Household income statistics (6)","GEO","VALUE"))
+> 
+> setnames(dtCan,c("Household income statistics (6)","GEO","VALUE"),c("namer","CT","medianIncome"))
+> dtCan <- dtCan[ namer == "Median household total income (2020) (2020 constant dollars)"]
+> dtCan[,tract:=substr(CT,1,6)]
+> dtCan <- dtCan[grepl("Vancouver",CT)]
+> print(head(dtCan))
+                                                          namer
+                                                         <char>
+1: Median household total income (2020) (2020 constant dollars)
+2: Median household total income (2020) (2020 constant dollars)
+3: Median household total income (2020) (2020 constant dollars)
+4: Median household total income (2020) (2020 constant dollars)
+5: Median household total income (2020) (2020 constant dollars)
+6: Median household total income (2020) (2020 constant dollars)
+                          CT medianIncome  tract
+                      <char>        <int> <char>
+1: Vancouver (CMA) 933, B.C.        90000 Vancou
+2:       0001.01 - Vancouver        89000 0001.0
+3:       0001.02 - Vancouver        95000 0001.0
+4:       0002.01 - Vancouver        88000 0002.0
+5:       0002.03 - Vancouver        91000 0002.0
+6:       0002.04 - Vancouver        95000 0002.0
+> dtCan[,nTract:=as.numeric(tract)]
+Warning message:
+In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+> 
+> dtVanSlope <- fread("tables/bca19_mean_ppsf_slope_by_tract.csv",colClasses = c("CTUID"="character"))
+> dtVanSlope[, tract := substr(CTUID, 4, 10)]
+> print(head(dtVanSlope))
+        CTUID meanPPSF  nobs      slope elasticity   tract
+       <char>    <num> <int>      <num>      <num>  <char>
+1:            732.2076     7         NA         NA        
+2: 9330001.01 698.6384     5 -0.5335157 -1.2783735 0001.01
+3: 9330001.02 603.2265    10 -0.3711131 -0.8065417 0001.02
+4: 9330002.01 631.6724    54 -0.3260755 -0.5973253 0002.01
+5: 9330002.03 614.8959    66 -0.3021881 -0.6117229 0002.03
+6: 9330002.04 586.0877    37 -0.3341864 -0.7916304 0002.04
+> dtVanSlope[,nTract:=as.numeric(tract)]
+> 
+> dtMergeV <- merge(dtVanSlope, dtCan, by="nTract")
+> print(head(dtMergeV))
+Key: <nTract>
+   nTract      CTUID meanPPSF  nobs      slope  elasticity tract.x
+    <num>     <char>    <num> <int>      <num>       <num>  <char>
+1:     NA            732.2076     7         NA          NA        
+2:      9 9330009.00 817.9904    17 -0.2474901 -0.15846596 0009.00
+3:     11 9330011.00 660.8161   102 -0.2537066 -0.26820615 0011.00
+4:     19 9330019.00 746.7498    73 -0.2277261 -0.09353499 0019.00
+5:     20 9330020.00 785.4826    17 -0.3080526 -0.45785253 0020.00
+6:     21 9330021.00 833.5644     5 -0.1480133  0.33630186 0021.00
+                                                          namer
+                                                         <char>
+1: Median household total income (2020) (2020 constant dollars)
+2: Median household total income (2020) (2020 constant dollars)
+3: Median household total income (2020) (2020 constant dollars)
+4: Median household total income (2020) (2020 constant dollars)
+5: Median household total income (2020) (2020 constant dollars)
+6: Median household total income (2020) (2020 constant dollars)
+                          CT medianIncome tract.y
+                      <char>        <int>  <char>
+1: Vancouver (CMA) 933, B.C.        90000  Vancou
+2:       0009.00 - Vancouver        75000  0009.0
+3:       0011.00 - Vancouver        86000  0011.0
+4:       0019.00 - Vancouver        91000  0019.0
+5:       0020.00 - Vancouver        94000  0020.0
+6:       0021.00 - Vancouver       166000  0021.0
+> print(cor(dtMergeV[, .(slope, meanPPSF,medianIncome)], use="complete.obs"))
+                 slope  meanPPSF medianIncome
+slope        1.0000000 0.4115332    0.4760023
+meanPPSF     0.4115332 1.0000000    0.4283424
+medianIncome 0.4760023 0.4283424    1.0000000
+> 
+> proc.time()
+   user  system elapsed 
+  0.252   0.082   0.154 

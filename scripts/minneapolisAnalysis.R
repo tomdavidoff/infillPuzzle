@@ -38,7 +38,16 @@ dt[, price_level := as.numeric(mean_ppsf)]
 # Focus on Zips with enough data to be credible
 MINOBS <- 2
 dt <- dt[N >= MINOBS & total_lots_active >= MINOBS]
-print(cor(dt[, .(slope, price_level, propensity)]))
+
+dtCensus <- fread("~/OneDrive - UBC/dataRaw/ACSDT5Y2024/ACSDT5Y2024.B19013-Data.csv", skip=1,select = c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)","Geographic Area Name"),header=TRUE)
+print(head(dtCensus))
+setnames(dtCensus, old=c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)"), new=c("medianIncome"))
+dtCensus[, medianIncome := log(as.numeric(medianIncome))]
+setnames(dtCensus,"Geographic Area Name","zip")
+dtCensus[,zip:=substring(zip,7,11)]
+dt <- merge(dt,dtCensus,by="zip")
+print(cor(dt[, .(slope, price_level, propensity,medianIncome)]))
+
 
 # 4. Model -----------------------------------------------------------------
 # Does the price-size gradient predict development propensity?

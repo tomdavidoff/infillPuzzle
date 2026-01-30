@@ -1,6 +1,6 @@
 
-R version 4.4.0 (2024-04-24) -- "Puppy Cup"
-Copyright (C) 2024 The R Foundation for Statistical Computing
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -23,8 +23,6 @@ Type 'q()' to quit R.
 > # Adapted from Portland code for Minneapolis 2040 analysis
 > 
 > library(data.table)
-Warning message:
-package ‘data.table’ was built under R version 4.4.1 
 > library(fixest)
 > library(ggplot2)
 > 
@@ -121,11 +119,39 @@ Key: <zip>
 > # Focus on Zips with enough data to be credible
 > MINOBS <- 2
 > dt <- dt[N >= MINOBS & total_lots_active >= MINOBS]
-> print(cor(dt[, .(slope, price_level, propensity)]))
-                slope price_level propensity
-slope       1.0000000   0.6553173  0.1225146
-price_level 0.6553173   1.0000000 -0.1070583
-propensity  0.1225146  -0.1070583  1.0000000
+> 
+> dtCensus <- fread("~/OneDrive - UBC/dataRaw/ACSDT5Y2024/ACSDT5Y2024.B19013-Data.csv", skip=1,select = c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)","Geographic Area Name"),header=TRUE)
+> print(head(dtCensus))
+   Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)
+                                                                                         <char>
+1:                                                                                        19454
+2:                                                                                        21420
+3:                                                                                        20933
+4:                                                                                        20992
+5:                                                                                        24496
+6:                                                                                        20360
+   Geographic Area Name
+                 <char>
+1:          ZCTA5 00601
+2:          ZCTA5 00602
+3:          ZCTA5 00603
+4:          ZCTA5 00606
+5:          ZCTA5 00610
+6:          ZCTA5 00611
+> setnames(dtCensus, old=c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)"), new=c("medianIncome"))
+> dtCensus[, medianIncome := log(as.numeric(medianIncome))]
+Warning message:
+In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+> setnames(dtCensus,"Geographic Area Name","zip")
+> dtCensus[,zip:=substring(zip,7,11)]
+> dt <- merge(dt,dtCensus,by="zip")
+> print(cor(dt[, .(slope, price_level, propensity,medianIncome)]))
+                 slope price_level propensity medianIncome
+slope        1.0000000   0.6553173  0.1225146    0.2993299
+price_level  0.6553173   1.0000000 -0.1070583    0.6092187
+propensity   0.1225146  -0.1070583  1.0000000   -0.3222184
+medianIncome 0.2993299   0.6092187 -0.3222184    1.0000000
+> 
 > 
 > # 4. Model -----------------------------------------------------------------
 > # Does the price-size gradient predict development propensity?
@@ -169,4 +195,4 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
 > proc.time()
    user  system elapsed 
-  1.098   0.095   1.240 
+  1.471   0.328   5.320 
