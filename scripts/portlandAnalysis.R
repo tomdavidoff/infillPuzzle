@@ -11,6 +11,8 @@ library(ggplot2)
 # 1. Load ------------------------------------------------------------------
 permits <- readRDS("~/OneDrive - UBC/dataProcessed/portland_zip_propensity.rds")
 slopes  <- readRDS("~/OneDrive - UBC/dataProcessed/portland_attom_slopes_by_zip.rds")
+print(nrow(permits))
+print(nrow(slopes))
 
 setDT(permits); setDT(slopes)
 
@@ -24,6 +26,7 @@ slopes[,  zip := sprintf("%05s", as.character(zip))]
 
 # Merge on Zip
 dt <- merge(permits, slopes, by = "zip")
+print(nrow(dt))
 
 # 3. Clean -----------------------------------------------------------------
 # Convert slope to numeric (it was <char>) and take absolute value
@@ -43,7 +46,8 @@ dtCensus[,zip:=substring(zip,7,11)]
 
 print(head(dtCensus))
 print(head(dt))
-dt <- merge(dt,dtCensus,by="zip")
+dt <- merge(dt,dtCensus,by="zip",all.x=TRUE)
+print(nrow(dt))
 print(head(dt))
 print(cor(dt[,.(slope,price_level,propensity,medianIncome)],))
 

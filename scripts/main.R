@@ -49,6 +49,7 @@ dtMerge[maxSingle==0 & use=="laneway",use:="lanewayOnly"]
 print(summary(dtMerge[,.(MB_total_finished_area,landWidth,landDepth,effectiveAge)]))
 
 dtMerge[,notSingle:=use!="single" & use!="laneway"]
+#dtMerge[,notSingle:=use!="single" ]
 
 print(names(dtMerge))
 print(feols(notSingle ~ meanPPSF| pYear, data=dtMerge[pYear>2020],cluster="CTUID"))

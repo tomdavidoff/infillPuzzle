@@ -37,6 +37,7 @@ setnames(dtSales, tolower(make.names(names(dtSales))))
 dtSales[, attom_id := as.character(attom_id)]
 dtSales[, price := as.numeric(price)]
 dtSales[, date  := as.IDate(date)]
+dtSales[,yearMonth := format(date, "%Y-%m")]
 
 # filter years - around 2018 zoning change
 # Minneapolis 2040 plan adopted Dec 2018, implemented Jan 2020
@@ -64,19 +65,21 @@ ds <- open_dataset("~/OneDrive - UBC/dataProcessed/AH_state_MN.parquet")
 # Pull only what we need - Hennepin County FIPS muni code is "053"
 scanner <- ds$NewScan()$
   Filter(Expression$field_ref("MM_FIPS_MUNI_CODE") == "053")$
-  Project(c("[ATTOM ID]", "SA_FIN_SQFT_TOT"))$
+  Project(c("[ATTOM ID]", "SA_FIN_SQFT_TOT","SA_LOTSIZE","SA_YR_BLT","USE_CODE_STD"))$
   Finish()
 
 dtAssessor <- as.data.table(scanner$ToTable())
-setnames(dtAssessor, c("[ATTOM ID]", "SA_FIN_SQFT_TOT"), c("attom_id", "sqft"))
+setnames(dtAssessor, c("[ATTOM ID]", "SA_FIN_SQFT_TOT","SA_LOTSIZE","SA_YR_BLT","USE_CODE_STD"), c("attom_id", "sqft","lotSize","yearBuilt","useCode"))
 
 dtAssessor[, attom_id := as.character(attom_id)]
 dtAssessor[, sqft := as.numeric(sqft)]
+dtAssessor[, lotSize := as.numeric(lotSize)]
+dtAssessor[, yearBuilt := as.integer(yearBuilt)]
 
 # Deduplicate: multiple records per ATTOM id
-dtAssessor_Final <- dtAssessor[, .(
-  sqft = max(sqft, na.rm = TRUE)
-), by = attom_id]
+dtAssessor[,randomNum := runif(.N)]
+dtAssessor[,maxRandom := max(randomNum+sqft, na.rm=TRUE), by=attom_id]
+dtAssessor_Final <- dtAssessor[randomNum+sqft == maxRandom]
 
 dtAssessor_Final[is.infinite(sqft), sqft := NA_real_]
 
@@ -87,6 +90,8 @@ message("Unique assessor ATTOM IDs: ", uniqueN(dtAssessor_Final$attom_id))
 # ==========================================
 message("Merging sales + assessor...")
 dtFinal <- merge(dtSales, dtAssessor_Final, by = "attom_id", all = FALSE)
+print(table(dtFinal$useCode))
+dtFinal <- dtFinal[useCode=="RSFR"]
 
 # clean
 dtFinal <- dtFinal[!is.na(price) & !is.na(sqft) & !is.na(zip)]
@@ -112,7 +117,7 @@ message("Final rows for regression: ", nrow(dtFinal),
 dtFinal[, zip := as.factor(zip)]
 dtFinal[,lppsf := log(ppsf)]
 dtFinal[,lsqft := log(sqft)]
-m <- feols(lppsf ~ 0 + zip + zip:lsqft, data = dtFinal)
+m <- feols(lppsf ~ 0 + zip + zip:lsqft + log(lotSize) |yearMonth, data = dtFinal)
 print(summary(m))
 
 # ==========================================
@@ -136,4 +141,6 @@ saveRDS(dtSlopes, "~/OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zi
 
 message("Saved slopes: OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds")
 print(dtSlopes[1:15])
-print(cor(dtSlopes$slope, dtSlopes$mean_ppsf, use = "complete.obs"))
+print(cor(dtSlopes[,.(slope, mean_ppsf)], use = "complete.obs"))
+print(cor(dtSlopes[N>median(N),.(slope, mean_ppsf)], use = "complete.obs"))
+print(cor(dtSlopes[N>quantile(N,.75),.(slope, mean_ppsf)], use = "complete.obs"))

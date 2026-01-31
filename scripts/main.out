@@ -1,6 +1,6 @@
 
-R version 4.4.0 (2024-04-24) -- "Puppy Cup"
-Copyright (C) 2024 The R Foundation for Statistical Computing
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -23,8 +23,6 @@ Type 'q()' to quit R.
 > # 01/16/26
 > 
 > library(data.table)
-Warning message:
-package ‘data.table’ was built under R version 4.4.1 
 > library(ggplot2)
 > library(fixest)
 > 
@@ -78,14 +76,14 @@ package ‘data.table’ was built under R version 4.4.1
 5: 49.2281967, -123.1779482          New Building
 6:  49.2647127, -123.189698          New Building
 > print(head(dtSlope))
-        CTUID meanPPSF  nobs       slope  elasticity
-       <char>    <num> <int>       <num>       <num>
-1:            720.9720    22          NA          NA
-2: 9330001.01 698.6384     5          NA          NA
-3: 9330001.02 566.3632     9          NA          NA
-4: 9330002.01 626.5062    52  0.13265622  0.78731774
-5: 9330002.03 614.8959    66  0.00637558 -0.07086556
-6: 9330002.04 587.9429    38 -0.05662621 -0.68063012
+        CTUID meanPPSF  nobs      slope elasticity
+       <char>    <num> <int>      <num>      <num>
+1:            732.2076     7         NA         NA
+2: 9330001.01 698.6384     5 -0.5335157 -1.2783735
+3: 9330001.02 603.2265    10 -0.3711131 -0.8065417
+4: 9330002.01 631.6724    54 -0.3260755 -0.5973253
+5: 9330002.03 614.8959    66 -0.3021881 -0.6117229
+6: 9330002.04 586.0877    37 -0.3341864 -0.7916304
 > dtMerge <- merge(dtSpatial,dtSlope,by="CTUID")
 > print(head(dtMerge))
 Key: <CTUID>
@@ -113,20 +111,19 @@ Key: <CTUID>
 4: 3141 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55       115
 5: 3157 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55       115
 6: 3210 E 62ND AVENUE, Vancouver, BC V5S 2G5   1.8621        50       140
-               geo_point_2d   typeofwork meanPPSF  nobs slope elasticity
-                     <char>       <char>    <num> <int> <num>      <num>
-1:  49.2243407, -123.031668 New Building 698.6384     5    NA         NA
-2: 49.2249031, -123.0246175 New Building 698.6384     5    NA         NA
-3: 49.2249233, -123.0292697 New Building 698.6384     5    NA         NA
-4:   49.21401, -123.0392725 New Building 566.3632     9    NA         NA
-5: 49.2140062, -123.0388062 New Building 566.3632     9    NA         NA
-6: 49.2132602, -123.0365756 New Building 566.3632     9    NA         NA
+               geo_point_2d   typeofwork meanPPSF  nobs      slope elasticity
+                     <char>       <char>    <num> <int>      <num>      <num>
+1:  49.2243407, -123.031668 New Building 698.6384     5 -0.5335157 -1.2783735
+2: 49.2249031, -123.0246175 New Building 698.6384     5 -0.5335157 -1.2783735
+3: 49.2249233, -123.0292697 New Building 698.6384     5 -0.5335157 -1.2783735
+4:   49.21401, -123.0392725 New Building 603.2265    10 -0.3711131 -0.8065417
+5: 49.2140062, -123.0388062 New Building 603.2265    10 -0.3711131 -0.8065417
+6: 49.2132602, -123.0365756 New Building 603.2265    10 -0.3711131 -0.8065417
 > print(summary(dtMerge))
     CTUID           ROLL_NUMBER          folioID         
  Length:2431        Length:2431        Length:2431       
  Class :character   Class :character   Class :character  
  Mode  :character   Mode  :character   Mode  :character  
-                                                         
                                                          
                                                          
                                                          
@@ -137,12 +134,10 @@ Key: <CTUID>
  Mean   :2022-03-29                         Mean   :0.3998                     
  3rd Qu.:2024-07-29                         3rd Qu.:1.0000                     
  Max.   :2025-10-17                         Max.   :1.0000                     
-                                                                               
  MB_total_finished_area neighbourhoodDescription   address         
  Length:2431            Length:2431              Length:2431       
  Class :character       Class :character         Class :character  
  Mode  :character       Mode  :character         Mode  :character  
-                                                                   
                                                                    
                                                                    
                                                                    
@@ -153,23 +148,20 @@ Key: <CTUID>
  Mean   :1.3235                                                           
  3rd Qu.:1.5554                                                           
  Max.   :3.5378                                                           
-                                                                          
-  typeofwork           meanPPSF          nobs           slope         
- Length:2431        Min.   :566.4   Min.   :  4.0   Min.   :-0.18999  
- Class :character   1st Qu.:657.3   1st Qu.: 30.0   1st Qu.: 0.00901  
- Mode  :character   Median :745.0   Median : 49.0   Median : 0.09124  
-                    Mean   :732.1   Mean   : 51.9   Mean   : 0.08891  
-                    3rd Qu.:798.9   3rd Qu.: 68.0   3rd Qu.: 0.13589  
-                    Max.   :867.2   Max.   :155.0   Max.   : 0.50259  
-                                                    NA's   :75        
+  typeofwork           meanPPSF          nobs            slope        
+ Length:2431        Min.   :586.1   Min.   :  4.00   Min.   :-0.5335  
+ Class :character   1st Qu.:660.8   1st Qu.: 32.00   1st Qu.:-0.3081  
+ Mode  :character   Median :746.7   Median : 49.00   Median :-0.2671  
+                    Mean   :739.0   Mean   : 54.05   Mean   :-0.2685  
+                    3rd Qu.:818.0   3rd Qu.: 70.00   3rd Qu.:-0.2277  
+                    Max.   :870.8   Max.   :161.00   Max.   : 0.4025  
    elasticity      
- Min.   :-0.92713  
- 1st Qu.: 0.05855  
- Median : 0.38630  
- Mean   : 0.46551  
- 3rd Qu.: 0.89193  
- Max.   : 2.40873  
- NA's   :75        
+ Min.   :-1.27837  
+ 1st Qu.:-0.42390  
+ Median :-0.23846  
+ Mean   :-0.24673  
+ 3rd Qu.:-0.05431  
+ Max.   : 2.68044  
 > print(table(dtMerge[,use]))
 
  duplex laneway   multi  single 
@@ -238,6 +230,7 @@ laneway  single
  NA's   :17             NA's   :175      NA's   :175     NA's   :17      
 > 
 > dtMerge[,notSingle:=use!="single" & use!="laneway"]
+> #dtMerge[,notSingle:=use!="single" ]
 > 
 > print(names(dtMerge))
  [1] "CTUID"                    "ROLL_NUMBER"             
@@ -256,16 +249,16 @@ OLS estimation, Dep. Var.: notSingle
 Observations: 1,770
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (CTUID) 
-          Estimate Std. Error t value   Pr(>|t|)    
-meanPPSF -0.002002   0.000197 -10.147 1.5884e-15 ***
+          Estimate Std. Error  t value   Pr(>|t|)    
+meanPPSF -0.001918   0.000194 -9.86309 5.2713e-15 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.357097     Adj. R2: 0.247245
-                 Within R2: 0.157529
+RMSE: 0.357157     Adj. R2: 0.246994
+                 Within R2: 0.157248
 > print(cor(dtMerge[,.(meanPPSF,elasticity)],use="complete.obs"))
             meanPPSF elasticity
-meanPPSF   1.0000000  0.3625793
-elasticity 0.3625793  1.0000000
+meanPPSF   1.0000000  0.5187543
+elasticity 0.5187543  1.0000000
 > 
 > dtIncome <- fread("~/OneDrive - UBC/dataRaw/9810005801_databaseLoadingData.csv",select=c("GEO","DGUID","Household income statistics (6)","VALUE"))
 > print(head(dtIncome))
@@ -392,22 +385,22 @@ Key: <CTUID>
 4: 3141 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55    115.00
 5: 3157 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55    115.00
 6: 3210 E 62ND AVENUE, Vancouver, BC V5S 2G5   1.8621        50    140.00
-               geo_point_2d   typeofwork meanPPSF  nobs slope elasticity pYear
-                     <char>       <char>    <num> <int> <num>      <num> <int>
-1:  49.2243407, -123.031668 New Building 698.6384     5    NA         NA  2021
-2: 49.2249031, -123.0246175 New Building 698.6384     5    NA         NA  2024
-3: 49.2249233, -123.0292697 New Building 698.6384     5    NA         NA  2021
-4:   49.21401, -123.0392725 New Building 566.3632     9    NA         NA  2022
-5: 49.2140062, -123.0388062 New Building 566.3632     9    NA         NA  2018
-6: 49.2132602, -123.0365756 New Building 566.3632     9    NA         NA  2021
-   effectiveAge notSingle   tract
-          <num>    <lgcl>  <char>
-1:           46      TRUE 0001.01
-2:           53      TRUE 0001.01
-3:           50      TRUE 0001.01
-4:           49      TRUE 0001.02
-5:           -1     FALSE 0001.02
-6:           48      TRUE 0001.02
+               geo_point_2d   typeofwork meanPPSF  nobs      slope elasticity
+                     <char>       <char>    <num> <int>      <num>      <num>
+1:  49.2243407, -123.031668 New Building 698.6384     5 -0.5335157 -1.2783735
+2: 49.2249031, -123.0246175 New Building 698.6384     5 -0.5335157 -1.2783735
+3: 49.2249233, -123.0292697 New Building 698.6384     5 -0.5335157 -1.2783735
+4:   49.21401, -123.0392725 New Building 603.2265    10 -0.3711131 -0.8065417
+5: 49.2140062, -123.0388062 New Building 603.2265    10 -0.3711131 -0.8065417
+6: 49.2132602, -123.0365756 New Building 603.2265    10 -0.3711131 -0.8065417
+   pYear effectiveAge notSingle   tract
+   <int>        <num>    <lgcl>  <char>
+1:  2021           46      TRUE 0001.01
+2:  2024           53      TRUE 0001.01
+3:  2021           50      TRUE 0001.01
+4:  2022           49      TRUE 0001.02
+5:  2018           -1     FALSE 0001.02
+6:  2021           48      TRUE 0001.02
 > print(nrow(dtMerge))
 [1] 2431
 > dtMerge <- merge(dtMerge,dtIncome[,.(tract,medianIncome)],by="tract",all.x=TRUE)
@@ -444,22 +437,22 @@ Key: <tract>
 1:        NA        NA  49.2243407, -123.031668 New Building 698.6384     5
 2:        40    157.83 49.2249031, -123.0246175 New Building 698.6384     5
 3:        45    158.17 49.2249233, -123.0292697 New Building 698.6384     5
-4:        55    115.00   49.21401, -123.0392725 New Building 566.3632     9
-5:        55    115.00 49.2140062, -123.0388062 New Building 566.3632     9
-6:        50    140.00 49.2132602, -123.0365756 New Building 566.3632     9
-   slope elasticity pYear effectiveAge notSingle medianIncome
-   <num>      <num> <int>        <num>    <lgcl>        <int>
-1:    NA         NA  2021           46      TRUE        89000
-2:    NA         NA  2024           53      TRUE        89000
-3:    NA         NA  2021           50      TRUE        89000
-4:    NA         NA  2022           49      TRUE        95000
-5:    NA         NA  2018           -1     FALSE        95000
-6:    NA         NA  2021           48      TRUE        95000
+4:        55    115.00   49.21401, -123.0392725 New Building 603.2265    10
+5:        55    115.00 49.2140062, -123.0388062 New Building 603.2265    10
+6:        50    140.00 49.2132602, -123.0365756 New Building 603.2265    10
+        slope elasticity pYear effectiveAge notSingle medianIncome
+        <num>      <num> <int>        <num>    <lgcl>        <int>
+1: -0.5335157 -1.2783735  2021           46      TRUE        89000
+2: -0.5335157 -1.2783735  2024           53      TRUE        89000
+3: -0.5335157 -1.2783735  2021           50      TRUE        89000
+4: -0.3711131 -0.8065417  2022           49      TRUE        95000
+5: -0.3711131 -0.8065417  2018           -1     FALSE        95000
+6: -0.3711131 -0.8065417  2021           48      TRUE        95000
 > print(cor(dtMerge[,.(meanPPSF,elasticity,medianIncome)],use="complete.obs"))
-              meanPPSF  elasticity medianIncome
-meanPPSF     1.0000000  0.36257931   0.50218952
-elasticity   0.3625793  1.00000000  -0.05666847
-medianIncome 0.5021895 -0.05666847   1.00000000
+              meanPPSF elasticity medianIncome
+meanPPSF     1.0000000  0.5187543    0.5177508
+elasticity   0.5187543  1.0000000    0.3346755
+medianIncome 0.5177508  0.3346755    1.0000000
 > 
 > ## KEY: Drop Laneway only
 > print(dtMerge[effectiveAge>0,summary(effectiveAge),by="use"])
@@ -553,13 +546,7 @@ medianIncome 0.5021895 -0.05666847   1.00000000
 >   # ppsf and slope -- make points proportional to nobs
 >   ggplot(dtTract,aes(x=meanPPSF,y=slope)) + geom_point(aes(size=nobs)) +
 +     theme_minimal() 
-Warning message:
-Removed 5 rows containing missing values or values outside the scale range
-(`geom_point()`). 
 >   ggsave("text/ppsfSlopeTract.png",width=8,height=6)
-Warning message:
-Removed 5 rows containing missing values or values outside the scale range
-(`geom_point()`). 
 > 
 >   # ppsf and income
 >   ggplot(dtTract,aes(x=meanPPSF,y=medianIncome)) + geom_point(aes(size=nobs)) +
@@ -569,17 +556,17 @@ Removed 5 rows containing missing values or values outside the scale range
 > 
 > print(cor(dtTract[,.(notSingle,meanPPSF,slope,elasticity)],use="complete.obs"))
             notSingle   meanPPSF      slope elasticity
-notSingle   1.0000000 -0.7820449 -0.1033063 -0.2720789
-meanPPSF   -0.7820449  1.0000000  0.1430609  0.2975906
-slope      -0.1033063  0.1430609  1.0000000  0.9583056
-elasticity -0.2720789  0.2975906  0.9583056  1.0000000
+notSingle   1.0000000 -0.7488969 -0.2593811 -0.2883360
+meanPPSF   -0.7488969  1.0000000  0.3230432  0.3701752
+slope      -0.2593811  0.3230432  1.0000000  0.9836928
+elasticity -0.2883360  0.3701752  0.9836928  1.0000000
 > print(cor(dtTract[,.(notSingle,meanPPSF,slope,elasticity,medianIncome)],use="complete.obs"))
-              notSingle   meanPPSF      slope  elasticity medianIncome
-notSingle     1.0000000 -0.7820449 -0.1033063 -0.27207894  -0.48196138
-meanPPSF     -0.7820449  1.0000000  0.1430609  0.29759061   0.46422300
-slope        -0.1033063  0.1430609  1.0000000  0.95830560  -0.12227808
-elasticity   -0.2720789  0.2975906  0.9583056  1.00000000  -0.06818738
-medianIncome -0.4819614  0.4642230 -0.1222781 -0.06818738   1.00000000
+              notSingle   meanPPSF      slope elasticity medianIncome
+notSingle     1.0000000 -0.7488969 -0.2593811 -0.2883360   -0.5315739
+meanPPSF     -0.7488969  1.0000000  0.3230432  0.3701752    0.4735479
+slope        -0.2593811  0.3230432  1.0000000  0.9836928    0.1357464
+elasticity   -0.2883360  0.3701752  0.9836928  1.0000000    0.1551298
+medianIncome -0.5315739  0.4735479  0.1357464  0.1551298    1.0000000
 > print(summary(lm(notSingle ~ meanPPSF,data=dtTract)))
 
 Call:
@@ -587,18 +574,18 @@ lm(formula = notSingle ~ meanPPSF, data = dtTract)
 
 Residuals:
      Min       1Q   Median       3Q      Max 
--0.47969 -0.07403  0.03520  0.09907  0.30465 
+-0.48828 -0.07315  0.02930  0.09635  0.30148 
 
 Coefficients:
               Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  2.3586664  0.1694186  13.922  < 2e-16 ***
-meanPPSF    -0.0022079  0.0002377  -9.291 7.77e-14 ***
+(Intercept)  2.3385314  0.1643679  14.227  < 2e-16 ***
+meanPPSF    -0.0021620  0.0002287  -9.455 3.89e-14 ***
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.1519 on 70 degrees of freedom
-Multiple R-squared:  0.5522,	Adjusted R-squared:  0.5458 
-F-statistic: 86.31 on 1 and 70 DF,  p-value: 7.773e-14
+Residual standard error: 0.1504 on 70 degrees of freedom
+Multiple R-squared:  0.5608,	Adjusted R-squared:  0.5546 
+F-statistic:  89.4 on 1 and 70 DF,  p-value: 3.894e-14
 
 > print(summary(lm(notSingle ~ meanPPSF + slope ,data=dtTract)))
 
@@ -607,20 +594,19 @@ lm(formula = notSingle ~ meanPPSF + slope, data = dtTract)
 
 Residuals:
      Min       1Q   Median       3Q      Max 
--0.34010 -0.07899  0.02179  0.08872  0.29896 
+-0.48974 -0.07262  0.03097  0.09466  0.30273 
 
 Coefficients:
               Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  2.4124683  0.1616794  14.921  < 2e-16 ***
-meanPPSF    -0.0022706  0.0002281  -9.952 1.27e-14 ***
-slope        0.0153253  0.1378030   0.111    0.912    
+(Intercept)  2.3139873  0.1965941  11.770  < 2e-16 ***
+meanPPSF    -0.0021438  0.0002433  -8.813 6.55e-13 ***
+slope       -0.0423919  0.1832931  -0.231    0.818    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.1372 on 64 degrees of freedom
-  (5 observations deleted due to missingness)
-Multiple R-squared:  0.6117,	Adjusted R-squared:  0.5995 
-F-statistic:  50.4 on 2 and 64 DF,  p-value: 7.152e-14
+Residual standard error: 0.1514 on 69 degrees of freedom
+Multiple R-squared:  0.5612,	Adjusted R-squared:  0.5485 
+F-statistic: 44.12 on 2 and 69 DF,  p-value: 4.557e-13
 
 > print(summary(lm(notSingle ~ meanPPSF + elasticity ,data=dtTract)))
 
@@ -629,20 +615,19 @@ lm(formula = notSingle ~ meanPPSF + elasticity, data = dtTract)
 
 Residuals:
      Min       1Q   Median       3Q      Max 
--0.33425 -0.08024  0.02930  0.07884  0.29958 
+-0.48733 -0.07383  0.03104  0.09519  0.30253 
 
 Coefficients:
-             Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  2.390752   0.165478  14.448  < 2e-16 ***
-meanPPSF    -0.002230   0.000236  -9.447 9.44e-14 ***
-elasticity  -0.014559   0.027458  -0.530    0.598    
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  2.3270092  0.1824882  12.752  < 2e-16 ***
+meanPPSF    -0.0021482  0.0002479  -8.666 1.21e-12 ***
+elasticity  -0.0064035  0.0426972  -0.150    0.881    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.1369 on 64 degrees of freedom
-  (5 observations deleted due to missingness)
-Multiple R-squared:  0.6133,	Adjusted R-squared:  0.6012 
-F-statistic: 50.75 on 2 and 64 DF,  p-value: 6.255e-14
+Residual standard error: 0.1515 on 69 degrees of freedom
+Multiple R-squared:  0.561,	Adjusted R-squared:  0.5483 
+F-statistic: 44.09 on 2 and 69 DF,  p-value: 4.628e-13
 
 > print(summary(lm(notSingle ~ meanPPSF + elasticity + medianIncome,data=dtTract)))
 
@@ -652,21 +637,20 @@ lm(formula = notSingle ~ meanPPSF + elasticity + medianIncome,
 
 Residuals:
      Min       1Q   Median       3Q      Max 
--0.36121 -0.06590  0.00923  0.07122  0.26639 
+-0.48035 -0.07224  0.01834  0.07682  0.26814 
 
 Coefficients:
                Estimate Std. Error t value Pr(>|t|)    
-(Intercept)   2.462e+00  1.660e-01  14.833  < 2e-16 ***
-meanPPSF     -1.963e-03  2.683e-04  -7.316 5.61e-10 ***
-elasticity   -2.779e-02  2.771e-02  -1.003   0.3198    
-medianIncome -2.785e-06  1.424e-06  -1.956   0.0549 .  
+(Intercept)   2.402e+00  1.775e-01  13.537  < 2e-16 ***
+meanPPSF     -1.830e-03  2.669e-04  -6.856 2.57e-09 ***
+elasticity   -9.059e-03  4.099e-02  -0.221   0.8257    
+medianIncome -3.278e-06  1.247e-06  -2.629   0.0106 *  
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.134 on 63 degrees of freedom
-  (5 observations deleted due to missingness)
-Multiple R-squared:  0.6354,	Adjusted R-squared:  0.6181 
-F-statistic:  36.6 on 3 and 63 DF,  p-value: 8.087e-14
+Residual standard error: 0.1454 on 68 degrees of freedom
+Multiple R-squared:  0.6015,	Adjusted R-squared:  0.5839 
+F-statistic: 34.21 on 3 and 68 DF,  p-value: 1.354e-13
 
 > # combinedera
 > print(summary(feols(notSingle ~ meanPPSF  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
@@ -674,193 +658,183 @@ OLS estimation, Dep. Var.: notSingle
 Observations: 1,124
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
-          Estimate Std. Error  t value Pr(>|t|)    
-meanPPSF -0.002456   0.000543 -4.52129 0.010648 *  
+         Estimate Std. Error  t value Pr(>|t|)    
+meanPPSF -0.00235   0.000535 -4.38986 0.011784 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.353011     Adj. R2: 0.256864
-                 Within R2: 0.219476
+RMSE: 0.35334     Adj. R2: 0.255475
+                Within R2: 0.218017
 > print(summary(feols(notSingle ~ slope  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
-NOTE: 20 observations removed because of NA values (RHS: 20).
 OLS estimation, Dep. Var.: notSingle
-Observations: 1,104
+Observations: 1,124
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
-       Estimate Std. Error t value Pr(>|t|)    
-slope -0.217178   0.097609  -2.225 0.090111 .  
+      Estimate Std. Error  t value  Pr(>|t|)    
+slope -1.04098   0.154779 -6.72559 0.0025456 ** 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.395696     Adj. R2: 0.052388
-                 Within R2: 0.003673
+RMSE: 0.393446     Adj. R2: 0.076871
+                 Within R2: 0.030428
 > print(summary(feols(notSingle ~ elasticity  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
-NOTE: 20 observations removed because of NA values (RHS: 20).
 OLS estimation, Dep. Var.: notSingle
-Observations: 1,104
+Observations: 1,124
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
-            Estimate Std. Error  t value Pr(>|t|)    
-elasticity -0.114365   0.029976 -3.81518 0.018856 *  
+            Estimate Std. Error  t value  Pr(>|t|)    
+elasticity -0.254307   0.046329 -5.48915 0.0053662 ** 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.390936     Adj. R2: 0.07505 
-                 Within R2: 0.027501
+RMSE: 0.392558     Adj. R2: 0.081031
+                 Within R2: 0.034797
 > print(summary(feols(notSingle ~ meanPPSF + elasticity  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
-NOTE: 20 observations removed because of NA values (RHS: 20).
 OLS estimation, Dep. Var.: notSingle
-Observations: 1,104
+Observations: 1,124
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
             Estimate Std. Error   t value Pr(>|t|)    
-meanPPSF   -0.002434   0.000536 -4.537119  0.01052 *  
-elasticity  0.000978   0.020525  0.047648  0.96428    
+meanPPSF   -0.002388   0.000538 -4.438155  0.01135 *  
+elasticity  0.023398   0.025532  0.916416  0.41130    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.350763     Adj. R2: 0.254702
-                 Within R2: 0.217101
+RMSE: 0.353286     Adj. R2: 0.255037
+                 Within R2: 0.218257
 > print(summary(feols(notSingle ~ meanPPSF + slope  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
-NOTE: 20 observations removed because of NA values (RHS: 20).
 OLS estimation, Dep. Var.: notSingle
-Observations: 1,104
+Observations: 1,124
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
-          Estimate Std. Error  t value Pr(>|t|)    
-meanPPSF -0.002462   0.000551 -4.47144 0.011062 *  
-slope     0.109199   0.096257  1.13445 0.319980    
+          Estimate Std. Error   t value Pr(>|t|)    
+meanPPSF -0.002356   0.000546 -4.314142 0.012505 *  
+slope     0.017956   0.088029  0.203981 0.848326    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.350563     Adj. R2: 0.255551
-                 Within R2: 0.217993
+RMSE: 0.353339     Adj. R2: 0.254816
+                 Within R2: 0.218025
 > print(summary(feols(notSingle ~ meanPPSF + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
 OLS estimation, Dep. Var.: notSingle
 Observations: 1,124
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
                              Estimate Std. Error  t value Pr(>|t|)    
-meanPPSF                    -0.002126   0.000541 -3.92968 0.017108 *  
-log(MB_total_finished_area) -0.105726   0.057514 -1.83829 0.139876    
-log(LANDAREA)               -0.068454   0.024935 -2.74525 0.051626 .  
-log(effectiveAge)            0.083826   0.022902  3.66017 0.021577 *  
+meanPPSF                    -0.002030   0.000533 -3.80598 0.019006 *  
+log(MB_total_finished_area) -0.106969   0.056477 -1.89400 0.131143    
+log(LANDAREA)               -0.071974   0.024769 -2.90578 0.043863 *  
+log(effectiveAge)            0.083172   0.021541  3.86113 0.018130 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.348878     Adj. R2: 0.272209
-                 Within R2: 0.237644
+RMSE: 0.349011     Adj. R2: 0.271655
+                 Within R2: 0.237064
 > print(summary(feols(notSingle ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(48,56) & pYear %between% c(2021,2025)])))
-NOTE: 4 observations removed because of NA values (RHS: 4).
-OLS estimation, Dep. Var.: notSingle
-Observations: 162
-Fixed-effects: pYear: 5
-Standard-errors: Clustered (pYear) 
-                             Estimate Std. Error   t value Pr(>|t|)    
-meanPPSF                    -0.002349   0.000519 -4.527206 0.010600 *  
-slope                       -0.529064   0.196682 -2.689947 0.054661 .  
-log(MB_total_finished_area) -0.108809   0.126541 -0.859871 0.438343    
-log(LANDAREA)               -0.133724   0.073447 -1.820691 0.142763    
-log(effectiveAge)            0.045845   0.071592  0.640367 0.556776    
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.360674     Adj. R2: 0.390817
-                 Within R2: 0.288682
-> print(summary(feols(notSingle ~ meanPPSF+ log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(48,56) & pYear %between% c(2021,2025)])))
 OLS estimation, Dep. Var.: notSingle
 Observations: 166
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
                              Estimate Std. Error   t value  Pr(>|t|)    
-meanPPSF                    -0.002615   0.000363 -7.204467 0.0019675 ** 
-log(MB_total_finished_area) -0.111590   0.103777 -1.075286 0.3427825    
-log(LANDAREA)               -0.108501   0.065240 -1.663103 0.1716255    
-log(effectiveAge)            0.038098   0.074170  0.513662 0.6345599    
+meanPPSF                    -0.002375   0.000454 -5.236790 0.0063542 ** 
+slope                       -0.484377   0.344402 -1.406429 0.2323281    
+log(MB_total_finished_area) -0.087928   0.105753 -0.831449 0.4524726    
+log(LANDAREA)               -0.124460   0.077268 -1.610767 0.1825200    
+log(effectiveAge)            0.055271   0.081700  0.676513 0.5358162    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.36208     Adj. R2: 0.388907
-                Within R2: 0.287052
-> print(summary(feols(notSingle ~ meanPPSF+elasticity + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(48,56) & pYear %between% c(2021,2025)])))
-NOTE: 4 observations removed because of NA values (RHS: 4).
+RMSE: 0.360047     Adj. R2: 0.391874
+                 Within R2: 0.295034
+> print(summary(feols(notSingle ~ meanPPSF+ log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(48,56) & pYear %between% c(2021,2025)])))
 OLS estimation, Dep. Var.: notSingle
-Observations: 162
+Observations: 166
+Fixed-effects: pYear: 5
+Standard-errors: Clustered (pYear) 
+                             Estimate Std. Error   t value Pr(>|t|)    
+meanPPSF                    -0.002589   0.000424 -6.102257 0.003649 ** 
+log(MB_total_finished_area) -0.094987   0.096634 -0.982954 0.381282    
+log(LANDAREA)               -0.110630   0.068580 -1.613166 0.182005    
+log(effectiveAge)            0.038062   0.074658  0.509815 0.637022    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.361263     Adj. R2: 0.39166 
+                 Within R2: 0.290265
+> print(summary(feols(notSingle ~ meanPPSF+elasticity + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(48,56) & pYear %between% c(2021,2025)])))
+OLS estimation, Dep. Var.: notSingle
+Observations: 166
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
                              Estimate Std. Error   t value  Pr(>|t|)    
-meanPPSF                    -0.002172   0.000421 -5.156175 0.0067157 ** 
-elasticity                  -0.114849   0.035535 -3.231989 0.0319153 *  
-log(MB_total_finished_area) -0.099292   0.124769 -0.795809 0.4706998    
-log(LANDAREA)               -0.127331   0.067932 -1.874390 0.1341484    
-log(effectiveAge)            0.053265   0.069447  0.766978 0.4858592    
+meanPPSF                    -0.002322   0.000468 -4.960808 0.0077017 ** 
+elasticity                  -0.116110   0.085989 -1.350289 0.2482662    
+log(MB_total_finished_area) -0.089826   0.105243 -0.853509 0.4414749    
+log(LANDAREA)               -0.127927   0.080413 -1.590878 0.1868466    
+log(effectiveAge)            0.051772   0.080797  0.640771 0.5565383    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.359605     Adj. R2: 0.394421
-                 Within R2: 0.29289 
+RMSE: 0.359945     Adj. R2: 0.392219
+                 Within R2: 0.295433
 > print(summary(feols(notSingle ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(30,36) & pYear %between% c(2021,2025)])))
-NOTE: 3 observations removed because of NA values (RHS: 3).
 OLS estimation, Dep. Var.: notSingle
-Observations: 598
+Observations: 601
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
                              Estimate Std. Error   t value Pr(>|t|)    
-meanPPSF                    -0.001541   0.000526 -2.929530 0.042834 *  
-slope                        0.225224   0.132114  1.704772 0.163438    
-log(MB_total_finished_area)  0.035306   0.048542  0.727322 0.507314    
-log(LANDAREA)                0.003287   0.053347  0.061610 0.953829    
-log(effectiveAge)            0.140947   0.051922  2.714575 0.053285 .  
+meanPPSF                    -0.001469   0.000472 -3.111235 0.035829 *  
+slope                        0.392755   0.205194  1.914069 0.128144    
+log(MB_total_finished_area)  0.034689   0.043950  0.789281 0.474100    
+log(LANDAREA)               -0.001107   0.052176 -0.021222 0.984085    
+log(effectiveAge)            0.140547   0.049353  2.847772 0.046500 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.301657     Adj. R2: 0.157706
-                 Within R2: 0.121964
+RMSE: 0.303574     Adj. R2: 0.153027
+                 Within R2: 0.115769
 > print(summary(feols(notSingle ~ meanPPSF+elasticity + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[landWidth %between% c(30,36) & pYear %between% c(2021,2025)])))
-NOTE: 3 observations removed because of NA values (RHS: 3).
 OLS estimation, Dep. Var.: notSingle
-Observations: 598
+Observations: 601
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
                              Estimate Std. Error   t value Pr(>|t|)    
-meanPPSF                    -0.001582   0.000521 -3.039240 0.038431 *  
-elasticity                   0.045849   0.033669  1.361750 0.244927    
-log(MB_total_finished_area)  0.034556   0.048089  0.718582 0.512136    
-log(LANDAREA)                0.003655   0.052949  0.069019 0.948287    
-log(effectiveAge)            0.140169   0.052665  2.661499 0.056302 .  
+meanPPSF                    -0.001499   0.000469 -3.199410 0.032919 *  
+elasticity                   0.106790   0.043595  2.449576 0.070477 .  
+log(MB_total_finished_area)  0.032403   0.043211  0.749875 0.495027    
+log(LANDAREA)                0.000420   0.051712  0.008127 0.993905    
+log(effectiveAge)            0.139429   0.049393  2.822822 0.047691 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.301797     Adj. R2: 0.156925
-                 Within R2: 0.12115 
+RMSE: 0.3034     Adj. R2: 0.153999
+               Within R2: 0.116784
 > print(summary(feols(notSingle ~ meanPPSF+slope + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
-NOTE: 20 observations removed because of NA values (RHS: 20).
 OLS estimation, Dep. Var.: notSingle
-Observations: 1,104
+Observations: 1,124
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
                              Estimate Std. Error   t value Pr(>|t|)    
-meanPPSF                    -0.002149   0.000536 -4.013180 0.015954 *  
-slope                        0.089831   0.099325  0.904420 0.416919    
-log(MB_total_finished_area) -0.097892   0.058541 -1.672196 0.169803    
-log(LANDAREA)               -0.059753   0.026205 -2.280193 0.084769 .  
-log(effectiveAge)            0.091438   0.021125  4.328322 0.012366 *  
+meanPPSF                    -0.002039   0.000540 -3.778330 0.019464 *  
+slope                        0.031341   0.089281  0.351035 0.743271    
+log(MB_total_finished_area) -0.108003   0.057610 -1.874731 0.134095    
+log(LANDAREA)               -0.071388   0.024115 -2.960346 0.041540 *  
+log(effectiveAge)            0.082753   0.020706  3.996663 0.016175 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.346956     Adj. R2: 0.268793
-                 Within R2: 0.234003
+RMSE: 0.349006     Adj. R2: 0.271023
+                 Within R2: 0.237086
 > print(summary(feols(notSingle ~ meanPPSF+elasticity + log(MB_total_finished_area) + log(LANDAREA) + log(effectiveAge) | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
-NOTE: 20 observations removed because of NA values (RHS: 20).
 OLS estimation, Dep. Var.: notSingle
-Observations: 1,104
+Observations: 1,124
 Fixed-effects: pYear: 5
 Standard-errors: Clustered (pYear) 
                              Estimate Std. Error   t value Pr(>|t|)    
-meanPPSF                    -0.002121   0.000516 -4.107296 0.014765 *  
-elasticity                  -0.000309   0.021913 -0.014109 0.989419    
-log(MB_total_finished_area) -0.096292   0.059833 -1.609342 0.182827    
-log(LANDAREA)               -0.062600   0.025357 -2.468709 0.069042 .  
-log(effectiveAge)            0.092113   0.021837  4.218292 0.013496 *  
+meanPPSF                    -0.002066   0.000533 -3.875505 0.017909 *  
+elasticity                   0.023231   0.023656  0.982021 0.381689    
+log(MB_total_finished_area) -0.110191   0.057594 -1.913248 0.128265    
+log(LANDAREA)               -0.069750   0.023589 -2.956867 0.041684 *  
+log(effectiveAge)            0.081786   0.020932  3.907278 0.017434 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.347091     Adj. R2: 0.268225
-                 Within R2: 0.233408
+RMSE: 0.348959     Adj. R2: 0.271218
+                 Within R2: 0.23729 
 > 
 > print(cor(dtMerge[effectiveAge>2,.(MB_total_finished_area/landWidth,effectiveAge,notSingle,meanPPSF)],use="complete.obs"))
                       V1 effectiveAge   notSingle   meanPPSF
-V1            1.00000000   -0.3300689 -0.05673245  0.1612716
-effectiveAge -0.33006893    1.0000000  0.16688364 -0.1090388
-notSingle    -0.05673245    0.1668836  1.00000000 -0.4587296
-meanPPSF      0.16127159   -0.1090388 -0.45872956  1.0000000
+V1            1.00000000   -0.3300689 -0.05673245  0.1623878
+effectiveAge -0.33006893    1.0000000  0.16688364 -0.1108893
+notSingle    -0.05673245    0.1668836  1.00000000 -0.4569165
+meanPPSF      0.16238784   -0.1108893 -0.45691649  1.0000000
 > print(dtMerge[order(effectiveAge),.(mean(notSingle,na.rm=TRUE),mean(maxSingle,na.rm=TRUE),.N),by=effectiveAge][1:50])
     effectiveAge        V1         V2     N
            <num>     <num>      <num> <int>
@@ -934,42 +908,40 @@ OLS estimation, Dep. Var.: nNotSingle/nPermits
 Observations: 73
 Standard-errors: IID 
                        Estimate Std. Error   t value   Pr(>|t|)    
-(Intercept)            0.075796   0.956205  0.079268 9.3705e-01    
-meanPPSF              -0.002079   0.000232 -8.965544 3.4476e-13 ***
-log(meanLandArea)     -0.100006   0.039584 -2.526432 1.3821e-02 *  
-log(meanEffectiveAge)  0.533343   0.223898  2.382081 1.9977e-02 *  
+(Intercept)            0.165735   0.957976  0.173006 8.6315e-01    
+meanPPSF              -0.002032   0.000226 -8.991999 3.0859e-13 ***
+log(meanLandArea)     -0.098268   0.039568 -2.483548 1.5442e-02 *  
+log(meanEffectiveAge)  0.505919   0.224090  2.257665 2.7134e-02 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.135118   Adj. R2: 0.65778
+RMSE: 0.134903   Adj. R2: 0.658865
 > print(summary(feols(nNotSingle/nPermits ~ meanPPSF + slope + log(meanLandArea) + log(meanEffectiveAge) | 1,data=dtAgg)))
-NOTE: 5 observations removed because of NA values (RHS: 5).
 OLS estimation, Dep. Var.: nNotSingle/nPermits
-Observations: 68
+Observations: 73
 Standard-errors: IID 
                        Estimate Std. Error   t value   Pr(>|t|)    
-(Intercept)           -0.422143   1.033550 -0.408440 6.8434e-01    
-meanPPSF              -0.002037   0.000233 -8.752548 1.7385e-12 ***
-slope                 -0.007266   0.124660 -0.058283 9.5371e-01    
-log(meanLandArea)     -0.090808   0.037030 -2.452283 1.6978e-02 *  
-log(meanEffectiveAge)  0.648834   0.237262  2.734676 8.0987e-03 ** 
+(Intercept)            0.072709   0.975065  0.074568 9.4078e-01    
+meanPPSF              -0.001979   0.000244 -8.115025 1.3546e-11 ***
+slope                 -0.101500   0.170345 -0.595849 5.5325e-01    
+log(meanLandArea)     -0.101578   0.040140 -2.530586 1.3707e-02 *  
+log(meanEffectiveAge)  0.512649   0.225427  2.274119 2.6119e-02 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.119378   Adj. R2: 0.708048
+RMSE: 0.134553   Adj. R2: 0.655646
 > print(summary(feols(nNotSingle/nPermits ~ meanPPSF + elasticity + log(meanLandArea) + log(meanEffectiveAge) | 1,data=dtAgg)))
-NOTE: 5 observations removed because of NA values (RHS: 5).
 OLS estimation, Dep. Var.: nNotSingle/nPermits
-Observations: 68
+Observations: 73
 Standard-errors: IID 
                        Estimate Std. Error   t value   Pr(>|t|)    
-(Intercept)           -0.451833   1.030214 -0.438582 6.6247e-01    
-meanPPSF              -0.001986   0.000240 -8.268010 1.2135e-11 ***
-elasticity            -0.017680   0.024637 -0.717611 4.7565e-01    
-log(meanLandArea)     -0.093392   0.036790 -2.538533 1.3615e-02 *  
-log(meanEffectiveAge)  0.648768   0.236267  2.745904 7.8557e-03 ** 
+(Intercept)            0.100039   0.970267  0.103105 9.1818e-01    
+meanPPSF              -0.001975   0.000250 -7.902301 3.2972e-11 ***
+elasticity            -0.021805   0.039711 -0.549081 5.8475e-01    
+log(meanLandArea)     -0.102096   0.040376 -2.528640 1.3776e-02 *  
+log(meanEffectiveAge)  0.510583   0.225393  2.265306 2.6683e-02 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.118896   Adj. R2: 0.710399
+RMSE: 0.134605   Adj. R2: 0.655376
 > 
 > proc.time()
    user  system elapsed 
-  4.267   0.227   2.616 
+  2.978   0.610   1.741 
