@@ -1,0 +1,275 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # vancouverProfit.R
+> # estimate profitability of redevelopment choices in Vancouver
+> # Tom Davidoff 
+> # 01/31/26
+> 
+> library(data.table)
+> library(ggplot2)
+> 
+> # load data
+> dtPrice <- fread("tables/bca19_mean_ppsf_slope_by_tract.csv",colClasses=list(character=c("CTUID")))
+> dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
+> 
+> dtMerge <- merge(dtChoice,dtPrice,by="CTUID")
+> print(head(dtMerge))
+Key: <CTUID>
+        CTUID     ROLL_NUMBER    folioID permitnumbercreateddate     use
+       <char>          <char>     <char>                  <IDat>  <char>
+1: 9330001.01 025790312140000 A000003EVP              2021-09-20  duplex
+2: 9330001.01 025772318600000 A000003EVF              2024-12-21 laneway
+3: 9330001.01 025772312520000 A000003EUQ              2021-01-27  duplex
+4: 9330001.02 025821302570000 A000003GB0              2022-06-27  duplex
+5: 9330001.02 025821302870000 A000003GB3              2018-08-23  single
+6: 9330001.02 025821306320000 A000003GBH              2021-08-13  duplex
+   maxSingle MB_effective_year MB_total_finished_area neighbourhoodDescription
+       <int>            <char>                 <char>                   <char>
+1:         0              1975                   2595               FRASERVIEW
+2:         0              1971                   2787               FRASERVIEW
+3:         0              1971                   2786               FRASERVIEW
+4:         0              1973                   3846               FRASERVIEW
+5:         1              2019                   2566               FRASERVIEW
+6:         0              1973                   3082               FRASERVIEW
+                                     address LANDAREA landWidth landDepth
+                                      <char>    <num>    <char>    <char>
+1: 3412 E 49TH AVENUE, Vancouver, BC V5S 1M2   1.0195                    
+2:      3658 E 48TH AVENUE #3, Vancouver, BC   1.0195        40    157.83
+3: 3498 E 48TH AVENUE, Vancouver, BC V5S 1H7   1.0195        45    158.17
+4: 3141 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55       115
+5: 3157 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55       115
+6: 3210 E 62ND AVENUE, Vancouver, BC V5S 2G5   1.8621        50       140
+               geo_point_2d   typeofwork meanPPSF  nobs      slope elasticity
+                     <char>       <char>    <num> <int>      <num>      <num>
+1:  49.2243407, -123.031668 New Building 698.6384     5 -0.5335157 -1.2783735
+2: 49.2249031, -123.0246175 New Building 698.6384     5 -0.5335157 -1.2783735
+3: 49.2249233, -123.0292697 New Building 698.6384     5 -0.5335157 -1.2783735
+4:   49.21401, -123.0392725 New Building 603.2265    10 -0.3711131 -0.8065417
+5: 49.2140062, -123.0388062 New Building 603.2265    10 -0.3711131 -0.8065417
+6: 49.2132602, -123.0365756 New Building 603.2265    10 -0.3711131 -0.8065417
+> print(head(dtMerge))
+Key: <CTUID>
+        CTUID     ROLL_NUMBER    folioID permitnumbercreateddate     use
+       <char>          <char>     <char>                  <IDat>  <char>
+1: 9330001.01 025790312140000 A000003EVP              2021-09-20  duplex
+2: 9330001.01 025772318600000 A000003EVF              2024-12-21 laneway
+3: 9330001.01 025772312520000 A000003EUQ              2021-01-27  duplex
+4: 9330001.02 025821302570000 A000003GB0              2022-06-27  duplex
+5: 9330001.02 025821302870000 A000003GB3              2018-08-23  single
+6: 9330001.02 025821306320000 A000003GBH              2021-08-13  duplex
+   maxSingle MB_effective_year MB_total_finished_area neighbourhoodDescription
+       <int>            <char>                 <char>                   <char>
+1:         0              1975                   2595               FRASERVIEW
+2:         0              1971                   2787               FRASERVIEW
+3:         0              1971                   2786               FRASERVIEW
+4:         0              1973                   3846               FRASERVIEW
+5:         1              2019                   2566               FRASERVIEW
+6:         0              1973                   3082               FRASERVIEW
+                                     address LANDAREA landWidth landDepth
+                                      <char>    <num>    <char>    <char>
+1: 3412 E 49TH AVENUE, Vancouver, BC V5S 1M2   1.0195                    
+2:      3658 E 48TH AVENUE #3, Vancouver, BC   1.0195        40    157.83
+3: 3498 E 48TH AVENUE, Vancouver, BC V5S 1H7   1.0195        45    158.17
+4: 3141 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55       115
+5: 3157 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55       115
+6: 3210 E 62ND AVENUE, Vancouver, BC V5S 2G5   1.8621        50       140
+               geo_point_2d   typeofwork meanPPSF  nobs      slope elasticity
+                     <char>       <char>    <num> <int>      <num>      <num>
+1:  49.2243407, -123.031668 New Building 698.6384     5 -0.5335157 -1.2783735
+2: 49.2249031, -123.0246175 New Building 698.6384     5 -0.5335157 -1.2783735
+3: 49.2249233, -123.0292697 New Building 698.6384     5 -0.5335157 -1.2783735
+4:   49.21401, -123.0392725 New Building 603.2265    10 -0.3711131 -0.8065417
+5: 49.2140062, -123.0388062 New Building 603.2265    10 -0.3711131 -0.8065417
+6: 49.2132602, -123.0365756 New Building 603.2265    10 -0.3711131 -0.8065417
+> print(table(dtMerge[,use]))
+
+ duplex laneway   multi  single 
+    766     517     176     972 
+> 
+> # some major outliers in slope
+> 
+> print(summary(dtMerge))
+    CTUID           ROLL_NUMBER          folioID         
+ Length:2431        Length:2431        Length:2431       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use              maxSingle      MB_effective_year 
+ Min.   :2017-01-04      Length:2431        Min.   :0.0000   Length:2431       
+ 1st Qu.:2020-07-24      Class :character   1st Qu.:0.0000   Class :character  
+ Median :2022-05-27      Mode  :character   Median :0.0000   Mode  :character  
+ Mean   :2022-03-29                         Mean   :0.3998                     
+ 3rd Qu.:2024-07-29                         3rd Qu.:1.0000                     
+ Max.   :2025-10-17                         Max.   :1.0000                     
+ MB_total_finished_area neighbourhoodDescription   address         
+ Length:2431            Length:2431              Length:2431       
+ Class :character       Class :character         Class :character  
+ Mode  :character       Mode  :character         Mode  :character  
+                                                                   
+                                                                   
+                                                                   
+    LANDAREA       landWidth          landDepth         geo_point_2d      
+ Min.   :0.4194   Length:2431        Length:2431        Length:2431       
+ 1st Qu.:0.8985   Class :character   Class :character   Class :character  
+ Median :1.2593   Mode  :character   Mode  :character   Mode  :character  
+ Mean   :1.3235                                                           
+ 3rd Qu.:1.5554                                                           
+ Max.   :3.5378                                                           
+  typeofwork           meanPPSF          nobs            slope        
+ Length:2431        Min.   :586.1   Min.   :  4.00   Min.   :-0.5335  
+ Class :character   1st Qu.:660.8   1st Qu.: 32.00   1st Qu.:-0.3081  
+ Mode  :character   Median :746.7   Median : 49.00   Median :-0.2671  
+                    Mean   :739.0   Mean   : 54.05   Mean   :-0.2685  
+                    3rd Qu.:818.0   3rd Qu.: 70.00   3rd Qu.:-0.2277  
+                    Max.   :870.8   Max.   :161.00   Max.   : 0.4025  
+   elasticity      
+ Min.   :-1.27837  
+ 1st Qu.:-0.42390  
+ Median :-0.23846  
+ Mean   :-0.24673  
+ 3rd Qu.:-0.05431  
+ Max.   : 2.68044  
+> print(summary(dtMerge[nobs>quantile(nobs,.05)]))
+    CTUID           ROLL_NUMBER          folioID         
+ Length:2289        Length:2289        Length:2289       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use              maxSingle      MB_effective_year 
+ Min.   :2017-01-04      Length:2289        Min.   :0.0000   Length:2289       
+ 1st Qu.:2020-10-27      Class :character   1st Qu.:0.0000   Class :character  
+ Median :2022-07-13      Mode  :character   Median :0.0000   Mode  :character  
+ Mean   :2022-04-26                         Mean   :0.3818                     
+ 3rd Qu.:2024-08-02                         3rd Qu.:1.0000                     
+ Max.   :2025-10-17                         Max.   :1.0000                     
+ MB_total_finished_area neighbourhoodDescription   address         
+ Length:2289            Length:2289              Length:2289       
+ Class :character       Class :character         Class :character  
+ Mode  :character       Mode  :character         Mode  :character  
+                                                                   
+                                                                   
+                                                                   
+    LANDAREA       landWidth          landDepth         geo_point_2d      
+ Min.   :0.4194   Length:2289        Length:2289        Length:2289       
+ 1st Qu.:0.8985   Class :character   Class :character   Class :character  
+ Median :1.2593   Mode  :character   Mode  :character   Mode  :character  
+ Mean   :1.3084                                                           
+ 3rd Qu.:1.5340                                                           
+ Max.   :3.5378                                                           
+  typeofwork           meanPPSF          nobs            slope        
+ Length:2289        Min.   :586.1   Min.   : 14.00   Min.   :-0.3814  
+ Class :character   1st Qu.:659.3   1st Qu.: 32.00   1st Qu.:-0.3131  
+ Mode  :character   Median :735.1   Median : 50.00   Median :-0.2671  
+                    Mean   :735.6   Mean   : 56.95   Mean   :-0.2728  
+                    3rd Qu.:814.9   3rd Qu.: 73.00   3rd Qu.:-0.2319  
+                    Max.   :870.8   Max.   :161.00   Max.   :-0.1391  
+   elasticity      
+ Min.   :-0.79163  
+ 1st Qu.:-0.43469  
+ Median :-0.25240  
+ Mean   :-0.26839  
+ 3rd Qu.:-0.05431  
+ Max.   : 0.32787  
+> print(summary(dtMerge[nobs>quantile(nobs,.1)]))
+    CTUID           ROLL_NUMBER          folioID         
+ Length:2133        Length:2133        Length:2133       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use              maxSingle     MB_effective_year 
+ Min.   :2017-01-04      Length:2133        Min.   :0.000   Length:2133       
+ 1st Qu.:2020-12-14      Class :character   1st Qu.:0.000   Class :character  
+ Median :2022-07-29      Mode  :character   Median :0.000   Mode  :character  
+ Mean   :2022-05-14                         Mean   :0.361                     
+ 3rd Qu.:2024-08-07                         3rd Qu.:1.000                     
+ Max.   :2025-10-17                         Max.   :1.000                     
+ MB_total_finished_area neighbourhoodDescription   address         
+ Length:2133            Length:2133              Length:2133       
+ Class :character       Class :character         Class :character  
+ Mode  :character       Mode  :character         Mode  :character  
+                                                                   
+                                                                   
+                                                                   
+    LANDAREA       landWidth          landDepth         geo_point_2d      
+ Min.   :0.4194   Length:2133        Length:2133        Length:2133       
+ 1st Qu.:0.8070   Class :character   Class :character   Class :character  
+ Median :1.2002   Mode  :character   Mode  :character   Mode  :character  
+ Mean   :1.3058                                                           
+ 3rd Qu.:1.5016                                                           
+ Max.   :3.5378                                                           
+  typeofwork           meanPPSF          nobs            slope        
+ Length:2133        Min.   :586.1   Min.   : 18.00   Min.   :-0.3814  
+ Class :character   1st Qu.:658.5   1st Qu.: 35.00   1st Qu.:-0.3143  
+ Mode  :character   Median :725.3   Median : 51.00   Median :-0.2671  
+                    Mean   :729.3   Mean   : 59.94   Mean   :-0.2742  
+                    3rd Qu.:808.5   3rd Qu.: 75.00   3rd Qu.:-0.2277  
+                    Max.   :870.8   Max.   :161.00   Max.   :-0.1391  
+   elasticity      
+ Min.   :-0.79163  
+ 1st Qu.:-0.43641  
+ Median :-0.26407  
+ Mean   :-0.27530  
+ 3rd Qu.:-0.05431  
+ Max.   : 0.32787  
+> print(unique(dtMerge[elasticity>0,.(nobs,neighbourhoodDescription,elasticity)]))
+     nobs  neighbourhoodDescription  elasticity
+    <int>                    <char>       <num>
+ 1:    65                   MARPOLE 0.094781789
+ 2:    65           SOUTH GRANVILLE 0.094781789
+ 3:    53                  OAKRIDGE 0.018379262
+ 4:    53           SOUTH GRANVILLE 0.018379262
+ 5:    69           SOUTH VANCOUVER 0.327869035
+ 6:     5               SHAUGHNESSY 0.336301864
+ 7:     5                KERRISDALE 0.336301864
+ 8:     5 ARBUTUS/MACKENZIE HEIGHTS 0.336301864
+ 9:    30 ARBUTUS/MACKENZIE HEIGHTS 0.031774837
+10:    30                KERRISDALE 0.031774837
+11:    34 ARBUTUS/MACKENZIE HEIGHTS 0.184516617
+12:    14               SHAUGHNESSY 0.100971484
+13:     4             CEDAR COTTAGE 2.680441102
+14:     9                 KITSILANO 0.005172441
+15:    46             HASTINGS EAST 0.145519911
+16:    46                 GRANDVIEW 0.145519911
+> dtMerge <- dtMerge[nobs>4]
+> # Economic intuition says elasticity can't be less than -1 or else price falls in square feet. Also, as there is no assembly for larger lots, elasticity must be less than 0
+> dtMerge <- dtMerge[elasticity>0,elasticity:=0]
+> dtMerge <- dtMerge[elasticity < -1,elasticity:=-1]
+> 
+> # plot use against lat/long --extract from geo_point_2d
+> dtMerge[, c("lat", "lon") := tstrsplit(geo_point_2d, ", ", type.convert = TRUE)]
+> ggplot(dtMerge,aes(x=lon,y=lat,color=use)) + geom_point() + theme_minimal()
+> ggsave("text/vancouverUseSpatial.png",width=6,height=6)
+> 
+> # also do ppsf against lat/long and then do elasticity
+> ggplot(dtMerge,aes(x=lon,y=lat,color=meanPPSF)) + geom_point() + theme_minimal() + scale_color_viridis_c()
+> ggsave("text/vancouverPPSFSpatial.png",width=6,height=6)
+> 
+> ggplot(dtMerge,aes(x=lon,y=lat,color=elasticity)) + geom_point() + theme_minimal() + scale_color_viridis_c()
+> ggsave("text/vancouverElasticitySpatial.png",width=6,height=6)
+> 
+> proc.time()
+   user  system elapsed 
+  1.299   0.062   0.921 
