@@ -169,7 +169,7 @@ dtGeo <- dtLots[, .(
   total_lots_active = .N,
   total_units = sum(total_units, na.rm = TRUE),
   propensity = sum(isPlexLot, na.rm = TRUE) / .N
-), by = .(geo_id, land_use_c, geo_name)]
+), by = .(geo_id, geo_name)]
 
 setorder(dtGeo, -total_lots_active)
 

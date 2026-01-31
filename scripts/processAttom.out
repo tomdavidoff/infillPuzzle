@@ -1,6 +1,6 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
-Copyright (C) 2025 The R Foundation for Statistical Computing
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -25,6 +25,8 @@ Type 'q()' to quit R.
 > # started with google AI, this version ChatGPT
 > 
 > library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
 > library(arrow)
 
 Attaching package: ‘arrow’
@@ -34,7 +36,7 @@ The following object is masked from ‘package:utils’:
     timestamp
 
 Warning message:
-package ‘arrow’ was built under R version 4.5.2 
+package ‘arrow’ was built under R version 4.4.1 
 > library(fixest)
 > 
 > options(timeout = 600)
@@ -45,7 +47,7 @@ package ‘arrow’ was built under R version 4.5.2
 > message("Reading Sales data...")
 Reading Sales data...
 > 
-> raw_txt <- readLines("data/derived/41051.txt", warn = FALSE, encoding = "latin1")
+> raw_txt <- readLines("~/OneDrive - UBC/dataProcessed/41051.txt", warn = FALSE, encoding = "latin1")
 > header_line <- raw_txt[1]
 > data_body   <- raw_txt[-1]
 > 
@@ -87,7 +89,7 @@ Sales rows after date filter: 49772
 > # ==========================================
 > message("Opening Assessor Parquet...")
 Opening Assessor Parquet...
-> ds <- open_dataset("data/derived/AH_state_OR.parquet")
+> ds <- open_dataset("~/OneDrive - UBC/dataProcessed/AH_state_OR.parquet")
 > 
 > # Pull only what we need
 > scanner <- ds$NewScan()$
@@ -120,22 +122,26 @@ Merging sales + assessor...
 > 
 > # clean
 > dtFinal <- dtFinal[!is.na(price) & !is.na(sqft) & !is.na(zip)]
-> dtFinal <- dtFinal[price > 100000 & sqft > 400]
-> 
+> MINSQFT <- 1200 # want mostly houses
+> dtFinal <- dtFinal[price > 100000 & sqft > MINSQFT]
+> # transform everything to logs
 > dtFinal[, ppsf := price / sqft]
+> dtFinal[,ppsf:=log(ppsf)]
+> dtFinal[,sqft:=log(sqft)]
+> 
 > 
 > # keep plausible ZIPs
 > dtFinal <- dtFinal[nchar(zip) == 5]
 > 
 > message("Final rows for regression: ", nrow(dtFinal),
 +         " | ZIPs: ", uniqueN(dtFinal$zip))
-Final rows for regression: 13050 | ZIPs: 2093
+Final rows for regression: 5522 | ZIPs: 1211
 > 
 > # Slope by ZIP: ZIP-specific intercept and ZIP-specific slope on sqft
 > # (ppsf = a_zip + b_zip * sqft + error)
 > dtFinal[, zip := as.factor(zip)]
 > m <- feols(ppsf ~ 0 + zip + zip:sqft, data = dtFinal)
-The variables 'zip01402:sqft', 'zip01511:sqft', 'zip01520:sqft', 'zip01659:sqft', 'zip01717:sqft', 'zip01803:sqft' and 1842 others have been removed because of collinearity (see $collin.var).
+The variables 'zip01402:sqft', 'zip01511:sqft', 'zip01520:sqft', 'zip01659:sqft', 'zip01717:sqft', 'zip01803:sqft' and 1104 others have been removed because of collinearity (see $collin.var).
 > 
 > # ==========================================
 > # 4) EXTRACT SLOPES ROBUSTLY (no broom)
@@ -154,25 +160,25 @@ The variables 'zip01402:sqft', 'zip01511:sqft', 'zip01520:sqft', 'zip01659:sqft'
 > dtSlopes <- merge(dtSlopes, zipStats, by = "zip", all.x = TRUE)
 > setorder(dtSlopes, -N)
 > 
-> saveRDS(dtSlopes, "data/derived/portland_attom_slopes_by_zip.rds")
+> saveRDS(dtSlopes, "~/OneDrive - UBC/dataProcessed/portland_attom_slopes_by_zip.rds")
 > 
 > message("Saved slopes: data/derived/portland_attom_slopes_by_zip.rds")
 Saved slopes: data/derived/portland_attom_slopes_by_zip.rds
 > print(dtSlopes[1:10])
-       zip       slope     N mean_ppsf
-    <char>       <num> <int>     <num>
- 1:  97206 -0.18288334   854  401.8969
- 2:  97217 -0.16115506   620  420.2160
- 3:  97203 -0.14871082   589  376.0504
- 4:  97230 -0.06212572   546  263.0407
- 5:  97266 -0.11562770   543  306.9385
- 6:  97219 -0.03137507   531  339.7798
- 7:  97220 -0.14474777   516  326.6134
- 8:  97211 -0.18681290   510  465.0542
- 9:  97233 -0.01900491   475  261.8736
-10:  97202 -0.18582848   450  488.9082
+       zip      slope     N mean_ppsf
+    <char>      <num> <int>     <num>
+ 1:  97080 -0.4834683   318  5.394569
+ 2:  97230 -0.5065814   290  5.441930
+ 3:  97219 -0.2828561   265  5.693766
+ 4:  97236 -0.5613571   234  5.359503
+ 5:  97030 -0.4267618   233  5.366558
+ 6:  97266 -0.3398838   200  5.405281
+ 7:  97206 -0.5053449   199  5.604118
+ 8:  97203 -0.3106161   188  5.603862
+ 9:  97202 -0.3625203   167  5.846946
+10:  97233 -0.4562853   164  5.373982
 > 
 > 
 > proc.time()
    user  system elapsed 
- 20.207   1.514  17.135 
+ 18.513   0.636  14.099 

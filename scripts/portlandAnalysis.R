@@ -53,11 +53,12 @@ print(cor(dt[,.(slope,price_level,propensity,medianIncome)],))
 # Does the price-size gradient predict development propensity?
 # we use robust standard errors (hc1)
 m1 <- feols(propensity ~ slope, dt, vcov = "hc1")
-m2 <- feols(propensity ~ slope + price_level, dt, vcov = "hc1")
+m2 <- feols(propensity ~ slope + medianIncome, dt, vcov = "hc1")
 m3 <- feols(propensity ~ price_level, dt, vcov = "hc1")
+m4 <- feols(propensity ~ price_level + medianIncome, dt, vcov = "hc1")
 
 # Zen summary: No complex tables, just the facts
-print(etable(m1, m2,m3))
+print(etable(m1, m2,m3,m4))
 
 # 5. Plot ------------------------------------------------------------------
 ggplot(dt, aes(size_slope, propensity)) +

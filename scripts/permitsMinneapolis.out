@@ -287,7 +287,7 @@ Lots with plex permits: 166
 +   total_lots_active = .N,
 +   total_units = sum(total_units, na.rm = TRUE),
 +   propensity = sum(isPlexLot, na.rm = TRUE) / .N
-+ ), by = .(geo_id, land_use_c, geo_name)]
++ ), by = .(geo_id, geo_name)]
 > 
 > setorder(dtGeo, -total_lots_active)
 > 
@@ -309,40 +309,23 @@ Total Infill Lots (Plexes): 166
 Overall Infill Propensity (Lot-based): 0.3547 
 > 
 > print(head(dtGeo, 15))
-    geo_id land_use_c  geo_name infill_lot_count total_lots_active total_units
-    <char>     <char>    <char>            <int>             <int>       <num>
- 1:  55411        UN2 ZIP 55411               14                94         227
- 2:  55410        UN1 ZIP 55410               10                56          65
- 3:  55414        UN2 ZIP 55414               39                41          98
- 4:  55406        UN2 ZIP 55406                9                34          48
- 5:  55405        UN2 ZIP 55405               23                32          72
- 6:  55412        UN1 ZIP 55412                2                29          32
- 7:  55406        UN1 ZIP 55406                8                28          34
- 8:  55417        UN1 ZIP 55417               10                25          36
- 9:  55410        UN2 ZIP 55410                3                15          18
-10:  55419        UN1 ZIP 55419                3                14          15
-11:  55407        UN2 ZIP 55407                7                12         164
-12:  55408        UN2 ZIP 55408                7                10         148
-13:  55418        UN1 ZIP 55418                4                 9          13
-14:  55412        UN2 ZIP 55412                1                 9          85
-15:  55413        UN2 ZIP 55413                6                 9          46
-    propensity
-         <num>
- 1: 0.14893617
- 2: 0.17857143
- 3: 0.95121951
- 4: 0.26470588
- 5: 0.71875000
- 6: 0.06896552
- 7: 0.28571429
- 8: 0.40000000
- 9: 0.20000000
-10: 0.21428571
-11: 0.58333333
-12: 0.70000000
-13: 0.44444444
-14: 0.11111111
-15: 0.66666667
+    geo_id  geo_name infill_lot_count total_lots_active total_units propensity
+    <char>    <char>            <int>             <int>       <num>      <num>
+ 1:  55411 ZIP 55411               14                94         227 0.14893617
+ 2:  55410 ZIP 55410               13                71          83 0.18309859
+ 3:  55406 ZIP 55406               17                62          82 0.27419355
+ 4:  55414 ZIP 55414               39                41          98 0.95121951
+ 5:  55412 ZIP 55412                3                38         117 0.07894737
+ 6:  55417 ZIP 55417               12                34          63 0.35294118
+ 7:  55405 ZIP 55405               23                33          73 0.69696970
+ 8:  55418 ZIP 55418               11                18         145 0.61111111
+ 9:  55407 ZIP 55407                7                17         169 0.41176471
+10:  55419 ZIP 55419                4                15          38 0.26666667
+11:  55408 ZIP 55408                7                11         149 0.63636364
+12:  55413 ZIP 55413                6                10          47 0.60000000
+13:  55404 ZIP 55404                3                 7          18 0.42857143
+14:  55409 ZIP 55409                3                 6           8 0.50000000
+15:  55416 ZIP 55416                1                 6           8 0.16666667
 > 
 > # ==========================================
 > # DIAGNOSTIC: Check zoning field names
@@ -364,4 +347,4 @@ Sample zone values (first 20 unique):
 > 
 > proc.time()
    user  system elapsed 
-  3.184   0.225   2.669 
+  3.281   0.231   2.702 

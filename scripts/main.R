@@ -9,12 +9,12 @@ library(fixest)
 
 # Vancouver analysis # note neighbourhoodDescription better than tract for analysis level
 # get slopes and mean values from BCA sales analysis by census tract merge
-nameSlope <- "tables/bca19_mean_ppsf_slope_All_by_neighbourhood.csv"
+nameSlope <- "tables/bca19_mean_ppsf_slope_by_tract.csv"
 if (!file.exists(nameSlope)) {
-  source("scripts/bcaSalesAll.R")
+  source("scripts/bcaSales.R")
 }
 # specify column CTUID is a number
-dtSlope <- fread(nameSlope)
+dtSlope <- fread(nameSlope, colClasses = list(character = "CTUID"))
 
 # Now get projects merged with BCA and census tracts
 nameSpatial <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
@@ -25,7 +25,7 @@ dtSpatial <- readRDS(nameSpatial)
 
 print(head(dtSpatial))
 print(head(dtSlope))
-dtMerge <- merge(dtSpatial,dtSlope,by="neighbourhoodDescription")
+dtMerge <- merge(dtSpatial,dtSlope,by="CTUID")
 print(head(dtMerge))
 print(summary(dtMerge))
 print(table(dtMerge[,use]))
@@ -51,11 +51,26 @@ print(summary(dtMerge[,.(MB_total_finished_area,landWidth,landDepth,effectiveAge
 dtMerge[,notSingle:=use!="single" & use!="laneway"]
 
 print(names(dtMerge))
-dtMerge[,pDelta:=meanPPSF_single-meanPPSF_duplex]
-print(feols(notSingle ~ meanPPSF + pDelta | pYear, data=dtMerge))
-print(feols(notSingle ~ meanPPSF_single + meanPPSF_duplex | pYear, data=dtMerge[pYear>2020],cluster="neighbourhoodDescription"))
-print(cor(dtMerge[,.(meanPPSF_single,meanPPSF_duplex,pDelta,elasticity)]))
-q("no")
+print(feols(notSingle ~ meanPPSF| pYear, data=dtMerge[pYear>2020],cluster="CTUID"))
+print(cor(dtMerge[,.(meanPPSF,elasticity)],use="complete.obs"))
+
+dtIncome <- fread("~/OneDrive - UBC/dataRaw/9810005801_databaseLoadingData.csv",select=c("GEO","DGUID","Household income statistics (6)","VALUE"))
+print(head(dtIncome))
+setnames(dtIncome,c("DGUID","Household income statistics (6)","VALUE"),c("DGUID","incomeStat","medianIncome"))
+print(head(dtIncome))
+dtIncome <- dtIncome[incomeStat=="Median household total income (2020) (2020 constant dollars)"]
+print(head(dtIncome))
+dtIncome <- dtIncome[grepl("Vancouver",GEO)==TRUE]
+print(head(dtIncome))
+dtIncome[,tract:=substr(DGUID,13,19)]
+dtMerge[,tract:=substr(CTUID,4,10)]
+print(head(dtIncome))
+print(head(dtMerge))
+print(nrow(dtMerge))
+dtMerge <- merge(dtMerge,dtIncome[,.(tract,medianIncome)],by="tract",all.x=TRUE)
+print(nrow(dtMerge))
+print(head(dtMerge))
+print(cor(dtMerge[,.(meanPPSF,elasticity,medianIncome)],use="complete.obs"))
 
 ## KEY: Drop Laneway only
 print(dtMerge[effectiveAge>0,summary(effectiveAge),by="use"])
@@ -104,8 +119,8 @@ ggplot(dtMerge,aes(x=as.numeric(tstrsplit(geo_point_2d,", ")[[2]]),
 
   # mean notSingle by meanPPSF x-y plot
   dtTract <- dtMerge[pYear>2020,.(notSingle=mean(notSingle,na.rm=TRUE), nobs=mean(nobs),
-                          meanPPSF=mean(meanPPSF,na.rm=TRUE), slope=mean(slope,na.rm=TRUE), elasticity=mean(elasticity,na.rm=TRUE)),
-                      by=.(neighbourhoodDescription)]
+                          meanPPSF=mean(meanPPSF,na.rm=TRUE), slope=mean(slope,na.rm=TRUE), elasticity=mean(elasticity,na.rm=TRUE),medianIncome=mean(medianIncome,na.rm=TRUE)),
+                      by=.(CTUID)]
   ggplot(dtTract,aes(x=meanPPSF,y=notSingle)) + geom_point() 
   ggsave("text/notSingle_vs_meanPPSF.png",width=8,height=6)
 
@@ -114,10 +129,18 @@ ggplot(dtMerge,aes(x=as.numeric(tstrsplit(geo_point_2d,", ")[[2]]),
     theme_minimal() 
   ggsave("text/ppsfSlopeTract.png",width=8,height=6)
 
+  # ppsf and income
+  ggplot(dtTract,aes(x=meanPPSF,y=medianIncome)) + geom_point(aes(size=nobs)) +
+    theme_minimal() 
+  ggsave("text/ppsfIncomeTract.png",width=8,height=6)
+
+
 print(cor(dtTract[,.(notSingle,meanPPSF,slope,elasticity)],use="complete.obs"))
+print(cor(dtTract[,.(notSingle,meanPPSF,slope,elasticity,medianIncome)],use="complete.obs"))
 print(summary(lm(notSingle ~ meanPPSF,data=dtTract)))
 print(summary(lm(notSingle ~ meanPPSF + slope ,data=dtTract)))
 print(summary(lm(notSingle ~ meanPPSF + elasticity ,data=dtTract)))
+print(summary(lm(notSingle ~ meanPPSF + elasticity + medianIncome,data=dtTract)))
 # combinedera
 print(summary(feols(notSingle ~ meanPPSF  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))
 print(summary(feols(notSingle ~ slope  | pYear,data=dtMerge[pYear %between% c(2021,2025)])))

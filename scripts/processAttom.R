@@ -16,7 +16,7 @@ options(timeout = 600)
 # ==========================================
 message("Reading Sales data...")
 
-raw_txt <- readLines("data/derived/41051.txt", warn = FALSE, encoding = "latin1")
+raw_txt <- readLines("~/OneDrive - UBC/dataProcessed/41051.txt", warn = FALSE, encoding = "latin1")
 header_line <- raw_txt[1]
 data_body   <- raw_txt[-1]
 
@@ -55,7 +55,7 @@ message("Sales rows after date filter: ", nrow(dtSales))
 # 2) LOAD ASSESSOR (sqft) from Parquet
 # ==========================================
 message("Opening Assessor Parquet...")
-ds <- open_dataset("data/derived/AH_state_OR.parquet")
+ds <- open_dataset("~/OneDrive - UBC/dataProcessed/AH_state_OR.parquet")
 
 # Pull only what we need
 scanner <- ds$NewScan()$
@@ -86,9 +86,13 @@ dtFinal <- merge(dtSales, dtAssessor_Final, by = "attom_id", all = FALSE)
 
 # clean
 dtFinal <- dtFinal[!is.na(price) & !is.na(sqft) & !is.na(zip)]
-dtFinal <- dtFinal[price > 100000 & sqft > 400]
-
+MINSQFT <- 1200 # want mostly houses
+dtFinal <- dtFinal[price > 100000 & sqft > MINSQFT]
+# transform everything to logs
 dtFinal[, ppsf := price / sqft]
+dtFinal[,ppsf:=log(ppsf)]
+dtFinal[,sqft:=log(sqft)]
+
 
 # keep plausible ZIPs
 dtFinal <- dtFinal[nchar(zip) == 5]
@@ -118,9 +122,8 @@ zipStats <- dtFinal[, .(N = .N, mean_ppsf = mean(ppsf, na.rm = TRUE)), by = zip]
 dtSlopes <- merge(dtSlopes, zipStats, by = "zip", all.x = TRUE)
 setorder(dtSlopes, -N)
 
-saveRDS(dtSlopes, "data/derived/portland_attom_slopes_by_zip.rds")
+saveRDS(dtSlopes, "~/OneDrive - UBC/dataProcessed/portland_attom_slopes_by_zip.rds")
 
 message("Saved slopes: data/derived/portland_attom_slopes_by_zip.rds")
 print(dtSlopes[1:10])
-print(cor(
 

@@ -1,6 +1,6 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
-Copyright (C) 2025 The R Foundation for Statistical Computing
+R version 4.4.0 (2024-04-24) -- "Puppy Cup"
+Copyright (C) 2024 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -23,6 +23,8 @@ Type 'q()' to quit R.
 > # Adapted from Portland code for Minneapolis 2040 analysis
 > 
 > library(data.table)
+Warning message:
+package ‘data.table’ was built under R version 4.4.1 
 > library(fixest)
 > library(ggplot2)
 > 
@@ -37,22 +39,14 @@ Type 'q()' to quit R.
 > # 2. Align -----------------------------------------------------------------
 > # Ensure ZIPs are 5-character strings and types match
 > print(head(permits))
-   geo_id land_use_c  geo_name infill_lot_count total_lots_active total_units
-   <char>     <char>    <char>            <int>             <int>       <num>
-1:  55411        UN2 ZIP 55411               14                94         227
-2:  55410        UN1 ZIP 55410               10                56          65
-3:  55414        UN2 ZIP 55414               39                41          98
-4:  55406        UN2 ZIP 55406                9                34          48
-5:  55405        UN2 ZIP 55405               23                32          72
-6:  55412        UN1 ZIP 55412                2                29          32
-   propensity
-        <num>
-1: 0.14893617
-2: 0.17857143
-3: 0.95121951
-4: 0.26470588
-5: 0.71875000
-6: 0.06896552
+   geo_id  geo_name infill_lot_count total_lots_active total_units propensity
+   <char>    <char>            <int>             <int>       <num>      <num>
+1:  55411 ZIP 55411               14                94         227 0.14893617
+2:  55410 ZIP 55410               13                71          83 0.18309859
+3:  55406 ZIP 55406               17                62          82 0.27419355
+4:  55414 ZIP 55414               39                41          98 0.95121951
+5:  55412 ZIP 55412                3                38         117 0.07894737
+6:  55417 ZIP 55417               12                34          63 0.35294118
 > print(head(slopes))
       zip      slope     N mean_ppsf
    <char>      <num> <int>     <num>
@@ -72,44 +66,44 @@ Type 'q()' to quit R.
 > dt <- merge(permits, slopes, by = "zip")
 > print(head(dt))
 Key: <zip>
-      zip land_use_c  geo_name infill_lot_count total_lots_active total_units
-   <char>     <char>    <char>            <int>             <int>       <num>
-1:  55403        UN2 ZIP 55403                1                 2           4
-2:  55404        UN2 ZIP 55404                3                 7          18
-3:  55405        UN2 ZIP 55405               23                32          72
-4:  55405        UN1 ZIP 55405                0                 1           1
-5:  55406        UN2 ZIP 55406                9                34          48
-6:  55406        UN1 ZIP 55406                8                28          34
-   propensity       slope     N mean_ppsf
-        <num>       <num> <int>     <num>
-1:  0.5000000  0.05991602   495  235.5795
-2:  0.4285714 -0.59084398   495  234.7968
-3:  0.7187500 -0.16913812   326  233.6245
-4:  0.0000000 -0.16913812   326  233.6245
-5:  0.2647059 -0.52861261  1094  235.5426
-6:  0.2857143 -0.52861261  1094  235.5426
+      zip  geo_name infill_lot_count total_lots_active total_units propensity
+   <char>    <char>            <int>             <int>       <num>      <num>
+1:  55403 ZIP 55403                1                 2           4  0.5000000
+2:  55404 ZIP 55404                3                 7          18  0.4285714
+3:  55405 ZIP 55405               23                33          73  0.6969697
+4:  55406 ZIP 55406               17                62          82  0.2741935
+5:  55407 ZIP 55407                7                17         169  0.4117647
+6:  55408 ZIP 55408                7                11         149  0.6363636
+         slope     N mean_ppsf
+         <num> <int>     <num>
+1:  0.05991602   495  235.5795
+2: -0.59084398   495  234.7968
+3: -0.16913812   326  233.6245
+4: -0.52861261  1094  235.5426
+5: -0.61377875  1159  201.5972
+6: -0.27075761   729  222.7664
 > print(summary(dt))
-     zip             land_use_c          geo_name         infill_lot_count
- Length:29          Length:29          Length:29          Min.   : 0.000  
- Class :character   Class :character   Class :character   1st Qu.: 1.000  
- Mode  :character   Mode  :character   Mode  :character   Median : 3.000  
-                                                          Mean   : 5.724  
-                                                          3rd Qu.: 7.000  
-                                                          Max.   :39.000  
- total_lots_active  total_units       propensity         slope         
- Min.   : 1.00     Min.   :  1.00   Min.   :0.0000   Min.   :-0.72374  
- 1st Qu.: 3.00     1st Qu.:  5.00   1st Qu.:0.1489   1st Qu.:-0.59084  
- Median : 9.00     Median : 23.00   Median :0.2857   Median :-0.34111  
- Mean   :16.14     Mean   : 46.07   Mean   :0.3804   Mean   :-0.40092  
- 3rd Qu.:25.00     3rd Qu.: 65.00   3rd Qu.:0.6667   3rd Qu.:-0.25793  
- Max.   :94.00     Max.   :227.00   Max.   :1.0000   Max.   : 0.05992  
-       N            mean_ppsf    
- Min.   :  21.0   Min.   :133.3  
- 1st Qu.: 471.0   1st Qu.:212.4  
- Median : 729.0   Median :225.4  
- Mean   : 760.4   Mean   :227.9  
- 3rd Qu.:1094.0   3rd Qu.:241.0  
- Max.   :1372.0   Max.   :352.8  
+     zip              geo_name         infill_lot_count total_lots_active
+ Length:18          Length:18          Min.   : 0.000   Min.   : 1.00    
+ Class :character   Class :character   1st Qu.: 3.000   1st Qu.: 6.25    
+ Mode  :character   Mode  :character   Median : 6.500   Median :16.00    
+                                       Mean   : 9.222   Mean   :26.00    
+                                       3rd Qu.:12.750   3rd Qu.:37.00    
+                                       Max.   :39.000   Max.   :94.00    
+  total_units       propensity         slope                N         
+ Min.   :  1.00   Min.   :0.0000   Min.   :-0.72374   Min.   :  21.0  
+ 1st Qu.: 10.50   1st Qu.:0.2040   1st Qu.:-0.60805   1st Qu.: 477.0  
+ Median : 68.00   Median :0.4202   Median :-0.38801   Median : 714.0  
+ Mean   : 74.22   Mean   :0.4337   Mean   :-0.40817   Mean   : 730.5  
+ 3rd Qu.:112.25   3rd Qu.:0.6083   3rd Qu.:-0.24010   3rd Qu.:1013.2  
+ Max.   :227.00   Max.   :1.0000   Max.   : 0.05992   Max.   :1372.0  
+   mean_ppsf    
+ Min.   :133.3  
+ 1st Qu.:204.3  
+ Median :229.5  
+ Mean   :224.2  
+ 3rd Qu.:239.6  
+ Max.   :352.8  
 > 
 > # 3. Clean -----------------------------------------------------------------
 > # Convert slope to numeric (it was <char>) and take absolute value
@@ -146,11 +140,11 @@ In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
 > dtCensus[,zip:=substring(zip,7,11)]
 > dt <- merge(dt,dtCensus,by="zip")
 > print(cor(dt[, .(slope, price_level, propensity,medianIncome)]))
-                 slope price_level propensity medianIncome
-slope        1.0000000   0.6553173  0.1225146    0.2993299
-price_level  0.6553173   1.0000000 -0.1070583    0.6092187
-propensity   0.1225146  -0.1070583  1.0000000   -0.3222184
-medianIncome 0.2993299   0.6092187 -0.3222184    1.0000000
+                  slope price_level  propensity medianIncome
+slope        1.00000000   0.6402688  0.07263364    0.2280953
+price_level  0.64026884   1.0000000 -0.12911978    0.5480293
+propensity   0.07263364  -0.1291198  1.00000000   -0.3736446
+medianIncome 0.22809531   0.5480293 -0.37364460    1.0000000
 > 
 > 
 > # 4. Model -----------------------------------------------------------------
@@ -159,20 +153,35 @@ medianIncome 0.2993299   0.6092187 -0.3222184    1.0000000
 > m1 <- feols(propensity ~ slope, dt, vcov = "hc1")
 > m2 <- feols(propensity ~ slope + price_level, dt, vcov = "hc1")
 > m3 <- feols(propensity ~ price_level, dt, vcov = "hc1")
+> m4 <- feols(propensity ~ price_level + medianIncome, dt, vcov = "hc1")
 > 
 > # Zen summary: No complex tables, just the facts
-> print(etable(m1, m2, m3))
-                                m1                m2               m3
-Dependent Var.:         propensity        propensity       propensity
-                                                                     
-Constant        0.4871*** (0.1274)  1.021** (0.3142) 0.5526. (0.2972)
-slope              0.1698 (0.3215)   0.4681 (0.3321)                 
-price_level                        -0.0018. (0.0010) -0.0006 (0.0012)
-_______________ __________________ _________________ ________________
-S.E. type       Heteroskedas.-rob. Heteroskeda.-rob. Heterosked.-rob.
-Observations                    24                24               24
-R2                         0.01501           0.07652          0.01146
-Adj. R2                   -0.02976          -0.01142         -0.03347
+> print(etable(m1, m2, m3,m4))
+                               m1               m2               m3
+Dependent Var.:        propensity       propensity       propensity
+                                                                   
+Constant        0.4944** (0.1360) 0.9566* (0.3959)  0.6198 (0.4196)
+slope             0.0896 (0.3592)  0.3248 (0.3192)                 
+price_level                       -0.0016 (0.0015) -0.0007 (0.0017)
+medianIncome                                                       
+_______________ _________________ ________________ ________________
+S.E. type       Heteroskeda.-rob. Heterosked.-rob. Heterosked.-rob.
+Observations                   17               17               17
+R2                        0.00528          0.05755          0.01667
+Adj. R2                  -0.06104         -0.07709         -0.04888
+
+                              m4
+Dependent Var.:       propensity
+                                
+Constant          4.086. (2.199)
+slope                           
+price_level      0.0006 (0.0020)
+medianIncome    -0.3324 (0.2151)
+_______________ ________________
+S.E. type       Heterosked.-rob.
+Observations                  17
+R2                       0.14779
+Adj. R2                  0.02604
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
@@ -195,4 +204,4 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
 > proc.time()
    user  system elapsed 
-  1.471   0.328   5.320 
+  1.927   0.146   1.295 
