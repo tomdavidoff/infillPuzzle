@@ -6,6 +6,23 @@
 library(data.table)
 library(ggplot2)
 
+# grab and save folio geometries for Vancouver if not yet saved
+fGeo <- "tables/bca26FolioGeometryVancouver.rds"
+if (!file.exists(fGeo)) {
+  library(sf)
+  dfG <- st_read(
+  "/Volumes/T7Office/bigFiles/bca_folios_spatial_file_20251103/bca_folios.gpkg.gpkg",
+  query = "SELECT ROLL_NUMBER, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, 
+           SHAPE_AREA, SHAPE_LEN, geom, JURISDICTION
+           FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV 
+           WHERE JURISDICTION = 'City of Vancouver'"
+)
+  print(head(dfG))
+  print(table(dfG$JURISDICTION))
+  saveRDS(dfG,fGeo)
+}
+
+dfdfdf
 # load data
 dtPrice <- fread("tables/bca19_mean_ppsf_slope_by_tract.csv",colClasses=list(character=c("CTUID")))
 dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
