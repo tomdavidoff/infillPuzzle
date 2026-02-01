@@ -31,7 +31,7 @@ Type 'q()' to quit R.
 > permits <- readRDS("~/OneDrive - UBC/dataProcessed/portland_zip_propensity.rds")
 > slopes  <- readRDS("~/OneDrive - UBC/dataProcessed/portland_attom_slopes_by_zip.rds")
 > print(nrow(permits))
-[1] 29
+[1] 28
 > print(nrow(slopes))
 [1] 30
 > 
@@ -42,12 +42,12 @@ Type 'q()' to quit R.
 > print(head(permits))
    geo_id  geo_name infill_lot_count total_lots_active propensity
    <char>    <char>            <int>             <int>      <num>
-1:  97206 ZIP 97206               67               408  0.1642157
-2:  97219 ZIP 97219               22               367  0.0599455
-3:  97202 ZIP 97202               38               322  0.1180124
-4:  97211 ZIP 97211               45               261  0.1724138
-5:  97203 ZIP 97203               49               241  0.2033195
-6:  97213 ZIP 97213               21               204  0.1029412
+1:  97206 ZIP 97206               64               244  0.2622951
+2:  97219 ZIP 97219               22               176  0.1250000
+3:  97211 ZIP 97211               44               152  0.2894737
+4:  97203 ZIP 97203               49               147  0.3333333
+5:  97202 ZIP 97202               36               138  0.2608696
+6:  97236 ZIP 97236               15               106  0.1415094
 > print(head(slopes))
       zip      slope     N mean_ppsf
    <char>      <num> <int>     <num>
@@ -113,12 +113,12 @@ In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
 Key: <zip>
       zip  geo_name infill_lot_count total_lots_active propensity      slope
    <char>    <char>            <int>             <int>      <num>      <num>
-1:  97202 ZIP 97202               38               322 0.11801242 -0.3541620
-2:  97203 ZIP 97203               49               241 0.20331950 -0.2908970
-3:  97206 ZIP 97206               67               408 0.16421569 -0.5759600
-4:  97211 ZIP 97211               45               261 0.17241379 -0.4059000
-5:  97212 ZIP 97212               10               198 0.05050505 -0.3760065
-6:  97213 ZIP 97213               21               204 0.10294118 -0.5003517
+1:  97202 ZIP 97202               36               138  0.2608696 -0.3541620
+2:  97203 ZIP 97203               49               147  0.3333333 -0.2908970
+3:  97206 ZIP 97206               64               244  0.2622951 -0.5759600
+4:  97211 ZIP 97211               44               152  0.2894737 -0.4059000
+5:  97212 ZIP 97212                9                80  0.1125000 -0.3760065
+6:  97213 ZIP 97213               21                86  0.2441860 -0.5003517
        N mean_ppsf size_slope price_level
    <int>     <num>      <num>       <num>
 1:    99  380.8901  0.3541620    380.8901
@@ -129,17 +129,17 @@ Key: <zip>
 6:    83  355.2263  0.5003517    355.2263
 > dt <- merge(dt,dtCensus,by="zip",all.x=TRUE)
 > print(nrow(dt))
-[1] 16
+[1] 12
 > print(head(dt))
 Key: <zip>
       zip  geo_name infill_lot_count total_lots_active propensity      slope
    <char>    <char>            <int>             <int>      <num>      <num>
-1:  97202 ZIP 97202               38               322 0.11801242 -0.3541620
-2:  97203 ZIP 97203               49               241 0.20331950 -0.2908970
-3:  97206 ZIP 97206               67               408 0.16421569 -0.5759600
-4:  97211 ZIP 97211               45               261 0.17241379 -0.4059000
-5:  97212 ZIP 97212               10               198 0.05050505 -0.3760065
-6:  97213 ZIP 97213               21               204 0.10294118 -0.5003517
+1:  97202 ZIP 97202               36               138  0.2608696 -0.3541620
+2:  97203 ZIP 97203               49               147  0.3333333 -0.2908970
+3:  97206 ZIP 97206               64               244  0.2622951 -0.5759600
+4:  97211 ZIP 97211               44               152  0.2894737 -0.4059000
+5:  97212 ZIP 97212                9                80  0.1125000 -0.3760065
+6:  97213 ZIP 97213               21                86  0.2441860 -0.5003517
        N mean_ppsf size_slope price_level medianIncome
    <int>     <num>      <num>       <num>        <num>
 1:    99  380.8901  0.3541620    380.8901     11.56144
@@ -149,11 +149,11 @@ Key: <zip>
 5:    94  404.2413  0.3760065    404.2413     11.79004
 6:    83  355.2263  0.5003517    355.2263     11.48317
 > print(cor(dt[,.(slope,price_level,propensity,medianIncome)],))
-                  slope price_level propensity medianIncome
-slope         1.0000000   0.5751969 -0.1245017    0.6048285
-price_level   0.5751969   1.0000000 -0.5103005    0.7359903
-propensity   -0.1245017  -0.5103005  1.0000000   -0.6300855
-medianIncome  0.6048285   0.7359903 -0.6300855    1.0000000
+                  slope price_level  propensity medianIncome
+slope        1.00000000   0.4012562  0.06564645    0.2670005
+price_level  0.40125621   1.0000000 -0.28159281    0.8448673
+propensity   0.06564645  -0.2815928  1.00000000   -0.5991225
+medianIncome 0.26700052   0.8448673 -0.59912245    1.0000000
 > 
 > 
 > 
@@ -167,31 +167,31 @@ medianIncome  0.6048285   0.7359903 -0.6300855    1.0000000
 > 
 > # Zen summary: No complex tables, just the facts
 > print(etable(m1, m2,m3,m4))
-                              m1                  m2                 m3
-Dependent Var.:       propensity          propensity         propensity
-                                                                       
-Constant        0.1040* (0.0370)   2.386*** (0.4988) 0.2656*** (0.0589)
-slope           -0.0358 (0.0575)    0.1163* (0.0448)                   
-medianIncome                     -0.1925*** (0.0422)                   
-price_level                                           -0.0004* (0.0002)
-_______________ ________________ ___________________ __________________
-S.E. type       Heterosked.-rob. Heteroskedast.-rob. Heteroskedas.-rob.
-Observations                  16                  16                 16
-R2                       0.01550             0.50083            0.26041
-Adj. R2                 -0.05482             0.42403            0.20758
+                              m1                m2               m3
+Dependent Var.:       propensity        propensity       propensity
+                                                                   
+Constant        0.2451. (0.1115)    3.609* (1.255) 0.3725* (0.1670)
+slope            0.0517 (0.2256)   0.1915 (0.1655)                 
+medianIncome                     -0.2866* (0.1101)                 
+price_level                                        -0.0005 (0.0005)
+_______________ ________________ _________________ ________________
+S.E. type       Heterosked.-rob. Heteroskeda.-rob. Heterosked.-rob.
+Observations                  12                12               12
+R2                       0.00431           0.41376          0.07930
+Adj. R2                 -0.09526           0.28348         -0.01278
 
-                               m4
-Dependent Var.:        propensity
-                                 
-Constant          1.551* (0.6751)
-slope                            
-medianIncome    -0.1222. (0.0636)
-price_level     -8.81e-5 (0.0002)
-_______________ _________________
-S.E. type       Heteroskeda.-rob.
-Observations                   16
-R2                        0.40174
-Adj. R2                   0.30970
+                                m4
+Dependent Var.:         propensity
+                                  
+Constant          6.072*** (1.224)
+slope                             
+medianIncome    -0.5448** (0.1174)
+price_level       0.0013. (0.0006)
+_______________ __________________
+S.E. type       Heteroskedas.-rob.
+Observations                    12
+R2                         0.53518
+Adj. R2                    0.43189
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
@@ -210,4 +210,4 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
 > proc.time()
    user  system elapsed 
-  1.282   0.311   0.737 
+  1.262   0.323   0.732 

@@ -107,7 +107,7 @@ print(dtNews[,.(mean(total_sqft_lot),median(total_sqft_lot,by=isPlexlot)),by=isP
 # GEOGRAPHY-LEVEL PROPENSITY (Based on Lots)
 # ==========================================
 
-dtGeo <- dtLots[, .(
+dtGeo <- dtNews[, .(
   infill_lot_count = sum(isPlexLot, na.rm = TRUE),
   total_lots_active = .N,
   propensity = sum(isPlexLot, na.rm = TRUE) / .N

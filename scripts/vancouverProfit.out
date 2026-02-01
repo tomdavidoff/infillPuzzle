@@ -1,6 +1,6 @@
 
-R version 4.4.0 (2024-04-24) -- "Puppy Cup"
-Copyright (C) 2024 The R Foundation for Statistical Computing
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -23,12 +23,15 @@ Type 'q()' to quit R.
 > # 01/31/26
 > 
 > library(data.table)
-Warning message:
-package ‘data.table’ was built under R version 4.4.1 
 > library(ggplot2)
+> library(fixest)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> # Job 1 show that in Vancouver, elasticity and price per square foot are not two different things by showing reg price/sqft on elasticity and meanPPSF from prior regression yields only significant coeff on meanPPSF?
 > 
 > # grab and save folio geometries for Vancouver if not yet saved
-> fGeo <- "tables/bca26FolioGeometryVancouver.rds"
+> fGeo <- "~/OneDrive - UBC/dataProcessed/bca26FolioGeometryVancouver.rds"
 > if (!file.exists(fGeo)) {
 +   library(sf)
 +   dfG <- st_read(
@@ -42,41 +45,1203 @@ package ‘data.table’ was built under R version 4.4.1
 +   print(table(dfG$JURISDICTION))
 +   saveRDS(dfG,fGeo)
 + }
-Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
-Reading query `SELECT ROLL_NUMBER, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, 
-           SHAPE_AREA, SHAPE_LEN, geom, JURISDICTION
-           FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV 
-           WHERE JURISDICTION = 'City of Vancouver''
-from data source `/Volumes/T7Office/bigFiles/bca_folios_spatial_file_20251103/bca_folios.gpkg.gpkg' 
-  using driver `GPKG'
-Simple feature collection with 223292 features and 6 fields
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: 1200245 ymin: 464882.7 xmax: 1239015 ymax: 482237.9
-Projected CRS: NAD83 / BC Albers
-Simple feature collection with 6 features and 6 fields
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: 1203305 ymin: 476538.7 xmax: 1203367 ymax: 476658.2
-Projected CRS: NAD83 / BC Albers
-      ROLL_NUMBER          ACTUAL_USE_DESCRIPTION NEIGHBOURHOOD SHAPE_AREA
-1 001025638140000          Single Family Dwelling    Point Grey         NA
-2 001025638280000          Single Family Dwelling    Point Grey         NA
-3 001025638480000          Single Family Dwelling    Point Grey         NA
-4 001025638660000          Single Family Dwelling    Point Grey         NA
-5 001025638920000          Single Family Dwelling    Point Grey         NA
-6 001025638950000 Residential Dwelling with Suite    Point Grey         NA
-  SHAPE_LEN      JURISDICTION                           geom
-1        NA City of Vancouver POLYGON ((1203335 476626.4,...
-2        NA City of Vancouver POLYGON ((1203341 476620.3,...
-3        NA City of Vancouver POLYGON ((1203340 476613.8,...
-4        NA City of Vancouver POLYGON ((1203339 476585.5,...
-5        NA City of Vancouver POLYGON ((1203336 476564.2,...
-6        NA City of Vancouver POLYGON ((1203325 476572, 1...
-
-City of Vancouver 
-           223292 
 > 
-> dfdfdf
-Error: object 'dfdfdf' not found
-Execution halted
+> dfG <- readRDS(fGeo)
+> 
+> # merge geo with census tract geography
+> # now get census tracts
+> fCT <- "~/OneDrive - UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
+> dCT <- st_read(fCT)
+Reading layer `lct_000b21a_e' from data source 
+  `/Users/tdavidof/Library/CloudStorage/OneDrive-UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 6247 features and 5 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 3912489 ymin: 687427.7 xmax: 8996148 ymax: 2810992
+Projected CRS: NAD83 / Statistics Canada Lambert
+> print(head(dCT))
+Simple feature collection with 6 features and 5 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 7172098 ymin: 860422.8 xmax: 8980685 ymax: 2153697
+Projected CRS: NAD83 / Statistics Canada Lambert
+       CTUID               DGUID  CTNAME LANDAREA PRUID
+1 5370001.08 2021S05075370001.08 0001.08   1.6383    35
+2 0010002.00 2021S05070010002.00 0002.00   1.9638    10
+3 5370001.09 2021S05075370001.09 0001.09   1.9699    35
+4 5370120.02 2021S05075370120.02 0120.02  76.9650    35
+5 0010006.00 2021S05070010006.00 0006.00   1.0467    10
+6 0010007.00 2021S05070010007.00 0007.00   0.5364    10
+                        geometry
+1 MULTIPOLYGON (((7196507 869...
+2 MULTIPOLYGON (((8980217 215...
+3 MULTIPOLYGON (((7196437 869...
+4 MULTIPOLYGON (((7189476 865...
+5 MULTIPOLYGON (((8980091 215...
+6 MULTIPOLYGON (((8980158 215...
+> # swap crs of census tracts to that of merged)
+> print(st_crs(dCT))
+Coordinate Reference System:
+  User input: NAD83 / Statistics Canada Lambert 
+  wkt:
+PROJCRS["NAD83 / Statistics Canada Lambert",
+    BASEGEOGCRS["NAD83",
+        DATUM["North American Datum 1983",
+            ELLIPSOID["GRS 1980",6378137,298.257222101,
+                LENGTHUNIT["metre",1]]],
+        PRIMEM["Greenwich",0,
+            ANGLEUNIT["degree",0.0174532925199433]],
+        ID["EPSG",4269]],
+    CONVERSION["Statistics Canada Lambert",
+        METHOD["Lambert Conic Conformal (2SP)",
+            ID["EPSG",9802]],
+        PARAMETER["Latitude of false origin",63.390675,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8821]],
+        PARAMETER["Longitude of false origin",-91.8666666666667,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8822]],
+        PARAMETER["Latitude of 1st standard parallel",49,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8823]],
+        PARAMETER["Latitude of 2nd standard parallel",77,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8824]],
+        PARAMETER["Easting at false origin",6200000,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8826]],
+        PARAMETER["Northing at false origin",3000000,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8827]]],
+    CS[Cartesian,2],
+        AXIS["(E)",east,
+            ORDER[1],
+            LENGTHUNIT["metre",1]],
+        AXIS["(N)",north,
+            ORDER[2],
+            LENGTHUNIT["metre",1]],
+    USAGE[
+        SCOPE["Topographic mapping (small scale)."],
+        AREA["Canada - onshore and offshore - Alberta; British Columbia; Manitoba; New Brunswick; Newfoundland and Labrador; Northwest Territories; Nova Scotia; Nunavut; Ontario; Prince Edward Island; Quebec; Saskatchewan; Yukon."],
+        BBOX[38.21,-141.01,86.46,-40.73]],
+    ID["EPSG",3347]]
+> print(st_crs(dfG))
+Coordinate Reference System:
+  User input: NAD83 / BC Albers 
+  wkt:
+PROJCRS["NAD83 / BC Albers",
+    BASEGEOGCRS["NAD83",
+        DATUM["North American Datum 1983",
+            ELLIPSOID["GRS 1980",6378137,298.257222101,
+                LENGTHUNIT["metre",1]]],
+        PRIMEM["Greenwich",0,
+            ANGLEUNIT["degree",0.0174532925199433]],
+        ID["EPSG",4269]],
+    CONVERSION["British Columbia Albers",
+        METHOD["Albers Equal Area",
+            ID["EPSG",9822]],
+        PARAMETER["Latitude of false origin",45,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8821]],
+        PARAMETER["Longitude of false origin",-126,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8822]],
+        PARAMETER["Latitude of 1st standard parallel",50,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8823]],
+        PARAMETER["Latitude of 2nd standard parallel",58.5,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8824]],
+        PARAMETER["Easting at false origin",1000000,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8826]],
+        PARAMETER["Northing at false origin",0,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8827]]],
+    CS[Cartesian,2],
+        AXIS["(E)",east,
+            ORDER[1],
+            LENGTHUNIT["metre",1]],
+        AXIS["(N)",north,
+            ORDER[2],
+            LENGTHUNIT["metre",1]],
+    USAGE[
+        SCOPE["Province-wide spatial data management."],
+        AREA["Canada - British Columbia."],
+        BBOX[48.25,-139.04,60.01,-114.08]],
+    ID["EPSG",3005]]
+> dCT <- st_transform(dCT,st_crs(dfG))
+> 
+> dfG <- st_join(dfG,dCT,join=st_within)
+> dtGeo <- as.data.table(dfG)[,.(ROLL_NUMBER,CTNAME,ACTUAL_USE_DESCRIPTION)]
+> print(table(dtGeo$ACTUAL_USE_DESCRIPTION))
+
+                         2 Acres Or More (Outbuilding) 
+                                                     3 
+      2 Acres Or More (Single Family Dwelling, Duplex) 
+                                                    36 
+                              2 Acres Or More (Vacant) 
+                                                     4 
+                                       Air Space Title 
+                                                    27 
+                                                  Alrt 
+                                                    22 
+                                        Asphalt Plants 
+                                                     1 
+                                 Automobile Dealership 
+                                                    37 
+                  Automobile Paint Shop, Garages, Etc. 
+                                                   141 
+                                Automobile Sales (Lot) 
+                                                     4 
+                        Bakery & Biscuit Manufacturing 
+                                                     6 
+                                                  Bank 
+                                                    64 
+             Bed & Breakfast Operation 4 Or More Units 
+                                                     8 
+           Bed & Breakfast Operation Less Than 4 Units 
+                                                    14 
+                                               Big Box 
+                                                    15 
+                                         Bowling Alley 
+                                                     1 
+                                               Brewery 
+                                                     4 
+                 Bus Company, Including Street Railway 
+                                                    22 
+                                              Car Wash 
+                                                     4 
+              Cemeteries (Includes Public Or Private). 
+                                                    12 
+               Chemical & Chemical Products Industries 
+                                                     1 
+                              Churches & Bible Schools 
+                                                   264 
+          Civic, Institutional & Recreational (Vacant) 
+                                                   523 
+                                     Clothing Industry 
+                                                    23 
+                                 Commercial Strata-Lot 
+                                                  6090 
+                                Concrete Mixing Plants 
+                                                     2 
+        Confectionery Manufacturing & Sugar Processing 
+                                                     2 
+                     Convenience Store/Service Station 
+                                                    12 
+                                        Dairy Products 
+                                                     2 
+                        Department Store - Stand Alone 
+                                                     2 
+                                            Distillery 
+                                                     1 
+                                       Docks & Wharves 
+                                                     6 
+                                   Drive-In Restaurant 
+                                                     5 
+       Duplex, Non-Strata Side by Side or Front / Back 
+                                                  1045 
+                          Duplex, Non-Strata Up / Down 
+                                                   102 
+                           Duplex, Strata Front / Back 
+                                                  4145 
+                           Duplex, Strata Side by Side 
+                                                  2213 
+                              Duplex, Strata Up / Down 
+                                                   181 
+            Electrical & Electronics Products Industry 
+                                                     1 
+       Electrical Power Systems (Including Non-Utility 
+                                                    23 
+                                 Fast Food Restaurants 
+                                                    26 
+                                    Fiberoptic Conduit 
+                                                     7 
+                                           Food Market 
+                                                    24 
+                                              Fourplex 
+                                                     2 
+                                     Fruit & Vegetable 
+                                                     2 
+                         Furniture & Fixtures Industry 
+                                                     6 
+    Garbage Dumps, Sanitary Fills, Sewer Lagoons, Etc. 
+                                                     5 
+                              Gas Distribution Systems 
+                                                     3 
+              Golf Courses (Includes Public & Private) 
+                                                    10 
+Government Buildings (Includes Courthouse, Post Office 
+                                                    60 
+     Government Research Centres (Includes Nurseries & 
+                                                     3 
+                                        Grain & Forage 
+                                                     1 
+                                       Grain Elevators 
+                                                     8 
+                   Hall (Community, Lodge, Club, Etc.) 
+                                                    67 
+Hospitals (Nursing Homes Refer To Commercial Section). 
+                                                    16 
+                                                 Hotel 
+                                                    58 
+                             IC&I Water Lot (Improved) 
+                                                    13 
+                               IC&I Water Lot (Vacant) 
+                                                   135 
+                   Individual Strata Lot (Hotel/Motel) 
+                                                  2660 
+                                   Industrial (Vacant) 
+                                                   125 
+                                      Leather Industry 
+                                                     2 
+                      Lumber Yard Or Building Supplies 
+                                                     3 
+        Machinery Manufacturing (Excluding Electrical) 
+                                                     4 
+      Marine & Navigational Facilities (Includes Ferry 
+                                                     4 
+                            Marine Facilities (Marina) 
+                                                   144 
+                                        Meat & Poultry 
+                                                     7 
+                          Metal Fabricating Industries 
+                                                    14 
+                       Miscellaneous (Food Processing) 
+                                                    12 
+            Miscellaneous (Forest And Allied Industry) 
+                                                     1 
+          Miscellaneous (Mining And Allied Industries) 
+                                                     1 
+                    Miscellaneous (Petroleum Industry) 
+                                                     1 
+        Miscellaneous (Transportation & Communication) 
+                                                     5 
+                    Miscellaneous & (Industrial Other) 
+                                                    34 
+                                                 Mixed 
+                                                     2 
+                                    Motel & Auto Court 
+                                                     3 
+                        Multi-Family (Apartment Block) 
+                                                  1787 
+                             Multi-Family (Conversion) 
+                                                  2145 
+         Multi-Family (Garden Apartment & Row Housing) 
+                                                   129 
+                              Multi-Family (High-Rise) 
+                                                   395 
+                     Multi-Family (Minimal Commercial) 
+                                                   339 
+                      Multi-Family (Residential Hotel) 
+                                                   144 
+                                 Multi-Family (Vacant) 
+                                                    79 
+                                     Neighbourhood Pub 
+                                                     6 
+                         Office Building (Primary Use) 
+                                                   647 
+                                                 Other 
+                                                     9 
+                                        Other (Vacant) 
+                                                     2 
+Paper Box, Paper Bag, And Other Paper Remanufacturing. 
+                                                     1 
+               Parking (Lot Only, Paved Or Gravel-Com) 
+                                                   262 
+               Parking (Lot Only, Paved Or Gravel-Res) 
+                                                     9 
+                                        Parking Garage 
+                                                    44 
+                    Parking Lot Only (Paved Or Gravel) 
+                                                    57 
+                                Parks & Playing Fields 
+                                                   174 
+         Primary Metal Industries (Iron & Steel Mills, 
+                                                     1 
+                        Printing & Publishing Industry 
+                                                    15 
+                     Property Subject To Section 19(8) 
+                                                  1106 
+                                               Railway 
+                                                    91 
+   Recreational & Cultural Buildings (Includes Curling 
+                                                    63 
+                         Recreational Clubs, Ski Hills 
+                                                     2 
+                       Residential Dwelling with Suite 
+                                                 35731 
+                          Residential Outbuilding Only 
+                                                    18 
+                                       Restaurant Only 
+                                                   121 
+                                          Retail Strip 
+                                                    45 
+                   Row Housing (Single Unit Ownership) 
+                                                 12479 
+                                              Sawmills 
+                                                     1 
+  Schools & Universities, College Or Technical Schools 
+                                                   190 
+                                              Sea Food 
+                                                     4 
+                                          Self Storage 
+                                                    27 
+                            Self-Serve Service Station 
+                                                    10 
+                 Seniors Independent & Assisted Living 
+                                                    22 
+                                 Seniors Licensed Care 
+                                                    35 
+ Seniors Strata - Care, Independent or Assisted Living 
+                                                    62 
+                                       Service Station 
+                                                    45 
+                           Shopping Centre (Community) 
+                                                    10 
+                       Shopping Centre (Neighbourhood) 
+                                                     8 
+                            Shopping Centre (Regional) 
+                                                    13 
+                                Sign Or Billboard Only 
+                                                    12 
+                                Single Family Dwelling 
+                                                 36975 
+                        Storage & Warehousing (Closed) 
+                                                   884 
+                          Storage & Warehousing (Cold) 
+                                                     8 
+                          Storage & Warehousing (Open) 
+                                                    13 
+                          Store(S) And Living Quarters 
+                                                   731 
+                                  Store(S) And Offices 
+                                                   564 
+                       Store(S) And Service Commercial 
+                                                  1090 
+                 Stores And/Or Offices With Apartments 
+                                                    31 
+                       Strata Lot (Parking Commercial) 
+                                                   243 
+                      Strata Lot (Parking Residential) 
+                                                   388 
+                    Strata-Lot Residence (Condominium) 
+                                                101931 
+                 Stratified Operational Facility Areas 
+                                                   224 
+      Stratified Rental Apartment (Frame Construction) 
+                                                  2210 
+    Stratified Rental Apartment (Hi-Rise Construction) 
+                                                  2503 
+                           Stratified Rental Townhouse 
+                                                    68 
+             Telecommunications (Other Than Telephone) 
+                                                     8 
+                                             Telephone 
+                                                    10 
+                             Textiles & Knitting Mills 
+                                                     1 
+                                     Theatre Buildings 
+                                                    21 
+                                               Triplex 
+                                                    73 
+                                           Vacant IC&I 
+                                                   178 
+                  Vacant Residential Less Than 2 Acres 
+                                                   241 
+                                     Vegetable & Truck 
+                                                     2 
+                            Water Distribution Systems 
+                                                    11 
+                                           Works Yards 
+                                                     8 
+> dtGeo <- dtGeo[ACTUAL_USE_DESCRIPTION %in% c("Single Family Dwelling", "Residential Dwelling with Suite")]
+> dtSales <- fread("~/OneDrive - UBC/Documents/data/bca/data_advice_REVD24_20240331/bca_folio_sales_20240331_REVD24.csv",select=c("ROLL_NUMBER","CONVEYANCE_DATE","CONVEYANCE_PRICE"))
+> print(head(dtSales))
+       ROLL_NUMBER CONVEYANCE_DATE CONVEYANCE_PRICE
+            <char>           <i64>            <int>
+1: 001019635940000  20150703000000         17550000
+2: 001019635940000  20111028000000         10327000
+3: 001019635940000  20080425000000          6280000
+4: 001019635970000  19870910000000           471800
+5: 001019636070000  20230905000000          8800000
+6: 001019636070000  20230630000000          9200000
+> dtInventory <- fread("~/OneDrive - UBC/Documents/data/bca/Residential_inventory_202501/20250101_A09_Residential_Inventory_Extract.txt",select=c("Roll_Number","MB_Effective_Year","MB_Total_Finished_Area","Land_Width_Width","Land_Depth_Depth"),colClasses=list(character=c("Roll_Number"),numeric=c("MB_Effective_Year","MB_Total_Finished_Area","Land_Width_Width","Land_Depth_Depth")))
+> print(head(dtInventory))
+       Roll_Number MB_Effective_Year MB_Total_Finished_Area Land_Width_Width
+            <char>             <num>                  <num>            <num>
+1: 001019632060000              2020                  11895               NA
+2: 001019632290000              1997                   7760              195
+3: 001019632450000              1945                   3215              150
+4: 001019632650000              2011                   8673              150
+5: 001019632760000              2022                   2942              170
+6: 001019635070000              1995                   4739              170
+   Land_Depth_Depth
+              <num>
+1:                0
+2:              252
+3:              250
+4:              250
+5:              215
+6:              219
+> 
+> dtSales <- merge(dtSales,dtInventory,by.x="ROLL_NUMBER",by.y="Roll_Number")
+> dtSales <- merge(dtSales,dtGeo,by="ROLL_NUMBER")
+> print(head(dtSales))
+Key: <ROLL_NUMBER>
+       ROLL_NUMBER CONVEYANCE_DATE CONVEYANCE_PRICE MB_Effective_Year
+            <char>           <i64>            <int>             <num>
+1: 001019632060000  20190405000000         17309000              2020
+2: 001019632060000  20140616000000          9450000              2020
+3: 001019632060000  20140605000000                1              2020
+4: 001019632290000  20130208000000          8800000              1997
+5: 001019632290000  19910709000000          1700000              1997
+6: 001019632450000  20061204000000          3850000              1945
+   MB_Total_Finished_Area Land_Width_Width Land_Depth_Depth  CTNAME
+                    <num>            <num>            <num>  <char>
+1:                  11895               NA                0 0044.00
+2:                  11895               NA                0 0044.00
+3:                  11895               NA                0 0044.00
+4:                   7760              195              252 0044.00
+5:                   7760              195              252 0044.00
+6:                   3215              150              250 0044.00
+            ACTUAL_USE_DESCRIPTION
+                            <char>
+1:          Single Family Dwelling
+2:          Single Family Dwelling
+3:          Single Family Dwelling
+4:          Single Family Dwelling
+5:          Single Family Dwelling
+6: Residential Dwelling with Suite
+> print(summary(dtSales))
+ ROLL_NUMBER        CONVEYANCE_DATE          CONVEYANCE_PRICE   
+ Length:179586      Min.   :19050111000000   Min.   :        0  
+ Class :character   1st Qu.:19920928000000   1st Qu.:   251000  
+ Mode  :character   Median :20041006000000   Median :   540000  
+                    Mean   :20026501631384   Mean   :   977812  
+                    3rd Qu.:20131107000000   3rd Qu.:  1288000  
+                    Max.   :20240313000000   Max.   :216200000  
+                                             NA's   :1092       
+ MB_Effective_Year MB_Total_Finished_Area Land_Width_Width Land_Depth_Depth
+ Min.   :1901      Min.   :  396          Min.   : 13.00   Min.   :  0.0   
+ 1st Qu.:1972      1st Qu.: 2098          1st Qu.: 33.00   1st Qu.:112.0   
+ Median :1989      Median : 2428          Median : 33.00   Median :122.0   
+ Mean   :1987      Mean   : 2737          Mean   : 41.53   Mean   :121.4   
+ 3rd Qu.:2002      3rd Qu.: 3079          3rd Qu.: 49.00   3rd Qu.:126.0   
+ Max.   :2024      Max.   :28794          Max.   :978.00   Max.   :624.0   
+ NA's   :163       NA's   :157            NA's   :697                      
+    CTNAME          ACTUAL_USE_DESCRIPTION
+ Length:179586      Length:179586         
+ Class :character   Class :character      
+ Mode  :character   Mode  :character      
+                                          
+                                          
+                                          
+                                          
+> dtSales[,year:=as.numeric(substr(CONVEYANCE_DATE,1,4))]
+> MINYEAR <- 2019
+> MINPRICE <- 500000
+> dtSales <- dtSales[year>=MINYEAR & CONVEYANCE_PRICE>=MINPRICE & MB_Total_Finished_Area>0 & Land_Width_Width>0 & Land_Depth_Depth>0]
+> setnames(dtSales,"CTNAME","tract")
+> 
+> # load data
+> dtPrice <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_tract.csv",colClasses=list(character=c("CTUID")))
+> dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
+> 
+> dtMerge <- merge(dtChoice,dtPrice,by="CTUID")
+> dtMerge[,tract:=substr(CTUID,4,10)]
+> 
+> dtPrice[,tract:=substr(CTUID,4,10)]
+> dtSales <- merge(dtSales,dtPrice,by="tract")
+> print(summary(feols(log(CONVEYANCE_PRICE/MB_Total_Finished_Area) ~ meanPPSF + log(MB_Total_Finished_Area)*(meanPPSF+elasticity), data=dtSales)))
+OLS estimation, Dep. Var.: log(CONVEYANCE_PRICE/MB_Total_Finished_Area)
+Observations: 18,003
+Standard-errors: IID 
+                                        Estimate Std. Error    t value
+(Intercept)                            19.330253   0.663044  29.153793
+meanPPSF                               -0.013260   0.000860 -15.411026
+log(MB_Total_Finished_Area)            -1.870827   0.084898 -22.036242
+elasticity                             -0.173638   0.176485  -0.983865
+meanPPSF:log(MB_Total_Finished_Area)    0.002044   0.000110  18.623804
+log(MB_Total_Finished_Area):elasticity  0.017017   0.022835   0.745237
+                                        Pr(>|t|)    
+(Intercept)                            < 2.2e-16 ***
+meanPPSF                               < 2.2e-16 ***
+log(MB_Total_Finished_Area)            < 2.2e-16 ***
+elasticity                               0.32520    
+meanPPSF:log(MB_Total_Finished_Area)   < 2.2e-16 ***
+log(MB_Total_Finished_Area):elasticity   0.45614    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.313701   Adj. R2: 0.31634
+> print(head(dtMerge))
+Key: <CTUID>
+        CTUID     ROLL_NUMBER    folioID permitnumbercreateddate     use
+       <char>          <char>     <char>                  <IDat>  <char>
+1: 9330001.01 025790312140000 A000003EVP              2021-09-20  duplex
+2: 9330001.01 025772318600000 A000003EVF              2024-12-21 laneway
+3: 9330001.01 025772312520000 A000003EUQ              2021-01-27  duplex
+4: 9330001.02 025821302570000 A000003GB0              2022-06-27  duplex
+5: 9330001.02 025821302870000 A000003GB3              2018-08-23  single
+6: 9330001.02 025821306320000 A000003GBH              2021-08-13  duplex
+   maxSingle MB_effective_year MB_total_finished_area neighbourhoodDescription
+       <int>            <char>                 <char>                   <char>
+1:         0              1975                   2595               FRASERVIEW
+2:         0              1971                   2787               FRASERVIEW
+3:         0              1971                   2786               FRASERVIEW
+4:         0              1973                   3846               FRASERVIEW
+5:         1              2019                   2566               FRASERVIEW
+6:         0              1973                   3082               FRASERVIEW
+                                     address LANDAREA landWidth landDepth
+                                      <char>    <num>    <char>    <char>
+1: 3412 E 49TH AVENUE, Vancouver, BC V5S 1M2   1.0195                    
+2:      3658 E 48TH AVENUE #3, Vancouver, BC   1.0195        40    157.83
+3: 3498 E 48TH AVENUE, Vancouver, BC V5S 1H7   1.0195        45    158.17
+4: 3141 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55       115
+5: 3157 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55       115
+6: 3210 E 62ND AVENUE, Vancouver, BC V5S 2G5   1.8621        50       140
+               geo_point_2d   typeofwork meanPPSF  nobs      slope elasticity
+                     <char>       <char>    <num> <int>      <num>      <num>
+1:  49.2243407, -123.031668 New Building 698.6384     5 -0.5335157 -1.2783735
+2: 49.2249031, -123.0246175 New Building 698.6384     5 -0.5335157 -1.2783735
+3: 49.2249233, -123.0292697 New Building 698.6384     5 -0.5335157 -1.2783735
+4:   49.21401, -123.0392725 New Building 603.2265    10 -0.3711131 -0.8065417
+5: 49.2140062, -123.0388062 New Building 603.2265    10 -0.3711131 -0.8065417
+6: 49.2132602, -123.0365756 New Building 603.2265    10 -0.3711131 -0.8065417
+     tract
+    <char>
+1: 0001.01
+2: 0001.01
+3: 0001.01
+4: 0001.02
+5: 0001.02
+6: 0001.02
+> print(head(dtMerge))
+Key: <CTUID>
+        CTUID     ROLL_NUMBER    folioID permitnumbercreateddate     use
+       <char>          <char>     <char>                  <IDat>  <char>
+1: 9330001.01 025790312140000 A000003EVP              2021-09-20  duplex
+2: 9330001.01 025772318600000 A000003EVF              2024-12-21 laneway
+3: 9330001.01 025772312520000 A000003EUQ              2021-01-27  duplex
+4: 9330001.02 025821302570000 A000003GB0              2022-06-27  duplex
+5: 9330001.02 025821302870000 A000003GB3              2018-08-23  single
+6: 9330001.02 025821306320000 A000003GBH              2021-08-13  duplex
+   maxSingle MB_effective_year MB_total_finished_area neighbourhoodDescription
+       <int>            <char>                 <char>                   <char>
+1:         0              1975                   2595               FRASERVIEW
+2:         0              1971                   2787               FRASERVIEW
+3:         0              1971                   2786               FRASERVIEW
+4:         0              1973                   3846               FRASERVIEW
+5:         1              2019                   2566               FRASERVIEW
+6:         0              1973                   3082               FRASERVIEW
+                                     address LANDAREA landWidth landDepth
+                                      <char>    <num>    <char>    <char>
+1: 3412 E 49TH AVENUE, Vancouver, BC V5S 1M2   1.0195                    
+2:      3658 E 48TH AVENUE #3, Vancouver, BC   1.0195        40    157.83
+3: 3498 E 48TH AVENUE, Vancouver, BC V5S 1H7   1.0195        45    158.17
+4: 3141 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55       115
+5: 3157 E 62ND AVENUE, Vancouver, BC V5S 2G6   1.8621        55       115
+6: 3210 E 62ND AVENUE, Vancouver, BC V5S 2G5   1.8621        50       140
+               geo_point_2d   typeofwork meanPPSF  nobs      slope elasticity
+                     <char>       <char>    <num> <int>      <num>      <num>
+1:  49.2243407, -123.031668 New Building 698.6384     5 -0.5335157 -1.2783735
+2: 49.2249031, -123.0246175 New Building 698.6384     5 -0.5335157 -1.2783735
+3: 49.2249233, -123.0292697 New Building 698.6384     5 -0.5335157 -1.2783735
+4:   49.21401, -123.0392725 New Building 603.2265    10 -0.3711131 -0.8065417
+5: 49.2140062, -123.0388062 New Building 603.2265    10 -0.3711131 -0.8065417
+6: 49.2132602, -123.0365756 New Building 603.2265    10 -0.3711131 -0.8065417
+     tract
+    <char>
+1: 0001.01
+2: 0001.01
+3: 0001.01
+4: 0001.02
+5: 0001.02
+6: 0001.02
+> print(table(dtMerge[,use]))
+
+ duplex laneway   multi  single 
+    766     517     176     972 
+> 
+> # some major outliers in slope
+> 
+> print(summary(dtMerge))
+    CTUID           ROLL_NUMBER          folioID         
+ Length:2431        Length:2431        Length:2431       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use              maxSingle      MB_effective_year 
+ Min.   :2017-01-04      Length:2431        Min.   :0.0000   Length:2431       
+ 1st Qu.:2020-07-24      Class :character   1st Qu.:0.0000   Class :character  
+ Median :2022-05-27      Mode  :character   Median :0.0000   Mode  :character  
+ Mean   :2022-03-29                         Mean   :0.3998                     
+ 3rd Qu.:2024-07-29                         3rd Qu.:1.0000                     
+ Max.   :2025-10-17                         Max.   :1.0000                     
+ MB_total_finished_area neighbourhoodDescription   address         
+ Length:2431            Length:2431              Length:2431       
+ Class :character       Class :character         Class :character  
+ Mode  :character       Mode  :character         Mode  :character  
+                                                                   
+                                                                   
+                                                                   
+    LANDAREA       landWidth          landDepth         geo_point_2d      
+ Min.   :0.4194   Length:2431        Length:2431        Length:2431       
+ 1st Qu.:0.8985   Class :character   Class :character   Class :character  
+ Median :1.2593   Mode  :character   Mode  :character   Mode  :character  
+ Mean   :1.3235                                                           
+ 3rd Qu.:1.5554                                                           
+ Max.   :3.5378                                                           
+  typeofwork           meanPPSF          nobs            slope        
+ Length:2431        Min.   :586.1   Min.   :  4.00   Min.   :-0.5335  
+ Class :character   1st Qu.:660.8   1st Qu.: 32.00   1st Qu.:-0.3081  
+ Mode  :character   Median :746.7   Median : 49.00   Median :-0.2671  
+                    Mean   :739.0   Mean   : 54.05   Mean   :-0.2685  
+                    3rd Qu.:818.0   3rd Qu.: 70.00   3rd Qu.:-0.2277  
+                    Max.   :870.8   Max.   :161.00   Max.   : 0.4025  
+   elasticity          tract          
+ Min.   :-1.27837   Length:2431       
+ 1st Qu.:-0.42390   Class :character  
+ Median :-0.23846   Mode  :character  
+ Mean   :-0.24673                     
+ 3rd Qu.:-0.05431                     
+ Max.   : 2.68044                     
+> print(summary(dtMerge[nobs>quantile(nobs,.05)]))
+    CTUID           ROLL_NUMBER          folioID         
+ Length:2289        Length:2289        Length:2289       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use              maxSingle      MB_effective_year 
+ Min.   :2017-01-04      Length:2289        Min.   :0.0000   Length:2289       
+ 1st Qu.:2020-10-27      Class :character   1st Qu.:0.0000   Class :character  
+ Median :2022-07-13      Mode  :character   Median :0.0000   Mode  :character  
+ Mean   :2022-04-26                         Mean   :0.3818                     
+ 3rd Qu.:2024-08-02                         3rd Qu.:1.0000                     
+ Max.   :2025-10-17                         Max.   :1.0000                     
+ MB_total_finished_area neighbourhoodDescription   address         
+ Length:2289            Length:2289              Length:2289       
+ Class :character       Class :character         Class :character  
+ Mode  :character       Mode  :character         Mode  :character  
+                                                                   
+                                                                   
+                                                                   
+    LANDAREA       landWidth          landDepth         geo_point_2d      
+ Min.   :0.4194   Length:2289        Length:2289        Length:2289       
+ 1st Qu.:0.8985   Class :character   Class :character   Class :character  
+ Median :1.2593   Mode  :character   Mode  :character   Mode  :character  
+ Mean   :1.3084                                                           
+ 3rd Qu.:1.5340                                                           
+ Max.   :3.5378                                                           
+  typeofwork           meanPPSF          nobs            slope        
+ Length:2289        Min.   :586.1   Min.   : 14.00   Min.   :-0.3814  
+ Class :character   1st Qu.:659.3   1st Qu.: 32.00   1st Qu.:-0.3131  
+ Mode  :character   Median :735.1   Median : 50.00   Median :-0.2671  
+                    Mean   :735.6   Mean   : 56.95   Mean   :-0.2728  
+                    3rd Qu.:814.9   3rd Qu.: 73.00   3rd Qu.:-0.2319  
+                    Max.   :870.8   Max.   :161.00   Max.   :-0.1391  
+   elasticity          tract          
+ Min.   :-0.79163   Length:2289       
+ 1st Qu.:-0.43469   Class :character  
+ Median :-0.25240   Mode  :character  
+ Mean   :-0.26839                     
+ 3rd Qu.:-0.05431                     
+ Max.   : 0.32787                     
+> print(summary(dtMerge[nobs>quantile(nobs,.1)]))
+    CTUID           ROLL_NUMBER          folioID         
+ Length:2133        Length:2133        Length:2133       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use              maxSingle     MB_effective_year 
+ Min.   :2017-01-04      Length:2133        Min.   :0.000   Length:2133       
+ 1st Qu.:2020-12-14      Class :character   1st Qu.:0.000   Class :character  
+ Median :2022-07-29      Mode  :character   Median :0.000   Mode  :character  
+ Mean   :2022-05-14                         Mean   :0.361                     
+ 3rd Qu.:2024-08-07                         3rd Qu.:1.000                     
+ Max.   :2025-10-17                         Max.   :1.000                     
+ MB_total_finished_area neighbourhoodDescription   address         
+ Length:2133            Length:2133              Length:2133       
+ Class :character       Class :character         Class :character  
+ Mode  :character       Mode  :character         Mode  :character  
+                                                                   
+                                                                   
+                                                                   
+    LANDAREA       landWidth          landDepth         geo_point_2d      
+ Min.   :0.4194   Length:2133        Length:2133        Length:2133       
+ 1st Qu.:0.8070   Class :character   Class :character   Class :character  
+ Median :1.2002   Mode  :character   Mode  :character   Mode  :character  
+ Mean   :1.3058                                                           
+ 3rd Qu.:1.5016                                                           
+ Max.   :3.5378                                                           
+  typeofwork           meanPPSF          nobs            slope        
+ Length:2133        Min.   :586.1   Min.   : 18.00   Min.   :-0.3814  
+ Class :character   1st Qu.:658.5   1st Qu.: 35.00   1st Qu.:-0.3143  
+ Mode  :character   Median :725.3   Median : 51.00   Median :-0.2671  
+                    Mean   :729.3   Mean   : 59.94   Mean   :-0.2742  
+                    3rd Qu.:808.5   3rd Qu.: 75.00   3rd Qu.:-0.2277  
+                    Max.   :870.8   Max.   :161.00   Max.   :-0.1391  
+   elasticity          tract          
+ Min.   :-0.79163   Length:2133       
+ 1st Qu.:-0.43641   Class :character  
+ Median :-0.26407   Mode  :character  
+ Mean   :-0.27530                     
+ 3rd Qu.:-0.05431                     
+ Max.   : 0.32787                     
+> print(unique(dtMerge[elasticity>0,.(nobs,neighbourhoodDescription,elasticity)]))
+     nobs  neighbourhoodDescription  elasticity
+    <int>                    <char>       <num>
+ 1:    65                   MARPOLE 0.094781789
+ 2:    65           SOUTH GRANVILLE 0.094781789
+ 3:    53                  OAKRIDGE 0.018379262
+ 4:    53           SOUTH GRANVILLE 0.018379262
+ 5:    69           SOUTH VANCOUVER 0.327869035
+ 6:     5               SHAUGHNESSY 0.336301864
+ 7:     5                KERRISDALE 0.336301864
+ 8:     5 ARBUTUS/MACKENZIE HEIGHTS 0.336301864
+ 9:    30 ARBUTUS/MACKENZIE HEIGHTS 0.031774837
+10:    30                KERRISDALE 0.031774837
+11:    34 ARBUTUS/MACKENZIE HEIGHTS 0.184516617
+12:    14               SHAUGHNESSY 0.100971484
+13:     4             CEDAR COTTAGE 2.680441102
+14:     9                 KITSILANO 0.005172441
+15:    46             HASTINGS EAST 0.145519911
+16:    46                 GRANDVIEW 0.145519911
+> dtMerge <- dtMerge[nobs>4]
+> # Economic intuition says elasticity can't be less than -1 or else price falls in square feet. Also, as there is no assembly for larger lots, elasticity must be less than 0
+> dtMerge <- dtMerge[elasticity>0,elasticity:=0]
+> dtMerge <- dtMerge[elasticity < -1,elasticity:=-1]
+> 
+> # plot use against lat/long --extract from geo_point_2d
+> dtMerge[, c("lat", "lon") := tstrsplit(geo_point_2d, ", ", type.convert = TRUE)]
+> ggplot(dtMerge,aes(x=lon,y=lat,color=use)) + geom_point() + theme_minimal()
+> ggsave("text/vancouverUseSpatial.png",width=6,height=6)
+> 
+> # also do ppsf against lat/long and then do elasticity
+> ggplot(dtMerge,aes(x=lon,y=lat,color=meanPPSF)) + geom_point() + theme_minimal() + scale_color_viridis_c()
+> ggsave("text/vancouverPPSFSpatial.png",width=6,height=6)
+> 
+> ggplot(dtMerge,aes(x=lon,y=lat,color=elasticity)) + geom_point() + theme_minimal() + scale_color_viridis_c()
+> ggsave("text/vancouverElasticitySpatial.png",width=6,height=6)
+> 
+> # show uses with ppsf on x-axis - bar chart with share of uses by ppsf bin
+> # make ppsf bins by quintile of meanPPSF
+> dtMerge[,ppsfBin:=cut(meanPPSF,breaks=quantile(meanPPSF,probs=seq(0,1,by=.1),na.rm=TRUE),include.lowest=TRUE)]
+> dtUsePPSF <- dtMerge[,.N,by=.(ppsfBin,use)]
+> dtUsePPSF[,totalN:=sum(N),by=ppsfBin]
+> dtUsePPSF[,share:=N/totalN]
+> ggplot(dtUsePPSF,aes(x=ppsfBin,y=share,fill=use)) + geom_bar(stat="identity",position="fill") + theme_minimal() +
++   labs(title="Vancouver Residential Permits by Price per Square Foot",
++        x="Mean Price per Square Foot Bin",
++        y="Share of Permits by Use") +
++   scale_fill_viridis_d()
+> ggsave("text/vancouverUseShareByPPSF.png",width=8,height=6)
+> 
+> print(summary(dtMerge))
+    CTUID           ROLL_NUMBER          folioID         
+ Length:2427        Length:2427        Length:2427       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use              maxSingle      MB_effective_year 
+ Min.   :2017-01-04      Length:2427        Min.   :0.0000   Length:2427       
+ 1st Qu.:2020-07-18      Class :character   1st Qu.:0.0000   Class :character  
+ Median :2022-05-27      Mode  :character   Median :0.0000   Mode  :character  
+ Mean   :2022-03-28                         Mean   :0.4001                     
+ 3rd Qu.:2024-07-29                         3rd Qu.:1.0000                     
+ Max.   :2025-10-17                         Max.   :1.0000                     
+                                                                               
+ MB_total_finished_area neighbourhoodDescription   address         
+ Length:2427            Length:2427              Length:2427       
+ Class :character       Class :character         Class :character  
+ Mode  :character       Mode  :character         Mode  :character  
+                                                                   
+                                                                   
+                                                                   
+                                                                   
+    LANDAREA       landWidth          landDepth         geo_point_2d      
+ Min.   :0.4194   Length:2427        Length:2427        Length:2427       
+ 1st Qu.:0.8985   Class :character   Class :character   Class :character  
+ Median :1.2593   Mode  :character   Mode  :character   Mode  :character  
+ Mean   :1.3246                                                           
+ 3rd Qu.:1.5554                                                           
+ Max.   :3.5378                                                           
+                                                                          
+  typeofwork           meanPPSF          nobs            slope        
+ Length:2427        Min.   :586.1   Min.   :  5.00   Min.   :-0.5335  
+ Class :character   1st Qu.:660.1   1st Qu.: 32.00   1st Qu.:-0.3106  
+ Mode  :character   Median :746.7   Median : 49.00   Median :-0.2671  
+                    Mean   :739.0   Mean   : 54.13   Mean   :-0.2696  
+                    3rd Qu.:818.0   3rd Qu.: 70.00   3rd Qu.:-0.2277  
+                    Max.   :870.8   Max.   :161.00   Max.   :-0.1391  
+                                                                      
+   elasticity          tract                lat             lon        
+ Min.   :-1.00000   Length:2427        Min.   :49.21   Min.   :-123.2  
+ 1st Qu.:-0.42390   Class :character   1st Qu.:49.23   1st Qu.:-123.2  
+ Median :-0.23846   Mode  :character   Median :49.24   Median :-123.1  
+ Mean   :-0.26893                      Mean   :49.24   Mean   :-123.1  
+ 3rd Qu.:-0.05431                      3rd Qu.:49.26   3rd Qu.:-123.1  
+ Max.   : 0.00000                      Max.   :49.29   Max.   :-123.0  
+                                                                       
+      ppsfBin   
+ (747,793]:285  
+ [586,639]:271  
+ (818,834]:256  
+ (653,668]:245  
+ (693,747]:240  
+ (668,693]:239  
+ (Other)  :891  
+> dtMerge[,MB_total_finished_area:=as.numeric(MB_total_finished_area)]
+> # ratio of acres to sqft
+> ACRESF <- 43560
+> dtMerge[,lotSizeSqftX:=LANDAREA*ACRESF]
+> dtMerge[,landWidth:=as.numeric(landWidth)]
+> dtMerge[,landDepth:=as.numeric(landDepth)]
+> dtMerge[,lotSizeSqft:=landWidth*landDepth]
+> FSR_SINGLEDUPLEX <- .7 # appx
+> FSR_LANEWAY <- .16
+> COSTPSF <- 500
+> dtMerge[,buildableLaneway:=pmax(MB_total_finished_area+FSR_LANEWAY,(FSR_SINGLEDUPLEX+FSR_LANEWAY*lotSizeSqft))]
+> dtMerge[,buildableDuplex:=pmax(MB_total_finished_area,FSR_SINGLEDUPLEX*lotSizeSqft)]
+> dtMerge[,profitLaneway:=buildableLaneway*(meanPPSF - COSTPSF)]
+> dtMerge[,profitDuplex:=buildableDuplex*(meanPPSF*exp(2*elasticity)-COSTPSF)]
+> dtMerge[,single := use %chin% c("single","laneway")]
+> dtMerge[,plex := use %chin% c("duplex","multiplex")]
+> dtMerge[,laneway := use %chin% c("laneway")]
+> dtMerge[,deltaProfit := profitLaneway - profitDuplex]
+> dtMerge <- dtMerge[abs(deltaProfit)<1000000]
+> print(summary(dtMerge))
+    CTUID           ROLL_NUMBER          folioID         
+ Length:1581        Length:1581        Length:1581       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use              maxSingle      MB_effective_year 
+ Min.   :2017-01-04      Length:1581        Min.   :0.0000   Length:1581       
+ 1st Qu.:2020-11-27      Class :character   1st Qu.:0.0000   Class :character  
+ Median :2022-06-21      Mode  :character   Median :0.0000   Mode  :character  
+ Mean   :2022-04-14                         Mean   :0.4061                     
+ 3rd Qu.:2024-07-22                         3rd Qu.:1.0000                     
+ Max.   :2025-10-17                         Max.   :1.0000                     
+                                                                               
+ MB_total_finished_area neighbourhoodDescription   address         
+ Min.   : 421           Length:1581              Length:1581       
+ 1st Qu.:1818           Class :character         Class :character  
+ Median :2275           Mode  :character         Mode  :character  
+ Mean   :2593                                                      
+ 3rd Qu.:2947                                                      
+ Max.   :9937                                                      
+                                                                   
+    LANDAREA        landWidth       landDepth     geo_point_2d      
+ Min.   :0.4194   Min.   : 16.5   Min.   : 61.6   Length:1581       
+ 1st Qu.:0.8985   1st Qu.: 33.0   1st Qu.:119.9   Class :character  
+ Median :1.2593   Median : 33.0   Median :122.0   Mode  :character  
+ Mean   :1.3159   Mean   : 42.1   Mean   :122.9                     
+ 3rd Qu.:1.6647   3rd Qu.: 50.0   3rd Qu.:126.0                     
+ Max.   :3.5378   Max.   :126.6   Max.   :331.0                     
+                                                                    
+  typeofwork           meanPPSF          nobs            slope        
+ Length:1581        Min.   :610.1   Min.   :  5.00   Min.   :-0.3814  
+ Class :character   1st Qu.:667.7   1st Qu.: 32.00   1st Qu.:-0.2815  
+ Mode  :character   Median :786.0   Median : 49.00   Median :-0.2475  
+                    Mean   :751.0   Mean   : 55.57   Mean   :-0.2498  
+                    3rd Qu.:818.0   3rd Qu.: 73.00   3rd Qu.:-0.2194  
+                    Max.   :870.8   Max.   :161.00   Max.   :-0.1391  
+                                                                      
+   elasticity          tract                lat             lon        
+ Min.   :-0.76591   Length:1581        Min.   :49.21   Min.   :-123.2  
+ 1st Qu.:-0.30999   Class :character   1st Qu.:49.23   1st Qu.:-123.2  
+ Median :-0.15847   Mode  :character   Median :49.25   Median :-123.1  
+ Mean   :-0.17564                      Mean   :49.25   Mean   :-123.1  
+ 3rd Qu.:-0.04836                      3rd Qu.:49.26   3rd Qu.:-123.1  
+ Max.   : 0.00000                      Max.   :49.29   Max.   :-123.0  
+                                                                       
+      ppsfBin     lotSizeSqftX     lotSizeSqft    buildableLaneway
+ (818,834]:195   Min.   : 18269   Min.   : 1768   Min.   : 483.2  
+ (808,818]:193   1st Qu.: 39139   1st Qu.: 4025   1st Qu.:1818.2  
+ (834,871]:174   Median : 54855   Median : 4184   Median :2275.2  
+ (793,808]:168   Mean   : 57321   Mean   : 5238   Mean   :2594.0  
+ (668,693]:161   3rd Qu.: 72514   3rd Qu.: 6220   3rd Qu.:2947.2  
+ (747,793]:152   Max.   :154107   Max.   :25300   Max.   :9937.2  
+ (Other)  :538                                                    
+ buildableDuplex profitLaneway      profitDuplex       single       
+ Min.   : 1238   Min.   :  72924   Min.   :-860630   Mode :logical  
+ 1st Qu.: 2818   1st Qu.: 321062   1st Qu.:-331421   FALSE:650      
+ Median : 2934   Median : 583460   Median : 200242   TRUE :931      
+ Mean   : 3672   Mean   : 696492   Mean   : 372300                  
+ 3rd Qu.: 4354   3rd Qu.: 928527   3rd Qu.: 962740                  
+ Max.   :17710   Max.   :3351885   Max.   :4228802                  
+                                                                    
+    plex          laneway         deltaProfit     
+ Mode :logical   Mode :logical   Min.   :-992450  
+ FALSE:1039      FALSE:1292      1st Qu.: -46373  
+ TRUE :542       TRUE :289       Median : 386626  
+                                 Mean   : 324192  
+                                 3rd Qu.: 761862  
+                                 Max.   : 999719  
+                                                  
+> dtMerge <- dtMerge[!is.na(profitLaneway) & !is.na(profitDuplex)]
+> print(cor(dtMerge[use!="laneway",.(single,plex,meanPPSF,elasticity,deltaProfit)]))
+                single       plex   meanPPSF elasticity deltaProfit
+single       1.0000000 -0.8448505  0.4664484  0.3399223  -0.2222710
+plex        -0.8448505  1.0000000 -0.4255591 -0.3065655   0.2015530
+meanPPSF     0.4664484 -0.4255591  1.0000000  0.6481846  -0.5479805
+elasticity   0.3399223 -0.3065655  0.6481846  1.0000000  -0.8402100
+deltaProfit -0.2222710  0.2015530 -0.5479805 -0.8402100   1.0000000
+> print(cor(dtMerge[MB_effective_year<2000,.(single,plex,laneway,meanPPSF,elasticity,deltaProfit)]))
+                single       plex     laneway    meanPPSF  elasticity
+single       1.0000000 -0.8317056  0.49800394  0.28848200  0.20693443
+plex        -0.8317056  1.0000000 -0.41419266 -0.27450508 -0.19231283
+laneway      0.4980039 -0.4141927  1.00000000 -0.06143857  0.01699005
+meanPPSF     0.2884820 -0.2745051 -0.06143857  1.00000000  0.59058664
+elasticity   0.2069344 -0.1923128  0.01699005  0.59058664  1.00000000
+deltaProfit -0.1939729  0.1761139  0.03592530 -0.56649804 -0.87265850
+            deltaProfit
+single       -0.1939729
+plex          0.1761139
+laneway       0.0359253
+meanPPSF     -0.5664980
+elasticity   -0.8726585
+deltaProfit   1.0000000
+> print(cor(dtMerge[,.(lotSizeSqft,lotSizeSqftX)]))
+             lotSizeSqft lotSizeSqftX
+lotSizeSqft    1.0000000    0.2719541
+lotSizeSqftX   0.2719541    1.0000000
+> print(feols(single ~ meanPPSF + deltaProfit,data=dtMerge[MB_effective_year<1960]))
+OLS estimation, Dep. Var.: single
+Observations: 329
+Standard-errors: IID 
+                 Estimate   Std. Error  t value   Pr(>|t|)    
+(Intercept) -0.8178907349 0.2729066818 -2.99696 2.9362e-03 ** 
+meanPPSF     0.0015593551 0.0003577769  4.35846 1.7579e-05 ***
+deltaProfit -0.0000000811 0.0000000542 -1.49683 1.3540e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.430698   Adj. R2: 0.10761
+> print(feols(single ~ meanPPSF + elasticity,data=dtMerge[MB_effective_year<1960]))
+OLS estimation, Dep. Var.: single
+Observations: 329
+Standard-errors: IID 
+             Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept) -0.995214   0.282337 -3.524910 4.8423e-04 ***
+meanPPSF     0.001786   0.000355  5.032729 8.0100e-07 ***
+elasticity   0.065149   0.171344  0.380222 7.0403e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.432079   Adj. R2: 0.101875
+> print(summary(dtMerge[,deltaProfit]))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+-992450  -46373  386626  324192  761862  999719 
+> 
+> #perfect correlation among price/elasticity/income
+> # conjecture -- ordered probit, but 2-dimensional
+> dtSingle <- dtMerge[use %in% c("single","laneway"),.(laneway=mean(laneway),meanPPSF=mean(meanPPSF),elasticity=mean(elasticity)),by=CTUID]
+> ggplot(dtSingle,aes(x=meanPPSF,y=elasticity,color=laneway)) + geom_point() + theme_minimal()
+> ggsave("text/singleMeanElasticity.png",width=6,height=6)
+> print(feols(laneway ~ log(meanPPSF) + elasticity,data=dtSingle))
+OLS estimation, Dep. Var.: laneway
+Observations: 57
+Standard-errors: IID 
+               Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)   11.811210   2.357516  5.01002 6.1863e-06 ***
+log(meanPPSF) -1.724027   0.354510 -4.86312 1.0387e-05 ***
+elasticity     0.284058   0.196666  1.44437 1.5441e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.242621   Adj. R2: 0.289305
+> 
+> 
+> 
+> ### LATER -- income doesn't really help
+> dtIncome <- fread("~/OneDrive - UBC/dataRaw/9810005801_databaseLoadingData.csv",select=c("GEO","DGUID","Household income statistics (6)","VALUE"))
+> print(head(dtIncome))
+                              GEO               DGUID
+                           <char>              <char>
+1: 0001.00 - Abbotsford - Mission 2021S05079320001.00
+2: 0001.00 - Abbotsford - Mission 2021S05079320001.00
+3: 0001.00 - Abbotsford - Mission 2021S05079320001.00
+4: 0002.00 - Abbotsford - Mission 2021S05079320002.00
+5: 0002.00 - Abbotsford - Mission 2021S05079320002.00
+6: 0002.00 - Abbotsford - Mission 2021S05079320002.00
+                                Household income statistics (6)  VALUE
+                                                         <char>  <int>
+1:                                  Number of households (2021)    660
+2:                                  Number of households (2016)    650
+3: Median household total income (2020) (2020 constant dollars) 121000
+4:                                  Number of households (2021)    425
+5:                                  Number of households (2016)    420
+6: Median household total income (2020) (2020 constant dollars)  85000
+> setnames(dtIncome,c("DGUID","Household income statistics (6)","VALUE"),c("DGUID","incomeStat","medianIncome"))
+> print(head(dtIncome))
+                              GEO               DGUID
+                           <char>              <char>
+1: 0001.00 - Abbotsford - Mission 2021S05079320001.00
+2: 0001.00 - Abbotsford - Mission 2021S05079320001.00
+3: 0001.00 - Abbotsford - Mission 2021S05079320001.00
+4: 0002.00 - Abbotsford - Mission 2021S05079320002.00
+5: 0002.00 - Abbotsford - Mission 2021S05079320002.00
+6: 0002.00 - Abbotsford - Mission 2021S05079320002.00
+                                                     incomeStat medianIncome
+                                                         <char>        <int>
+1:                                  Number of households (2021)          660
+2:                                  Number of households (2016)          650
+3: Median household total income (2020) (2020 constant dollars)       121000
+4:                                  Number of households (2021)          425
+5:                                  Number of households (2016)          420
+6: Median household total income (2020) (2020 constant dollars)        85000
+> dtIncome <- dtIncome[incomeStat=="Median household total income (2020) (2020 constant dollars)"]
+> print(head(dtIncome))
+                              GEO               DGUID
+                           <char>              <char>
+1: 0001.00 - Abbotsford - Mission 2021S05079320001.00
+2: 0002.00 - Abbotsford - Mission 2021S05079320002.00
+3: 0003.00 - Abbotsford - Mission 2021S05079320003.00
+4: 0004.00 - Abbotsford - Mission 2021S05079320004.00
+5: 0005.01 - Abbotsford - Mission 2021S05079320005.01
+6: 0005.02 - Abbotsford - Mission 2021S05079320005.02
+                                                     incomeStat medianIncome
+                                                         <char>        <int>
+1: Median household total income (2020) (2020 constant dollars)       121000
+2: Median household total income (2020) (2020 constant dollars)        85000
+3: Median household total income (2020) (2020 constant dollars)        77000
+4: Median household total income (2020) (2020 constant dollars)        93000
+5: Median household total income (2020) (2020 constant dollars)        83000
+6: Median household total income (2020) (2020 constant dollars)        54000
+> dtIncome <- dtIncome[grepl("Vancouver",GEO)==TRUE]
+> print(head(dtIncome))
+                         GEO               DGUID
+                      <char>              <char>
+1: Vancouver (CMA) 933, B.C.        2021S0503933
+2:       0001.01 - Vancouver 2021S05079330001.01
+3:       0001.02 - Vancouver 2021S05079330001.02
+4:       0002.01 - Vancouver 2021S05079330002.01
+5:       0002.03 - Vancouver 2021S05079330002.03
+6:       0002.04 - Vancouver 2021S05079330002.04
+                                                     incomeStat medianIncome
+                                                         <char>        <int>
+1: Median household total income (2020) (2020 constant dollars)        90000
+2: Median household total income (2020) (2020 constant dollars)        89000
+3: Median household total income (2020) (2020 constant dollars)        95000
+4: Median household total income (2020) (2020 constant dollars)        88000
+5: Median household total income (2020) (2020 constant dollars)        91000
+6: Median household total income (2020) (2020 constant dollars)        95000
+> dtIncome[,tract:=substr(DGUID,13,19)]
+> print(head(dtIncome))
+                         GEO               DGUID
+                      <char>              <char>
+1: Vancouver (CMA) 933, B.C.        2021S0503933
+2:       0001.01 - Vancouver 2021S05079330001.01
+3:       0001.02 - Vancouver 2021S05079330001.02
+4:       0002.01 - Vancouver 2021S05079330002.01
+5:       0002.03 - Vancouver 2021S05079330002.03
+6:       0002.04 - Vancouver 2021S05079330002.04
+                                                     incomeStat medianIncome
+                                                         <char>        <int>
+1: Median household total income (2020) (2020 constant dollars)        90000
+2: Median household total income (2020) (2020 constant dollars)        89000
+3: Median household total income (2020) (2020 constant dollars)        95000
+4: Median household total income (2020) (2020 constant dollars)        88000
+5: Median household total income (2020) (2020 constant dollars)        91000
+6: Median household total income (2020) (2020 constant dollars)        95000
+     tract
+    <char>
+1:        
+2: 0001.01
+3: 0001.02
+4: 0002.01
+5: 0002.03
+6: 0002.04
+> print(head(dtMerge))
+Key: <CTUID>
+        CTUID     ROLL_NUMBER    folioID permitnumbercreateddate     use
+       <char>          <char>     <char>                  <IDat>  <char>
+1: 9330003.01 017811212740000 A000002EJE              2023-09-28 laneway
+2: 9330003.01 017811230950000 A000002EKV              2024-07-18  duplex
+3: 9330003.01 017810210480000 A000002EA0              2021-08-23  single
+4: 9330003.01 017817210730000 A000002F9R              2023-03-07  duplex
+5: 9330003.01 017811216890000 A000002EKE              2022-04-14  duplex
+6: 9330003.01 017811210630000 A000002EHF              2024-11-13 laneway
+   maxSingle MB_effective_year MB_total_finished_area neighbourhoodDescription
+       <int>            <char>                  <num>                   <char>
+1:         0              1965                   1727          SOUTH VANCOUVER
+2:         0              1964                   2097          SOUTH VANCOUVER
+3:         1              1964                   1866          SOUTH VANCOUVER
+4:         0              1947                   1635          SOUTH VANCOUVER
+5:         0              1960                   1676          SOUTH VANCOUVER
+6:         0              1956                   1807          SOUTH VANCOUVER
+                                       address LANDAREA landWidth landDepth
+                                        <char>    <num>     <num>     <num>
+1: 956 E 58TH AVENUE #3, Vancouver, BC V5X 1W5   0.5432     33.00    111.90
+2:   1495 E 58TH AVENUE, Vancouver, BC V5P 2B9   0.5432     33.00    114.99
+3:    748 E 57TH AVENUE, Vancouver, BC V5X 1T2   0.5432     34.65    116.00
+4:    773 E 61ST AVENUE, Vancouver, BC V5X 2C1   0.5432     33.00    123.40
+5:   1089 E 58TH AVENUE, Vancouver, BC V5X 1W8   0.5432     33.00    116.00
+6: 763 E 58TH AVENUE #3, Vancouver, BC V5X 1W4   0.5432     34.65    116.00
+               geo_point_2d   typeofwork meanPPSF  nobs      slope elasticity
+                     <char>       <char>    <num> <int>      <num>      <num>
+1: 49.2170794, -123.0861244 New Building  612.553    55 -0.3039813  -0.342011
+2: 49.2175003, -123.0757223 New Building  612.553    55 -0.3039813  -0.342011
+3: 49.2179982, -123.0894567 New Building  612.553    55 -0.3039813  -0.342011
+4: 49.2150308, -123.0886546 New Building  612.553    55 -0.3039813  -0.342011
+5: 49.2175478, -123.0834599 New Building  612.553    55 -0.3039813  -0.342011
+6:  49.217627, -123.0890545 New Building  612.553    55 -0.3039813  -0.342011
+     tract      lat       lon   ppsfBin lotSizeSqftX lotSizeSqft
+    <char>    <num>     <num>    <fctr>        <num>       <num>
+1: 0003.01 49.21708 -123.0861 [586,639]     23661.79     3692.70
+2: 0003.01 49.21750 -123.0757 [586,639]     23661.79     3794.67
+3: 0003.01 49.21800 -123.0895 [586,639]     23661.79     4019.40
+4: 0003.01 49.21503 -123.0887 [586,639]     23661.79     4072.20
+5: 0003.01 49.21755 -123.0835 [586,639]     23661.79     3828.00
+6: 0003.01 49.21763 -123.0891 [586,639]     23661.79     4019.40
+   buildableLaneway buildableDuplex profitLaneway profitDuplex single   plex
+              <num>           <num>         <num>        <num> <lgcl> <lgcl>
+1:          1727.16        2584.890      194397.0    -493496.6   TRUE  FALSE
+2:          2097.16        2656.269      236041.6    -507124.0  FALSE   TRUE
+3:          1866.16        2813.580      210041.8    -537157.1   TRUE  FALSE
+4:          1635.16        2850.540      184042.1    -544213.4  FALSE   TRUE
+5:          1676.16        2679.600      188656.8    -511578.2  FALSE   TRUE
+6:          1807.16        2813.580      203401.2    -537157.1   TRUE  FALSE
+   laneway deltaProfit
+    <lgcl>       <num>
+1:    TRUE    687893.5
+2:   FALSE    743165.5
+3:   FALSE    747199.0
+4:   FALSE    728255.5
+5:   FALSE    700235.0
+6:    TRUE    740558.3
+> dtMerge <- merge(dtMerge,dtIncome[,.(tract,medianIncome)],by="tract")
+> print(cor(dtMerge[MB_effective_year<1960,.(single,plex,laneway,meanPPSF,elasticity,deltaProfit,medianIncome)]))
+                 single       plex      laneway   meanPPSF   elasticity
+single        1.0000000 -0.7710763  0.538158733  0.3270407  0.194929959
+plex         -0.7710763  1.0000000 -0.414961468 -0.3003879 -0.182073663
+laneway       0.5381587 -0.4149615  1.000000000 -0.0201479  0.006042679
+meanPPSF      0.3270407 -0.3003879 -0.020147904  1.0000000  0.545035546
+elasticity    0.1949300 -0.1820737  0.006042679  0.5450355  1.000000000
+deltaProfit  -0.2477266  0.2292365 -0.019450437 -0.5596324 -0.886380652
+medianIncome  0.2317151 -0.1892998 -0.051588727  0.5258895  0.268559375
+             deltaProfit medianIncome
+single       -0.24772665   0.23171507
+plex          0.22923654  -0.18929979
+laneway      -0.01945044  -0.05158873
+meanPPSF     -0.55963241   0.52588953
+elasticity   -0.88638065   0.26855938
+deltaProfit   1.00000000  -0.31034064
+medianIncome -0.31034064   1.00000000
+> 
+> proc.time()
+   user  system elapsed 
+ 13.460   3.276   6.783 

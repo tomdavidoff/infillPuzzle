@@ -46,7 +46,10 @@ dtCensus[, medianIncome := log(as.numeric(medianIncome))]
 setnames(dtCensus,"Geographic Area Name","zip")
 dtCensus[,zip:=substring(zip,7,11)]
 dt <- merge(dt,dtCensus,by="zip")
+print(table(dt[,land_use_c]))
 print(cor(dt[, .(slope, price_level, propensity,medianIncome)]))
+print(cor(dt[land_use_c=="UN3", .(slope, price_level, propensity,medianIncome)]))
+print(cor(dt[land_use_c!="UN3", .(slope, price_level, propensity,medianIncome)]))
 
 
 # 4. Model -----------------------------------------------------------------

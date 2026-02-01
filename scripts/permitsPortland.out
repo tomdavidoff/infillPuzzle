@@ -1,6 +1,6 @@
 
-R version 4.4.0 (2024-04-24) -- "Puppy Cup"
-Copyright (C) 2024 The R Foundation for Statistical Computing
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -25,16 +25,12 @@ Type 'q()' to quit R.
 > # Modified by google AI to aggregate lot/date
 > 
 > library(data.table)
-Warning message:
-package ‘data.table’ was built under R version 4.4.1 
 > library(sf)
-Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(ggplot2)
 > library(tigris)
 To enable caching of data, set `options(tigris_use_cache = TRUE)`
 in your R script or .Rprofile.
-Warning message:
-package ‘tigris’ was built under R version 4.4.1 
 > 
 > # ==========================================
 > # TOGGLE: "zip" or "tract"
@@ -79,7 +75,7 @@ package ‘tigris’ was built under R version 4.4.1
 > shp_path <- list.files(zoning_dir, pattern = "\\.shp$", full.names = TRUE)
 > sfZoning <- st_read(shp_path)
 Reading layer `Zoning' from data source 
-  `/Users/davidoff/Library/CloudStorage/OneDrive-UBC/dataRaw/portlandZoning/Zoning.shp' 
+  `/Users/tdavidof/Library/CloudStorage/OneDrive-UBC/dataRaw/portlandZoning/Zoning.shp' 
   using driver `ESRI Shapefile'
 Simple feature collection with 15672 features and 22 fields
 Geometry type: POLYGON
@@ -145,7 +141,7 @@ Projected CRS: WGS 84 / Pseudo-Mercator
 > # GEOGRAPHY-LEVEL PROPENSITY (Based on Lots)
 > # ==========================================
 > 
-> dtGeo <- dtLots[, .(
+> dtGeo <- dtNews[, .(
 +   infill_lot_count = sum(isPlexLot, na.rm = TRUE),
 +   total_lots_active = .N,
 +   propensity = sum(isPlexLot, na.rm = TRUE) / .N
@@ -168,27 +164,27 @@ Total Active Lots (R-Zones): 3563
 Total Infill Lots (Plexes): 403 
 > cat("Overall Infill Propensity (Lot-based):",
 +     round(sum(dtGeo$infill_lot_count) / sum(dtGeo$total_lots_active), 4), "\n")
-Overall Infill Propensity (Lot-based): 0.1131 
+Overall Infill Propensity (Lot-based): 0.2233 
 > 
 > print(head(dtGeo, 15))
     geo_id  geo_name infill_lot_count total_lots_active propensity
     <char>    <char>            <int>             <int>      <num>
- 1:  97206 ZIP 97206               67               408 0.16421569
- 2:  97219 ZIP 97219               22               367 0.05994550
- 3:  97202 ZIP 97202               38               322 0.11801242
- 4:  97211 ZIP 97211               45               261 0.17241379
- 5:  97203 ZIP 97203               49               241 0.20331950
- 6:  97213 ZIP 97213               21               204 0.10294118
- 7:  97212 ZIP 97212               10               198 0.05050505
- 8:  97217 ZIP 97217               33               190 0.17368421
- 9:  97221 ZIP 97221                2               166 0.01204819
-10:  97215 ZIP 97215                9               147 0.06122449
-11:  97236 ZIP 97236               15               144 0.10416667
-12:  97214 ZIP 97214               11               117 0.09401709
-13:  97266 ZIP 97266               20               106 0.18867925
-14:  97218 ZIP 97218               13               106 0.12264151
-15:  97239 ZIP 97239               10               102 0.09803922
+ 1:  97206 ZIP 97206               64               244 0.26229508
+ 2:  97219 ZIP 97219               22               176 0.12500000
+ 3:  97211 ZIP 97211               44               152 0.28947368
+ 4:  97203 ZIP 97203               49               147 0.33333333
+ 5:  97202 ZIP 97202               36               138 0.26086957
+ 6:  97236 ZIP 97236               15               106 0.14150943
+ 7:  97217 ZIP 97217               33               103 0.32038835
+ 8:  97213 ZIP 97213               21                86 0.24418605
+ 9:  97212 ZIP 97212                9                80 0.11250000
+10:  97266 ZIP 97266               19                69 0.27536232
+11:  97221 ZIP 97221                2                63 0.03174603
+12:  97215 ZIP 97215                9                59 0.15254237
+13:  97218 ZIP 97218               13                50 0.26000000
+14:  97220 ZIP 97220                9                39 0.23076923
+15:  97214 ZIP 97214                9                37 0.24324324
 > 
 > proc.time()
    user  system elapsed 
-  3.215   0.352   3.078 
+  2.532   0.291  12.587 

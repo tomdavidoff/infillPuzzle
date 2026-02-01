@@ -127,7 +127,7 @@ message("Checking zoning categories...")
 print(head(dtFinal))
 print(table(dtFinal[,land_use]))
 print(table(dtFinal[,land_use_c]))
-dtAnalysis <- dtFinal[grepl("UN1|UN2", land_use_c, ignore.case = TRUE)] # not UN3 that's more density
+dtAnalysis <- dtFinal[grepl("UN1|UN2|UN3", land_use_c, ignore.case = TRUE)] # not UN3 that's more density
 
 # Alternative: if the zone field has different naming, try:
 # dtAnalysis <- dtFinal[grepl("residential", zone, ignore.case = TRUE)]
@@ -169,7 +169,7 @@ dtGeo <- dtLots[, .(
   total_lots_active = .N,
   total_units = sum(total_units, na.rm = TRUE),
   propensity = sum(isPlexLot, na.rm = TRUE) / .N
-), by = .(geo_id, geo_name)]
+), by = .(geo_id, land_use_c,geo_name)]
 
 setorder(dtGeo, -total_lots_active)
 
