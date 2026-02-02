@@ -1,0 +1,199 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # wtpPrivate.R
+> # Willingness to pay for privacy by census tract based on laneway prevalence
+> # Tom Davidoff 
+> # 02/02/26
+> 
+> # model: mean willingness to pay for .25 or .16 of laneway at mean PPSF exceeds privacy willingness to pay. Pick mean and common standard deviation of normal distribution that best fits shares
+> 
+> library(data.table)
+> library(ggplot2)
+> 
+> # permit and price data
+> dtPrice <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_tract.csv",colClasses=list(character=c("CTUID")))
+> dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
+> print(head(dtChoice))
+        CTUID     ROLL_NUMBER    folioID permitnumbercreateddate     use
+       <char>          <char>     <char>                  <IDat>  <char>
+1: 9330044.00 001633021620000 A0000000CR              2024-01-17  single
+2: 9330029.00 009697153290000 A00000191E              2019-02-21  single
+3: 9330030.00 016185716270000 A0000025QE              2018-04-30  single
+4: 9330013.01 019237750590000 A000002L99              2025-05-13 laneway
+5: 9330008.02 006769050140000 A000000U30              2021-07-15  single
+6: 9330043.02 001650034570000 A0000001L4              2024-11-27 laneway
+   maxSingle maxLaneway maxDuplex MB_effective_year MB_total_finished_area
+       <int>      <int>     <int>            <char>                 <char>
+1:         1          0         0              1965                   4002
+2:         1          0         0                                         
+3:         1          0         0              2019                   3342
+4:         0          1         0              2007                   2198
+5:         1          0         0              1978                   3064
+6:         0          1         0              1975                   2764
+   neighbourhoodDescription                                      address
+                     <char>                                       <char>
+1:               POINT GREY   4632 LANGARA AVENUE, Vancouver, BC V6R 1E1
+2:                   CAMBIE     869 W 20TH AVENUE, Vancouver, BC V5Z 1Y3
+3:              MAIN/FRASER     4427 JAMES STREET, Vancouver, BC V5V 3H9
+4:                   KNIGHT 5835 ARGYLE STREET #3, Vancouver, BC V6P 3J8
+5:               SOUTHLANDS    3280 W 48TH AVENUE, Vancouver, BC V6N 3P8
+6:               POINT GREY    3863 W BROADWAY #3, Vancouver, BC V6R 2C2
+   LANDAREA landWidth landDepth             geo_point_2d            typeofwork
+      <num>    <char>    <char>                   <char>                <char>
+1:   2.8772        65       110 49.2729074, -123.2125593 Addition / Alteration
+2:   1.5016        33       122 49.2537249, -123.1237645          New Building
+3:   1.4562      49.5       111 49.2456172, -123.1042038          New Building
+4:   1.1375        33       122 49.2313344, -123.0719816          New Building
+5:   3.5378     65.99    164.84 49.2281967, -123.1779482          New Building
+6:   0.9967     58.54    108.84  49.2647127, -123.189698          New Building
+    nLot
+   <int>
+1:     1
+2:     1
+3:     1
+4:     1
+5:     1
+6:     1
+> 
+> dtMerge <- merge(dtChoice,dtPrice,by="CTUID")
+> dtMerge[,tract:=substr(CTUID,4,10)]
+> print(table(dtMerge[,.(maxSingle,maxLaneway)]))
+         maxLaneway
+maxSingle   0   1
+        0 942 517
+        1 972   0
+> 
+> dtMerge[,noLaneway:=ifelse(use!="laneway",1,0)]
+> print(table(dtMerge[,.(maxSingle,noLaneway)]))
+         noLaneway
+maxSingle   0   1
+        0 517 942
+        1   0 972
+> dtMerge <- dtMerge[use=="laneway" | maxSingle==1]
+> print(table(dtMerge[,.(maxSingle,noLaneway)]))
+         noLaneway
+maxSingle   0   1
+        0 517   0
+        1   0 972
+> print(head(dtMerge))
+Key: <CTUID>
+        CTUID     ROLL_NUMBER    folioID permitnumbercreateddate     use
+       <char>          <char>     <char>                  <IDat>  <char>
+1: 9330001.01 025772318600000 A000003EVF              2024-12-21 laneway
+2: 9330001.02 025821302870000 A000003GB3              2018-08-23  single
+3: 9330002.01 025270817560000 A000003DPP              2021-12-01  single
+4: 9330002.01 025266813710000 A000003DHE              2024-01-29 laneway
+5: 9330002.01 025817285530000 A000003G4V              2022-03-15 laneway
+6: 9330002.01 025270826620000 A000003DRG              2022-09-22  single
+   maxSingle maxLaneway maxDuplex MB_effective_year MB_total_finished_area
+       <int>      <int>     <int>            <char>                 <char>
+1:         0          1         0              1971                   2787
+2:         1          0         0              2019                   2566
+3:         1          0         0              1963                   2008
+4:         0          1         0              1960                   1772
+5:         0          1         0              1980                   3342
+6:         1          0         0              1968                   2668
+   neighbourhoodDescription                                       address
+                     <char>                                        <char>
+1:               FRASERVIEW          3658 E 48TH AVENUE #3, Vancouver, BC
+2:               FRASERVIEW     3157 E 62ND AVENUE, Vancouver, BC V5S 2G6
+3:               FRASERVIEW    7770 ELLIOTT STREET, Vancouver, BC V5S 2N9
+4:               FRASERVIEW 7507 ASHBURN STREET #3, Vancouver, BC V5S 2L1
+5:               FRASERVIEW 2959 ROSEMONT DRIVE #3, Vancouver, BC V5S 2C7
+6:               FRASERVIEW    8286 ELLIOTT STREET, Vancouver, BC V5S 2P2
+   LANDAREA landWidth landDepth             geo_point_2d   typeofwork  nLot
+      <num>    <char>    <char>                   <char>       <char> <int>
+1:   1.0195        40    157.83 49.2249031, -123.0246175 New Building     1
+2:   1.8621        55       115 49.2140062, -123.0388062 New Building     1
+3:   1.9403                     49.2138533, -123.0545981 New Building     1
+4:   1.9403        47       132 49.2162116, -123.0568366 New Building     1
+5:   1.9403                     49.2170516, -123.0457213 New Building     1
+6:   1.9403        50    188.74  49.208413, -123.0556155 New Building     1
+   meanPPSF  nobs     slope elasticity   tract noLaneway
+      <num> <int>     <num>      <num>  <char>     <num>
+1: 872.5392     5        NA         NA 0001.01         0
+2: 710.9111     9        NA         NA 0001.02         1
+3: 796.2599    52 0.1326562  0.1163703 0002.01         1
+4: 796.2599    52 0.1326562  0.1163703 0002.01         0
+5: 796.2599    52 0.1326562  0.1163703 0002.01         0
+6: 796.2599    52 0.1326562  0.1163703 0002.01         1
+> print(summary(dtMerge))
+    CTUID           ROLL_NUMBER          folioID         
+ Length:1489        Length:1489        Length:1489       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use              maxSingle        maxLaneway    
+ Min.   :2017-01-04      Length:1489        Min.   :0.0000   Min.   :0.0000  
+ 1st Qu.:2018-11-13      Class :character   1st Qu.:0.0000   1st Qu.:0.0000  
+ Median :2021-11-02      Mode  :character   Median :1.0000   Median :0.0000  
+ Mean   :2021-08-16                         Mean   :0.6528   Mean   :0.3472  
+ 3rd Qu.:2024-05-13                         3rd Qu.:1.0000   3rd Qu.:1.0000  
+ Max.   :2025-10-09                         Max.   :1.0000   Max.   :1.0000  
+                                                                             
+   maxDuplex MB_effective_year  MB_total_finished_area neighbourhoodDescription
+ Min.   :0   Length:1489        Length:1489            Length:1489             
+ 1st Qu.:0   Class :character   Class :character       Class :character        
+ Median :0   Mode  :character   Mode  :character       Mode  :character        
+ Mean   :0                                                                     
+ 3rd Qu.:0                                                                     
+ Max.   :0                                                                     
+                                                                               
+   address             LANDAREA       landWidth          landDepth        
+ Length:1489        Min.   :0.4194   Length:1489        Length:1489       
+ Class :character   1st Qu.:0.9363   Class :character   Class :character  
+ Mode  :character   Median :1.2742   Mode  :character   Mode  :character  
+                    Mean   :1.3984                                        
+                    3rd Qu.:1.6647                                        
+                    Max.   :3.5378                                        
+                                                                          
+ geo_point_2d        typeofwork             nLot      meanPPSF     
+ Length:1489        Length:1489        Min.   :1   Min.   : 710.9  
+ Class :character   Class :character   1st Qu.:1   1st Qu.: 841.6  
+ Mode  :character   Mode  :character   Median :1   Median :1002.5  
+                                       Mean   :1   Mean   : 953.1  
+                                       3rd Qu.:1   3rd Qu.:1038.8  
+                                       Max.   :1   Max.   :1097.0  
+                                                                   
+      nobs            slope             elasticity         tract          
+ Min.   :  4.00   Min.   :-0.189986   Min.   :-1.0812   Length:1489       
+ 1st Qu.: 25.00   1st Qu.: 0.009014   1st Qu.:-0.5234   Class :character  
+ Median : 38.00   Median : 0.091778   Median :-0.3299   Mode  :character  
+ Mean   : 44.62   Mean   : 0.089913   Mean   :-0.1538                     
+ 3rd Qu.: 59.00   3rd Qu.: 0.135894   3rd Qu.: 0.1997                     
+ Max.   :155.00   Max.   : 0.502588   Max.   : 1.3058                     
+                  NA's   :63          NA's   :63                          
+   noLaneway     
+ Min.   :0.0000  
+ 1st Qu.:0.0000  
+ Median :1.0000  
+ Mean   :0.6528  
+ 3rd Qu.:1.0000  
+ Max.   :1.0000  
+                 
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.276   0.030   0.285 

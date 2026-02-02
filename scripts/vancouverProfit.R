@@ -121,8 +121,8 @@ COSTPSF <- 500
 dtMerge[,buildableLaneway:=pmax(MB_total_finished_area+FSR_LANEWAY,(FSR_SINGLEDUPLEX+FSR_LANEWAY*lotSizeSqft))]
 dtMerge[,buildableDuplex:=pmax(MB_total_finished_area,FSR_SINGLEDUPLEX*lotSizeSqft)]
 dtMerge[,profitLaneway:=buildableLaneway*(meanPPSF - COSTPSF)]
-dtMerge[,profitDuplex:=buildableDuplex*(meanPPSF*exp(-2*elasticity)-COSTPSF)]
-dtMerge[,profitMulti:=lotSizeSqft*(meanPPSF*exp(-3*elasticity)-COSTPSF-150)] # placeholder
+dtMerge[,profitDuplex:=buildableDuplex*(meanPPSF*exp(elasticity/2)-COSTPSF)]
+dtMerge[,profitMulti:=lotSizeSqft*(meanPPSF*exp(elasticity/3)-COSTPSF-150)] # placeholder
 dtMerge[,single := use %chin% c("single","laneway")]
 dtMerge[,plex := use %chin% c("duplex","multi")]
 dtMerge[,laneway := use %chin% c("laneway")]

@@ -938,8 +938,8 @@ Key: <CTUID>
 > dtMerge[,buildableLaneway:=pmax(MB_total_finished_area+FSR_LANEWAY,(FSR_SINGLEDUPLEX+FSR_LANEWAY*lotSizeSqft))]
 > dtMerge[,buildableDuplex:=pmax(MB_total_finished_area,FSR_SINGLEDUPLEX*lotSizeSqft)]
 > dtMerge[,profitLaneway:=buildableLaneway*(meanPPSF - COSTPSF)]
-> dtMerge[,profitDuplex:=buildableDuplex*(meanPPSF*exp(-2*elasticity)-COSTPSF)]
-> dtMerge[,profitMulti:=lotSizeSqft*(meanPPSF*exp(-3*elasticity)-COSTPSF-150)] # placeholder
+> dtMerge[,profitDuplex:=buildableDuplex*(meanPPSF*exp(elasticity/2)-COSTPSF)]
+> dtMerge[,profitMulti:=lotSizeSqft*(meanPPSF*exp(elasticity/3)-COSTPSF-150)] # placeholder
 > dtMerge[,single := use %chin% c("single","laneway")]
 > dtMerge[,plex := use %chin% c("duplex","multi")]
 > dtMerge[,laneway := use %chin% c("laneway")]
@@ -947,129 +947,129 @@ Key: <CTUID>
 > dtMerge <- dtMerge[abs(deltaProfit)<1000000]
 > print(summary(dtMerge))
     CTUID           ROLL_NUMBER          folioID         
- Length:687         Length:687         Length:687        
+ Length:1995        Length:1995        Length:1995       
  Class :character   Class :character   Class :character  
  Mode  :character   Mode  :character   Mode  :character  
                                                          
                                                          
                                                          
                                                          
- permitnumbercreateddate     use              maxSingle     MB_effective_year 
- Min.   :2017-01-04      Length:687         Min.   :0.000   Length:687        
- 1st Qu.:2019-08-09      Class :character   1st Qu.:0.000   Class :character  
- Median :2022-05-30      Mode  :character   Median :0.000   Mode  :character  
- Mean   :2022-01-22                         Mean   :0.444                     
- 3rd Qu.:2024-07-29                         3rd Qu.:1.000                     
- Max.   :2025-10-17                         Max.   :1.000                     
-                                                                              
+ permitnumbercreateddate     use              maxSingle      MB_effective_year 
+ Min.   :2017-01-04      Length:1995        Min.   :0.0000   Length:1995       
+ 1st Qu.:2021-02-21      Class :character   1st Qu.:0.0000   Class :character  
+ Median :2022-10-03      Mode  :character   Median :0.0000   Mode  :character  
+ Mean   :2022-05-28                         Mean   :0.3554                     
+ 3rd Qu.:2024-08-12                         3rd Qu.:1.0000                     
+ Max.   :2025-10-17                         Max.   :1.0000                     
+                                                                               
  MB_total_finished_area neighbourhoodDescription   address         
- Min.   : 466           Length:687               Length:687        
- 1st Qu.:1944           Class :character         Class :character  
- Median :2470           Mode  :character         Mode  :character  
- Mean   :2711                                                      
- 3rd Qu.:3265                                                      
- Max.   :6630                                                      
+ Min.   : 466           Length:1995              Length:1995       
+ 1st Qu.:1819           Class :character         Class :character  
+ Median :2260           Mode  :character         Mode  :character  
+ Mean   :2492                                                      
+ 3rd Qu.:2862                                                      
+ Max.   :9462                                                      
                                                                    
-    LANDAREA        landWidth       landDepth      geo_point_2d      
- Min.   :0.4194   Min.   :16.50   Min.   : 61.74   Length:687        
- 1st Qu.:0.8070   1st Qu.:33.00   1st Qu.:121.00   Class :character  
- Median :1.0874   Median :33.00   Median :122.00   Mode  :character  
- Mean   :1.2405   Mean   :40.60   Mean   :122.17                     
- 3rd Qu.:1.6647   3rd Qu.:50.00   3rd Qu.:122.80                     
- Max.   :2.6684   Max.   :80.02   Max.   :217.10                     
+    LANDAREA        landWidth        landDepth     geo_point_2d      
+ Min.   :0.4194   Min.   : 16.50   Min.   : 50.0   Length:1995       
+ 1st Qu.:0.8070   1st Qu.: 33.00   1st Qu.:115.8   Class :character  
+ Median :1.1824   Median : 33.06   Median :122.0   Mode  :character  
+ Mean   :1.2725   Mean   : 40.59   Mean   :122.2                     
+ 3rd Qu.:1.5016   3rd Qu.: 49.20   3rd Qu.:125.5                     
+ Max.   :3.5378   Max.   :132.00   Max.   :277.2                     
                                                                      
-  typeofwork           meanPPSF           nobs            slope         
- Length:687         Min.   : 786.6   Min.   : 10.00   Min.   :-0.04760  
- Class :character   1st Qu.: 885.8   1st Qu.: 20.00   1st Qu.: 0.09324  
- Mode  :character   Median :1002.5   Median : 37.00   Median : 0.15325  
-                    Mean   : 971.7   Mean   : 43.17   Mean   : 0.16736  
-                    3rd Qu.:1053.3   3rd Qu.: 53.00   3rd Qu.: 0.22893  
-                    Max.   :1082.4   Max.   :106.00   Max.   : 0.50259  
-                                                                        
-   elasticity          tract                lat             lon        
- Min.   :-0.13388   Length:687         Min.   :49.21   Min.   :-123.2  
- 1st Qu.: 0.00000   Class :character   1st Qu.:49.23   1st Qu.:-123.2  
- Median : 0.00000   Mode  :character   Median :49.25   Median :-123.2  
- Mean   :-0.01135                      Mean   :49.25   Mean   :-123.1  
- 3rd Qu.: 0.00000                      3rd Qu.:49.26   3rd Qu.:-123.1  
- Max.   : 0.00000                      Max.   :49.29   Max.   :-123.0  
-                                                                       
-                ppsfBin     lotSizeSqftX     lotSizeSqft    buildableLaneway
- (1.02e+03,1.07e+03]:138   Min.   : 18269   Min.   : 2013   Min.   : 570.9  
- (984,1.01e+03]     :119   1st Qu.: 35153   1st Qu.: 4026   1st Qu.:1943.7  
- (859,939]          : 96   Median : 47367   Median : 4097   Median :2470.2  
- (1.01e+03,1.02e+03]: 87   Mean   : 54036   Mean   : 4963   Mean   :2711.5  
- (833,859]          : 81   3rd Qu.: 72514   3rd Qu.: 6021   3rd Qu.:3265.2  
- (1.07e+03,1.1e+03] : 77   Max.   :116236   Max.   :10184   Max.   :6630.2  
- (Other)            : 89                                                    
- buildableDuplex profitLaneway      profitDuplex      profitMulti     
- Min.   :1409    Min.   : 163603   Min.   : 679806   Min.   : 567292  
- 1st Qu.:2818    1st Qu.: 813610   1st Qu.:1350680   1st Qu.:1316433  
- Median :2899    Median :1170110   Median :1590118   Median :1667697  
- Mean   :3483    Mean   :1309796   Mean   :1722242   Mean   :1757950  
- 3rd Qu.:4214    3rd Qu.:1669302   3rd Qu.:2124103   3rd Qu.:2296083  
- Max.   :7128    Max.   :3370920   Max.   :3944170   Max.   :4107004  
+  typeofwork           meanPPSF           nobs            slope          
+ Length:1995        Min.   : 747.5   Min.   :  5.00   Min.   :-0.189986  
+ Class :character   1st Qu.: 826.2   1st Qu.: 32.00   1st Qu.: 0.009014  
+ Mode  :character   Median : 900.5   Median : 49.00   Median : 0.091240  
+                    Mean   : 916.2   Mean   : 56.46   Mean   : 0.086136  
+                    3rd Qu.:1009.7   3rd Qu.: 74.00   3rd Qu.: 0.132585  
+                    Max.   :1097.0   Max.   :155.00   Max.   : 0.502588  
+                                                                         
+   elasticity         tract                lat             lon        
+ Min.   :-1.0000   Length:1995        Min.   :49.21   Min.   :-123.2  
+ 1st Qu.:-0.5114   Class :character   1st Qu.:49.23   1st Qu.:-123.2  
+ Median :-0.3500   Mode  :character   Median :49.25   Median :-123.1  
+ Mean   :-0.3110                      Mean   :49.24   Mean   :-123.1  
+ 3rd Qu.: 0.0000                      3rd Qu.:49.26   3rd Qu.:-123.1  
+ Max.   : 0.0000                      Max.   :49.29   Max.   :-123.0  
                                                                       
-   single           plex          laneway         deltaProfit        
- Mode :logical   Mode :logical   Mode :logical   Min.   :-999670.51  
- FALSE:259       FALSE:428       FALSE:564       1st Qu.:-630926.52  
- TRUE :428       TRUE :259       TRUE :123       Median :-380826.05  
-                                                 Mean   :-412445.86  
-                                                 3rd Qu.:-189637.31  
-                                                 Max.   :     93.18  
-                                                                     
+                ppsfBin     lotSizeSqftX     lotSizeSqft    buildableLaneway
+ (859,939]          :257   Min.   : 18269   Min.   : 1600   Min.   : 483.2  
+ (818,833]          :242   1st Qu.: 35153   1st Qu.: 4026   1st Qu.:1819.2  
+ (1.02e+03,1.07e+03]:215   Median : 51505   Median : 4285   Median :2260.2  
+ (800,818]          :211   Mean   : 55432   Mean   : 4986   Mean   :2492.7  
+ [711,800]          :202   3rd Qu.: 65410   3rd Qu.: 5756   3rd Qu.:2862.2  
+ (833,859]          :202   Max.   :154107   Max.   :25300   Max.   :9462.2  
+ (Other)            :666                                                    
+ buildableDuplex profitLaneway      profitDuplex      profitMulti     
+ Min.   : 1238   Min.   : 163603   Min.   :  11818   Min.   :-518645  
+ 1st Qu.: 2818   1st Qu.: 638678   1st Qu.: 465350   1st Qu.: 248116  
+ Median : 3003   Median : 869473   Median : 875725   Median : 727478  
+ Mean   : 3496   Mean   :1079525   Mean   :1066358   Mean   : 958058  
+ 3rd Qu.: 4039   3rd Qu.:1385704   3rd Qu.:1521583   3rd Qu.:1508447  
+ Max.   :17710   Max.   :4806451   Max.   :5171657   Max.   :5272167  
+                                                                      
+   single           plex          laneway         deltaProfit     
+ Mode :logical   Mode :logical   Mode :logical   Min.   :-999671  
+ FALSE:834       FALSE:1161      FALSE:1543      1st Qu.:-272362  
+ TRUE :1161      TRUE :834       TRUE :452       Median :  18031  
+                                                 Mean   :  13167  
+                                                 3rd Qu.: 294975  
+                                                 Max.   : 995711  
+                                                                  
 > dtMerge <- dtMerge[!is.na(profitLaneway) & !is.na(profitDuplex)]
 > print(cor(dtMerge[use!="laneway",.(single,plex,meanPPSF,elasticity,deltaProfit)]))
-                 single        plex   meanPPSF  elasticity deltaProfit
-single       1.00000000 -1.00000000  0.3508484  0.08211684   0.3210082
-plex        -1.00000000  1.00000000 -0.3508484 -0.08211684  -0.3210082
-meanPPSF     0.35084841 -0.35084841  1.0000000  0.54917132   0.2156384
-elasticity   0.08211684 -0.08211684  0.5491713  1.00000000   0.4014923
-deltaProfit  0.32100821 -0.32100821  0.2156384  0.40149232   1.0000000
+                single       plex   meanPPSF elasticity deltaProfit
+single       1.0000000 -1.0000000  0.4600984  0.1115610   0.1556848
+plex        -1.0000000  1.0000000 -0.4600984 -0.1115610  -0.1556848
+meanPPSF     0.4600984 -0.4600984  1.0000000  0.3336143  -0.2114533
+elasticity   0.1115610 -0.1115610  0.3336143  1.0000000  -0.7028418
+deltaProfit  0.1556848 -0.1556848 -0.2114533 -0.7028418   1.0000000
 > print(cor(dtMerge[MB_effective_year<2000,.(single,plex,laneway,meanPPSF,elasticity,deltaProfit)]))
-                 single        plex     laneway    meanPPSF  elasticity
-single       1.00000000 -1.00000000  0.50669839  0.26832280  0.08620759
-plex        -1.00000000  1.00000000 -0.50669839 -0.26832280 -0.08620759
-laneway      0.50669839 -0.50669839  1.00000000  0.03515474  0.03313150
-meanPPSF     0.26832280 -0.26832280  0.03515474  1.00000000  0.50909328
-elasticity   0.08620759 -0.08620759  0.03313150  0.50909328  1.00000000
-deltaProfit  0.04317871 -0.04317871  0.08377507  0.04512394  0.38804226
+                 single        plex     laneway   meanPPSF  elasticity
+single       1.00000000 -1.00000000  0.58925815  0.2220389 -0.02064591
+plex        -1.00000000  1.00000000 -0.58925815 -0.2220389  0.02064591
+laneway      0.58925815 -0.58925815  1.00000000 -0.1020174 -0.09350842
+meanPPSF     0.22203894 -0.22203894 -0.10201745  1.0000000  0.34185920
+elasticity  -0.02064591  0.02064591 -0.09350842  0.3418592  1.00000000
+deltaProfit  0.07734303 -0.07734303  0.17823098 -0.4116420 -0.79675887
             deltaProfit
-single       0.04317871
-plex        -0.04317871
-laneway      0.08377507
-meanPPSF     0.04512394
-elasticity   0.38804226
+single       0.07734303
+plex        -0.07734303
+laneway      0.17823098
+meanPPSF    -0.41164201
+elasticity  -0.79675887
 deltaProfit  1.00000000
 > print(cor(dtMerge[,.(lotSizeSqft,lotSizeSqftX)]))
              lotSizeSqft lotSizeSqftX
-lotSizeSqft    1.0000000    0.1758867
-lotSizeSqftX   0.1758867    1.0000000
+lotSizeSqft    1.0000000    0.2813449
+lotSizeSqftX   0.2813449    1.0000000
 > print(feols(single ~ meanPPSF + deltaProfit,data=dtMerge[MB_effective_year<1960]))
 OLS estimation, Dep. Var.: single
-Observations: 109
+Observations: 416
 Standard-errors: IID 
-                Estimate  Std. Error  t value Pr(>|t|)    
-(Intercept) -0.656134144 0.424807117 -1.54455 0.125436    
-meanPPSF     0.000839903 0.000445010  1.88738 0.061845 .  
-deltaProfit -0.000000285 0.000000175 -1.63125 0.105804    
+                 Estimate   Std. Error   t value   Pr(>|t|)    
+(Intercept) -8.030326e-01 0.2237093675 -3.589625 3.7094e-04 ***
+meanPPSF     1.212005e-03 0.0002546458  4.759572 2.6877e-06 ***
+deltaProfit  6.250000e-09 0.0000000709  0.088097 9.2984e-01    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.44494   Adj. R2: 0.044464
+RMSE: 0.43205   Adj. R2: 0.062248
 > print(feols(single ~ meanPPSF + elasticity,data=dtMerge[MB_effective_year<1960]))
 OLS estimation, Dep. Var.: single
-Observations: 109
+Observations: 416
 Standard-errors: IID 
-             Estimate Std. Error   t value Pr(>|t|)    
-(Intercept) -0.765992   0.500824 -1.529464 0.129128    
-meanPPSF     0.001108   0.000513  2.159428 0.033071 *  
-elasticity  -0.981036   1.344357 -0.729743 0.467157    
+             Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept) -0.895112   0.218369 -4.09909 4.9954e-05 ***
+meanPPSF     0.001277   0.000231  5.51878 6.0389e-08 ***
+elasticity  -0.096709   0.088405 -1.09393 2.7462e-01    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.449363   Adj. R2: 0.025373
+RMSE: 0.431429   Adj. R2: 0.06494
 > print(summary(dtMerge[,deltaProfit]))
-      Min.    1st Qu.     Median       Mean    3rd Qu.       Max. 
--999670.51 -630926.52 -380826.05 -412445.86 -189637.31      93.18 
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+-999671 -272362   18031   13167  294975  995711 
 > 
 > #perfect correlation among price/elasticity/income
 > # conjecture -- ordered probit, but 2-dimensional
@@ -1078,15 +1078,15 @@ RMSE: 0.449363   Adj. R2: 0.025373
 > ggsave("text/singleMeanElasticity.png",width=6,height=6)
 > print(feols(laneway ~ log(meanPPSF) + elasticity,data=dtSingle))
 OLS estimation, Dep. Var.: laneway
-Observations: 25
+Observations: 68
 Standard-errors: IID 
-              Estimate Std. Error  t value Pr(>|t|)    
-(Intercept)    9.42886   3.367027  2.80035 0.010427 *  
-log(meanPPSF) -1.32411   0.490920 -2.69719 0.013161 *  
-elasticity     2.10510   1.220716  1.72448 0.098645 .  
+               Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)   12.827522   1.804249  7.10962 1.1103e-09 ***
+log(meanPPSF) -1.826510   0.264459 -6.90658 2.5359e-09 ***
+elasticity    -0.169322   0.093593 -1.80912 7.5057e-02 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.219066   Adj. R2: 0.198674
+RMSE: 0.22186   Adj. R2: 0.460837
 > 
 > 
 > 
@@ -1249,22 +1249,22 @@ Key: <CTUID>
 6:  FALSE   TRUE   FALSE   -313691.8
 > dtMerge <- merge(dtMerge,dtIncome[,.(tract,medianIncome)],by="tract")
 > print(cor(dtMerge[MB_effective_year<1960,.(single,plex,laneway,meanPPSF,elasticity,deltaProfit,medianIncome)]))
-                  single        plex      laneway    meanPPSF  elasticity
-single        1.00000000 -1.00000000  0.558452045  0.19650835  0.03660042
-plex         -1.00000000  1.00000000 -0.558452045 -0.19650835 -0.03660042
-laneway       0.55845205 -0.55845205  1.000000000 -0.04174051 -0.10770990
-meanPPSF      0.19650835 -0.19650835 -0.041740507  1.00000000  0.49314790
-elasticity    0.03660042 -0.03660042 -0.107709901  0.49314790  1.00000000
-deltaProfit  -0.17504868  0.17504868 -0.169167453 -0.11516791  0.39826076
-medianIncome  0.02278677 -0.02278677 -0.006616985  0.40509023  0.01693489
+                  single        plex     laneway    meanPPSF  elasticity
+single        1.00000000 -1.00000000  0.60474597  0.25835954  0.02866592
+plex         -1.00000000  1.00000000 -0.60474597 -0.25835954 -0.02866592
+laneway       0.60474597 -0.60474597  1.00000000 -0.03972305 -0.03740258
+meanPPSF      0.25835954 -0.25835954 -0.03972305  1.00000000  0.30251962
+elasticity    0.02866592 -0.02866592 -0.03740258  0.30251962  1.00000000
+deltaProfit  -0.12481308  0.12481308  0.02252261 -0.49716230 -0.77431462
+medianIncome  0.17182798 -0.17182798 -0.03530621  0.49195085  0.09560253
              deltaProfit medianIncome
-single       -0.17504868  0.022786767
-plex          0.17504868 -0.022786767
-laneway      -0.16916745 -0.006616985
-meanPPSF     -0.11516791  0.405090232
-elasticity    0.39826076  0.016934885
-deltaProfit   1.00000000 -0.071961288
-medianIncome -0.07196129  1.000000000
+single       -0.12481308   0.17182798
+plex          0.12481308  -0.17182798
+laneway       0.02252261  -0.03530621
+meanPPSF     -0.49716230   0.49195085
+elasticity   -0.77431462   0.09560253
+deltaProfit   1.00000000  -0.22071541
+medianIncome -0.22071541   1.00000000
 > 
 > dtMerge[,permitYear:=as.numeric(substr(permitnumbercreateddate,1,4))]
 > # do share of multi/duplex for years 2024, 2025 (exclude laneway/single)
@@ -1275,32 +1275,37 @@ medianIncome -0.07196129  1.000000000
 > print(dtYear)
                 ppsfBin    use     N totalN     share
                  <fctr> <char> <int>  <int>     <num>
- 1:           [711,800] duplex     9     14 0.6428571
- 2:           [711,800]  multi     5     14 0.3571429
- 3:      (984,1.01e+03] duplex    25     32 0.7812500
- 4:      (984,1.01e+03]  multi     7     32 0.2187500
- 5: (1.01e+03,1.02e+03] duplex     4     11 0.3636364
- 6: (1.01e+03,1.02e+03]  multi     7     11 0.6363636
- 7: (1.02e+03,1.07e+03]  multi     8     22 0.3636364
- 8: (1.02e+03,1.07e+03] duplex    14     22 0.6363636
- 9:           (939,984] duplex     1      1 1.0000000
-10:           (859,939]  multi     4     25 0.1600000
-11:           (833,859]  multi     6     16 0.3750000
-12:           (833,859] duplex    10     16 0.6250000
-13:           (800,818] duplex     1      2 0.5000000
-14:           (800,818]  multi     1      2 0.5000000
-15:           (859,939] duplex    21     25 0.8400000
-16:  (1.07e+03,1.1e+03] duplex     6      6 1.0000000
+ 1:           [711,800] duplex    16     30 0.5333333
+ 2:           [711,800]  multi    14     30 0.4666667
+ 3:           (859,939]  multi    17     59 0.2881356
+ 4:           (818,833]  multi    28     48 0.5833333
+ 5:      (984,1.01e+03] duplex    26     34 0.7647059
+ 6:      (984,1.01e+03]  multi     8     34 0.2352941
+ 7:           (939,984] duplex    18     28 0.6428571
+ 8:           (939,984]  multi    10     28 0.3571429
+ 9: (1.01e+03,1.02e+03] duplex    12     24 0.5000000
+10: (1.01e+03,1.02e+03]  multi    12     24 0.5000000
+11:  (1.07e+03,1.1e+03] duplex     7      9 0.7777778
+12:  (1.07e+03,1.1e+03]  multi     2      9 0.2222222
+13: (1.02e+03,1.07e+03]  multi     9     28 0.3214286
+14: (1.02e+03,1.07e+03] duplex    19     28 0.6785714
+15:           (818,833] duplex    20     48 0.4166667
+16:           (859,939] duplex    42     59 0.7118644
+17:           (833,859] duplex    23     41 0.5609756
+18:           (833,859]  multi    18     41 0.4390244
+19:           (800,818]  multi    20     41 0.4878049
+20:           (800,818] duplex    21     41 0.5121951
+                ppsfBin    use     N totalN     share
 > dtPlexShare <- dtYear[use=="multi"]
 > print(head(dtPlexShare))
                ppsfBin    use     N totalN     share
                 <fctr> <char> <int>  <int>     <num>
-1:           [711,800]  multi     5     14 0.3571429
-2:      (984,1.01e+03]  multi     7     32 0.2187500
-3: (1.01e+03,1.02e+03]  multi     7     11 0.6363636
-4: (1.02e+03,1.07e+03]  multi     8     22 0.3636364
-5:           (859,939]  multi     4     25 0.1600000
-6:           (833,859]  multi     6     16 0.3750000
+1:           [711,800]  multi    14     30 0.4666667
+2:           (859,939]  multi    17     59 0.2881356
+3:           (818,833]  multi    28     48 0.5833333
+4:      (984,1.01e+03]  multi     8     34 0.2352941
+5:           (939,984]  multi    10     28 0.3571429
+6: (1.01e+03,1.02e+03]  multi    12     24 0.5000000
 > ggplot(dtPlexShare,aes(x=ppsfBin,y=share)) + geom_bar(stat="identity",position="dodge") + theme_minimal() +
 +   labs(title="Vancouver Duplex/Multiplex Permits by Price per Square Foot",
 +        x="Mean Price per Square Foot Bin",
@@ -1313,25 +1318,25 @@ medianIncome -0.07196129  1.000000000
 > dtMerge[,deltaProfitMulti:=profitMulti - profitDuplex]
 > print(cor(dtMerge[plex==1,.(meanPPSF,elasticity,use=="multi",use=="duplex",deltaProfitMulti)]))
                     meanPPSF  elasticity          V3          V4
-meanPPSF          1.00000000  0.52027454  0.03276965 -0.03276965
-elasticity        0.52027454  1.00000000 -0.02383631  0.02383631
-V3                0.03276965 -0.02383631  1.00000000 -1.00000000
-V4               -0.03276965  0.02383631 -1.00000000  1.00000000
-deltaProfitMulti  0.10185559 -0.78894601  0.04822109 -0.04822109
+meanPPSF          1.00000000  0.34241500  0.02214019 -0.02214019
+elasticity        0.34241500  1.00000000 -0.07750638  0.07750638
+V3                0.02214019 -0.07750638  1.00000000 -1.00000000
+V4               -0.02214019  0.07750638 -1.00000000  1.00000000
+deltaProfitMulti  0.94647531  0.31957439 -0.02959651  0.02959651
                  deltaProfitMulti
-meanPPSF               0.10185559
-elasticity            -0.78894601
-V3                     0.04822109
-V4                    -0.04822109
+meanPPSF               0.94647531
+elasticity             0.31957439
+V3                    -0.02959651
+V4                     0.02959651
 deltaProfitMulti       1.00000000
 > print(cor(dtMerge[laneway==0,.(meanPPSF,elasticity,use=="multi",use=="duplex",deltaProfit)]))
               meanPPSF  elasticity          V3          V4 deltaProfit
-meanPPSF     1.0000000  0.54917132 -0.08001060 -0.31707366   0.2156384
-elasticity   0.5491713  1.00000000 -0.03962562 -0.06348014   0.4014923
-V3          -0.0800106 -0.03962562  1.00000000 -0.21574861  -0.1726415
-V4          -0.3170737 -0.06348014 -0.21574861  1.00000000  -0.2390456
-deltaProfit  0.2156384  0.40149232 -0.17264152 -0.23904558   1.0000000
+meanPPSF     1.0000000  0.33361433 -0.12257887 -0.38928349 -0.21145326
+elasticity   0.3336143  1.00000000 -0.08691667 -0.06082005 -0.70284181
+V3          -0.1225789 -0.08691667  1.00000000 -0.28927513 -0.04743971
+V4          -0.3892835 -0.06082005 -0.28927513  1.00000000 -0.12822333
+deltaProfit -0.2114533 -0.70284181 -0.04743971 -0.12822333  1.00000000
 > 
 > proc.time()
    user  system elapsed 
- 14.050   3.469   6.985 
+ 13.812   3.259   8.319 

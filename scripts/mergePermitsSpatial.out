@@ -17,7 +17,7 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
-> # mergePermitsSpatial.R
+> # mergePermitsSpatial.maxLaneway,maxDuplexmaxLaneway,maxDuplex,,R
 > # merge permit data with single family lots as of 2019 BCA (2018 assessment) and then census tracts
 > # Tom Davidoff
 > # 01/16/26
@@ -1816,21 +1816,26 @@ Projected CRS: NAD83 / BC Albers
 > 
 > ##
 > dtSpatial <- as.data.table(mergedCT)
+> dtSpatial[,roundRoll:=floor(as.numeric(ROLL_NUMBER)/1000)]
+> print(length(unique(dtSpatial[,ROLL_NUMBER])))
+[1] 2620
+> print(length(unique(dtSpatial[,roundRoll])))
+[1] 2620
 > dtSpatial[,matched:=!is.na(zoning)]
-> dtSpatial[,nLot:=.N,by=ROLL_NUMBER]
+> dtSpatial[,nLot:=.N,by=roundRoll]
 > dtSpatial[,duplex:=grepl("uplex",specificusecategory)]
 > dtSpatial[,laneway:=grepl("aneway",specificusecategory)]
 > dtSpatial[,multi:=grepl("ultiple",specificusecategory)]
 > dtSpatial[,single:=grepl("Single Detached",specificusecategory)]
-> dtSpatial[,maxSingle:=max(single),by=ROLL_NUMBER]
-> dtSpatial[,maxMulti:=max(multi),by=ROLL_NUMBER]
-> dtSpatial[,maxDuplex:=max(duplex),by=ROLL_NUMBER]
-> dtSpatial[,maxLaneway:=max(laneway),by=ROLL_NUMBER]
+> dtSpatial[,maxSingle:=max(single),by=roundRoll]
+> dtSpatial[,maxMulti:=max(multi),by=roundRoll]
+> dtSpatial[,maxDuplex:=max(duplex),by=roundRoll]
+> dtSpatial[,maxLaneway:=max(laneway),by=roundRoll]
 > dtSpatial[,use:=fifelse(maxMulti==1,"multi",
 +                            fifelse(maxDuplex==1,"duplex",
 +                                    fifelse(maxLaneway==1,"laneway","single")))]
 > # only one obs per lot
-> dtSpatial[,uniqueLot:=.N==1,by=ROLL_NUMBER]
+> dtSpatial[,uniqueLot:=.N==1,by=roundRoll]
 > dtSpatial <- dtSpatial[uniqueLot==TRUE]
 > print(table(dtSpatial[matched==1,nLot]))
 
@@ -1871,13 +1876,13 @@ TRUE
 [23] "CTUID"                    "DGUID"                   
 [25] "CTNAME"                   "LANDAREA"                
 [27] "PRUID"                    "geometry"                
-[29] "matched"                  "nLot"                    
-[31] "duplex"                   "laneway"                 
-[33] "multi"                    "single"                  
-[35] "maxSingle"                "maxMulti"                
-[37] "maxDuplex"                "maxLaneway"              
-[39] "use"                      "uniqueLot"               
-[41] "matcha"                  
+[29] "roundRoll"                "matched"                 
+[31] "nLot"                     "duplex"                  
+[33] "laneway"                  "multi"                   
+[35] "single"                   "maxSingle"               
+[37] "maxMulti"                 "maxDuplex"               
+[39] "maxLaneway"               "use"                     
+[41] "uniqueLot"                "matcha"                  
 > # [1] "geom"                     "geo_point_2d"            
 > # [3] "permitnumber"             "permitnumbercreateddate" 
 > # [5] "applicant"                "typeofwork"              
@@ -1897,7 +1902,7 @@ TRUE
 > #[33] "maxDuplex"                "maxLaneway"              
 > #[35] "use"                      "uniqueLot"               
 > #[37] "matcha"                  
-> dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,maxSingle,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA,landWidth,landDepth,geo_point_2d,typeofwork)]
+> dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,maxSingle,maxLaneway,maxDuplex,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA,landWidth,landDepth,geo_point_2d,typeofwork,nLot)]
 > outfile <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
 > saveRDS(dtSpatial,outfile)
 > 
@@ -1905,4 +1910,4 @@ TRUE
 > 
 > proc.time()
    user  system elapsed 
-  3.610   0.864   2.173 
+  3.265   0.836   1.846 

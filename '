@@ -57,24 +57,21 @@ print(head(mergedCT))
 
 ##
 dtSpatial <- as.data.table(mergedCT)
-dtSpatial[,roundRoll:=floor(as.numeric(ROLL_NUMBER)/1000)]
-print(length(unique(dtSpatial[,ROLL_NUMBER])))
-print(length(unique(dtSpatial[,roundRoll])))
 dtSpatial[,matched:=!is.na(zoning)]
-dtSpatial[,nLot:=.N,by=roundRoll]
+dtSpatial[,nLot:=.N,by=ROLL_NUMBER]
 dtSpatial[,duplex:=grepl("uplex",specificusecategory)]
 dtSpatial[,laneway:=grepl("aneway",specificusecategory)]
 dtSpatial[,multi:=grepl("ultiple",specificusecategory)]
 dtSpatial[,single:=grepl("Single Detached",specificusecategory)]
-dtSpatial[,maxSingle:=max(single),by=roundRoll]
-dtSpatial[,maxMulti:=max(multi),by=roundRoll]
-dtSpatial[,maxDuplex:=max(duplex),by=roundRoll]
-dtSpatial[,maxLaneway:=max(laneway),by=roundRoll]
+dtSpatial[,maxSingle:=max(single),by=ROLL_NUMBER]
+dtSpatial[,maxMulti:=max(multi),by=ROLL_NUMBER]
+dtSpatial[,maxDuplex:=max(duplex),by=ROLL_NUMBER]
+dtSpatial[,maxLaneway:=max(laneway),by=ROLL_NUMBER]
 dtSpatial[,use:=fifelse(maxMulti==1,"multi",
                            fifelse(maxDuplex==1,"duplex",
                                    fifelse(maxLaneway==1,"laneway","single")))]
 # only one obs per lot
-dtSpatial[,uniqueLot:=.N==1,by=roundRoll]
+dtSpatial[,uniqueLot:=.N==1,by=ROLL_NUMBER]
 dtSpatial <- dtSpatial[uniqueLot==TRUE]
 print(table(dtSpatial[matched==1,nLot]))
 print(table(dtSpatial[matched==0,specificusecategory]))
