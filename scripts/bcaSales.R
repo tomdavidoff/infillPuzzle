@@ -140,6 +140,7 @@ runAnalysis <- function(dt, groupVar, label) {
   
   # Compute median land_width within each group
   dt[, landWidthMedian := median(land_width, na.rm = TRUE), by = groupVar]
+  dt[, saleYear := year(conveyanceDate)]
   
   # Filter to observations near median width for that group
   dtFiltered <- dt[
@@ -160,22 +161,15 @@ runAnalysis <- function(dt, groupVar, label) {
   ))
 
   fmlaLog <- as.formula(paste0(
-    "log(ppsf) ~ i(", groupVar, ", log(MB_total_finished_area)) + log(age + 1) + log(MB_total_finished_area) + log(land_width) + log(land_depth) | ", groupVar 
+    "log(ppsf) ~ 0 + i(", groupVar, ", log(MB_total_finished_area)) + log(age + 1) + log(land_width) + log(land_depth) | saleYear + ", groupVar 
   ))# no main effect for Wald purposes
   
-  fmlaLogRestricted <- as.formula(paste0(
-  "log(ppsf) ~ log(MB_total_finished_area) + log(age + 1) + log(land_width) + log(land_depth) | ", groupVar
-))
-
   # Run regressions
   mainReg <- feols(fmlaMain, data = dtAnalysis)
   print(r2(mainReg, typ = c("r2", "ar2")))
   
   logReg <- feols(fmlaLog, data = dtAnalysis)
   print(r2(logReg, typ = c("r2", "ar2")))
-
-  logRegRestricted <- feols(fmlaLogRestricted, data = dtAnalysis)
-  print(r2(logRegRestricted,typ=c("r2","ar2")))
 
   # Extract slopes
   dtSlopes <- as.data.table(coeftable(mainReg), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
@@ -188,9 +182,17 @@ runAnalysis <- function(dt, groupVar, label) {
   patternLog <- paste0(groupVar, "::(.*):log\\(MB_total_finished_area\\)")
   dtElasticities[, (groupVar) := gsub(patternLog, "\\1", term)]
   
-  # Compute means
+  # Compute means, adjust for CPI
+  dtCPI <- fread("~/OneDrive - UBC/dataRaw/1810000501_databaseLoadingData.csv",select=c("REF_DATE","VALUE","Products and product groups"))
+  dtCPI <- dtCPI[`Products and product groups` == "All-items"]
+  setnames(dtCPI, c("REF_DATE", "VALUE"), c("year", "CPI"))
+  dtCPI[,CPI:=CPI / CPI[year==2025]]
+  dtFiltered <- merge(dtFiltered, dtCPI, by.x = "saleYear", by.y = "year", all.x = TRUE)
+  print(head(dtFiltered))
+  print(head(dtCPI))
+
   dtMeans <- dtFiltered[hasLaneway == FALSE & year(conveyanceDate) >= MEANYEAR, 
-                        .(meanPPSF = mean(ppsf, na.rm = TRUE), nobs = .N), 
+                        .(meanPPSF = mean(ppsf/CPI, na.rm = TRUE), nobs = .N), 
                         by = groupVar]
   
   # Merge slopes and elasticities
@@ -200,7 +202,7 @@ runAnalysis <- function(dt, groupVar, label) {
   setnames(dtMeans, "Estimate", "elasticity")
   
   # Output
-  fwrite(dtMeans, paste0("tables/bca19_mean_ppsf_slope_by_", label, ".csv"))
+  fwrite(dtMeans, paste0("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_", label, ".csv"))
   
   # Plot
   p <- ggplot(dtMeans[nobs > quantile(nobs, .025) & !is.na(slope)], aes(x = slope, y = meanPPSF)) + 

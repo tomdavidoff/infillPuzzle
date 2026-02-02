@@ -1,0 +1,1163 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nyt/global//global/global/global}
+    \entry{Anagol_etal2021}{report}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=c14b405cbd83dddf8a740476c89dd72b}{%
+           family={Anagol},
+           familyi={A\bibinitperiod},
+           given={Sanoth},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=641392d6764c644e3fd922f198251945}{%
+           family={Ferreira},
+           familyi={F\bibinitperiod},
+           given={Fernando\bibnamedelima V.},
+           giveni={F\bibinitperiod\bibinitdelim V\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=937b667fb5fc20e3b36cde93bc416eca}{%
+           family={Rexer},
+           familyi={R\bibinitperiod},
+           given={Jonah\bibnamedelima M.},
+           giveni={J\bibinitperiod\bibinitdelim M\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {NBER}%
+      }
+      \strng{namehash}{33f68a6b90b1df15da5d65c1fd91c135}
+      \strng{fullhash}{33f68a6b90b1df15da5d65c1fd91c135}
+      \strng{fullhashraw}{33f68a6b90b1df15da5d65c1fd91c135}
+      \strng{bibnamehash}{33f68a6b90b1df15da5d65c1fd91c135}
+      \strng{authorbibnamehash}{33f68a6b90b1df15da5d65c1fd91c135}
+      \strng{authornamehash}{33f68a6b90b1df15da5d65c1fd91c135}
+      \strng{authorfullhash}{33f68a6b90b1df15da5d65c1fd91c135}
+      \strng{authorfullhashraw}{33f68a6b90b1df15da5d65c1fd91c135}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{number}{29440}
+      \field{title}{Estimating the Economic Value of Zoning Reform}
+      \field{type}{Working Paper}
+      \field{year}{2021}
+      \keyw{Housing supply,Zoning}
+    \endentry
+    \entry{Been_etal2019}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=f1a4a4837c5ef8ba9b2042b5392198d7}{%
+           family={Been},
+           familyi={B\bibinitperiod},
+           given={Vicki},
+           giveni={V\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8c772c7953a8820eda77bdae0215d092}{%
+           family={Ellen},
+           familyi={E\bibinitperiod},
+           given={{Ingrid Gould}},
+           giveni={I\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=1f3074e56b35ede8c2b6deb226b98ebf}{%
+           family={O'Regan},
+           familyi={O\bibinitperiod},
+           given={Katheione},
+           giveni={K\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{publisher}{1}{%
+        {Routledge}%
+      }
+      \strng{namehash}{f7e5a39031847409bab9a6cff3f100fb}
+      \strng{fullhash}{f7e5a39031847409bab9a6cff3f100fb}
+      \strng{fullhashraw}{f7e5a39031847409bab9a6cff3f100fb}
+      \strng{bibnamehash}{f7e5a39031847409bab9a6cff3f100fb}
+      \strng{authorbibnamehash}{f7e5a39031847409bab9a6cff3f100fb}
+      \strng{authornamehash}{f7e5a39031847409bab9a6cff3f100fb}
+      \strng{authorfullhash}{f7e5a39031847409bab9a6cff3f100fb}
+      \strng{authorfullhashraw}{f7e5a39031847409bab9a6cff3f100fb}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Housing Policy Debate}
+      \field{number}{1}
+      \field{title}{Supply Skepticism: Housing Supply and Affordability}
+      \field{volume}{29}
+      \field{year}{2019}
+      \field{pages}{25\bibrangedash 40}
+      \range{pages}{16}
+      \verb{doi}
+      \verb 10.1080/10511482.2018.1476899
+      \endverb
+      \verb{urlraw}
+      \verb https://doi.org/10.1080/10511482.2018.1476899
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1080/10511482.2018.1476899
+      \endverb
+      \keyw{housing supply,affordability}
+    \endentry
+    \entry{Brueckner_1981}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=475960db9d449cfe8f8ab1ecb8a46ff5}{%
+           family={Brueckner},
+           familyi={B\bibinitperiod},
+           given={Jan\bibnamedelima K.},
+           giveni={J\bibinitperiod\bibinitdelim K\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{475960db9d449cfe8f8ab1ecb8a46ff5}
+      \strng{fullhash}{475960db9d449cfe8f8ab1ecb8a46ff5}
+      \strng{fullhashraw}{475960db9d449cfe8f8ab1ecb8a46ff5}
+      \strng{bibnamehash}{475960db9d449cfe8f8ab1ecb8a46ff5}
+      \strng{authorbibnamehash}{475960db9d449cfe8f8ab1ecb8a46ff5}
+      \strng{authornamehash}{475960db9d449cfe8f8ab1ecb8a46ff5}
+      \strng{authorfullhash}{475960db9d449cfe8f8ab1ecb8a46ff5}
+      \strng{authorfullhashraw}{475960db9d449cfe8f8ab1ecb8a46ff5}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Urban Economics}
+      \field{number}{1}
+      \field{title}{A dynamic model of housing production}
+      \field{volume}{10}
+      \field{year}{1981}
+      \field{pages}{1\bibrangedash 14}
+      \range{pages}{14}
+      \verb{doi}
+      \verb https://doi.org/10.1016/0094-1190(81)90019-X
+      \endverb
+    \endentry
+    \entry{bruecknerSingh}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=475960db9d449cfe8f8ab1ecb8a46ff5}{%
+           family={Brueckner},
+           familyi={B\bibinitperiod},
+           given={Jan\bibnamedelima K.},
+           giveni={J\bibinitperiod\bibinitdelim K\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=85aa4e580bbd89cbd28dffbac8c1bf22}{%
+           family={Singh},
+           familyi={S\bibinitperiod},
+           given={Ruchi},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{951c7a1284760204b2620e6c0a239643}
+      \strng{fullhash}{951c7a1284760204b2620e6c0a239643}
+      \strng{fullhashraw}{951c7a1284760204b2620e6c0a239643}
+      \strng{bibnamehash}{951c7a1284760204b2620e6c0a239643}
+      \strng{authorbibnamehash}{951c7a1284760204b2620e6c0a239643}
+      \strng{authornamehash}{951c7a1284760204b2620e6c0a239643}
+      \strng{authorfullhash}{951c7a1284760204b2620e6c0a239643}
+      \strng{authorfullhashraw}{951c7a1284760204b2620e6c0a239643}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{0094-1190}
+      \field{journaltitle}{Journal of Urban Economics}
+      \field{title}{Stringency of land-use regulation: Building heights in US cities}
+      \field{volume}{116}
+      \field{year}{2020}
+      \field{pages}{103239}
+      \range{pages}{1}
+      \verb{doi}
+      \verb https://doi.org/10.1016/j.jue.2020.103239
+      \endverb
+      \verb{urlraw}
+      \verb https://www.sciencedirect.com/science/article/pii/S0094119020300103
+      \endverb
+      \verb{url}
+      \verb https://www.sciencedirect.com/science/article/pii/S0094119020300103
+      \endverb
+    \endentry
+    \entry{BruecknerThomaz2024}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=475960db9d449cfe8f8ab1ecb8a46ff5}{%
+           family={Brueckner},
+           familyi={B\bibinitperiod},
+           given={Jan\bibnamedelima K.},
+           giveni={J\bibinitperiod\bibinitdelim K\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=91d6127f9d276518f28cde4355e8e8c3}{%
+           family={Thomaz},
+           familyi={T\bibinitperiod},
+           given={Sarah},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{fullhash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{fullhashraw}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{bibnamehash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{authorbibnamehash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{authornamehash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{authorfullhash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{authorfullhashraw}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Real Estate Economics}
+      \field{number}{3}
+      \field{title}{ADUs in Los Angeles: Where are they located and by how much do they raise property value{?}}
+      \field{volume}{52}
+      \field{year}{2024}
+      \field{pages}{885\bibrangedash 907}
+      \range{pages}{23}
+      \verb{doi}
+      \verb https://doi.org/10.1111/1540-6229.12471
+      \endverb
+      \verb{urlraw}
+      \verb https://onlinelibrary.wiley.com/doi/abs/10.1111/1540-6229.12471
+      \endverb
+      \verb{url}
+      \verb https://onlinelibrary.wiley.com/doi/abs/10.1111/1540-6229.12471
+      \endverb
+    \endentry
+    \entry{BuchlerLutz2024}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=895b60b719dc37daab193f70c7e0a0ba}{%
+           family={Buchler},
+           familyi={B\bibinitperiod},
+           given={Simon},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=076268ea2f7395fbdc9a57377b0fbb7d}{%
+           family={Lutz},
+           familyi={L\bibinitperiod},
+           given={Elena},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{1f2091d5d0a1babc55cfa3924555354d}
+      \strng{fullhash}{1f2091d5d0a1babc55cfa3924555354d}
+      \strng{fullhashraw}{1f2091d5d0a1babc55cfa3924555354d}
+      \strng{bibnamehash}{1f2091d5d0a1babc55cfa3924555354d}
+      \strng{authorbibnamehash}{1f2091d5d0a1babc55cfa3924555354d}
+      \strng{authornamehash}{1f2091d5d0a1babc55cfa3924555354d}
+      \strng{authorfullhash}{1f2091d5d0a1babc55cfa3924555354d}
+      \strng{authorfullhashraw}{1f2091d5d0a1babc55cfa3924555354d}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Urban Economics}
+      \field{title}{Making housing affordable: {T}he local effects of relaxing land-use regulation}
+      \field{volume}{143}
+      \field{year}{2024}
+      \verb{urlraw}
+      \verb https://doi.org/10.1016/j.jue.2024.103689
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1016/j.jue.2024.103689
+      \endverb
+      \keyw{Upzoning,affordability,land use regulation,housing supply}
+    \endentry
+    \entry{Clap_etal2012}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=0fd51a3e6b03d40e385830a695a0048d}{%
+           family={Clapp},
+           familyi={C\bibinitperiod},
+           given={John\bibnamedelima M.},
+           giveni={J\bibinitperiod\bibinitdelim M\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3bffb323e3cb27c241726ce71fb0ede5}{%
+           family={Jou},
+           familyi={J\bibinitperiod},
+           given={Jyh-Bang},
+           giveni={J\bibinithyphendelim B\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8156d64297f013fe8b3a4d0620c40544}{%
+           family={Lee},
+           familyi={L\bibinitperiod},
+           given={Tan\bibnamedelima (Charlene)},
+           giveni={T\bibinitperiod\bibinitdelim (\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{2c8281e22954efba0b043c5a8a5c9fd2}
+      \strng{fullhash}{2c8281e22954efba0b043c5a8a5c9fd2}
+      \strng{fullhashraw}{2c8281e22954efba0b043c5a8a5c9fd2}
+      \strng{bibnamehash}{2c8281e22954efba0b043c5a8a5c9fd2}
+      \strng{authorbibnamehash}{2c8281e22954efba0b043c5a8a5c9fd2}
+      \strng{authornamehash}{2c8281e22954efba0b043c5a8a5c9fd2}
+      \strng{authorfullhash}{2c8281e22954efba0b043c5a8a5c9fd2}
+      \strng{authorfullhashraw}{2c8281e22954efba0b043c5a8a5c9fd2}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Real Estate Economics}
+      \field{number}{2}
+      \field{title}{Hedonic models with redevelopment options under uncertainty}
+      \field{volume}{40}
+      \field{year}{2012}
+      \field{pages}{197\bibrangedash 216}
+      \range{pages}{20}
+      \verb{urlraw}
+      \verb https://doi.org/10.1111/j.1540-6229.2011.00323.x
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1111/j.1540-6229.2011.00323.x
+      \endverb
+    \endentry
+    \entry{Davidoff_etal2022}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=d5a1764dcb36f8683837327b4f420c6f}{%
+           family={Davidoff},
+           familyi={D\bibinitperiod},
+           given={Thomas},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b85f67a795367a251fe6a36a4cbab499}{%
+           family={Pavlov},
+           familyi={P\bibinitperiod},
+           given={Andrey},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=9bf800fb1e02772131896a538b06b070}{%
+           family={Somerville},
+           familyi={S\bibinitperiod},
+           given={Tsur},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{5fb7ee7d8fb5e1eafe15134c2458bae9}
+      \strng{fullhash}{5fb7ee7d8fb5e1eafe15134c2458bae9}
+      \strng{fullhashraw}{5fb7ee7d8fb5e1eafe15134c2458bae9}
+      \strng{bibnamehash}{5fb7ee7d8fb5e1eafe15134c2458bae9}
+      \strng{authorbibnamehash}{5fb7ee7d8fb5e1eafe15134c2458bae9}
+      \strng{authornamehash}{5fb7ee7d8fb5e1eafe15134c2458bae9}
+      \strng{authorfullhash}{5fb7ee7d8fb5e1eafe15134c2458bae9}
+      \strng{authorfullhashraw}{5fb7ee7d8fb5e1eafe15134c2458bae9}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Urban Economics}
+      \field{month}{3}
+      \field{title}{Not in my neighbour's back yard? Laneway homes and neighbours' property values}
+      \field{volume}{128}
+      \field{year}{2022}
+      \verb{urlraw}
+      \verb https://doi.org/10.1016/j.jue.2021.103405
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1016/j.jue.2021.103405
+      \endverb
+      \keyw{housing supply,density externalities}
+    \endentry
+    \entry{Dong2024a}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=ea4a980a1171f2b40739d2c547ba49b5}{%
+           family={Dong},
+           familyi={D\bibinitperiod},
+           given={Hongwei},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{ea4a980a1171f2b40739d2c547ba49b5}
+      \strng{fullhash}{ea4a980a1171f2b40739d2c547ba49b5}
+      \strng{fullhashraw}{ea4a980a1171f2b40739d2c547ba49b5}
+      \strng{bibnamehash}{ea4a980a1171f2b40739d2c547ba49b5}
+      \strng{authorbibnamehash}{ea4a980a1171f2b40739d2c547ba49b5}
+      \strng{authornamehash}{ea4a980a1171f2b40739d2c547ba49b5}
+      \strng{authorfullhash}{ea4a980a1171f2b40739d2c547ba49b5}
+      \strng{authorfullhashraw}{ea4a980a1171f2b40739d2c547ba49b5}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of the American Planning Association}
+      \field{number}{1}
+      \field{title}{Expanding Affordable Middle Housing Options in Single-Family Neighborhoods}
+      \field{volume}{91}
+      \field{year}{2024}
+      \field{pages}{16\bibrangedash 29}
+      \range{pages}{14}
+      \verb{urlraw}
+      \verb https://doi.org/10.1080/01944363.2024.2344628
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1080/01944363.2024.2344628
+      \endverb
+      \keyw{Upzoning,Housing supply,Zoning}
+    \endentry
+    \entry{DongHansz_2019}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=ea4a980a1171f2b40739d2c547ba49b5}{%
+           family={Dong},
+           familyi={D\bibinitperiod},
+           given={Hongwei},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b6dbbf61c816d35026713b32be744dd0}{%
+           family={Hansz},
+           familyi={H\bibinitperiod},
+           given={J.\bibnamedelimi Andy},
+           giveni={J\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{fullhash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{fullhashraw}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{bibnamehash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{authorbibnamehash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{authornamehash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{authorfullhash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{authorfullhashraw}{e097f51a156c5b199534f4a37a3df62e}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Urban Studies}
+      \field{number}{16}
+      \field{title}{Zoning, density, and rising housing prices: A case study in Portland, Oregon}
+      \field{volume}{56}
+      \field{year}{2019}
+      \field{pages}{3486\bibrangedash 3503}
+      \range{pages}{18}
+    \endentry
+    \entry{Freemark2020}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=6a153441b1aade0bf0afc4cf88297da0}{%
+           family={Freemark},
+           familyi={F\bibinitperiod},
+           given={Yonah},
+           giveni={Y\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{6a153441b1aade0bf0afc4cf88297da0}
+      \strng{fullhash}{6a153441b1aade0bf0afc4cf88297da0}
+      \strng{fullhashraw}{6a153441b1aade0bf0afc4cf88297da0}
+      \strng{bibnamehash}{6a153441b1aade0bf0afc4cf88297da0}
+      \strng{authorbibnamehash}{6a153441b1aade0bf0afc4cf88297da0}
+      \strng{authornamehash}{6a153441b1aade0bf0afc4cf88297da0}
+      \strng{authorfullhash}{6a153441b1aade0bf0afc4cf88297da0}
+      \strng{authorfullhashraw}{6a153441b1aade0bf0afc4cf88297da0}
+      \field{sortinit}{F}
+      \field{sortinithash}{2638baaa20439f1b5a8f80c6c08a13b4}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Urban Affairs Review}
+      \field{number}{3}
+      \field{title}{Upzoning Chicago: Impacts of a Zoning Reform on Property Values and Housing Construction}
+      \field{volume}{56}
+      \field{year}{2020}
+      \field{pages}{758\bibrangedash 789}
+      \range{pages}{32}
+      \verb{doi}
+      \verb 10.1177/1078087418824672
+      \endverb
+      \verb{urlraw}
+      \verb https://doi.org/10.1177/1078087418824672
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1177/1078087418824672
+      \endverb
+    \endentry
+    \entry{Greenaway2024}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=59729c6d858774b827a926fa07614809}{%
+           family={Greenaway-McGrevy},
+           familyi={G\bibinithyphendelim M\bibinitperiod},
+           given={Ryan},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{59729c6d858774b827a926fa07614809}
+      \strng{fullhash}{59729c6d858774b827a926fa07614809}
+      \strng{fullhashraw}{59729c6d858774b827a926fa07614809}
+      \strng{bibnamehash}{59729c6d858774b827a926fa07614809}
+      \strng{authorbibnamehash}{59729c6d858774b827a926fa07614809}
+      \strng{authornamehash}{59729c6d858774b827a926fa07614809}
+      \strng{authorfullhash}{59729c6d858774b827a926fa07614809}
+      \strng{authorfullhashraw}{59729c6d858774b827a926fa07614809}
+      \field{extraname}{1}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Cityscape}
+      \field{number}{2}
+      \field{title}{Causes and Consequences of Zoning Reform in Auckland}
+      \field{volume}{26}
+      \field{year}{2024}
+      \field{pages}{413\bibrangedash 425}
+      \range{pages}{13}
+      \keyw{Upzoning,Land use regulations,Redevelopment,Housing construction}
+    \endentry
+    \entry{Greenaway2025}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=59729c6d858774b827a926fa07614809}{%
+           family={Greenaway-McGrevy},
+           familyi={G\bibinithyphendelim M\bibinitperiod},
+           given={Ryan},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{59729c6d858774b827a926fa07614809}
+      \strng{fullhash}{59729c6d858774b827a926fa07614809}
+      \strng{fullhashraw}{59729c6d858774b827a926fa07614809}
+      \strng{bibnamehash}{59729c6d858774b827a926fa07614809}
+      \strng{authorbibnamehash}{59729c6d858774b827a926fa07614809}
+      \strng{authornamehash}{59729c6d858774b827a926fa07614809}
+      \strng{authorfullhash}{59729c6d858774b827a926fa07614809}
+      \strng{authorfullhashraw}{59729c6d858774b827a926fa07614809}
+      \field{extraname}{2}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{0166-0462}
+      \field{journaltitle}{Regional Science and Urban Economics}
+      \field{title}{Evaluating the long-run effects of zoning reform on urban development}
+      \field{volume}{111}
+      \field{year}{2025}
+      \verb{doi}
+      \verb https://doi.org/10.1016/j.regsciurbeco.2024.104062
+      \endverb
+      \verb{urlraw}
+      \verb https://www.sciencedirect.com/science/article/pii/S0166046224000930
+      \endverb
+      \verb{url}
+      \verb https://www.sciencedirect.com/science/article/pii/S0166046224000930
+      \endverb
+      \keyw{Upzoning,Land use regulations,Redevelopment,Housing construction}
+    \endentry
+    \entry{Greenaway_etal2021}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=59729c6d858774b827a926fa07614809}{%
+           family={Greenaway-McGrevy},
+           familyi={G\bibinithyphendelim M\bibinitperiod},
+           given={Ryan},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=89a3203774aea8b5cf6eec4d4aed97a9}{%
+           family={Pacheco},
+           familyi={P\bibinitperiod},
+           given={Gail},
+           giveni={G\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=eee5362b3b1e668b57059293f9fa07df}{%
+           family={Sorensen},
+           familyi={S\bibinitperiod},
+           given={Kade},
+           giveni={K\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{d06eec69dd3de5a4152be910c0ef6b6b}
+      \strng{fullhash}{d06eec69dd3de5a4152be910c0ef6b6b}
+      \strng{fullhashraw}{d06eec69dd3de5a4152be910c0ef6b6b}
+      \strng{bibnamehash}{d06eec69dd3de5a4152be910c0ef6b6b}
+      \strng{authorbibnamehash}{d06eec69dd3de5a4152be910c0ef6b6b}
+      \strng{authornamehash}{d06eec69dd3de5a4152be910c0ef6b6b}
+      \strng{authorfullhash}{d06eec69dd3de5a4152be910c0ef6b6b}
+      \strng{authorfullhashraw}{d06eec69dd3de5a4152be910c0ef6b6b}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Urban Studies}
+      \field{number}{5}
+      \field{title}{The effect of upzoning on house prices and redevelopment premiums in Auckland, New Zealand}
+      \field{volume}{58}
+      \field{year}{2021}
+      \field{pages}{959\bibrangedash 976}
+      \range{pages}{18}
+      \verb{doi}
+      \verb 10.1177/0042098020940602
+      \endverb
+      \verb{urlraw}
+      \verb https://doi.org/10.1177/0042098020940602
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1177/0042098020940602
+      \endverb
+    \endentry
+    \entry{GreenawayPhillips2023}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=59729c6d858774b827a926fa07614809}{%
+           family={Greenaway-McGrevy},
+           familyi={G\bibinithyphendelim M\bibinitperiod},
+           given={Ryan},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=10ed28fafaff02f63917d3120eec9502}{%
+           family={Phillips},
+           familyi={P\bibinitperiod},
+           given={Peter\bibnamedelima {C.\bibnamedelimi B.}},
+           giveni={P\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{7a77c5aa02ed1f44275c4e012a5d7fcc}
+      \strng{fullhash}{7a77c5aa02ed1f44275c4e012a5d7fcc}
+      \strng{fullhashraw}{7a77c5aa02ed1f44275c4e012a5d7fcc}
+      \strng{bibnamehash}{7a77c5aa02ed1f44275c4e012a5d7fcc}
+      \strng{authorbibnamehash}{7a77c5aa02ed1f44275c4e012a5d7fcc}
+      \strng{authornamehash}{7a77c5aa02ed1f44275c4e012a5d7fcc}
+      \strng{authorfullhash}{7a77c5aa02ed1f44275c4e012a5d7fcc}
+      \strng{authorfullhashraw}{7a77c5aa02ed1f44275c4e012a5d7fcc}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{0094-1190}
+      \field{journaltitle}{Journal of Urban Economics}
+      \field{title}{The impact of upzoning on housing construction in Auckland}
+      \field{volume}{136}
+      \field{year}{2023}
+      \field{pages}{103555}
+      \range{pages}{1}
+      \verb{doi}
+      \verb https://doi.org/10.1016/j.jue.2023.103555
+      \endverb
+      \verb{urlraw}
+      \verb https://www.sciencedirect.com/science/article/pii/S0094119023000244
+      \endverb
+      \verb{url}
+      \verb https://www.sciencedirect.com/science/article/pii/S0094119023000244
+      \endverb
+      \keyw{Upzoning,Land use regulations,Redevelopment,Housing construction,Housing affordability,Spillovers}
+    \endentry
+    \entry{GuMunro_2025}{report}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=c85d00cf46abac5737a8a36452343ec7}{%
+           family={Gu},
+           familyi={G\bibinitperiod},
+           given={Helena},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b29cf439cffd25c780b97a0e4307c481}{%
+           family={Munro},
+           familyi={M\bibinitperiod},
+           given={David},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {SSRN}%
+      }
+      \strng{namehash}{f2d6e2ce541552539180261b322cc680}
+      \strng{fullhash}{f2d6e2ce541552539180261b322cc680}
+      \strng{fullhashraw}{f2d6e2ce541552539180261b322cc680}
+      \strng{bibnamehash}{f2d6e2ce541552539180261b322cc680}
+      \strng{authorbibnamehash}{f2d6e2ce541552539180261b322cc680}
+      \strng{authornamehash}{f2d6e2ce541552539180261b322cc680}
+      \strng{authorfullhash}{f2d6e2ce541552539180261b322cc680}
+      \strng{authorfullhashraw}{f2d6e2ce541552539180261b322cc680}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Zoning Reforms and Housing Affordability: Evidence from the Minneapolis 2040 Plan}
+      \field{type}{Working Paper}
+      \field{year}{2025}
+    \endentry
+    \entry{GyourkoMolloy2015}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=b6c63eff67ae7f34599b0ac43f4a7554}{%
+           family={Gyourko},
+           familyi={G\bibinitperiod},
+           given={Joseph},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=213d8595271de76aa34ac4e1b2d9e72c}{%
+           family={Molloy},
+           familyi={M\bibinitperiod},
+           given={Raven},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{1b6c5341a1262b26edb796ce65d21514}
+      \strng{fullhash}{1b6c5341a1262b26edb796ce65d21514}
+      \strng{fullhashraw}{1b6c5341a1262b26edb796ce65d21514}
+      \strng{bibnamehash}{1b6c5341a1262b26edb796ce65d21514}
+      \strng{authorbibnamehash}{1b6c5341a1262b26edb796ce65d21514}
+      \strng{authornamehash}{1b6c5341a1262b26edb796ce65d21514}
+      \strng{authorfullhash}{1b6c5341a1262b26edb796ce65d21514}
+      \strng{authorfullhashraw}{1b6c5341a1262b26edb796ce65d21514}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Handbook of Regional and Urban Economics}
+      \field{title}{Regulation and Housing Supply}
+      \field{volume}{5}
+      \field{year}{2015}
+      \field{pages}{1289\bibrangedash 1337}
+      \range{pages}{49}
+      \keyw{housing supply,land use regulation}
+    \endentry
+    \entry{HochmanPines_1980}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=ff1c99383908f48fc17d8acc01c779d9}{%
+           family={Hochman},
+           familyi={H\bibinitperiod},
+           given={Oded},
+           giveni={O\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=87c3b294dd6bf3aa6b54221f9c1efa91}{%
+           family={Pines},
+           familyi={P\bibinitperiod},
+           given={David},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{21445855276ddf68d8b963b9390b3875}
+      \strng{fullhash}{21445855276ddf68d8b963b9390b3875}
+      \strng{fullhashraw}{21445855276ddf68d8b963b9390b3875}
+      \strng{bibnamehash}{21445855276ddf68d8b963b9390b3875}
+      \strng{authorbibnamehash}{21445855276ddf68d8b963b9390b3875}
+      \strng{authornamehash}{21445855276ddf68d8b963b9390b3875}
+      \strng{authorfullhash}{21445855276ddf68d8b963b9390b3875}
+      \strng{authorfullhashraw}{21445855276ddf68d8b963b9390b3875}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{0094-1190}
+      \field{journaltitle}{Journal of Urban Economics}
+      \field{number}{1}
+      \field{title}{Costs of adjustment and demolition costs in residential construction, and their effects on urban growth}
+      \field{volume}{7}
+      \field{year}{1980}
+      \field{pages}{2\bibrangedash 19}
+      \range{pages}{18}
+      \verb{doi}
+      \verb https://doi.org/10.1016/0094-1190(80)90022-4
+      \endverb
+    \endentry
+    \entry{HsiehMoretti}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=26798c6ec7f127f0ef90aea3ce03b002}{%
+           family={Hsieh},
+           familyi={H\bibinitperiod},
+           given={Chang-Tai},
+           giveni={C\bibinithyphendelim T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=f58347226b88750723f89cb2b99cd2e9}{%
+           family={Moretti},
+           familyi={M\bibinitperiod},
+           given={Enrico},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{b321297a8b3960ff35238bbe7e012770}
+      \strng{fullhash}{b321297a8b3960ff35238bbe7e012770}
+      \strng{fullhashraw}{b321297a8b3960ff35238bbe7e012770}
+      \strng{bibnamehash}{b321297a8b3960ff35238bbe7e012770}
+      \strng{authorbibnamehash}{b321297a8b3960ff35238bbe7e012770}
+      \strng{authornamehash}{b321297a8b3960ff35238bbe7e012770}
+      \strng{authorfullhash}{b321297a8b3960ff35238bbe7e012770}
+      \strng{authorfullhashraw}{b321297a8b3960ff35238bbe7e012770}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{American Economic Journal: Macroeconomics}
+      \field{month}{4}
+      \field{number}{2}
+      \field{title}{Housing Constraints and Spatial Misallocation}
+      \field{volume}{11}
+      \field{year}{2019}
+      \field{pages}{1\bibrangedash 39}
+      \range{pages}{39}
+      \verb{doi}
+      \verb 10.1257/mac.20170388
+      \endverb
+    \endentry
+    \entry{KrimmelWang2024}{unpublished}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=df721cd46f9608b6c7c728c6028b365e}{%
+           family={Krimmel},
+           familyi={K\bibinitperiod},
+           given={Jacob},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b17de033aa81aa5457a9d78eabd903d9}{%
+           family={Wang},
+           familyi={W\bibinitperiod},
+           given={Betty\bibnamedelima X.},
+           giveni={B\bibinitperiod\bibinitdelim X\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{9cbb862010c489e49145c5d85023992d}
+      \strng{fullhash}{9cbb862010c489e49145c5d85023992d}
+      \strng{fullhashraw}{9cbb862010c489e49145c5d85023992d}
+      \strng{bibnamehash}{9cbb862010c489e49145c5d85023992d}
+      \strng{authorbibnamehash}{9cbb862010c489e49145c5d85023992d}
+      \strng{authornamehash}{9cbb862010c489e49145c5d85023992d}
+      \strng{authorfullhash}{9cbb862010c489e49145c5d85023992d}
+      \strng{authorfullhashraw}{9cbb862010c489e49145c5d85023992d}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{8}
+      \field{note}{Working Paper}
+      \field{title}{Upzoning With Strings Attached: Evidence for Seattle's Affordable Housing Mandate}
+      \field{year}{2024}
+      \verb{urlraw}
+      \verb https://dx.doi.org/10.2139/ssrn.4578637
+      \endverb
+      \verb{url}
+      \verb https://dx.doi.org/10.2139/ssrn.4578637
+      \endverb
+    \endentry
+    \entry{Liao2023}{unpublished}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=08b60148b84973a6616c6afaca7ade80}{%
+           family={Liao},
+           familyi={L\bibinitperiod},
+           given={Hsi-Ling},
+           giveni={H\bibinithyphendelim L\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{08b60148b84973a6616c6afaca7ade80}
+      \strng{fullhash}{08b60148b84973a6616c6afaca7ade80}
+      \strng{fullhashraw}{08b60148b84973a6616c6afaca7ade80}
+      \strng{bibnamehash}{08b60148b84973a6616c6afaca7ade80}
+      \strng{authorbibnamehash}{08b60148b84973a6616c6afaca7ade80}
+      \strng{authornamehash}{08b60148b84973a6616c6afaca7ade80}
+      \strng{authorfullhash}{08b60148b84973a6616c6afaca7ade80}
+      \strng{authorfullhashraw}{08b60148b84973a6616c6afaca7ade80}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{7}
+      \field{note}{Working Paper}
+      \field{title}{The Effect of Rezoning on Local Housing Supply and Demand: Evidence from New York City}
+      \field{year}{2023}
+      \verb{urlraw}
+      \verb http://dx.doi.org/10.2139/ssrn.4886140
+      \endverb
+      \verb{url}
+      \verb http://dx.doi.org/10.2139/ssrn.4886140
+      \endverb
+    \endentry
+    \entry{Ma_2025}{unpublished}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=631bdce5289be54717cd74a75f516b25}{%
+           family={Ma},
+           familyi={M\bibinitperiod},
+           given={Lei},
+           giveni={L\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{631bdce5289be54717cd74a75f516b25}
+      \strng{fullhash}{631bdce5289be54717cd74a75f516b25}
+      \strng{fullhashraw}{631bdce5289be54717cd74a75f516b25}
+      \strng{bibnamehash}{631bdce5289be54717cd74a75f516b25}
+      \strng{authorbibnamehash}{631bdce5289be54717cd74a75f516b25}
+      \strng{authornamehash}{631bdce5289be54717cd74a75f516b25}
+      \strng{authorfullhash}{631bdce5289be54717cd74a75f516b25}
+      \strng{authorfullhashraw}{631bdce5289be54717cd74a75f516b25}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Working Paper}
+      \field{title}{Build What and for Whom? The Distributional Effects of Housing Supply}
+      \field{year}{2025}
+      \keyw{Upzoning}
+    \endentry
+    \entry{MarantzElmendorfKim2023_ADUReforms}{report}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=e38c548987f44fc8a28a89c15f297ae1}{%
+           family={Marantz},
+           familyi={M\bibinitperiod},
+           given={Nicholas\bibnamedelima J.},
+           giveni={N\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8130206805c2dbfd465376ce7e8f31c6}{%
+           family={Elmendorf},
+           familyi={E\bibinitperiod},
+           given={Christopher\bibnamedelima S.},
+           giveni={C\bibinitperiod\bibinitdelim S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=f09be64c99d9a0f38c9ab9021028a843}{%
+           family={Kim},
+           familyi={K\bibinitperiod},
+           given={Youjin\bibnamedelima B.},
+           giveni={Y\bibinitperiod\bibinitdelim B\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {NYU Furman Center}%
+      }
+      \strng{namehash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{fullhash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{fullhashraw}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{bibnamehash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{authorbibnamehash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{authornamehash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{authorfullhash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{authorfullhashraw}{c53f135836357177a40914fa5e4e0ad1}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{1}
+      \field{title}{Evaluating California’s Accessory Dwelling Unit Reforms: Preliminary Evidence and Lessons for State Governments}
+      \field{type}{Research Report}
+      \field{year}{2023}
+      \verb{urlraw}
+      \verb https://furmancenter.org/files/Evaluating_California%E2%80%99s_Accessory_Dwelling_Unit_Reforms_508.pdf
+      \endverb
+      \verb{url}
+      \verb https://furmancenter.org/files/Evaluating_California%E2%80%99s_Accessory_Dwelling_Unit_Reforms_508.pdf
+      \endverb
+    \endentry
+    \entry{Molloy2020}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=213d8595271de76aa34ac4e1b2d9e72c}{%
+           family={Molloy},
+           familyi={M\bibinitperiod},
+           given={Raven},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{213d8595271de76aa34ac4e1b2d9e72c}
+      \strng{fullhash}{213d8595271de76aa34ac4e1b2d9e72c}
+      \strng{fullhashraw}{213d8595271de76aa34ac4e1b2d9e72c}
+      \strng{bibnamehash}{213d8595271de76aa34ac4e1b2d9e72c}
+      \strng{authorbibnamehash}{213d8595271de76aa34ac4e1b2d9e72c}
+      \strng{authornamehash}{213d8595271de76aa34ac4e1b2d9e72c}
+      \strng{authorfullhash}{213d8595271de76aa34ac4e1b2d9e72c}
+      \strng{authorfullhashraw}{213d8595271de76aa34ac4e1b2d9e72c}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{0166-0462}
+      \field{journaltitle}{Regional Science and Urban Economics}
+      \field{note}{Special Issue on Housing Affordability}
+      \field{title}{The effect of housing supply regulation on housing affordability: A review}
+      \field{volume}{80}
+      \field{year}{2020}
+      \field{pages}{103350}
+      \range{pages}{1}
+      \verb{doi}
+      \verb https://doi.org/10.1016/j.regsciurbeco.2018.03.007
+      \endverb
+      \verb{urlraw}
+      \verb https://www.sciencedirect.com/science/article/pii/S016604621730248X
+      \endverb
+      \verb{url}
+      \verb https://www.sciencedirect.com/science/article/pii/S016604621730248X
+      \endverb
+      \keyw{Land use regulations,housing supply}
+    \endentry
+    \entry{Rollet_2025}{unpublished}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=351f9396f8ceea35f7d87f3928a710e0}{%
+           family={Rollet},
+           familyi={R\bibinitperiod},
+           given={Vincent},
+           giveni={V\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{351f9396f8ceea35f7d87f3928a710e0}
+      \strng{fullhash}{351f9396f8ceea35f7d87f3928a710e0}
+      \strng{fullhashraw}{351f9396f8ceea35f7d87f3928a710e0}
+      \strng{bibnamehash}{351f9396f8ceea35f7d87f3928a710e0}
+      \strng{authorbibnamehash}{351f9396f8ceea35f7d87f3928a710e0}
+      \strng{authornamehash}{351f9396f8ceea35f7d87f3928a710e0}
+      \strng{authorfullhash}{351f9396f8ceea35f7d87f3928a710e0}
+      \strng{authorfullhashraw}{351f9396f8ceea35f7d87f3928a710e0}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Working Paper}
+      \field{title}{Zoning and the Dynamics of Urban Redevelopment}
+      \field{year}{2025}
+      \keyw{Upzoning}
+    \endentry
+    \entry{Stacy_etal2023}{article}{}{}
+      \name{author}{7}{}{%
+        {{un=0,uniquepart=base,hash=b7a27e0fbe814ecfb229076f1a90c59f}{%
+           family={Stacy},
+           familyi={S\bibinitperiod},
+           given={Christina},
+           giveni={C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=e6adfeeaa0cd1783860a7f161f658f64}{%
+           family={Davis},
+           familyi={D\bibinitperiod},
+           given={Chris},
+           giveni={C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3cdcbb140fd40dc41f04ddb80fc68d95}{%
+           family={Freemark},
+           familyi={F\bibinitperiod},
+           given={{Yonah Slifkin}},
+           giveni={Y\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=bc3dba360e5acce12f63021ea1d72198}{%
+           family={Lo},
+           familyi={L\bibinitperiod},
+           given={Lydia},
+           giveni={L\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=94a45562bdbc03842fa23135b1b42e7f}{%
+           family={MacDonald},
+           familyi={M\bibinitperiod},
+           given={Graham},
+           giveni={G\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=3a701330468c23128c1366c4a56e42b4}{%
+           family={Zheng},
+           familyi={Z\bibinitperiod},
+           given={Vivian},
+           giveni={V\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=daf784efe5738fdb41774cdcc034c36a}{%
+           family={Pendall},
+           familyi={P\bibinitperiod},
+           given={Rolf},
+           giveni={R\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{f541a4e7d3bf4d53d548138cfe5852e2}
+      \strng{fullhash}{07ae5fc56344d5db69cbaa735af45e7d}
+      \strng{fullhashraw}{07ae5fc56344d5db69cbaa735af45e7d}
+      \strng{bibnamehash}{f541a4e7d3bf4d53d548138cfe5852e2}
+      \strng{authorbibnamehash}{f541a4e7d3bf4d53d548138cfe5852e2}
+      \strng{authornamehash}{f541a4e7d3bf4d53d548138cfe5852e2}
+      \strng{authorfullhash}{07ae5fc56344d5db69cbaa735af45e7d}
+      \strng{authorfullhashraw}{07ae5fc56344d5db69cbaa735af45e7d}
+      \field{sortinit}{S}
+      \field{sortinithash}{b164b07b29984b41daf1e85279fbc5ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Urban Studies}
+      \field{number}{14}
+      \field{title}{Land-use reforms and housing costs: Does allowing for increased density lead to greater affordability?}
+      \field{volume}{60}
+      \field{year}{2023}
+      \field{pages}{2919\bibrangedash 2940}
+      \range{pages}{22}
+      \verb{doi}
+      \verb 10.1177/00420980231159500
+      \endverb
+      \verb{urlraw}
+      \verb https://doi.org/10.1177/00420980231159500
+      \endverb
+      \verb{url}
+      \verb https://doi.org/10.1177/00420980231159500
+      \endverb
+    \endentry
+    \entry{Wheaton_1982}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=275e1ee61c8973e58294c5772d57b6aa}{%
+           family={Wheaton},
+           familyi={W\bibinitperiod},
+           given={William\bibnamedelima C.},
+           giveni={W\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{275e1ee61c8973e58294c5772d57b6aa}
+      \strng{fullhash}{275e1ee61c8973e58294c5772d57b6aa}
+      \strng{fullhashraw}{275e1ee61c8973e58294c5772d57b6aa}
+      \strng{bibnamehash}{275e1ee61c8973e58294c5772d57b6aa}
+      \strng{authorbibnamehash}{275e1ee61c8973e58294c5772d57b6aa}
+      \strng{authornamehash}{275e1ee61c8973e58294c5772d57b6aa}
+      \strng{authorfullhash}{275e1ee61c8973e58294c5772d57b6aa}
+      \strng{authorfullhashraw}{275e1ee61c8973e58294c5772d57b6aa}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{issn}{0094-1190}
+      \field{journaltitle}{Journal of Urban Economics}
+      \field{number}{1}
+      \field{title}{Urban residential growth under perfect foresight}
+      \field{volume}{12}
+      \field{year}{1982}
+      \field{pages}{1\bibrangedash 21}
+      \range{pages}{21}
+      \verb{doi}
+      \verb https://doi.org/10.1016/0094-1190(82)90002-X
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+

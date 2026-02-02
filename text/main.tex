@@ -5,26 +5,60 @@
 \usepackage{graphicx}
 \usepackage{setspace}
 
+\usepackage[style=authoryear,backend=biber]{biblatex}
+\addbibresource{text/infillPuzzle.bib}
+
 \begin{document}
 
 \title{Where does the infill housing go? Addition versus division}
-\author{Thomas Davidoff\thanks{thomas.davidoff@sauder.ubc.ca} and Tsur Somerville\thanks{tsur.somerville@sauder.ubc.ca}\\Sauder School of Business, University of British Columbia}
-\maketitle
+\author{Thomas Davidoff\thanks{thomas.davidoff@sauder.ubc.ca} and Tsur Somerville\thanks{tsur.somerville@sauder.ubc.ca\\Sauder School of Business, University of British Columbia}\\\textbf{Under continual revision.} Updated version is available at:\\ https://github.com/tomdavidoff/infillPuzzle/blob/main/text/main.pdf}
+  \maketitle
 
+\onehalfspacing
 \begin{abstract}
 
 Jurisdictions across Canada and the U.S. have recently allowed ``missing middle'' infill housing such as accessory dwelling units and multiplexes in residential zones formerly restricted to single-family use. Some studies have documented that infill housing is less prevalent in more expensive neighbourhoods. This is puzzling in that the right to add density should be more valuable in neighbourhoods where prices are higher. To resolve this seeming contradiction, we develop a parsimonious model emphasizing that different implementations of missing middle zoning feature different mixes of ``addition'' (adding to allowable square footage) and ``division'' (subdividing a fixed amount of square footage into multiple units). Addition is more valuable where price per square foot of built space is greatest. Division is more valuable where the elasticity of price in square footage is less positive. Infill housing will thus be less prevalent in pricier neighbourhoods when the upzoning features relatively little addition and more division if (wealthier) households with greater willingness to pay for space  are concentrated in expensive price-per-square-foot neighbourhoods. When that sorting is stronger, the prevalence of infill will be more negatively associated with price growth. 
 
 Housing transactions and permitting data in upzoned neighbourhoods of Vancouver, Portland, and Minneapolis generally support these conclusions from our simple model of optimal infill choice. In Vancouver, where there is a very high degree of sorting, the correlation between neighbourhood price-per-square-foot levels and the missing middle share of permits has been particularly negative. In Minneapolis, the relationship between infill propensity and price is negative in modestly upzoned areas, but positive where permitted intensity was more strongly increased for multiplexes.
-  
-\end{abstract}
+    
+  \end{abstract}
 
-\end{document}
+  \section{Introduction}
 
-\section{Model}
+  As housing affordability has grown in political salience over the last decade, a growing number of U.S. and Canadian jurisdictions have introdued reforms to allow ``missing middle'', ``infill'', or ``gentle density'' housing types in formerly single-family-only residential zones. This housing might take the form of accessory dwelling units such as Vancouver's laneway homes, ``multiplex'' structures with multiple homes on  single lot, townhomes, or small apartment buildings. As has been emphasized, e.g. by \textcite{bruecknerSingh} and \textcite{HsiehMoretti},restrictive zoning causes deadweight loss most where real estate is most valuable. It is thus natural to expect that the option to densify urban land would be exercised most commonly in the neighborhoods where structure prices per unit are highest.
 
-Consider a developer considering the intensity of development on a parcel of land with area normalized to one unit. Profits are a function of the (continuous, for simplicity) number of units $n$ built on the lot. Zoning regulations impose a schedule of density limits $f(n)$ governing how many square feet $f$ can be built on the lot as a function of $n$. The price $p$ per square foot may also be functions of $n$ and $\theta$, a characteristic of the neighbourhood.
+  As described in more detail below, several recent empirical studies have documented that infill housing is, in fact, less prevalent in highly expensive neighbourhoods. This paper presents a parsimonious model of density choice that illustrates how ``addition'' and ``division'' effects likely work in opposite directions with respect to the relationship between infill prevalence and neighbourhood price levels. To the extent that infill policies allow more square feet to be built on the same lot (addition), this should lead to greater take-up where price net of cost per square foot is greatest. However, to the extent that densification simply allows more units to be created out of the same square footage (division), then in the likely case that (wealthier) households with a greater elasticity of willingness to pay for square footage sort into more expensive single-family neighbourhoods, infill will be less prevalent there.
 
+This paper studies patterns of redevelopment in three cities that enacted very
+modest, but extremely broad upzonings: Vancouver, BC, in Canada, and Portland,
+OR and Minneapolis, MN in the U.S. These cities have enacted different
+upzonings with different emphases on addition and division. For each city, we
+evaluate the spatial correlation between neighbourhood price levels and the
+prevalence of infill housing permits following the upzoning. In Vancouver,
+laneway homes (allowed since 2009) essentially allow an ADU to replace a
+somewhat smaller two-car garage. Takeup has been biased towards the
+(relatively!) lower-priced East Side of the city. Duplexes, allowed since late
+2018 allow \emph{less} total floor residential area than single family homes
+with laneway homes added, and not surprisingly, this ``division only'' infill
+form has been taken up in less expensive East Side neighbourhoods. Relatively
+recently-allowed multiplexes, that allow a bit more density have also been
+concentrated on the East Side, a phenomenon we show is consistent with a simple
+quantification of redevelopment profit.
+
+In Minneapolis, three different infill zones have been created. We find that
+the zone relatively close to downtown, in which more density has been
+permitted, is the only of the three that exhibits a positive correlation
+between infill prevalence and neighbourhood price levels. In Portland, OR,
+where the upzoning has been more uniform across the city, we find a negative
+correlation between infill prevalence and neighbourhood price levels. In all
+three cities, we find a highly positive correlation between neighbourhood
+average hedonically-adjusted price per square foot levels and the elasticity of
+price with respect to home square footage.
+
+In Vancouver, the relationship between price level and the elasticity of price with respect to home size is so strong that the former (more precisely estimated) is an \emph{better} measure out of sample of that elasticity than in-sample elasticity estimates. That is, an empirical issue in applying our model is that in cities with strong income sorting, it may be impossible meaningfully to distinguish price per square foot levels from the elasticity of price with respect to square footage. 
+
+\subsection{A model of infill housing}
+To see the offsetting addition and division effects formally, consider a developer choosing the intensity of development on a parcel of land with area normalized to one unit. Profits are a function of the (continuous, for simplicity) number of units $n$ built on the lot. Zoning regulations impose a schedule of density limits $f(n)$ governing how many square feet $f$ can be built on the lot as a function of $n$. The price $p$ per square foot is a function of $n$ and $\theta$, a characteristic of the neighbourhood. $\theta$ is a form of vertical differentiation, so $\frac{\partial p(n,\theta)}{\partial \theta}>0$. For simplicity, $c(n)$, the cost per square foot is assumed constant with respect to $\theta$. Realistically, higher-end finishes would likely follow the price-$\theta$ relationship. In our empirical work, we control for a small set of charactersitics to approximate this.
 
 \begin{equation}
   \pi(n) = f(n)\left[p\left(n,\theta\right) - c(n)\right]
@@ -33,28 +67,56 @@ Consider a developer considering the intensity of development on a parcel of lan
 The benefit from incrementing density is:
 \begin{equation}
   \label{eq:mb}
-  \frac{\partial \pi}{\partial n} = f'(n)\left[p\left(n,\theta\right) - c(n)\right] + f(n)\left[\partial{p\left(n,\theta\right)}{\partial f} - c'(n)\right]
+\frac{\partial \pi}{\partial n} = f'(n)\left[p\left(n,\theta\right) - c(n)\right] + f(n)\left[\frac{\partial{p\left(n,\theta\right)}{\partial n}} - c'(n)\right]
 \end{equation}
 
-Optimizing for $n^{\star}$ yields the first order condition:
+At an optimum, \eqref{eq:mb} is zero. Differentiating this first order condition yields:
 \begin{equation}
-  \label{eq:foc}
-  f'(n^{\star})\left[p(n^{\star},\theta) - c(n^{\star})\right] + f(n^{\star})\left[\frac{\partial (n^{\star},\theta)}{\partial n} - c'(n^{\star})\right] = 0
-\end{equation}
-
-Implicitly differentiating (\ref{eq:foc}) with respect to $\theta$ yields to find the effect of $\theta$ on optimal density:
-\begin{equation}
-  \frac{d n^{\star}}{d \theta} = -\frac{f'\frac{\partial p}{\partial \theta} + f\frac{\partial^2 p}{\partial n \partial \theta}}{f''\left[p - c\right] + 2f'\left[\frac{\partial p}{\partial n} - c'\right] + f\left[\frac{\partial^2 p}{\partial n^2} - c''\right]}.
+\frac{d n^{\star}}{d \theta} = -\frac{\underbrace{f'\frac{\partial p}{\partial \theta}}_{\text{addition effect}} + \underbrace{f\frac{\partial^2 p}{\partial n \partial \theta}}_{\text{division effect}}}{f''\left[p - c\right] + 2f'\left[\frac{\partial p}{\partial n} - c'\right] + f\left[\frac{\partial^2 p}{\partial n^2} - c''\right]}.
 \end{equation}
 
 Assuming second order conditions hold, the denominator is negative, and:
 
 \begin{itemize}
-  \item Infill (increasing $n$) is more attractive where the price per square foot is greater ($\frac{\partial p}{\partial \theta} > 0$) when $f'$ is larger (i.e., where infill is rewarded with bonus density).
-  \item Infill is more attractive where price is declining more rapidly in density ($\frac{\partial^2 p}{\partial n \partial \theta}$ is more positive).
+  \item \emph{Addition effect:} Infill (increasing $n$) is more attractive where $\theta$ and (hence the price per square foot $p$) is greater when $f'$ is larger (i.e., where infill is rewarded with bonus density).
+  \item \emph{Division effect:} Infill is more attractive where price is declining more rapidly in density ($\frac{\partial p}{\partial n }$ is more positive). Assuming sorting is such that $\frac{\partial^2 p}{\partial n \partial \theta} < 0$, this effect implies that infill is less attractive where $\theta$ (and price) is greater.
 \end{itemize}
 
-If $\theta$ is overall neighbourhood quality, measured as average price per square foot of (assumed constant quality) structures, infill will be more prevalent in expensive neighbourhoods when bonus density is generous. Whether incoe 
+The division effect will yield a negative correlation between neighbourhood quality and price when households with a greater elasticity of willingness to pay for space sort into higher-quality neighbourhoods. This is likely when single-family zoning is a tightly binding constraint. In a standard monocentric city sorting model, there is a tradeoff between willingness to pay for neighbourhood quality (e.g. greater time costs of travel) against normal lot size demand. Fixing lot size removes this second effect, leaving only willingness to pay for neighbourhood quality, presumably correlated with a greater elasticity of willingness to pay for space.
+
+\section{Related Literature}
+
+Redevelopment more broadly has been long studied in the literature, beginning with the dynamic models of urban growth such as \textcite{Brueckner_1981}, \textcite{HochmanPines_1980}, and \textcite{Wheaton_1982}. Those papers relied on perfect foresight and had no redevelopment frictions caused by local land use policies. Land use regulation has typically been identified by economists as the primary cause of limits on redevelopment and housing supply more broadly that increases  housing prices. \textcite{GyourkoMolloy2015} and \textcite{Molloy2020} provide comprehensive reviews of  the literature that looks at this relationship between land use regulation and housing supply.  
+
+\textcite{MarantzElmendorfKim2023_ADUReforms} find that ADU placement in California is widespread, but concentrated in convenient, but low- and moderate-rent neighbourhoods, not in more expensive neighbourhoods. Similar findings are in \textcite{BruecknerThomaz2024} and 
+
+study accessory dwelling unit (ADU) permitting in California cities and find that ADU permitting rates are lower in higher-priced neighbourhoods, even after controlling for income and other factors. Huang et al (2023)  analyze the construction of duplexes and triplexes in Seattle following a 2019 upzoning reform and find that these housing types are more likely to be built in lower-priced neighbourhoods. \textcite{DongHansz_2019} examine the impact of Portland's Residential Infill Project (RIP) on housing construction patterns and find that the new zoning has led to more infill development in lower-priced areas. These findings suggest that the relationship between housing prices and infill development is more complex than initially anticipated.
+
+
+More recently, and in the wake of broad rezoning occurring in cities around the world, a number of studies have  attempted to estimate the effects of large scale upzonings on new supply. These studies either estimate the effect of a single broad based introduction of higher density or compare blocks or other small areas that have received higher allowed density to those that have not received them in the same jurisdiction. In the former, identification comes from comparing sites treated with an increase in allowed density to those whose density remains unchanged, while in the later identification comes from the rolling introduction of higher density generating multiple treatments.
+
+\textcite{Anagol_etal2021} analyze a broad-based 2016 zoning reform in S\~{a}o Paulo, Brazil that allowed up to a 1.4 unit increase the maximum allowed built area ratio (BAR) - analogous to floor area ratio (FAR) or floor space ratio (FSR) - for over 45,000 blocks. Over the reform, the average BAR increase was more modest, from 1.54 to 2.09. Over six years they note a 66 percent increase in multi-family permit applications for treated blocks compared to the controls (or .012 permits per block per year) resulting in an aggregate 1.9 percent increase in the stock of housing and a 0.5 percent decline in prices.
+2For the effects of land use regulation constraints on supply and affordability see Molloy 2020.
+
+Like S\~{a}o Paulo, Auckland, NZ also introduced a single broad upzoning. Implemented by the Auckland Council (the government body administering the metro area) in late 2016, Auckland Unitary Plan (AUP), increased the allowed number of units and density on about 75 percent of the metro area's residential land. That reform, through mostly moderate increases in density (about 90 percent of the upzoned area allowed for three units per parcel, with the remaining 10 percent at higher densities) is estimated to have increased the potential developable stock of housing by 300 percent (see the discussion in \textcite{Greenaway2024}). \textcite{GreenawayPhillips2023} estimate the impact of the AUP upzoning on new housing construction. They demonstrate that the large increase in new construction (equal to an estimated 4.1 percent of the existing housing stock over five years) following the introduction of the AUP did not result from units that would otherwise have been built or built in the areas that were not rezoned. The increase was in more intensive (higher capital, attached) housing in the core areas of the region. To estimate the likely long run effects of the AUP, \textcite{Greenaway2025} estimates the changes to land price gradients in a monocentric model and then estimates the changes in housing stock implied by the land price changes. He argues that the land price changes are consistent with a long run 23 percent increase in the areaâ€™s housing stock.
+
+A concern with the removal of density constraints is that the increase in the development option value can increase house prices without increasing supply, as the hurdle to exercise the option rises (\textcite{Clap_etal2012}). \textcite{Greenaway_etal2021} estimate the short-run effect of the AUP upzoning on house prices while attempting to control for these redevelopment premiums. They find that upzoning increases the value of the redevelopment premium, but that this positive effect is declining in magnitude with the degree of existing development density, and negative for properties with already high density. In terms of the effects on affordability of the AUP, Greenaway-McGrevy 2023 uses a synthetic control approach to estimate that rents were 15- 35 percent less than they would be otherwise, depending on unit type.
+
+The above papers examine the effects of rezoning within a five-year period. \textcite{BuchlerLutz2024}  are able to examine longer-term effects studying Swiss zoning reforms that increased densities over a multi-decade period starting in the 1990s. They take advantage of the rolling introduction of increases in the allowed maximum density across the Canton of Zurich from 1995 to 2020 to address concerns about endogenous choice of locations for upzoning. Their paper uses an event study approach for each of the 100m x 100m cells the create for Zurich, with the event date varying as the zoning reforms occur over the 25-year period, Not surprisingly, they find larger effects than did \textcite{Anagol_etal2021}, with a 9 percent increase in living space and housing units in up-zoned compared to not up-zoned areas over a five-to-ten-year window. The range of changes and locations allows them to identify heterogeneity in the response to the zoning change based on the size of the increase in allowed density and the extent of whether buildings are already constrained by the initial zoning.
+
+Two studies address cities in our sample. \textcite{Dong2024a} assesses the Portland, OR upzoning that we also study. He finds that as a result of these changes, ``moderate middle'' housing increased from 13.4 percent to 44.7 percent of new building permits in single family zones, but does not provide an estimate of the total changing in housing.\textcite{GuMunro_2025} use synthetic controls to test the effects of the Minnesota reforms, finding lower prices and rents, but surprisingly no change in permits. 
+
+While not the entire city, New York's series of neighbourhood-level rezoning analyzed by \textcite{Liao2023} affected approximately 40 percent of the city between 2004 and 2013, with upzoning in many areas. Using changes in FAR and comparing areas in either side of the boundary between changed and unchanged areas, \textcite{Liao2023} finds an overall 4 percent increase in housing supply over seven years, with this increase at 8 percent for areas that were treated with the largest increases in FAR. Using the same zoning reform, Peng 2023 creates a spatial model with worker residential mobility and finds as a counterfactual to the observed outcomes a lower effect of a 0.7 percent long-run increase in the stock. In the spirit of models of redevelopment, \textcite{Rollet_2025} draws from the same set of zoning changes. He creates a dynamic model of demand for floor space and interact this with zoning reforms in New York City to assess the effects of zoning relaxations, on redevelopment. He finds that the large fixed costs of redevelopment, especially in dense areas, limits the short-run effects of rezoning, so that increases in supply take considerable time.
+
+Another city that implemented scattered but still broad upzoning was Seattle. The Mandatory Housing Affordability (MHA) reform, which occurred mainly in 2019, upzoned 33 neighbourhoods in the city. However, along with allowing increased density, the MHA imposed inclusionary zoning, requiring a percentage of the new units in each development to be set aside for lower income households at lower cost. \textcite{KrimmelWang2024} study the effects of the inclusionary zoning requirement on rezoning uptake. Using within neighbourhood difference-in-differences analysis, they find a differentially larger increase in census blocks not upzoned with the inclusionary zoning restrictions. This effect is most severe for lower density (four story and below) developments.
+
+While the work cited above examines upzoning in individual cities, \textcite{Stacy_etal2023} create a cross-city panel to study the effects of relaxing zoning restrictions on new construction more broadly. They conduct newspaper text searches for approximately 180 land use regulatory changes between 2000 and 2019 in eight US metro areas. About half (98) of these lessen restrictions through either allowing ADUs (35), increasing FARs (15). If they observe a relaxation in any measure, they observe The discrete characteristic of having loosened restrictions is associated with a 0.8 percent increase in residential postal addresses in the jurisdictions that loosen restrictions, when compared to jurisdictions that do not.  They also find the effects come mainly from above-median rent areas. 
+
+Here we study the most modest of increases in unit density, the bottom end of the ``missing middle.'' As such our subject areas most similar to the Auckland upzoning. The introduction of zoning changes to allow for accessory dwelling units (ADUs) on existing single family lots is the most common regulatory relaxing found in \textcite{Stacy_etal2023}. Several papers also look at the effects of ADUs as a form of very modest increases in allowed density: \textcite{Davidoff_etal2022} estimate the size of density spillovers on neighbouring properties; \textcite{BruecknerThomaz2024} examine the pattern of uptake of ADUs in Los Angeles, identifying neighbourhood correlates with uptake. In both cases property owners and builders respond to the opportunity to add a smaller unit to a property without reducing the size of the main single family detached structure with an increase in aggregate housing supply. Our work differs in that we examine a case where the existing unit must be torn down, density increases by more (both in units and square feet), and we seek to compare a jurisdiction where redevelopment occurs compared with one where it does not.
+
+Critics of upzoning have argued that it either does not lead to new construction or that the new construction that occurs does not approve affordability.\footnote{See \textcite{Been_etal2019} for a summary of increased housing supply as the central policy to address worsening with housing affordability and responses to the critics of increased density.} This literature focuses on much more significant changes than those we study. An example is the work by \textcite{Freemark2020} in Chicago of the effects of upzonings in 2013 and 2015  that increased FARs, heights, and allowed units close to rail transit stations. He finds increases in values (up to 23 percent) and permits in the treated areas when compared with controls, though the latter effects is only statistically different than zero at a 10 percent test). 
+
+With undeveloped lots, an alternative to allowing duplexes would be halving lot sizes. Using data from Atlanta to calibrate a model, \textcite{Ma_2025} estimates the effect of this type of forced upzoning. She finds that given that new homes are large units built for higher income users, that forcing  upzoning results in improvements in affordability as when a single large unit cannot be built, more smaller units are constructed instead. 
 
 \section{Institutional setting}
 
@@ -64,7 +126,7 @@ In this paper, we assess patterns of redevelopment of single-family sites to mod
 
 Of the cities included here, Minneapolis was the first to move away from single-family zoning, with the City Council voting in December 2018 to allow more than one unit on all single-family lots. The changes came into effect in January 2020 following approval by the region’s Metropolitan Council in 2019. The rezoning divides the city into three major regions, with additional distinct policies for transit corridors. These corridors were rezoned to allow 3–6 storey buildings, with 10–30 storeys permitted close to transit stations. Additionally, in May 2021, off-street parking minimums were eliminated.
 
-Our interest is in the three largest regions of the city: “Interior-1,” “Interior-2,” and “Interior-3,” where the rezoning permitted up to three units on all previously single-family-zoned lots. The largest land area is in Interior-1, which consists of neighborhoods most distant from the city’s core. In this area, the floor space ratio (FSR) remained unchanged at 0.5, with a maximum height of 2.5 storeys or 28 feet (8.5 meters). In Interior-2, the ring around the core, the same restrictions apply. Only in Interior-3—the single-family areas immediately south and northeast (across the Mississippi River) of the downtown core—did the rezoning increase FSR, from 0.5 to 0.6 for duplexes and 0.7 for triplexes. Triplexes also received a relaxation of the height restriction, to three storeys or 42 feet (12.8 meters). The standard residential lot size in Minneapolis is 5,000 sf, with newer single-family units typically maximizing the allowed buildable area.
+Our interest is in the three largest regions of the city: ``Interior-1,'' ``Interior-2,'' and ``Interior-3,'' where the rezoning permitted up to three units on all previously single-family-zoned lots. The largest land area is in Interior-1, which consists of neighborhoods most distant from the city’s core. In this area, the floor space ratio (FSR) remained unchanged at 0.5, with a maximum height of 2.5 storeys or 28 feet (8.5 meters). In Interior-2, the ring around the core, the same restrictions apply. Only in Interior-3—the single-family areas immediately south and northeast (across the Mississippi River) of the downtown core—did the rezoning increase FSR, from 0.5 to 0.6 for duplexes and 0.7 for triplexes. Triplexes also received a relaxation of the height restriction, to three storeys or 42 feet (12.8 meters). The standard residential lot size in Minneapolis is 5,000 sf, with newer single-family units typically maximizing the allowed buildable area.
 
 \textit{Portland, OR USA}
 
@@ -72,7 +134,7 @@ Broad upzoning in Portland was triggered by the Oregon legislature’s passage o
 
 The City of Portland enacted its first round of reforms, the Residential Infill Project (RIP-1), effective in August 2021. This first of two rounds applied to zones nearer the city centre with smaller lots (land use zones R2.5, R5, and R7).\footnote{These zones reflect allowed lot sizes: R2.5 allows 1 lot per 2,500 sq ft; R5 allows 1 lot per 5,000 sq ft; and R7 allows 1 lot per 7,000 sq ft.} Allowed FSR varied by zone and by the number of units built per lot, with an additional 0.1 FSR for each added unit above the single-family maximum of 0.7, 0.5, and 0.4 in zones R2.5, R5, and R7, respectively.\footnote{For a 2-, 3-, or 4-unit development, the maximum FAR would be 0.8, 0.9, and 1.0 in the R2.5 zone, respectively; 0.6, 0.7, and 0.8 in the R5 zone; and 0.5, 0.6, and 0.7 in the R7 zone.}
 
-The City enacted a second round of reforms (RIP-2) in June 2022. This second round extended the RIP-1 changes to the lower-density, larger-lot zones (R10 and R20, for 10,000 and 20,000 sq ft lots, respectively), which tended to be further from the city’s urban core.\footnote{The shares of single-dwelling land by zone are roughly R2.5 – 7%, R5 – 41%, R7 – 18%, R10 – 18%, and R20 – 5%; see \cite{DongHansz_2019}.} Additional changes under RIP-2 included the ability to subdivide lots and create townhouse-style, side-by-side, fee-simple units across all zones, as well as the extension of accessory dwelling unit (ADU) permissions into the R10 and R20 zones. Overall, RIP-2 extended RIP-1 to the remaining single-family zones, while permitting more flexibility in structure types and options for fee-simple, rather than condominium or strata, ownership.
+The City enacted a second round of reforms (RIP-2) in June 2022. This second round extended the RIP-1 changes to the lower-density, larger-lot zones (R10 and R20, for 10,000 and 20,000 sq ft lots, respectively), which tended to be further from the city’s urban core.\footnote{The shares of single-dwelling land by zone are roughly R2.5 – 7\%, R5 – 41\%, R7 – 18\%, R10 – 18\%, and R20 – 5\%; see \textcite{DongHansz_2019}.} Additional changes under RIP-2 included the ability to subdivide lots and create townhouse-style, side-by-side, fee-simple units across all zones, as well as the extension of accessory dwelling unit (ADU) permissions into the R10 and R20 zones. Overall, RIP-2 extended RIP-1 to the remaining single-family zones, while permitting more flexibility in structure types and options for fee-simple, rather than condominium or strata, ownership.
 
 \textit{Vancouver, BC Canada}
 
@@ -82,12 +144,48 @@ Duplexes and single-family units faced the same maximum FSR, between 0.6 and 0.7
 
 Following the Province of British Columbia’s elimination of exclusive single-family zoning in November 2023, the City of Vancouver extended multiplex permissions to all residential zones. At the same time, the maximum allowed size for ADU units was increased from 0.16 to 0.25 FSR. The number of permitted units varies between three and six (and up to eight for purpose-built rental), depending on lot area and frontage. A standard 33’ × 122’ lot would allow three units. To allow four units, lot area would have to exceed 4,984 sq ft or frontage would have to exceed 43.6’.
 
-With the 2023 changes, maximum allowed FSR depended on several factors. Single-family homes and duplexes were permitted maximum FSRs of 0.6 and 0.70, respectively, with an additional 0.25 FSR allowed for an ADU on single-family lots. For multiplexes (three or more units), the default maximum was 0.7, with 1.0 FSR attainable if one of the following applied: (i) all units are secured-rental housing; (ii) one unit is designated as “below-market” homeownership; or (iii) the developer pays a density bonus, which can vary from \$3.00 to \$140.00 per square foot of additional density depending on lot size and location. For lots of sufficient size, 7–8 rental units are also possible at an FSR of 1.0.
+With the 2023 changes, maximum allowed FSR depended on several factors. Single-family homes and duplexes were permitted maximum FSRs of 0.6 and 0.70, respectively, with an additional 0.25 FSR allowed for an ADU on single-family lots. For multiplexes (three or more units), the default maximum was 0.7, with 1.0 FSR attainable if one of the following applied: (i) all units are secured-rental housing; (ii) one unit is designated as ``below-market'' homeownership; or (iii) the developer pays a density bonus, which can vary from \$3.00 to \$140.00 per square foot of additional density depending on lot size and location. For lots of sufficient size, 7–8 rental units are also possible at an FSR of 1.0.
 
 
 \section{Empirical Analysis}
 
-For each dated permitting event in each city, we calculate profits from the available choices. For R zones in Vancouver, the profit from a single family home is approximated as the profit from a single family home with a laneway. In some neighbourhoods, takeup... laneway home.
+\subsection{Vancouver}
+
+We merge permitting and zoning data from the City of Vancouver and transaction and home characteristic data from B.C. Assessment.
+
+Our first exercise is to map the spatial distribution of permits in properties currently inside R1-1 zones in Vancouver. R1-1 covers what use to be several different zones, almost all of which have permitted laneway homes since 2009, duplexes since late 2018, and multiplexes since late 2023. 
+
+Figure \ref{fig:vancouverSpatial} plots the latitude and longitude of all new construction and major alteration building permits issues in R1-1 zones since duplexes were allowed in January, 2019. The top panel plots the census-tract specific mean price per square foot for single family homes in transactions from 2015 to 2019, before the duplex era. The bottom panel shows the type of permit issued: a laneway home (a new single family with a laneway home or a standalone laneway added to a single family home), a duplex, or a multiplex. A very clear result is that high prices and single-family permits are highly concentrated on the West Side of Vancouver.
+
+\begin{figure}
+  \caption{\label{fig:vancouverSpatial} Latitude and longitude of City of Vancouver permits issued in R1-1 zones. Top panel: census tract-specific mean price per square foot for single family homes, 2012-2019, CPI-adjusted to 2025. Bottom panel: type of permit issued since January, 2019.}
+  \includegraphics[width=.6\textwidth]{vancouverPPSFSpatial.png}\\
+  \includegraphics[width=.6\textwidth]{vancouverUseSpatial.png}
+\end{figure}
+
+Figure \ref{fig:vancouverBar} shows the percentage of permits issued by use type, this type binning by decile of housing prices. Again, it is clear that infill housing is most prevalent in lower-priced neighbourhoods. 
+
+\begin{figure}
+  \caption{\label{fig:vancouverBar} Percentage of permits issued by use type, binned by decile of census tract mean price per square foot for single family homes, 2012-2019, CPI-adjusted to 2025.}
+  \includegraphics[width=\textwidth]{vancouverUseShareByPPSF.png}
+\end{figure}
+
+Figure \ref{fig:vancouverRelativeMulti} plots the fraction of permits issued for multiplexes in 2024 and 2025 divided by the fraction for duplexes over the same period by census tract mean price per square foot bin.
+
+\subsection{Vancouver: price versus elasticity of price in size}
+
+In addition to the mean price per square foot, we also consider the elasticity of log transaction price per square foot with respect to log square footage for single family homes in the period 2012-2019. Because so many homes are at corner solutions for floor space ratio, we estimate this regression only for homes that are close to the neighbourhood lot widths (in most cases 33 feet, in some cases 50 feet). Specifically, we estimate:
+
+\begin{equation}
+  \label{eq:vancouverElasticity}
+  \ln \frac{p_{ict}}{sf_{ict}} = \alpha + \beta_{c} \ln sf_{ict}\delta_{c} + \gamma X_{ict} + \delta_{c} + \delta_t + \epsilon_{ict}
+\end{equation}
+
+In equation \eqref{eq:vancouverElasticity}, $p_{ict}$ is the transaction price of home $i$ in census tract $c$ in year $t$, $sf_{ict}$ is the square footage of the home, $sf_{ict}$ is the square footage of the home, $\delta_c$ is an indicator for whether the home is within census tracts $c$, and $\delta_{t}$ is a year dummy. $X$ includes controls for lot size and age. The interaction effects $\beta_{c}$ capture elasticities of price per square foot with respect to square footage by census tract. Almost all lie between 0 and 1, with higher and lower values windsorized (a value less than -1 would nonsensically imply falling prices in square footage, and greater than 0 would indicate demand for merging lots, which never happens).
+
+
+\printbibliography
+\end{document}
 
 
 

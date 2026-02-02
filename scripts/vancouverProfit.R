@@ -121,9 +121,10 @@ COSTPSF <- 500
 dtMerge[,buildableLaneway:=pmax(MB_total_finished_area+FSR_LANEWAY,(FSR_SINGLEDUPLEX+FSR_LANEWAY*lotSizeSqft))]
 dtMerge[,buildableDuplex:=pmax(MB_total_finished_area,FSR_SINGLEDUPLEX*lotSizeSqft)]
 dtMerge[,profitLaneway:=buildableLaneway*(meanPPSF - COSTPSF)]
-dtMerge[,profitDuplex:=buildableDuplex*(meanPPSF*exp(2*elasticity)-COSTPSF)]
+dtMerge[,profitDuplex:=buildableDuplex*(meanPPSF*exp(-2*elasticity)-COSTPSF)]
+dtMerge[,profitMulti:=lotSizeSqft*(meanPPSF*exp(-3*elasticity)-COSTPSF-150)] # placeholder
 dtMerge[,single := use %chin% c("single","laneway")]
-dtMerge[,plex := use %chin% c("duplex","multiplex")]
+dtMerge[,plex := use %chin% c("duplex","multi")]
 dtMerge[,laneway := use %chin% c("laneway")]
 dtMerge[,deltaProfit := profitLaneway - profitDuplex]
 dtMerge <- dtMerge[abs(deltaProfit)<1000000]
@@ -159,3 +160,25 @@ print(head(dtIncome))
 print(head(dtMerge))
 dtMerge <- merge(dtMerge,dtIncome[,.(tract,medianIncome)],by="tract")
 print(cor(dtMerge[MB_effective_year<1960,.(single,plex,laneway,meanPPSF,elasticity,deltaProfit,medianIncome)]))
+
+dtMerge[,permitYear:=as.numeric(substr(permitnumbercreateddate,1,4))]
+# do share of multi/duplex for years 2024, 2025 (exclude laneway/single)
+# Same bin plot as before, but confined to year in 2024/2025 and only multi/duplex, key var is plex share
+dtYear <- dtMerge[permitYear %in% c(2024,2025) & plex==1,.(N=.N),by=.(ppsfBin,use)]
+dtYear[,totalN:=sum(N),by=.(ppsfBin)]
+dtYear[,share:=N/totalN]
+print(dtYear)
+dtPlexShare <- dtYear[use=="multi"]
+print(head(dtPlexShare))
+ggplot(dtPlexShare,aes(x=ppsfBin,y=share)) + geom_bar(stat="identity",position="dodge") + theme_minimal() +
+  labs(title="Vancouver Duplex/Multiplex Permits by Price per Square Foot",
+       x="Mean Price per Square Foot Bin",
+       y="Share of Duplex/Multiplex Permits") +
+  scale_fill_viridis_d(name="Permit Year")
+
+ggsave("text/vancouverPlexShareByPPSF.png",width=8,height=6)
+
+# profit from multi vs duplex
+dtMerge[,deltaProfitMulti:=profitMulti - profitDuplex]
+print(cor(dtMerge[plex==1,.(meanPPSF,elasticity,use=="multi",use=="duplex",deltaProfitMulti)]))
+print(cor(dtMerge[laneway==0,.(meanPPSF,elasticity,use=="multi",use=="duplex",deltaProfit)]))
