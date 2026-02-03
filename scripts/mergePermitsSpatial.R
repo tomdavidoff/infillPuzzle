@@ -17,11 +17,10 @@ dtP <- dtP[typeofwork %in% c("Addition / Alteration", "New Building")]
 dtP[, yearCreated := year(permitnumbercreateddate)]
 dtP <- dtP[yearCreated >= 2017]
 
+print(table(dtP[grepl("laneway", specificusecategory),specificusecategory]))
 # Keep residential categories only
-dtP <- dtP[specificusecategory %in% c("Single Detached House", "Laneway House",
-                                       "Single Detached House w/Sec Suite",
-                                       "Multiple Dwelling", "Duplex", "Duplex w/Secondary Suite")]
-dtP <- dtP[projectvalue >= 250000]
+dtP <- dtP[specificusecategory %in% c("Single Detached House", "Laneway House", "Single Detached House w/Sec Suite", "Multiple Dwelling", "Duplex", "Duplex w/Secondary Suite")]
+dtP <- dtP[projectvalue >= 250000 | typeofwork=="New Building"]
 
 # Create use type flags
 dtP[, duplex := grepl("uplex", specificusecategory)]

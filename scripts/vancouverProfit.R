@@ -83,6 +83,8 @@ dtMerge <- dtMerge[nobs>4]
 dtMerge <- dtMerge[elasticity>0,elasticity:=0]
 dtMerge <- dtMerge[elasticity < -1,elasticity:=-1]
 CUTDISTANCE <- 20
+# make this a switch
+dtMerge[use=="single",use:=ifelse(distToLaneway>CUTDISTANCE,"singleOnly","singleLaneway")]
 dtMerge[nearestLanewayPermit>CUTDISTANCE & use=="single",use:="singleOnly"]
 dtMerge[nearestLanewayPermit<=CUTDISTANCE & use=="single",use:="singleLaneway"]
 dtMerge <- dtMerge[use!="laneway"] # drop only laneway
@@ -188,3 +190,190 @@ ggsave("text/vancouverPlexShareByPPSF.png",width=8,height=6)
 dtMerge[,deltaProfitMulti:=profitMulti - profitDuplex]
 print(cor(dtMerge[plex==1,.(meanPPSF,elasticity,use=="multi",use=="duplex",deltaProfitMulti)]))
 print(cor(dtMerge[laneway==0,.(meanPPSF,elasticity,use=="multi",use=="duplex",deltaProfit)]))
+
+# define a profit function as a function of constant alpha * meanPPSF
+# plus beta additive mean by census tract with common standard deviation sigma
+# choose alpha, beta, sigma such that laneway profit = FSR laneway * alpha*meanPPSF - beta_tract + epsilon
+
+
+dtMerge[, lanewayFSR := fifelse(permitYear < 2024, 0.16, 0.25)]
+
+### =========================
+### ESTIMATION BLOCK (NEW) — DO NOT DUPLICATE
+### =========================
+
+dtSingles <- dtMerge[use %chin% c("singleOnly","singleLaneway")]
+dtSingles[, hasLaneway := as.integer(use == "singleLaneway")]
+
+tract_levels <- sort(unique(dtSingles$tract))
+Nt <- length(tract_levels)
+dtSingles[, tract_id := match(tract, tract_levels)]
+stopifnot(all(!is.na(dtSingles$tract_id)))
+
+# SCALE to avoid probit saturation
+dtSingles[, x := (lanewayFSR * meanPPSF) / 100 ]
+
+piLanewayNLL_stable <- function(par, dtSingles, Nt, lambda_beta = 1e-2) {
+  alpha <- par[1]
+  beta  <- par[1 + (1:Nt)]
+  beta  <- beta - mean(beta)  # identify level
+
+  mu <- alpha * dtSingles$x - beta[dtSingles$tract_id]
+  p  <- pnorm(mu)
+  p  <- pmin(pmax(p, 1e-9), 1 - 1e-9)
+
+  y <- dtSingles$hasLaneway
+  nll <- -sum(y * log(p) + (1 - y) * log(1 - p))
+
+  nll + lambda_beta * sum(beta^2)
+}
+
+par0 <- c(0, rep(0, Nt))
+
+fitLaneway_NEW <- optim(
+  par = par0,
+  fn  = piLanewayNLL_stable,
+  dtSingles = dtSingles,
+  Nt = Nt,
+  method = "L-BFGS-B",
+  control = list(maxit = 2000)
+)
+
+alpha_hat_NEW <- fitLaneway_NEW$par[1]
+beta_hat_NEW  <- fitLaneway_NEW$par[1 + (1:Nt)]
+beta_hat_NEW  <- beta_hat_NEW - mean(beta_hat_NEW)
+
+cat("\n=== NEW stable probit (sigma fixed to 1) ===\n")
+cat("convergence code =", fitLaneway_NEW$convergence, "\n")
+cat("alpha_hat_NEW =", alpha_hat_NEW, "\n")
+cat("objective =", fitLaneway_NEW$value, "\n")
+
+betaTract_hat_NEW <- data.table(tract = tract_levels, betaTract = beta_hat_NEW)
+
+dtSinglesCheck <- merge(dtSingles, betaTract_hat_NEW, by="tract", all.x=TRUE)
+dtSinglesCheck[, mu := alpha_hat_NEW * x - betaTract]
+dtSinglesCheck[, p  := pnorm(mu)]
+
+cat("Mean predicted p (singles):", mean(dtSinglesCheck$p), "\n")
+cat("Observed share laneway:", mean(dtSinglesCheck$hasLaneway), "\n")
+print(summary(dtSinglesCheck$mu))
+
+### =========================
+### TRACT-LEVEL FIT DIAGNOSTICS
+### =========================
+
+# collapse to tract means
+dtTractFit <- dtSinglesCheck[, .(
+  N = .N,
+  actual_laneway = mean(hasLaneway),
+  pred_laneway   = mean(p),
+  mean_mu        = mean(mu),
+  mean_x         = mean(x)
+), by = tract]
+
+# simple correlations
+cat("\nTract-level correlations:\n")
+cat("cor(predicted, actual) =",
+    cor(dtTractFit$pred_laneway, dtTractFit$actual_laneway), "\n")
+
+cat("cor(mean_mu, actual) =",
+    cor(dtTractFit$mean_mu, dtTractFit$actual_laneway), "\n")
+
+# weighted correlation (by number of observations in tract)
+wcor <- function(x, y, w) {
+  xbar <- weighted.mean(x, w)
+  ybar <- weighted.mean(y, w)
+  sum(w * (x - xbar) * (y - ybar)) /
+    sqrt(sum(w * (x - xbar)^2) * sum(w * (y - ybar)^2))
+}
+
+cat("weighted cor(predicted, actual) =",
+    wcor(dtTractFit$pred_laneway,
+         dtTractFit$actual_laneway,
+         dtTractFit$N), "\n")
+
+### =========================
+### OOS: betaTract vs duplex share (among single-ish)
+### =========================
+
+# 1) Build tract-level duplex share using permits that are NOT in the single sample
+#    (i.e., exclude the two single categories used in the laneway estimation)
+dtOOS <- dtMerge[!use %chin% c("singleOnly","singleLaneway") &
+                  use %chin% c("duplex","singleOnly","singleLaneway"),
+                .(tract, use)]
+
+# In practice the line above will keep only "duplex" because we excluded singles already,
+# but we keep the structure explicit in case you widen the definition later.
+dtOOS[, isDuplex := as.integer(use == "duplex")]
+
+dtDuplexShare <- dtOOS[, .(
+  N_oos = .N,
+  duplexShare_oos = mean(isDuplex)
+), by = tract]
+
+# 2) Join with betaTract (estimated from singles)
+dtBetaDuplex <- merge(betaTract_hat_NEW, dtDuplexShare, by="tract", all.x=TRUE)
+
+# Drop tracts with no OOS duplex observations
+dtBetaDuplex <- dtBetaDuplex[!is.na(duplexShare_oos) & N_oos > 0]
+
+cat("\nOOS duplex share vs betaTract:\n")
+cat("Tracts with OOS data:", nrow(dtBetaDuplex), "of", nrow(betaTract_hat_NEW), "\n")
+cat("cor(betaTract, duplexShare_oos) =",
+    cor(dtBetaDuplex$betaTract, dtBetaDuplex$duplexShare_oos), "\n")
+
+# Weighted correlation by number of OOS permits
+wcor <- function(x, y, w) {
+  xbar <- weighted.mean(x, w)
+  ybar <- weighted.mean(y, w)
+  sum(w * (x - xbar) * (y - ybar)) /
+    sqrt(sum(w * (x - xbar)^2) * sum(w * (y - ybar)^2))
+}
+
+cat("weighted cor(betaTract, duplexShare_oos) =",
+    wcor(dtBetaDuplex$betaTract, dtBetaDuplex$duplexShare_oos, dtBetaDuplex$N_oos), "\n")
+
+### =========================
+### TRACT-LEVEL SINGLE SHARE
+### =========================
+
+dtTractSingle <- dtMerge[, .( singleShare = mean(grepl("single", use)), meanPPSF_t  = mean(meanPPSF) ), by = tract]
+
+dtTractSingle <- merge( dtTractSingle, betaTract_hat_NEW, by = "tract" )
+
+print(cor(dtTractSingle$betaTract, dtTractSingle$singleShare))
+m_beta <- lm(singleShare ~ betaTract, data = dtTractSingle)
+print(summary(m_beta))
+
+### =========================
+### TRACT-LEVEL PLEX SHARE (2024–2025)
+### =========================
+
+dtPlexTract <- dtMerge[
+  permitYear %in% c(2024, 2025) & use %chin% c("duplex","multi"),
+  .(
+    plexShare = mean(use == "multi"),   # share multi vs duplex
+    N = .N,
+    meanPPSF_t = mean(meanPPSF),
+    medianIncome_t = mean(medianIncome, na.rm = TRUE)
+  ),
+  by = tract
+]
+
+# merge in betaTract
+dtPlexTract <- merge(
+  dtPlexTract,
+  betaTract_hat_NEW,
+  by = "tract",
+  all.x = TRUE
+)
+
+# keep tracts with enough activity to be meaningful
+dtPlexTract <- dtPlexTract[N >= 5]
+summary(dtPlexTract)
+m_beta <- lm(
+  plexShare ~ medianIncome_t + meanPPSF_t + betaTract,
+  data = dtPlexTract,
+  weights = N
+)
+print(summary(m_beta))
