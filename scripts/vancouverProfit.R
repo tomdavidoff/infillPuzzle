@@ -1,6 +1,6 @@
 # vancouverProfit.R
 # estimate profitability of redevelopment choices in Vancouver
-# Tom Davidoff 
+# Tom Davidoff
 # 01/31/26
 
 library(data.table)
@@ -13,16 +13,26 @@ library(sf)
 # grab and save folio geometries for Vancouver if not yet saved
 fGeo <- "~/OneDrive - UBC/dataProcessed/bca26FolioGeometryVancouver.rds"
 if (!file.exists(fGeo)) {
-  library(sf)
+  print("HHH")
   dfG <- st_read(
   "/Volumes/T7Office/bigFiles/bca_folios_spatial_file_20251103/bca_folios.gpkg.gpkg",
-  query = "SELECT ROLL_NUMBER, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, 
+  query = "SELECT ROLL_NUMBER, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD,
            SHAPE_AREA, SHAPE_LEN, geom, JURISDICTION
-           FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV 
+           FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
            WHERE JURISDICTION = 'City of Vancouver'"
 )
   print(head(dfG))
   print(table(dfG$JURISDICTION))
+  fCT <- "~/OneDrive - UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
+  dCT <- st_read(fCT)
+  dCT <- dCT[dCT$PRUID=="59",]
+  print(head(dCT))
+  # swap crs of census tracts to that of merged)
+  print(st_crs(dCT))
+  print(st_crs(dfG))
+  dCT <- st_transform(dCT,st_crs(dfG))
+
+  dfG <- st_join(dfG,dCT,join=st_within)
   saveRDS(dfG,fGeo)
 }
 
@@ -30,15 +40,6 @@ dfG <- readRDS(fGeo)
 
 # merge geo with census tract geography
 # now get census tracts
-fCT <- "~/OneDrive - UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
-dCT <- st_read(fCT)
-print(head(dCT))
-# swap crs of census tracts to that of merged)
-print(st_crs(dCT))
-print(st_crs(dfG))
-dCT <- st_transform(dCT,st_crs(dfG))
-
-dfG <- st_join(dfG,dCT,join=st_within)
 dtGeo <- as.data.table(dfG)[,.(ROLL_NUMBER,CTNAME,ACTUAL_USE_DESCRIPTION)]
 print(table(dtGeo$ACTUAL_USE_DESCRIPTION))
 dtGeo <- dtGeo[ACTUAL_USE_DESCRIPTION %in% c("Single Family Dwelling", "Residential Dwelling with Suite")]
@@ -81,6 +82,10 @@ dtMerge <- dtMerge[nobs>4]
 # Economic intuition says elasticity can't be less than -1 or else price falls in square feet. Also, as there is no assembly for larger lots, elasticity must be less than 0
 dtMerge <- dtMerge[elasticity>0,elasticity:=0]
 dtMerge <- dtMerge[elasticity < -1,elasticity:=-1]
+CUTDISTANCE <- 20
+dtMerge[nearestLanewayPermit>CUTDISTANCE & use=="single",use:="singleOnly"]
+dtMerge[nearestLanewayPermit<=CUTDISTANCE & use=="single",use:="singleLaneway"]
+dtMerge <- dtMerge[use!="laneway"] # drop only laneway
 
 # plot use against lat/long --extract from geo_point_2d
 dtMerge[, c("lat", "lon") := tstrsplit(geo_point_2d, ", ", type.convert = TRUE)]
@@ -123,10 +128,12 @@ dtMerge[,buildableDuplex:=pmax(MB_total_finished_area,FSR_SINGLEDUPLEX*lotSizeSq
 dtMerge[,profitLaneway:=buildableLaneway*(meanPPSF - COSTPSF)]
 dtMerge[,profitDuplex:=buildableDuplex*(meanPPSF*exp(elasticity/2)-COSTPSF)]
 dtMerge[,profitMulti:=lotSizeSqft*(meanPPSF*exp(elasticity/3)-COSTPSF-150)] # placeholder
-dtMerge[,single := use %chin% c("single","laneway")]
+dtMerge[,deltaProfit := profitLaneway - profitDuplex]
+dtMerge[,single := use %chin% c("singleOnly","singleLaneway")]
 dtMerge[,plex := use %chin% c("duplex","multi")]
 dtMerge[,laneway := use %chin% c("laneway")]
-dtMerge[,deltaProfit := profitLaneway - profitDuplex]
+# use is singleOnly or singleLaneway if nearestLanewayPermit >20/<20
+CUTDISTANCE <- 20
 dtMerge <- dtMerge[abs(deltaProfit)<1000000]
 print(summary(dtMerge))
 dtMerge <- dtMerge[!is.na(profitLaneway) & !is.na(profitDuplex)]
@@ -142,7 +149,6 @@ print(summary(dtMerge[,deltaProfit]))
 dtSingle <- dtMerge[use %in% c("single","laneway"),.(laneway=mean(laneway),meanPPSF=mean(meanPPSF),elasticity=mean(elasticity)),by=CTUID]
 ggplot(dtSingle,aes(x=meanPPSF,y=elasticity,color=laneway)) + geom_point() + theme_minimal()
 ggsave("text/singleMeanElasticity.png",width=6,height=6)
-print(feols(laneway ~ log(meanPPSF) + elasticity,data=dtSingle))
 
 
 

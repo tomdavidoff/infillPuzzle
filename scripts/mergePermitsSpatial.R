@@ -1,109 +1,112 @@
-# mergePermitsSpatial.maxLaneway,maxDuplexmaxLaneway,maxDuplex,,R
-# merge permit data with single family lots as of 2019 BCA (2018 assessment) and then census tracts
+# mergePermitsSpatial.R
+# Merge permit data with single family lots (2019 BCA), zoning, and census tracts
 # Tom Davidoff
 # 01/16/26
 
 library(data.table)
 library(sf)
 
+# Load data
 dtBCA <- readRDS("~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.rds")
- #[1] "permitnumber"              "permitnumbercreateddate"  [3] "issuedate"                 "permitelapseddays"        [5] "projectvalue"              "typeofwork"               [7] "address"                   "projectdescription"       [9] "permitcategory"            "applicant"                [11] "applicantaddress"          "propertyuse"              [13] "specificusecategory"       "buildingcontractor"       [15] "buildingcontractoraddress" "issueyear"                [17] "geolocalarea"              "geom"                     [19] "yearmonth"                 "geo_point_2d"             
-dtP <- fread("~/OneDrive - UBC/dataRaw/vancouver_permits_full.csv",select=c("geom","geo_point_2d","permitnumber","permitnumbercreateddate","applicant","typeofwork","projectvalue","specificusecategory","address"))
-# check typofwork and value
-print(dtP[,median(projectvalue,na.rm=TRUE),by=typeofwork])
-dtP <- dtP[typeofwork %in% c("Addition / Alteration","New Building")]
-dtP[,yearCreated:=year(permitnumbercreateddate)]
-MINYEAR <- 2017 # might want to see jump in duplex
-dtP <- dtP[yearCreated>=MINYEAR]
-x <- table(dtP[,specificusecategory])
-print(sort(x,decreasing=TRUE))
-dtP <- dtP[specificusecategory %in% c("Single Detached House","Laneway House","Single Detached House w/ Sec Suite","Multiple Dwelling","Duplex","Duplex w/Secondary Suite")]
-print(quantile(dtP[typeofwork=="Addition / Alteration",projectvalue]))
-print(quantile(dtP[typeofwork=="New Building",projectvalue]))
-MINVAL <- 250000 #quantile(dtP[typeofwork=="New Building",projectvalue],.10) # only 
-print(MINVAL)
-dtP <- dtP[projectvalue>=MINVAL]
-print(head(dtP[,.(geo_point_2d)]))
-print(head(dtBCA[,.(geom)]))
-# 1. Parse the point string and create sf geometry
+dtP <- fread("~/OneDrive - UBC/dataRaw/vancouver_permits_full.csv",
+             select = c("geom", "geo_point_2d", "permitnumber", "permitnumbercreateddate",
+                        "applicant", "typeofwork", "projectvalue", "specificusecategory", "address"))
+
+# Filter to new builds and high-value alterations
+dtP <- dtP[typeofwork %in% c("Addition / Alteration", "New Building")]
+dtP[, yearCreated := year(permitnumbercreateddate)]
+dtP <- dtP[yearCreated >= 2017]
+
+# Keep residential categories only
+dtP <- dtP[specificusecategory %in% c("Single Detached House", "Laneway House",
+                                       "Single Detached House w/Sec Suite",
+                                       "Multiple Dwelling", "Duplex", "Duplex w/Secondary Suite")]
+dtP <- dtP[projectvalue >= 250000]
+
+# Create use type flags
+dtP[, duplex := grepl("uplex", specificusecategory)]
+dtP[, laneway := grepl("aneway", specificusecategory)]
+dtP[, multi := grepl("ultiple", specificusecategory)]
+dtP[, single := grepl("Single Detached", specificusecategory)]
+
+# Classify use hierarchy: multi > duplex > laneway > single
+dtP[, use := fcase(
+  multi == TRUE, "multi",
+  duplex == TRUE, "duplex",
+  laneway == TRUE, "laneway",
+  default = "single"
+)]
+
+# Convert to sf and transform CRS
 dtP[, c("lat", "lon") := tstrsplit(geo_point_2d, ", ", type.convert = TRUE)]
 dtP <- dtP[!is.na(lat)]
+
+# Calculate nearest neighbor distances BEFORE spatial joins (on all permits)
+sfP_meters <- st_as_sf(dtP, coords = c("lon", "lat"), crs = 4326)
+sfP_meters <- st_transform(sfP_meters, 32610)
+coords <- st_coordinates(sfP_meters)
+dtP[, `:=`(x = coords[, 1], y = coords[, 2])]
+
+# Nearest neighbor: laneway <-> single
+library(RANN)
+dtLaneway <- dtP[use == "laneway"]
+dtSingle <- dtP[use == "single"]
+
+if (nrow(dtLaneway) > 0 & nrow(dtSingle) > 0) {
+  # Nearest single for each laneway
+  knn_lane <- nn2(dtSingle[, .(x, y)], dtLaneway[, .(x, y)], k = 1)
+  dtLaneway[, distToSingle := knn_lane$nn.dists[, 1]]
+  dtLaneway[, nearestSinglePermit := dtSingle$permitnumber[knn_lane$nn.idx[, 1]]]
+  dtLaneway[, nearestSingleApplicant := dtSingle$applicant[knn_lane$nn.idx[, 1]]]
+  dtLaneway[, nearestSingleAddress := dtSingle$address[knn_lane$nn.idx[, 1]]]
+
+  # Nearest laneway for each single
+  knn_single <- nn2(dtLaneway[, .(x, y)], dtSingle[, .(x, y)], k = 1)
+  dtSingle[, distToLaneway := knn_single$nn.dists[, 1]]
+  dtSingle[, nearestLanewayPermit := dtLaneway$permitnumber[knn_single$nn.idx[, 1]]]
+  dtSingle[, nearestLanewayApplicant := dtLaneway$applicant[knn_single$nn.idx[, 1]]]
+  dtSingle[, nearestLanewayAddress := dtLaneway$address[knn_single$nn.idx[, 1]]]
+
+
+}
+
+# Combine back
+dtOther <- dtP[!use %in% c("laneway", "single")]
+dtP <- rbindlist(list(dtLaneway, dtSingle, dtOther), fill = TRUE)
+
+# Now do spatial joins
 sfP <- st_as_sf(dtP, coords = c("lon", "lat"), crs = 4326)
-
-# 2. Transform to match BCA's CRS (check with st_crs(dtBCA))
 sfBCA <- st_as_sf(dtBCA)
-sfP <- st_transform(sfP, st_crs(sfBCA)) #st_crs(dtBCA)) from ogrinfo of original BCA .gpkg
-print(st_crs(sfBCA))
+sfP <- st_transform(sfP, st_crs(sfBCA))
 
-
-# 3. Spatial join (points within polygons)
+# Spatial join: permits to BCA parcels (gets roll number, land area, etc.)
 merged <- st_join(sfP, sfBCA, join = st_within)
-print(head(merged))
-print(nrow(sfP))
-print(nrow(dtBCA))
-print(nrow(sfP))
 
-# now get census tracts
-fCT <- "~/OneDrive - UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
-dCT <- st_read(fCT)
-print(head(dCT))
-# swap crs of census tracts to that of merged)
-print(st_crs(dCT))
-print(st_crs(merged))
-dCT <- st_transform(dCT,st_crs(merged))
+# Spatial join: add zoning from city zoning shapefile
+sfZoning <- st_read("~/OneDrive - UBC/dataRaw/vancouver_zoning.geojson")
+sfZoning <- st_transform(sfZoning, st_crs(merged))
+merged <- st_join(merged, sfZoning[, c("zoning_classification", "zoning_category", "zoning_district")],
+                  join = st_within)
 
-mergedCT <- st_join(merged,dCT,join=st_within)
-print(head(mergedCT))
+# Spatial join: add census tracts
+dCT <- st_read("~/OneDrive - UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
+dCT <- st_transform(dCT, st_crs(merged))
+merged <- st_join(merged, dCT, join = st_within)
 
-##
-dtSpatial <- as.data.table(mergedCT)
-dtSpatial[,roundRoll:=floor(as.numeric(ROLL_NUMBER)/1000)]
-print(length(unique(dtSpatial[,ROLL_NUMBER])))
-print(length(unique(dtSpatial[,roundRoll])))
-dtSpatial[,matched:=!is.na(zoning)]
-dtSpatial[,nLot:=.N,by=roundRoll]
-dtSpatial[,duplex:=grepl("uplex",specificusecategory)]
-dtSpatial[,laneway:=grepl("aneway",specificusecategory)]
-dtSpatial[,multi:=grepl("ultiple",specificusecategory)]
-dtSpatial[,single:=grepl("Single Detached",specificusecategory)]
-dtSpatial[,maxSingle:=max(single),by=roundRoll]
-dtSpatial[,maxMulti:=max(multi),by=roundRoll]
-dtSpatial[,maxDuplex:=max(duplex),by=roundRoll]
-dtSpatial[,maxLaneway:=max(laneway),by=roundRoll]
-dtSpatial[,use:=fifelse(maxMulti==1,"multi",
-                           fifelse(maxDuplex==1,"duplex",
-                                   fifelse(maxLaneway==1,"laneway","single")))]
-# only one obs per lot
-dtSpatial[,uniqueLot:=.N==1,by=roundRoll]
-dtSpatial <- dtSpatial[uniqueLot==TRUE]
-print(table(dtSpatial[matched==1,nLot]))
-print(table(dtSpatial[matched==0,specificusecategory]))
-print(table(dtSpatial[matched==1,specificusecategory,by=nLot]))
-print(table(dtSpatial[matched==1,specificusecategory]))
-dtSpatial[,matcha:=!is.na(CTUID)]
-print(table(dtSpatial[,matcha]))
-print(names(dtSpatial))
-# [1] "geom"                     "geo_point_2d"            
-# [3] "permitnumber"             "permitnumbercreateddate" 
-# [5] "applicant"                "typeofwork"              
-# [7] "projectvalue"             "specificusecategory"     
-# [9] "address"                  "yearCreated"             
-#[11] "rollStart"                "folioID"                 
-#[13] "rollNumber"               "zoning"                  
-#[15] "MB_effective_year"        "MB_total_finished_area"  
-#[17] "actualUseDescription"     "neighbourhoodDescription"
-#[19] "ROLL_NUMBER"              "Nlot"                    
-#[21] "CTUID"                    "DGUID"                   
-#[23] "CTNAME"                   "LANDAREA"                
-#[25] "PRUID"                    "geometry"                
-#[27] "matched"                  "nLot"                    
-#[29] "duplex"                   "laneway"                 
-#[31] "multi"                    "maxMulti"                
-#[33] "maxDuplex"                "maxLaneway"              
-#[35] "use"                      "uniqueLot"               
-#[37] "matcha"                  
-dtSpatial <- dtSpatial[matched==1,.(CTUID,ROLL_NUMBER,folioID,permitnumbercreateddate,use,maxSingle,maxLaneway,maxDuplex,MB_effective_year,MB_total_finished_area,neighbourhoodDescription,address,LANDAREA,landWidth,landDepth,geo_point_2d,typeofwork,nLot)]
-outfile <- "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds"
-saveRDS(dtSpatial,outfile)
+# Convert to data.table and finalize
+dtSpatial <- as.data.table(merged)
+dtSpatial[, matched := !is.na(ROLL_NUMBER)]
 
+# Select final columns
+dtSpatial <- dtSpatial[matched == TRUE,
+                        .(CTUID, ROLL_NUMBER, zoning_classification, zoning_category,
+                          zoning_district, folioID, permitnumber, permitnumbercreateddate,
+                          use, MB_effective_year, MB_total_finished_area,
+                          neighbourhoodDescription, address, LANDAREA,
+                          landWidth, landDepth, geo_point_2d, typeofwork,applicant,
+                          distToSingle, distToLaneway, nearestSinglePermit, nearestLanewayPermit) ]
 
+saveRDS(dtSpatial, "~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
+
+print(summary(dtLaneway$distToSingle))
+print(summary(dtSingle$distToLaneway))
