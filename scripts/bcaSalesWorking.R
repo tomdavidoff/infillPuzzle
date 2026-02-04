@@ -20,7 +20,7 @@ library(readxl)
 BCA19    <- "~/OneDrive - UBC/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 BCA26 <- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
 
-# use 2026 data to get floor(roll number/1000) to get lot polygons -> centroid , maybe zoning 
+# use 2026 data to get floor(roll number/1000) to get lot polygons -> centroid , maybe zoning
 fRollLatLon <- "~/OneDrive - UBC/dataProcessed/bca26RollCensusTract.rds"
 fLaneway <-  "~/OneDrive - UBC/dataRaw/20231231_UBC_CustomLanewayReport.xlsx"
 
@@ -29,7 +29,7 @@ if (!file.exists(fRollLatLon)) {
   cat("Extracting lot centroids from BCA 2026 data...\n")
   desc26 <- st_read(BCA26,
       layer="WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
-      query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV WHERE JURISDICTION_CODE = '200' AND ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling')", 
+      query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV WHERE JURISDICTION_CODE = '200' AND ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling')",
       quiet = TRUE
   )
   print(head(desc26))
@@ -67,7 +67,7 @@ if (!file.exists(fSales)) {
   "))
   dbDisconnect(db)
   saveRDS(dtBCA2019, fSales)
-} 
+}
 dtBCA2019 <- readRDS(fSales)
 print(head(dtBCA2019))
 
@@ -106,8 +106,8 @@ dtBCA2019[, conveyanceDate := as.IDate(conveyanceDate)]
 
 # Metrics
 dtBCA2019[, `:=`(
-    age = year(conveyanceDate) - MB_effective_year, 
-    ppsf = conveyancePrice / MB_total_finished_area 
+    age = year(conveyanceDate) - MB_effective_year,
+    ppsf = conveyancePrice / MB_total_finished_area
 )]
 
 # Outlier removal (global)
@@ -167,37 +167,40 @@ runAnalysis <- function(dt, groupVar, label) {
   cat("\n==========================================\n")
   cat("Running analysis at", label, "level\n")
   cat("==========================================\n")
-  
+
   # Compute median land_width within each group
   dt[, landWidthMedian := median(land_width, na.rm = TRUE), by = groupVar]
   dt[, saleYear := year(conveyanceDate)]
-  
+
   # Filter to observations near median width for that group
   dtFiltered <- dt[
-    land_width >= landWidthMedian * (1 - WIDTHCUT) & 
+    land_width >= landWidthMedian * (1 - WIDTHCUT) &
     land_width <= landWidthMedian * (1 + WIDTHCUT) &
-    land_depth >= DEPTHMIN & 
+    land_depth >= DEPTHMIN &
     land_depth < DEPTHMAX
   ]
-  
+
+  # get rid of false neighbourhoodDescription
+  dtFiltered <- dtFiltered[groupVar %in% c("SHAUGHNESSY","SOUTHLANDS")==FALSE]
+
   # Analysis sample: newer builds , post-MINYEAR
   MAXAGE <- 15
   dtAnalysis <- dtFiltered[age < MAXAGE & year(conveyanceDate) >= MINYEAR]
   cat("Analysis sample size:", nrow(dtAnalysis), "\n")
-  
+
   # Build formulas dynamically
   fmlaMain <- as.formula(paste0(
     "ppsf ~ i(", groupVar, ", MB_total_finished_area) + log(age + 1) + MB_total_finished_area + log(land_width) + log(land_depth) | ", groupVar
   ))
 
   fmlaLog <- as.formula(paste0(
-    "log(ppsf) ~ 0 + i(", groupVar, ", log(MB_total_finished_area)) + log(age + 1) + log(land_width) + log(land_depth) | saleYear + ", groupVar 
+    "log(ppsf) ~ 0 + i(", groupVar, ", log(MB_total_finished_area)) + log(age + 1) + log(land_width) + log(land_depth) | saleYear + ", groupVar
   ))# no main effect for Wald purposes
-  
+
   # Run regressions
   mainReg <- feols(fmlaMain, data = dtAnalysis)
   print(r2(mainReg, typ = c("r2", "ar2")))
-  
+
   logReg <- feols(fmlaLog, data = dtAnalysis)
   print(r2(logReg, typ = c("r2", "ar2")))
 
@@ -206,17 +209,17 @@ runAnalysis <- function(dt, groupVar, label) {
   # Extract group identifier from term
   pattern <- paste0(groupVar, "::(.*):MB_total_finished_area")
   dtSlopes[, (groupVar) := gsub(pattern, "\\1", term)]
-  
+
   # Extract elasticities
   dtElasticities <- as.data.table(coeftable(logReg), keep.rownames = "term")[grepl("log\\(MB_total_finished_area\\)", term)]
   patternLog <- paste0(groupVar, "::(.*):log\\(MB_total_finished_area\\)")
   dtElasticities[, (groupVar) := gsub(patternLog, "\\1", term)]
-  
+
   # Compute means, adjust for CPI
   dtCPI <- fread("~/OneDrive - UBC/dataRaw/1810000501_databaseLoadingData.csv",select=c("REF_DATE","VALUE","Products and product groups"))
   dtCPI <- dtCPI[`Products and product groups` == "All-items"]
   setnames(dtCPI, c("REF_DATE", "VALUE"), c("year", "CPI"))
-  
+
   # FIX: Use max available year for CPI normalization with fallback
   cpi_base_year <- max(dtCPI$year)
   if (2025 %in% dtCPI$year) {
@@ -224,40 +227,41 @@ runAnalysis <- function(dt, groupVar, label) {
   }
   cat("Normalizing CPI to year:", cpi_base_year, "\n")
   dtCPI[, CPI := CPI / CPI[year == cpi_base_year]]
-  
+
   dtFiltered <- merge(dtFiltered, dtCPI, by.x = "saleYear", by.y = "year", all.x = TRUE)
   print(head(dtFiltered))
   print(head(dtCPI))
 
-  dtMeans <- dtFiltered[hasLaneway == FALSE & year(conveyanceDate) >= MEANYEAR, 
-                        .(meanPPSF = mean(ppsf/CPI, na.rm = TRUE), nobs = .N), 
+  dtMeans <- dtFiltered[hasLaneway == FALSE & year(conveyanceDate) >= MEANYEAR,
+                        .(meanPPSF = mean(ppsf/CPI, na.rm = TRUE), nobs = .N),
                         by = groupVar]
-  
+
   # Merge slopes and elasticities
   dtMeans <- merge(dtMeans, dtSlopes[, c(groupVar, "Estimate"), with = FALSE], by = groupVar, all.x = TRUE)
   setnames(dtMeans, "Estimate", "slope")
   dtMeans <- merge(dtMeans, dtElasticities[, c(groupVar, "Estimate"), with = FALSE], by = groupVar, all.x = TRUE)
   setnames(dtMeans, "Estimate", "elasticity")
-  
-  # Output
+
+  # Output, greater than trivial nobs
+  dtMeans <- dtMeans[nobs>10]
   fwrite(dtMeans, paste0("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_", label, ".csv"))
-  
+
   # FIX: Ensure output directory exists before saving plot
   output_dir <- "text"
   if (!dir.exists(output_dir)) {
     dir.create(output_dir, recursive = TRUE)
     cat("Created output directory:", output_dir, "\n")
   }
-  
+
   # Plot
-  p <- ggplot(dtMeans[nobs > quantile(nobs, .025) & !is.na(slope)], aes(x = slope, y = meanPPSF)) + 
-    geom_point() + 
-    geom_smooth(method = "lm") + 
-    labs(title = paste("Mean BCA Price per SqFt vs Pricing Slope by", label), 
-         x = "BCA Pricing Slope ($/sqft per sqft)", 
+  p <- ggplot(dtMeans[nobs > quantile(nobs, .025) & !is.na(slope)], aes(x = slope, y = meanPPSF)) +
+    geom_point() +
+    geom_smooth(method = "lm") +
+    labs(title = paste("Mean BCA Price per SqFt vs Pricing Slope by", label),
+         x = "BCA Pricing Slope ($/sqft per sqft)",
          y = "Mean Price per SqFt")
   ggsave(paste0("text/bca19_mean_ppsf_vs_slope_", label, ".png"), plot = p)
-  
+
   # Correlations
   cat("\nCorrelations (", label, "):\n", sep = "")
   print(cor(dtMeans[!is.na(slope), .(slope, meanPPSF)]))
@@ -268,7 +272,7 @@ runAnalysis <- function(dt, groupVar, label) {
   print(summary(dtMeans[!is.na(elasticity) & nobs > quantile(nobs, .025), .(elasticity, meanPPSF)]))
   print(summary(dtMeans[!is.na(elasticity) & nobs > quantile(nobs, .05), .(elasticity, meanPPSF)]))
   print(summary(dtMeans[!is.na(elasticity) & nobs > quantile(nobs, .1), .(elasticity, meanPPSF)]))
-  
+
   return(dtMeans)
 }
 
@@ -289,5 +293,3 @@ if (ANALYSIS_LEVEL %chin% c("tract", "both")) {
 if (ANALYSIS_LEVEL %chin% c("neighbourhood", "both")) {
   dtResultsNbhd <- runAnalysis(copy(dtBCA2019), "neighbourhoodDescription", "neighbourhood")
 }
-
-q("no")
