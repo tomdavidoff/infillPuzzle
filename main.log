@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  1 FEB 2026 19:44
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  3 FEB 2026 16:31
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -137,8 +137,8 @@ File: pdftex.def 2024/04/13 v1.2c Graphics/color driver for pdftex
 \Gin@req@height=\dimen159
 \Gin@req@width=\dimen160
 )
-(/usr/local/texlive/2025/texmf-dist/tex/latex/setspace/setspace.sty
-Package: setspace 2022/12/04 v6.7b set line spacing
+(/Users/davidoff/Library/texmf/tex/latex/setspace.sty
+Package: setspace 2011/12/19 v6.7a set line spacing
 )
 (/usr/local/texlive/2025/texmf-dist/tex/latex/biblatex/biblatex.sty
 Package: biblatex 2024/03/21 v3.20 programmable bibliographies (PK/MW)
@@ -504,10 +504,10 @@ No file main.bbl.
 Package biblatex Info: Reference section=0 on input line 11.
 Package biblatex Info: Reference segment=0 on input line 11.
 
-LaTeX Warning: Citation 'bruecknerSingh' on page 1 undefined on input line 28.
+LaTeX Warning: Citation 'bruecknerSingh' on page 1 undefined on input line 35.
 
 
-LaTeX Warning: Citation 'HsiehMoretti' on page 1 undefined on input line 28.
+LaTeX Warning: Citation 'HsiehMoretti' on page 1 undefined on input line 35.
 
 
 
@@ -520,140 +520,212 @@ al/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
 
 [3]
 
-LaTeX Warning: Citation 'Brueckner_1981' on page 4 undefined on input line 89.
+LaTeX Warning: Citation 'Brueckner_1981' on page 4 undefined on input line 116.
 
 
-LaTeX Warning: Citation 'HochmanPines_1980' on page 4 undefined on input line 8
-9.
+
+LaTeX Warning: Citation 'HochmanPines_1980' on page 4 undefined on input line 1
+16.
 
 
-LaTeX Warning: Citation 'Wheaton_1982' on page 4 undefined on input line 89.
+LaTeX Warning: Citation 'Wheaton_1982' on page 4 undefined on input line 116.
 
 
-LaTeX Warning: Citation 'GyourkoMolloy2015' on page 4 undefined on input line 8
-9.
+LaTeX Warning: Citation 'GyourkoMolloy2015' on page 4 undefined on input line 1
+16.
 
 
-LaTeX Warning: Citation 'Molloy2020' on page 4 undefined on input line 89.
+LaTeX Warning: Citation 'Molloy2020' on page 4 undefined on input line 116.
 
 
 LaTeX Warning: Citation 'MarantzElmendorfKim2023_ADUReforms' on page 4 undefine
-d on input line 91.
+d on input line 118.
 
 
 LaTeX Warning: Citation 'BruecknerThomaz2024' on page 4 undefined on input line
- 91.
-
-
-LaTeX Warning: Citation 'DongHansz_2019' on page 4 undefined on input line 93.
+ 118.
 
 
 
 [4]
 
-LaTeX Warning: Citation 'Anagol_etal2021' on page 5 undefined on input line 98.
+LaTeX Warning: Citation 'DongHansz_2019' on page 5 undefined on input line 120.
 
 
 
-LaTeX Warning: Citation 'Greenaway2024' on page 5 undefined on input line 101.
+LaTeX Warning: Citation 'Anagol_etal2021' on page 5 undefined on input line 125
+.
+
+
+LaTeX Warning: Citation 'Greenaway2024' on page 5 undefined on input line 128.
 
 
 LaTeX Warning: Citation 'GreenawayPhillips2023' on page 5 undefined on input li
-ne 101.
+ne 128.
 
 
-LaTeX Warning: Citation 'Greenaway2025' on page 5 undefined on input line 101.
+LaTeX Warning: Citation 'Greenaway2025' on page 5 undefined on input line 128.
 
 
 
 [5]
 
-LaTeX Warning: Citation 'Clap_etal2012' on page 6 undefined on input line 103.
+LaTeX Warning: Citation 'Clap_etal2012' on page 6 undefined on input line 130.
 
 
 LaTeX Warning: Citation 'Greenaway_etal2021' on page 6 undefined on input line 
-103.
+130.
 
 
-LaTeX Warning: Citation 'BuchlerLutz2024' on page 6 undefined on input line 105
+LaTeX Warning: Citation 'BuchlerLutz2024' on page 6 undefined on input line 132
 .
 
 
-LaTeX Warning: Citation 'Anagol_etal2021' on page 6 undefined on input line 105
+LaTeX Warning: Citation 'Anagol_etal2021' on page 6 undefined on input line 132
 .
 
 
-Overfull \hbox (24.37376pt too wide) in paragraph at lines 105--106
+Overfull \hbox (24.37376pt too wide) in paragraph at lines 132--133
 []\OT1/cmr/m/n/12 The above pa-pers ex-am-ine the ef-fects of re-zon-ing within
  a five-year pe-riod. []
  []
 
 
-LaTeX Warning: Citation 'Dong2024a' on page 6 undefined on input line 107.
+LaTeX Warning: Citation 'Dong2024a' on page 6 undefined on input line 134.
 
 
-LaTeX Warning: Citation 'GuMunro_2025' on page 6 undefined on input line 107.
+LaTeX Warning: Citation 'GuMunro_2025' on page 6 undefined on input line 134.
 
 
-LaTeX Warning: Citation 'Liao2023' on page 6 undefined on input line 109.
+LaTeX Warning: Citation 'Liao2023' on page 6 undefined on input line 136.
 
 
-LaTeX Warning: Citation 'Liao2023' on page 6 undefined on input line 109.
+LaTeX Warning: Citation 'Liao2023' on page 6 undefined on input line 136.
 
 
-LaTeX Warning: Citation 'Rollet_2025' on page 6 undefined on input line 109.
+LaTeX Warning: Citation 'Rollet_2025' on page 6 undefined on input line 136.
 
 
 
 [6]
 
-LaTeX Warning: Citation 'KrimmelWang2024' on page 7 undefined on input line 111
+LaTeX Warning: Citation 'KrimmelWang2024' on page 7 undefined on input line 138
 .
 
 
-LaTeX Warning: Citation 'Stacy_etal2023' on page 7 undefined on input line 113.
+LaTeX Warning: Citation 'Stacy_etal2023' on page 7 undefined on input line 140.
 
 
 
-LaTeX Warning: Citation 'Stacy_etal2023' on page 7 undefined on input line 115.
+LaTeX Warning: Citation 'Stacy_etal2023' on page 7 undefined on input line 142.
 
 
 
 LaTeX Warning: Citation 'Davidoff_etal2022' on page 7 undefined on input line 1
-15.
+42.
 
 
 LaTeX Warning: Citation 'BruecknerThomaz2024' on page 7 undefined on input line
- 115.
+ 142.
 
 
 
 [7]
 
-LaTeX Warning: Citation 'Been_etal2019' on page 8 undefined on input line 117.
+LaTeX Warning: Citation 'Been_etal2019' on page 8 undefined on input line 144.
 
 
-LaTeX Warning: Citation 'Freemark2020' on page 8 undefined on input line 117.
+LaTeX Warning: Citation 'Freemark2020' on page 8 undefined on input line 144.
 
 
-LaTeX Warning: Citation 'Ma_2025' on page 8 undefined on input line 119.
+LaTeX Warning: Citation 'Ma_2025' on page 8 undefined on input line 146.
 
 
 
 [8]
 
-LaTeX Warning: Citation 'DongHansz_2019' on page 9 undefined on input line 137.
+LaTeX Warning: Citation 'DongHansz_2019' on page 9 undefined on input line 164.
 
 
 
 
 [9]
+Overfull \hbox (97.79271pt too wide) in paragraph at lines 184--206
+[][]
+ []
 
-LaTeX Warning: Empty bibliography on input line 154.
+
+Underfull \hbox (badness 10000) in paragraph at lines 184--206
+
+ []
 
 
 
-[10] (./main.aux)
+[10] (./text/tractCorrelationVancouver.tex)
+! Misplaced \noalign.
+\hline ->\noalign 
+                  {\ifnum 0=`}\fi \hrule \@height \arrayrulewidth \futurelet...
+l.217 \hline
+            
+? 
+
+Overfull \hbox (18.60883pt too wide) in paragraph at lines 3--217
+[][] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 3--217
+
+ []
+
+(./text/neighbourhoodCorrelationVancouver.tex)
+Overfull \hbox (18.60883pt too wide) in paragraph at lines 3--219
+[][]
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 3--219
+
+ []
+
+
+
+[11]
+<text/vancouverPPSFSpatial.png, id=54, 433.62pt x 433.62pt>
+File: text/vancouverPPSFSpatial.png Graphic file (type png)
+<use text/vancouverPPSFSpatial.png>
+Package pdftex.def Info: text/vancouverPPSFSpatial.png  used on input line 235.
+
+(pdftex.def)             Requested size: 281.85587pt x 281.8695pt.
+<text/vancouverUseSpatial.png, id=56, 433.62pt x 433.62pt>
+File: text/vancouverUseSpatial.png Graphic file (type png)
+<use text/vancouverUseSpatial.png>
+Package pdftex.def Info: text/vancouverUseSpatial.png  used on input line 236.
+(pdftex.def)             Requested size: 281.85587pt x 281.8695pt.
+<text/vancouverUseShareByPPSF.png, id=57, 578.16pt x 433.62pt>
+File: text/vancouverUseShareByPPSF.png Graphic file (type png)
+<use text/vancouverUseShareByPPSF.png>
+Package pdftex.def Info: text/vancouverUseShareByPPSF.png  used on input line 2
+43.
+(pdftex.def)             Requested size: 469.75502pt x 352.31538pt.
+
+
+LaTeX Warning: Reference `fig:vancouverRelativeMulti' on page 12 undefined on i
+nput line 246.
+
+
+
+[12]
+
+[13 <./text/vancouverPPSFSpatial.png> <./text/vancouverUseSpatial.png>]
+
+[14 <./text/vancouverUseShareByPPSF.png>]
+
+LaTeX Warning: Empty bibliography on input line 260.
+
+
+
+[15] (./main.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
@@ -672,13 +744,13 @@ Package logreq Info: Writing requests to 'main.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 10793 strings out of 473190
- 201099 string characters out of 5715801
- 1036492 words of memory out of 5000000
- 33963 multiletter control sequences out of 15000+600000
- 567631 words of font info for 66 fonts, out of 8000000 for 9000
+ 10844 strings out of 473190
+ 202737 string characters out of 5715801
+ 1040569 words of memory out of 5000000
+ 34008 multiletter control sequences out of 15000+600000
+ 568471 words of font info for 69 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 66i,11n,81p,1563b,804s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 66i,11n,81p,1563b,803s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><
@@ -696,10 +768,10 @@ ive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive
 5/texmf-dist/fonts/type1/public/cm-super/sfrm0700.pfb></usr/local/texlive/2025/
 texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2025/te
 xmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
-Output written on main.pdf (10 pages, 229655 bytes).
+Output written on main.pdf (15 pages, 1217621 bytes).
 PDF statistics:
- 123 PDF objects out of 1000 (max. 8388607)
- 76 compressed objects within 1 object stream
+ 146 PDF objects out of 1000 (max. 8388607)
+ 88 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
- 1 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 16 words of extra memory for PDF output out of 10000 (max. 10000000)
 

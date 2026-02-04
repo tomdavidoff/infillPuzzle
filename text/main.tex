@@ -25,25 +25,48 @@ Housing transactions and permitting data in upzoned neighbourhoods of Vancouver,
 
   \section{Introduction}
 
-  As housing affordability has grown in political salience over the last decade, a growing number of U.S. and Canadian jurisdictions have introdued reforms to allow ``missing middle'', ``infill'', or ``gentle density'' housing types in formerly single-family-only residential zones. This housing might take the form of accessory dwelling units such as Vancouver's laneway homes, ``multiplex'' structures with multiple homes on  single lot, townhomes, or small apartment buildings. As has been emphasized, e.g. by \textcite{bruecknerSingh} and \textcite{HsiehMoretti},restrictive zoning causes deadweight loss most where real estate is most valuable. It is thus natural to expect that the option to densify urban land would be exercised most commonly in the neighborhoods where structure prices per unit are highest.
+  As housing affordability has grown in political salience over the last decade,
+  a growing number of U.S. and Canadian jurisdictions have introdued reforms to
+  allow ``missing middle'', ``infill'', or ``gentle density'' housing types in
+  formerly single-family-only residential zones. This housing might take the
+  form of accessory dwelling units such as Vancouver's laneway homes,
+  ``multiplex'' structures with multiple homes on single lot, townhomes, or
+  small apartment buildings. As has been emphasized, e.g. by
+  \textcite{bruecknerSingh} and \textcite{HsiehMoretti},restrictive zoning
+  causes deadweight loss most where real estate is most valuable. It is thus
+  natural to expect that the option to densify urban land would be exercised
+  most commonly in the neighborhoods where structure prices per unit are
+  highest.
 
-  As described in more detail below, several recent empirical studies have documented that infill housing is, in fact, less prevalent in highly expensive neighbourhoods. This paper presents a parsimonious model of density choice that illustrates how ``addition'' and ``division'' effects likely work in opposite directions with respect to the relationship between infill prevalence and neighbourhood price levels. To the extent that infill policies allow more square feet to be built on the same lot (addition), this should lead to greater take-up where price net of cost per square foot is greatest. However, to the extent that densification simply allows more units to be created out of the same square footage (division), then in the likely case that (wealthier) households with a greater elasticity of willingness to pay for square footage sort into more expensive single-family neighbourhoods, infill will be less prevalent there.
+  As described in more detail below, several recent empirical studies have
+  documented that infill housing is, in fact, less prevalent in highly expensive
+  neighbourhoods. This paper presents a parsimonious model of density choice
+  that illustrates how ``addition'' and ``division'' effects likely work in
+  opposite directions with respect to the relationship between infill prevalence
+  and neighbourhood price levels. To the extent that infill policies allow more
+  square feet to be built on the same lot (addition), this should lead to
+  greater take-up where price net of cost per square foot is greatest. However,
+  to the extent that densification simply allows more units to be created out of
+  the same square footage (division), then in the likely case that (wealthier)
+  households with a greater elasticity of willingness to pay for square footage
+  sort into more expensive single-family neighbourhoods, infill will be less
+  prevalent there.
 
 This paper studies patterns of redevelopment in three cities that enacted very
 modest, but extremely broad upzonings: Vancouver, BC, in Canada, and Portland,
-OR and Minneapolis, MN in the U.S. These cities have enacted different
-upzonings with different emphases on addition and division. For each city, we
-evaluate the spatial correlation between neighbourhood price levels and the
-prevalence of infill housing permits following the upzoning. In Vancouver,
-laneway homes (allowed since 2009) essentially allow an ADU to replace a
-somewhat smaller two-car garage. Takeup has been biased towards the
-(relatively!) lower-priced East Side of the city. Duplexes, allowed since late
-2018 allow \emph{less} total floor residential area than single family homes
-with laneway homes added, and not surprisingly, this ``division only'' infill
-form has been taken up in less expensive East Side neighbourhoods. Relatively
-recently-allowed multiplexes, that allow a bit more density have also been
-concentrated on the East Side, a phenomenon we show is consistent with a simple
-quantification of redevelopment profit.
+OR and Minneapolis, MN in the U.S. These cities have enacted different upzonings
+with different emphases on addition and division. For each city, we evaluate the
+spatial correlation between neighbourhood price levels and the prevalence of
+infill housing permits following the upzoning. In Vancouver, laneway homes
+(allowed since 2009) essentially allow an ADU to replace a somewhat smaller
+two-car garage. Takeup has been biased towards the (relatively!) lower-priced
+East Side of the city. Duplexes, allowed since late 2018 allow \emph{less} total
+floor residential area than single family homes with laneway homes added, and
+not surprisingly, this ``division only'' infill form has been taken up in less
+expensive East Side neighbourhoods. Relatively recently-allowed multiplexes,
+that allow a bit more density have also been concentrated on the East Side, a
+phenomenon we show is consistent with a simple quantification of redevelopment
+profit.
 
 In Minneapolis, three different infill zones have been created. We find that
 the zone relatively close to downtown, in which more density has been
@@ -57,7 +80,7 @@ price with respect to home square footage.
 
 In Vancouver, the relationship between price level and the elasticity of price with respect to home size is so strong that the former (more precisely estimated) is an \emph{better} measure out of sample of that elasticity than in-sample elasticity estimates. That is, an empirical issue in applying our model is that in cities with strong income sorting, it may be impossible meaningfully to distinguish price per square foot levels from the elasticity of price with respect to square footage.
 
-\subsection{A model of infill housing}
+\section{A model of infill housing}
 To see the offsetting addition and division effects formally, consider a developer choosing the intensity of development on a parcel of land with area normalized to one unit. Profits are a function of the (continuous, for simplicity) number of units $n$ built on the lot. Zoning regulations impose a schedule of density limits $f(n)$ governing how many square feet $f$ can be built on the lot as a function of $n$. The price $p$ per square foot is a function of $n$ and $\theta$, a characteristic of the neighbourhood. $\theta$ is a form of vertical differentiation, so $\frac{\partial p(n,\theta)}{\partial \theta}>0$. For simplicity, $c(n)$, the cost per square foot is assumed constant with respect to $\theta$. Realistically, higher-end finishes would likely follow the price-$\theta$ relationship. In our empirical work, we control for a small set of charactersitics to approximate this.
 
 \begin{equation}
@@ -77,15 +100,16 @@ At an optimum, \eqref{eq:mb} is zero. Differentiating this first order condition
 
 Assuming second order conditions hold, the denominator is negative, and:
 
+\subsection{Main theoretical contribution}
 \begin{itemize}
-  \item \emph{Addition effect:} Infill (increasing $n$) is more attractive where $\theta$ and (hence the price per square foot $p$) is greater when $f'$ is larger (i.e., where infill is rewarded with bonus density).
+  \item \emph{Addition effect:} Infill (increasing $n$) is more attractive where $\theta$ and (hence the price per square foot $p$) is greater when $f'$ is larger (i.e., where infill is rewarded with bonus density). In a regression of infill propensity on price, permitted density, and their interaction, a positive coefficient on the interaction would be expected, all else equal.
   \item \emph{Division effect:} Infill is more attractive where price is declining more rapidly in density ($\frac{\partial p}{\partial n }$ is more positive). Assuming sorting is such that $\frac{\partial^2 p}{\partial n \partial \theta} < 0$, this effect implies that infill is less attractive where $\theta$ (and price) is greater.
 \end{itemize}
-
 
 The division effect will yield a negative correlation between neighbourhood quality and price when households with a greater elasticity of willingness to pay for space sort into higher-quality neighbourhoods. This is likely when single-family zoning is a tightly binding constraint. In a standard monocentric city sorting model, there is a tradeoff between willingness to pay for neighbourhood quality (e.g. greater time costs of travel) against normal lot size demand. Fixing lot size removes this second effect, leaving only willingness to pay for neighbourhood quality, presumably correlated with a greater elasticity of willingness to pay for space.
 
 The elasticity of willingness to pay for space may have two components. First, a demand for living space itself. Second, a demand for privacy: dividing space into smaller units on the same lot implies a reduction in privacy.
+
 
 \section{Related Literature}
 
@@ -152,7 +176,53 @@ With the 2023 changes, maximum allowed FSR depended on several factors. Single-f
 
 \section{Empirical Analysis}
 
+\subsection{Data}
+
+\begin{table}
+\caption{\label{tab:dataSources} Data Sources}
+\begin{small}
+\begin{tabular}{llll}
+\hline
+City & Subject & Data Source & Coverage/Use \\
+\hline \hline
+Vancouver & Building Permits by  & City of Vancouver & 2019-2025 (laneway and duplex era)\\
+& &  & 2024-2025 (laneway, duplex, and multiplex era)\\
+Vancouver & Zoning & City of Vancouver & Current R1-1 zones  \\
+Vancouver & Transactions & B.C. Assessment & 2015-2019 for baseline price and elasticities \\
+Vancouver & Home and lot Characteristics & B.C. Assessment & All \\
+\hline
+Portland & Building permit  & City of Portland & 2022-2025 (RIP-2 era)\\
+Portland & Zoning & City of Portland & RIP-impacted zones\\
+Portland & Transactions & Attom & 2018-2021 \\
+Portland & Home and lot Characteristics & Attom\\
+\hline
+Minneapolis & Building permit  & City of Minneapolis & 2020-2025 (post-policy)\\
+Minneapolis & Zoning & City of Minneapolis & Interior 1,2, and 3 zones\\
+Minneapolis & Transactions & Attom & 2016-2020 \\
+Minneapolis & Home and lot Characteristics & Attom\\
+\hline
+\end{tabular}
+\end{small}
+\end{table}
+
 \subsection{Vancouver}
+
+\section{Sorting in Vancouver single family zones}
+
+While Vancouver has been referred to\footnote{At least by one of the authors.} as a ``great place to have money, not to make money,'' there is a high degree of income sorting into high-priced neighbourhoods. Table \ref{tab:vancouverCorrelate} shows correlations among income, mean single detached home price (2025 dollars), the elasticity of home price per square foot with respect to square footage, the share of single family permits with laneways (2019-2025), the share of duplex permits (2019-2025), and the share of multiplex permits (2024-2025) in R1-1 zones. In the top panel, the unit of observation is a census tract. In the bottom panel, the unit of observation is a (larger) neighbourhood.\footnote{For now, neighbourhood values are means across census tracts.}
+
+\begin{table}
+\caption{\label{tab:vancouverCorrelate} Vancouver correlations: top panel, census tracts, bottom panel means at neighbourhood level}
+\input{text/tractCorrelationVancouver.tex}\\
+\hline
+\input{text/neighbourhoodCorrelationVancouver.tex}
+\end{table}
+
+The description of Vancouver's infill zoning policies gives rise to the following predictions:
+
+\begin{enumerate}
+    \item Laneway homes allow more density, but divide properties into more units and reduce land and garage area for the main unit. It is ambiguous whether this option is more or less desireable
+\end{enumerate}
 
 We merge permitting and zoning data from the City of Vancouver and transaction and home characteristic data from B.C. Assessment.
 
@@ -162,15 +232,15 @@ Figure \ref{fig:vancouverSpatial} plots the latitude and longitude of all new co
 
 \begin{figure}
   \caption{\label{fig:vancouverSpatial} Latitude and longitude of City of Vancouver permits issued in R1-1 zones. Top panel: census tract-specific mean price per square foot for single family homes, 2012-2019, CPI-adjusted to 2025. Bottom panel: type of permit issued since January, 2019.}
-  \includegraphics[width=.6\textwidth]{vancouverPPSFSpatial.png}\\
-  \includegraphics[width=.6\textwidth]{vancouverUseSpatial.png}
+  \includegraphics[width=.6\textwidth]{text/vancouverPPSFSpatial.png}\\
+  \includegraphics[width=.6\textwidth]{text/vancouverUseSpatial.png}
 \end{figure}
 
 Figure \ref{fig:vancouverBar} shows the percentage of permits issued by use type, this type binning by decile of housing prices. Again, it is clear that infill housing is most prevalent in lower-priced neighbourhoods.
 
 \begin{figure}
   \caption{\label{fig:vancouverBar} Percentage of permits issued by use type, binned by decile of census tract mean price per square foot for single family homes, 2012-2019, CPI-adjusted to 2025.}
-  \includegraphics[width=\textwidth]{vancouverUseShareByPPSF.png}
+  \includegraphics[width=\textwidth]{text/vancouverUseShareByPPSF.png}
 \end{figure}
 
 Figure \ref{fig:vancouverRelativeMulti} plots the fraction of permits issued for multiplexes in 2024 and 2025 divided by the fraction for duplexes over the same period by census tract mean price per square foot bin.
