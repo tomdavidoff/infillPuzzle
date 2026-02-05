@@ -3,29 +3,33 @@
 \centering
 \begin{tabular}{lcc}
    \tabularnewline \midrule \midrule
-   Dependent Variable: & \multicolumn{2}{c}{log(CONVEYANCE\_PRICE/MB\_Total\_Finished\_Area)}\\
-   Model:                                                 & (1)           & (2)\\  
+   Dependent Variable: & \multicolumn{2}{c}{ppsf}\\
+   Model:                                                   & (1)            & (2)\\  
    \midrule
    \emph{Variables}\\
-   meanPPSF                                               & -0.005        & -0.007$^{***}$\\   
-                                                          & (0.003)       & (0.001)\\   
-   log(MB\_Total\_Finished\_Area)                         & -1.08$^{**}$  & -1.32$^{***}$\\   
-                                                          & (0.378)       & (0.187)\\   
-   elasticity                                             & -2.50$^{***}$ & -0.524$^{*}$\\   
-                                                          & (0.796)       & (0.281)\\   
-   meanPPSF $\times$ log(MB\_Total\_Finished\_Area)       & 0.0008$^{**}$ & 0.001$^{***}$\\   
-                                                          & (0.0004)      & (0.0002)\\   
-   log(MB\_Total\_Finished\_Area) $\times$ elasticity     & 0.311$^{***}$ & 0.069$^{*}$\\   
-                                                          & (0.100)       & (0.036)\\   
+   log(MB\_Total\_Finished\_Area)                           & -0.608$^{***}$ & -0.647$^{***}$\\   
+                                                            & (0.061)        & (0.046)\\   
+   elasticityND                                             & -1.02$^{*}$    &   \\   
+                                                            & (0.601)        &   \\   
+   log(age+1)                                               & -0.070$^{***}$ & -0.069$^{***}$\\   
+                                                            & (0.007)        & (0.007)\\   
+   log(Land\_Width\_Width $\times$ Land\_Depth\_Depth)      & 0.235$^{**}$   & 0.228$^{**}$\\   
+                                                            & (0.091)        & (0.094)\\   
+   log(MB\_Total\_Finished\_Area) $\times$ elasticityND     & 0.136$^{*}$    &   \\   
+                                                            & (0.078)        &   \\   
+   log(MB\_Total\_Finished\_Area) $\times$ elasticityCT     &                & 0.050\\   
+                                                            &                & (0.063)\\   
    \midrule
    \emph{Fixed-effects}\\
-   year                                                   & Yes           & Yes\\  
+   CTNAME                                                   & Yes            & Yes\\  
+   year                                                     & Yes            & Yes\\  
    \midrule
    \emph{Fit statistics}\\
-   Observations                                           & 163,490       & 165,573\\  
-   R$^2$                                                  & 0.74932       & 0.76034\\  
-   Within R$^2$                                           & 0.14684       & 0.15777\\  
+   Observations                                             & 7,747          & 7,465\\  
+   R$^2$                                                    & 0.71820        & 0.72684\\  
+   Within R$^2$                                             & 0.04796        & 0.05052\\  
    \midrule \midrule
+   \multicolumn{3}{l}{\emph{Clustered (CTNAME) standard-errors in parentheses}}\\
    \multicolumn{3}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
 \end{tabular}
 \par\endgroup

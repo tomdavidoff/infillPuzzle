@@ -251,17 +251,18 @@ dtSales[, neighbourhoodDescription := gsub(" - ", "/", neighbourhoodDescription)
 dtSales[, neighbourhoodDescription := gsub(" & ", "/", neighbourhoodDescription)]
 dtSales[, year := substring(CONVEYANCE_DATE, 1, 4)]
 dtSales <- merge(dtSales, dtInventory, by.x = "ROLL_NUMBER", by.y = "Roll_Number")
-dtPriceND <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_neighbourhood.csv")
-dtSalesND <- merge(dtSales, dtPriceND, by = "neighbourhoodDescription")
-dtSalesND[, lMeanPPSF := log(meanPPSF)]
-rN <- feols(log(CONVEYANCE_PRICE / MB_Total_Finished_Area) ~ meanPPSF + log(MB_Total_Finished_Area) * (meanPPSF + elasticity) | year, cluster = "neighbourhoodDescription", data = dtSalesND)
-
-# repeat neighbourhood price/elasticity merge with census tract levels
 dtSales <- merge(dtSales, dtRollLatLon[, .(ROLL_NUMBER, CTNAME)], by = "ROLL_NUMBER")
+dtPriceND <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_neighbourhood.csv")
+setnames(dtPriceND, old = c("neighbourhoodDescription", "meanPPSF", "elasticity"), new = c("neighbourhoodDescription", "meanPPSFND", "elasticityND"))
+dtSales <- merge(dtSales, dtPriceND, by = "neighbourhoodDescription")
+dtSales[,age:=as.numeric(year)-MB_Effective_Year]
+dtSales[,ppsf:=log(CONVEYANCE_PRICE/MB_Total_Finished_Area)]
 dtPriceCT <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_tract.csv", colClasses = list(character = c("CTUID"), numeric = c("meanPPSF", "elasticity")))
+setnames(dtPriceCT, old = c("meanPPSF", "elasticity"), new = c("meanPPSFCT", "elasticityCT"))
 dtPriceCT[, CTNAME := substring(CTUID, 4, 10)]
-dtSalesCT <- merge(dtSales, dtPriceCT, by = "CTNAME")
-dtSalesCT[, lMeanPPSF := log(meanPPSF)]
-rT <- feols(log(CONVEYANCE_PRICE / MB_Total_Finished_Area) ~ meanPPSF + log(MB_Total_Finished_Area) * (meanPPSF + elasticity) | year, cluster = "CTNAME", data = dtSalesCT)
-# print rN, RT to file()
-etable(rN, rT, file = "text/outSample.tex", digits = 3, tex = TRUE, replace = TRUE)
+dtSales <- merge(dtSales, dtPriceCT, by = "CTNAME")
+dtSales[,medWidth:=median(Land_Width_Width),by=CTNAME]
+dtSales <- dtSales[Land_Depth_Depth %in% c(DEPTHMIN, DEPTHMAX)]
+rA <- feols(ppsf ~  0 + log(MB_Total_Finished_Area) *  elasticityND  + log(age+1) + log(Land_Width_Width*Land_Depth_Depth)| CTNAME + year, cluster = "CTNAME", data = dtSales)
+rB <- feols(ppsf ~  0 + log(MB_Total_Finished_Area) *  elasticityCT  + log(age+1) + log(Land_Width_Width*Land_Depth_Depth)| CTNAME + year, cluster = "CTNAME", data = dtSales)
+etable(rA, rB, file = "text/outSample.tex", digits = 3, tex = TRUE, replace = TRUE)
