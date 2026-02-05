@@ -1,0 +1,33 @@
+
+\begingroup
+\centering
+\begin{tabular}{lcc}
+   \tabularnewline \midrule \midrule
+   Dependent Variable: & \multicolumn{2}{c}{log(CONVEYANCE\_PRICE/MB\_Total\_Finished\_Area)}\\
+   Model:                                                 & (1)           & (2)\\  
+   \midrule
+   \emph{Variables}\\
+   meanPPSF                                               & -0.005        & -0.007$^{***}$\\   
+                                                          & (0.003)       & (0.001)\\   
+   log(MB\_Total\_Finished\_Area)                         & -1.08$^{**}$  & -1.32$^{***}$\\   
+                                                          & (0.378)       & (0.187)\\   
+   elasticity                                             & -2.50$^{***}$ & -0.524$^{*}$\\   
+                                                          & (0.796)       & (0.281)\\   
+   meanPPSF $\times$ log(MB\_Total\_Finished\_Area)       & 0.0008$^{**}$ & 0.001$^{***}$\\   
+                                                          & (0.0004)      & (0.0002)\\   
+   log(MB\_Total\_Finished\_Area) $\times$ elasticity     & 0.311$^{***}$ & 0.069$^{*}$\\   
+                                                          & (0.100)       & (0.036)\\   
+   \midrule
+   \emph{Fixed-effects}\\
+   year                                                   & Yes           & Yes\\  
+   \midrule
+   \emph{Fit statistics}\\
+   Observations                                           & 163,490       & 165,573\\  
+   R$^2$                                                  & 0.74932       & 0.76034\\  
+   Within R$^2$                                           & 0.14684       & 0.15777\\  
+   \midrule \midrule
+   \multicolumn{3}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+\end{tabular}
+\par\endgroup
+
+

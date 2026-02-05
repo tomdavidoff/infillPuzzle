@@ -4,6 +4,7 @@
 \usepackage[margin=1in]{geometry}
 \usepackage{graphicx}
 \usepackage{setspace}
+\usepackage{booktabs}
 
 \usepackage[style=authoryear,backend=biber]{biblatex}
 \addbibresource{text/infillPuzzle.bib}
@@ -217,6 +218,14 @@ While Vancouver has been referred to\footnote{At least by one of the authors.} a
 \par\bigskip\par
 \input{text/neighbourhoodCorrelationVancouver.tex}
 \end{table}
+
+Analysis at the neighbourhood level is also rationalized by Table \ref{tab:outSample}. There, we find that at the neighbourhood level, the elasticity of home price per square foot with respect to square footage computed using 2012-2018 transactions predicts the same elasticity out-of-sample for 2019-2023 transaction.The same is only marginally true at the census tract level, where the mean price per square foot predicts the subsequent period elasticity more strongly.
+
+\begin{table}
+\caption{\label{tab:outSample} Out-of-sample prediction of home price per square foot elasticity at the census tract and neighbourhood levels.}
+\input{text/outSample.tex}
+\end{table}
+
 
 The description of Vancouver's infill zoning policies gives rise to the following predictions:
 
