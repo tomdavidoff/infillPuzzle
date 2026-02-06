@@ -7,18 +7,18 @@
    Model:                                                   & (1)            & (2)\\  
    \midrule
    \emph{Variables}\\
-   log(MB\_Total\_Finished\_Area)                           & -0.608$^{***}$ & -0.647$^{***}$\\   
-                                                            & (0.061)        & (0.046)\\   
-   elasticityND                                             & -1.02$^{*}$    &   \\   
-                                                            & (0.601)        &   \\   
-   log(age+1)                                               & -0.070$^{***}$ & -0.069$^{***}$\\   
+   log(MB\_Total\_Finished\_Area)                           & -0.607$^{***}$ & -0.646$^{***}$\\   
+                                                            & (0.056)        & (0.042)\\   
+   elasticityND                                             & -1.03$^{*}$    &   \\   
+                                                            & (0.515)        &   \\   
+   logAge                                                   & -0.070$^{***}$ & -0.069$^{***}$\\   
                                                             & (0.007)        & (0.007)\\   
-   log(Land\_Width\_Width $\times$ Land\_Depth\_Depth)      & 0.235$^{**}$   & 0.228$^{**}$\\   
-                                                            & (0.091)        & (0.094)\\   
-   log(MB\_Total\_Finished\_Area) $\times$ elasticityND     & 0.136$^{*}$    &   \\   
-                                                            & (0.078)        &   \\   
-   log(MB\_Total\_Finished\_Area) $\times$ elasticityCT     &                & 0.050\\   
-                                                            &                & (0.063)\\   
+   logLandArea                                              & 0.235$^{**}$   & 0.228$^{*}$\\   
+                                                            & (0.109)        & (0.113)\\   
+   log(MB\_Total\_Finished\_Area) $\times$ elasticityND     & 0.137$^{*}$    &   \\   
+                                                            & (0.066)        &   \\   
+   log(MB\_Total\_Finished\_Area) $\times$ elasticityCT     &                & 0.053\\   
+                                                            &                & (0.052)\\   
    \midrule
    \emph{Fixed-effects}\\
    CTNAME                                                   & Yes            & Yes\\  
@@ -27,9 +27,9 @@
    \emph{Fit statistics}\\
    Observations                                             & 7,747          & 7,465\\  
    R$^2$                                                    & 0.71820        & 0.72684\\  
-   Within R$^2$                                             & 0.04796        & 0.05052\\  
+   Within R$^2$                                             & 0.04796        & 0.05053\\  
    \midrule \midrule
-   \multicolumn{3}{l}{\emph{Clustered (CTNAME) standard-errors in parentheses}}\\
+   \multicolumn{3}{l}{\emph{Clustered (neighbourhoodDescription) standard-errors in parentheses}}\\
    \multicolumn{3}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
 \end{tabular}
 \par\endgroup

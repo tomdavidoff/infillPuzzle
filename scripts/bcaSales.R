@@ -152,30 +152,23 @@ runAnalysis <- function(dt, groupVar, label) {
   # Analysis sample: newer builds , post-MINYEAR
   MAXAGE <- 15
   dtAnalysis <- dtFiltered[age < 15 & year(conveyanceDate) >= MINYEAR]
+  dtAnalysis[,landArea:=land_width*land_depth]
+  print(head(dtAnalysis))
   cat("Analysis sample size:", nrow(dtAnalysis), "\n")
 
   # Build formulas dynamically
-  fmlaMain <- as.formula(paste0(
-    "ppsf ~ i(", groupVar, ", MB_total_finished_area) + log(age + 1) + MB_total_finished_area + log(land_width) + log(land_depth) | ", groupVar
-  ))
 
   fmlaLog <- as.formula(paste0(
-    "log(ppsf) ~ 0 + i(", groupVar, ", log(MB_total_finished_area)) + log(age + 1) + log(land_width) + log(land_depth) | saleYear + ", groupVar
+    "log(ppsf) ~ 0 + i(", groupVar, ", log(MB_total_finished_area)) + log(age + 1) + log(landArea) | saleYear + ", groupVar
   )) # no main effect for Wald purposes
 
   # Run regressions
-  mainReg <- feols(fmlaMain, data = dtAnalysis)
-  print(r2(mainReg, typ = c("r2", "ar2")))
-
+  print(fmlaLog)
+  print(head(dtAnalysis))
   logReg <- feols(fmlaLog, data = dtAnalysis)
   print(r2(logReg, typ = c("r2", "ar2")))
 
   # Extract slopes
-  dtSlopes <- as.data.table(coeftable(mainReg), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
-  # Extract group identifier from term
-  pattern <- paste0(groupVar, "::(.*):MB_total_finished_area")
-  dtSlopes[, (groupVar) := gsub(pattern, "\\1", term)]
-
   # Extract elasticities
   dtElasticities <- as.data.table(coeftable(logReg), keep.rownames = "term")[grepl("log\\(MB_total_finished_area\\)", term)]
   patternLog <- paste0(groupVar, "::(.*):log\\(MB_total_finished_area\\)")
@@ -255,14 +248,16 @@ dtSales <- merge(dtSales, dtRollLatLon[, .(ROLL_NUMBER, CTNAME)], by = "ROLL_NUM
 dtPriceND <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_neighbourhood.csv")
 setnames(dtPriceND, old = c("neighbourhoodDescription", "meanPPSF", "elasticity"), new = c("neighbourhoodDescription", "meanPPSFND", "elasticityND"))
 dtSales <- merge(dtSales, dtPriceND, by = "neighbourhoodDescription")
-dtSales[,age:=as.numeric(year)-MB_Effective_Year]
-dtSales[,ppsf:=log(CONVEYANCE_PRICE/MB_Total_Finished_Area)]
+dtSales[, age := as.numeric(year) - MB_Effective_Year]
+dtSales[, ppsf := log(CONVEYANCE_PRICE / MB_Total_Finished_Area)]
 dtPriceCT <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_tract.csv", colClasses = list(character = c("CTUID"), numeric = c("meanPPSF", "elasticity")))
 setnames(dtPriceCT, old = c("meanPPSF", "elasticity"), new = c("meanPPSFCT", "elasticityCT"))
 dtPriceCT[, CTNAME := substring(CTUID, 4, 10)]
 dtSales <- merge(dtSales, dtPriceCT, by = "CTNAME")
-dtSales[,medWidth:=median(Land_Width_Width),by=CTNAME]
+dtSales[, medWidth := median(Land_Width_Width), by = CTNAME]
 dtSales <- dtSales[Land_Depth_Depth %in% c(DEPTHMIN, DEPTHMAX)]
-rA <- feols(ppsf ~  0 + log(MB_Total_Finished_Area) *  elasticityND  + log(age+1) + log(Land_Width_Width*Land_Depth_Depth)| CTNAME + year, cluster = "CTNAME", data = dtSales)
-rB <- feols(ppsf ~  0 + log(MB_Total_Finished_Area) *  elasticityCT  + log(age+1) + log(Land_Width_Width*Land_Depth_Depth)| CTNAME + year, cluster = "CTNAME", data = dtSales)
+dtSales[, logLandArea := log(Land_Width_Width * Land_Depth_Depth)]
+dtSales[, logAge := log(age + 1)]
+rA <- feols(ppsf ~ 0 + log(MB_Total_Finished_Area) * elasticityND + logAge + logLandArea | CTNAME + year, cluster = "neighbourhoodDescription", data = dtSales)
+rB <- feols(ppsf ~ 0 + log(MB_Total_Finished_Area) * elasticityCT + logAge + logLandArea | CTNAME + year, cluster = "neighbourhoodDescription", data = dtSales)
 etable(rA, rB, file = "text/outSample.tex", digits = 3, tex = TRUE, replace = TRUE)
