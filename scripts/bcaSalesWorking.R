@@ -16,15 +16,57 @@ library(ggplot2)
 library(scales)
 library(stringr)
 library(readxl)
+library(geosphere)
 
-centroidsFile <- "~/OneDrive - dataProcessed/bca25Centroids.rds"
+# per google
+latDowntown <- 49.2827
+lonDowntown <- -123.1207
+
+centroidsFile <- "~/OneDrive - UBC/dataProcessed/bca25Centroids.rds"
+print(centroidsFile)
+print(file.exists(centroidsFile))
 if (!file.exists(centroidsFile)) {
   source("scripts/getBCAVancouverCentroids.R")
 }
 dtCentroids <- readRDS(centroidsFile)
+coords <- st_coordinates(dtCentroids$centroid)
+# add to data.table
+dtCentroids[, `:=`(
+  lon = coords[, 1],
+  lat = coords[, 2]
+)]
 
-dtInventory <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/Residential_inventory_202501/20250101_A09_Residential_Inventory_Extract.txt")
+dtInventory <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/Residential_inventory_202501/20250101_A09_Residential_Inventory_Extract.txt",select=c("Roll_Number","MB_Total_Finished_Area","Zoning","Land_Width_Width","Land_Depth_Depth","MB_Effective_Year"),colClasses=c(Roll_Number="character",MB_Total_Finished_Area="numeric",Zoning="character",Land_Width_Width="numeric",Land_Depth_Depth="numeric"))
 print(head(dtInventory))
+dtSales <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_sales_20250331_REVD25.csv",select=c("ROLL_NUMBER","FOLIO_ID","CONVEYANCE_DATE","CONVEYANCE_PRICE","CONVEYANCE_TYPE_DESCRIPTION"))
+dtSales <- dtSales[CONVEYANCE_TYPE_DESCRIPTION=="Improved Single Property Transaction"]
+dtSales[,saleYear:=as.numeric(substring(CONVEYANCE_DATE,1,4))]
+print(head(dtSales))
+MINYEAR <- 2014
+MAXYEAR <- 2018
+dtSales <- dtSales[saleYear>=MINYEAR & saleYear<=MAXYEAR]
+dtDescription <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_descriptions_20250331_REVD25.csv",select=c("FOLIO_ID","ROLL_NUMBER","ACTUAL_USE_DESCRIPTION","NEIGHBOURHOOD","JURISDICTION_CODE"))
+dtDescription <- dtDescription[JURISDICTION_CODE==200]
+print(head(dtDescription))
+print(nrow(dtDescription))
+print(head(dtCentroids))
+dtMerge <- merge(dtDescription,dtCentroids,by="ROLL_NUMBER")
+print(nrow(dtMerge))
+dtMerge <- merge(dtMerge,dtInventory,by.x="ROLL_NUMBER",by.y="Roll_Number")
+print("postInventory")
+print(nrow(dtMerge))
+dtMerge <- merge(dtMerge,dtSales,by="ROLL_NUMBER")
+print(nrow(dtSales))
+print(nrow(dtMerge))
+# order by frequency
+print(table(dtMerge[,ACTUAL_USE_DESCRIPTION])[order(table(dtMerge[,ACTUAL_USE_DESCRIPTION]),decreasing=TRUE)])
+dtMerge <- dtMerge[ACTUAL_USE_DESCRIPTION %in% c("Strata-Lot Residence (Condominium)", "Residential Dwelling with Suite", "Single Family Dwelling", "Row Housing (Single Unit Ownership)") | grepl("Duplex",ACTUAL_USE_DESCRIPTION)]
+# first question: among single family homes are neighbourhoods relevant?
+dtMerge[,age:=saleYear-MB_Effective_Year]
+
+dtMerge[,distDowntown:=geodist(cbind(lon,lat),c(lonDowntown,latDowntown))]
+regValue <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) +Latidtude,data=dtMerge )
+print(head(dtMerge))
 stop()
 ddfd
 
@@ -264,7 +306,7 @@ dtSales <- merge(dtSales, dtRollLatLon[, .(ROLL_NUMBER, CTNAME)], by = "ROLL_NUM
 dtPriceND <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_neighbourhood.csv")
 setnames(dtPriceND, old = c("neighbourhoodDescription", "meanPPSF", "elasticity"), new = c("neighbourhoodDescription", "meanPPSFND", "elasticityND"))
 dtSales <- merge(dtSales, dtPriceND, by = "neighbourhoodDescription")
-dtSales[, age := as.numeric(year) - MB_Effective_Year]
+dtSales[, age := as.numeric(saleYear) - MB_Effective_Year]
 dtSales[, ppsf := log(CONVEYANCE_PRICE / MB_Total_Finished_Area)]
 dtPriceCT <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_tract.csv", colClasses = list(character = c("CTUID"), numeric = c("meanPPSF", "elasticity")))
 setnames(dtPriceCT, old = c("meanPPSF", "elasticity"), new = c("meanPPSFCT", "elasticityCT"))
