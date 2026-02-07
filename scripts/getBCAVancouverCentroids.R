@@ -35,5 +35,6 @@ cat("CRS:", st_crs(sBCA)$epsg, "\n")
 sBCA$centroid <- st_centroid(sBCA$geom)
 dtBCA <- as.data.table(sBCA)[,.(ROLL_NUMBER,centroid)]
 dtBCA[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-saveRDS(dtBCA,"outfile")
+saveRDS(dtBCA,outFile)
+print("foo")
 q("no")

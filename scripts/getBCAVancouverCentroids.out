@@ -62,8 +62,10 @@ CRS: 3005
 > sBCA$centroid <- st_centroid(sBCA$geom)
 > dtBCA <- as.data.table(sBCA)[,.(ROLL_NUMBER,centroid)]
 > dtBCA[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-> saveRDS(dtBCA,"outfile")
+> saveRDS(dtBCA,outFile)
+> print("foo")
+[1] "foo"
 > q("no")
 > proc.time()
    user  system elapsed 
-  5.595   0.608   6.190 
+  5.640   0.629   6.264 
