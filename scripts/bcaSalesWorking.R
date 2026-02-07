@@ -17,8 +17,20 @@ library(scales)
 library(stringr)
 library(readxl)
 
+centroidsFile <- "~/OneDrive - dataProcessed/bca25Centroids.rds"
+if (!file.exists(centroidsFile)) {
+  source("scripts/getBCAVancouverCentroids.R")
+}
+dtCentroids <- readRDS(centroidsFile)
+
+dtInventory <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/Residential_inventory_202501/20250101_A09_Residential_Inventory_Extract.txt")
+print(head(dtInventory))
+stop()
+ddfd
+
+
 BCA19 <- "~/OneDrive - UBC/dataRaw/REVD19_and_inventory_extracts.sqlite3"
-BCA26 <- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
+#BCA26 <- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
 
 # use 2026 data to get floor(roll number/1000) to get lot polygons -> centroid , maybe zoning
 fRollLatLon <- "~/OneDrive - UBC/dataProcessed/bca26RollCensusTract.rds"
