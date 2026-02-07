@@ -59,13 +59,51 @@ In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
 Parcels loaded: 223292 
 > cat("CRS:", st_crs(sBCA)$epsg, "\n")
 CRS: 3005 
-> sBCA$centroid <- st_centroid(sBCA$geom)
-> dtBCA <- as.data.table(sBCA)[,.(ROLL_NUMBER,centroid)]
-> dtBCA[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-> saveRDS(dtBCA,outFile)
+> # 1) keep only the ID + polygon geometry
+> cent_sf <- sBCA[, "ROLL_NUMBER"]              # sf with POLYGON geom, CRS 3005
+> 
+> # 2) compute centroids in 3005
+> cent_sf$centroid <- st_centroid(st_geometry(cent_sf))
+> 
+> # 3) switch active geometry to centroid
+> cent_sf <- st_set_geometry(cent_sf, "centroid")
+> 
+> # 4) drop the old polygon geometry column (now just points + ROLL_NUMBER)
+> cent_sf$geom <- NULL                          # if your polygon column is named 'geom'
+> # (If it's named differently, remove that column instead.)
+> 
+> # 5) transform the point geometry to lon/lat
+> cent_ll <- st_transform(cent_sf, 4326)
+> 
+> # 6) extract lon/lat
+> xy <- st_coordinates(cent_ll)
+> 
+> dt_out <- data.table(
++   ROLL_NUMBER = cent_ll$ROLL_NUMBER,
++   lon = xy[,1],
++   lat = xy[,2]
++ )
+> 
+> print(dt_out)
+            ROLL_NUMBER       lon      lat
+                 <char>     <num>    <num>
+     1: 001025638140000 -123.2079 49.27005
+     2: 001025638280000 -123.2076 49.27000
+     3: 001025638480000 -123.2076 49.26974
+     4: 001025638660000 -123.2076 49.26949
+     5: 001025638920000 -123.2076 49.26926
+    ---                                   
+223288: 013645198400016 -123.0943 49.26502
+223289: 011790156570014 -123.1227 49.22663
+223290: 023718301400009 -123.0359 49.23964
+223291: 008730135160000 -123.1364 49.24147
+223292: 002640087630000 -123.1536 49.26841
+> 
+> saveRDS(dt_out,outFile)
 > print("foo")
 [1] "foo"
+> 
 > q("no")
 > proc.time()
    user  system elapsed 
-  5.640   0.629   6.264 
+  3.795   0.594   4.381 

@@ -32,9 +32,34 @@ sBCA<- st_read(
 
 cat("Parcels loaded:", nrow(sBCA), "\n")
 cat("CRS:", st_crs(sBCA)$epsg, "\n")
-sBCA$centroid <- st_centroid(sBCA$geom)
-dtBCA <- as.data.table(sBCA)[,.(ROLL_NUMBER,centroid)]
-dtBCA[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-saveRDS(dtBCA,outFile)
+# 1) keep only the ID + polygon geometry
+cent_sf <- sBCA[, "ROLL_NUMBER"]              # sf with POLYGON geom, CRS 3005
+
+# 2) compute centroids in 3005
+cent_sf$centroid <- st_centroid(st_geometry(cent_sf))
+
+# 3) switch active geometry to centroid
+cent_sf <- st_set_geometry(cent_sf, "centroid")
+
+# 4) drop the old polygon geometry column (now just points + ROLL_NUMBER)
+cent_sf$geom <- NULL                          # if your polygon column is named 'geom'
+# (If it's named differently, remove that column instead.)
+
+# 5) transform the point geometry to lon/lat
+cent_ll <- st_transform(cent_sf, 4326)
+
+# 6) extract lon/lat
+xy <- st_coordinates(cent_ll)
+
+dt_out <- data.table(
+  ROLL_NUMBER = cent_ll$ROLL_NUMBER,
+  lon = xy[,1],
+  lat = xy[,2]
+)
+
+print(dt_out)
+
+saveRDS(dt_out,outFile)
 print("foo")
+
 q("no")
