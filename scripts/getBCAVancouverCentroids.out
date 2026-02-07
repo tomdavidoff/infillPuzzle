@@ -1,0 +1,69 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # getBCAVancouverCentroids.csv
+> # Extract Vancouver single family / duplex parcels from BCA 2026 GeoPackage
+> # and save locally for faster loading
+> # Tom Davidoff / Claude
+> # 01/15/26
+> 
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(RSQLite)
+> library(data.table)
+> 
+> # ============================================================================
+> # Configuration
+> # ============================================================================
+> bcaFile<- "/Volumes/T7Office/bigFiles/bca_folios_spatial_file_20251103/bca_folios.gpkg.gpkg"
+> outFile   <- "~/OneDrive - UBC/dataProcessed/bca25Centroids.rds"
+> 
+> # ============================================================================
+> # Extract Vancouver residential parcels
+> # ============================================================================
+> 
+> cat("Loading Vancouver residential parcels from BCA \n")
+Loading Vancouver residential parcels from BCA 
+> cat("Source:", bcaFile, "\n")
+Source: /Volumes/T7Office/bigFiles/bca_folios_spatial_file_20251103/bca_folios.gpkg.gpkg 
+> 
+> sBCA<- st_read(
++   bcaFile,
++   layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
++   query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
++            WHERE JURISDICTION_CODE='200'",
++   quiet = TRUE
++ )
+Warning message:
+In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
+  argument layer is ignored when query is specified
+>            #AND (ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling')
+> 
+> cat("Parcels loaded:", nrow(sBCA), "\n")
+Parcels loaded: 223292 
+> cat("CRS:", st_crs(sBCA)$epsg, "\n")
+CRS: 3005 
+> sBCA$centroid <- st_centroid(sBCA$geom)
+> dtBCA <- as.data.table(sBCA)[,.(ROLL_NUMBER,centroid)]
+> dtBCA[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
+> saveRDS(dtBCA,"outfile")
+> q("no")
+> proc.time()
+   user  system elapsed 
+  5.595   0.608   6.190 
