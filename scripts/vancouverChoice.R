@@ -1,4 +1,4 @@
-# VancouverChoice.R
+# VancouverChoice.int
 # R to analyze discrete choices of developers, maybe aggregate
 # Tom Davidoff
 # Feb 5, 2026
@@ -8,6 +8,8 @@ library(ggplot2)
 library(fixest)
 library(geosphere)
 library(nnet)
+library(stargazer)
+library(xtable)
 CUTDISTANCE <- 20 # laneay
 MINDEPTH <- 100
 MINWIDTH <- 30
@@ -30,16 +32,9 @@ dtChoice[,landArea:=landWidth*landDepth  ]
 dtChoice <- dtChoice[landWidth>=MINWIDTH & landWidth<=MINDEPTH]
 dtChoice <- dtChoice[!is.na(landWidth)]
 dtPriceCT <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_tract.csv",colClasses=c(CTUID="character"))
-setnames(dtPriceCT,c("CTUID","priceCT","nobsCT","elasticityCT"))
 dtChoice <- merge(dtChoice,dtPriceCT,by="CTUID")
 dtChoice[,w33:=abs(landWidth-33)<=3]
 dtChoice <- dtChoice[!is.na(landWidth)]
-dtPriceND <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_neighbourhood.csv")
-setnames(dtPriceND,c("neighbourhoodDescription","priceND","nobsND","elasticityND"))
-a <- unique(dtChoice[,neighbourhoodDescription])
-dtChoice <- merge(dtChoice,dtPriceND,by="neighbourhoodDescription")
-b <- unique(dtChoice[,neighbourhoodDescription])
-print(setdiff(a,b))
 
 # Income by census tract
 dtIncome <- fread("~/OneDrive - UBC/dataRaw/9810005801_databaseLoadingData.csv",
@@ -53,38 +48,110 @@ dtIncome[, tract := substr(DGUID, 13, 19)]
 dtChoice[,tract:=substring(CTUID,4,10)]
 a <- nrow(dtChoice)
 dtChoice <- merge(dtChoice,dtIncome,by="tract")
+
+# Mean price, single vs duplex premium and elasticity of ppsf among single/duplex, mean price by neighbourhood
+
+dtElasticityN <- fread("~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv")
+dtPriceCT <- fread("~/OneDrive - UBC/dataProcessed/tractMeansVancouver.csv",colClasses=c(CTNAME="character"))
+print(head(dtElasticityN))
+print(head(dtPriceCT))
+print(head(dtChoice))
+print(nrow(dtChoice))
+dtElasticityN[,neighbourhoodDescription:=str_to_upper(NEIGHBOURHOOD)]
+dtElasticityN[neighbourhoodDescription=="ARBUTUS RIDGE - MACKENZIE HEIGHTS",neighbourhoodDescription:="ARBUTUS/MACKENZIE HEIGHTS"]
+dtElasticityN[neighbourhoodDescription=="MAIN & FRASER",neighbourhoodDescription:="MAIN/FRASER"]
+s1 <- unique(dtChoice[,neighbourhoodDescription])
+dtChoice <- merge(dtChoice,dtElasticityN,by="neighbourhoodDescription")
+print(nrow(dtChoice))
+print(setdiff(s1,unique(dtChoice[,neighbourhoodDescription])))
+
+b <- unique(dtChoice[,neighbourhoodDescription])
+print(setdiff(a,b))
+
 print(c("LOSS OF OBS?",a - nrow(dtChoice)))
+
+
 dtChoice <- dtChoice[use!="laneway"] # not laneway only
-dtChoice <- dtChoice[!is.na(elasticityCT) & !is.na(elasticityND)]
+dtChoice[,elasticity:=interactionlSqft]
+print(head(dtChoice))
+print(head(dtPriceCT))
+
+dtChoice <- merge(dtChoice,dtPriceCT,by.x="tract",by.y="CTNAME")
+
+DOTRACT <- 0
+if (DOTRACT==1) {
+  dtChoice[,interactionSqft:=NULL]
+  dtInteractionsTract <- fread("~/OneDrive - UBC/dataProcessed/tractInteractionsVancouver.csv",colClasses=c("CTNAME"="character","interactionSqft"="numeric"))
+  dtChoice <- merge(dtChoice,dtInteractionsTract,by.x="tract",by.y="CTNAME")
+}
+
+dtChoice <- dtChoice[!is.na(interactionSingle) & !is.na(interactionlSqft)]
 dtChoice[,laneway:=use=="single" & distToLaneway<CUTDISTANCE]
 dtChoice[,mergeZone:=tract] # ND or tract
+dtChoice[,lmedianIncome := log(medianIncome)]
 
-dtSingle <-dtChoice[use=="single"]
-print(cor(dtSingle[,.(laneway,medianIncome,elasticityCT,elasticityND,priceCT,priceND)]))
-print(dtSingle[order(landWidth),mean(laneway),by=floor(landWidth)]) # not a ton of action
+dtChoice[,lmedianPPSF:=log(medianPPSF)]
+dtChoice[distToLaneway<CUTDISTANCE & use=="single",use:="singleLaneway"]
+dtChoice[distToLaneway>=CUTDISTANCE & use=="single",use:="singleOnly"]
+dtChoice[,singleLaneway:=use=="single" & distToLaneway<CUTDISTANCE]
+dtChoice[,singleNoLaneway:=use=="single" & distToLaneway>=CUTDISTANCE]
+dtChoice[,duplex:=use=="duplex"]
+dtChoice[,multiplex:=use=="multi"]
+cols <- c("laneway","singleNoLaneway","singleLaneway","duplex","multiplex", "medianPPSF","medianIncome","elasticity")
+print(dtChoice[,median(landWidth),by=use])
+dfd
+
+x <- copy(dtChoice)[, (cols) := lapply(.SD, function(v) unname(as.numeric(v))), .SDcols = cols]
+
+print(stargazer(as.data.frame(x[, ..cols]), type = "latex", file = "text/summaryChoice.tex"))
+
+
+dtSingle <- dtChoice[use=="singleOnly" | use=="singleLaneway"]
+C <- cor(dtSingle[,.(laneway,lmedianIncome,interactionSingle,elasticity,medianPPSF)])
+# correlation matrix
+# convert to data.table (optional, but tidy)
+C_dt <- as.data.table(C, keep.rownames = "Variable")
+# export to LaTeX
+print( xtable(C_dt, digits = 3), file = "text/vancouverCorrelate.tex", floating=FALSE, include.rownames = FALSE )
 # toggle for lanewayResidual estimation level
-rr <- feols(laneway ~ priceCT + w33 + landWidth +longitude + distDowntown|year  ,data=dtSingle)
-print(resid(rr))
+# print summary statistics for tabulating in R
+rrc <- feols(laneway ~ lmedianPPSF + landWidth |year  ,data=dtSingle,cluster="tract")
+rri <- feols(laneway ~ lmedianPPSF + landWidth + lmedianIncome|year  ,data=dtSingle,cluster="tract")
+rr <- feols(laneway ~ lmedianPPSF + landWidth +   elasticity|year  ,data=dtSingle,cluster="tract")
+print(etable(rrc,rri,rr))
 dtSingle[,eps:=resid(rr)]
-dtLanewayResidual <- dtSingle[,.(residLaneway=mean(eps,na.rm=TRUE)),by="mergeZone"]
-dtChoice <- merge(dtChoice,dtLanewayResidual,by="mergeZone")
-print(dtLanewayResidual)
-print(rr)
-# NOTE HUGE R2
-print(summary(feols(priceCT ~ distDowntown*longitude,data=dtChoice)))
-print(feols(laneway ~ priceCT + w33+landWidth|year,data=dtSingle))
-print(feols(use=="duplex" ~ priceCT+landWidth+elasticityND|year,data=dtChoice[year<2024],cluster="tract")) # laneway ambiguous -- substitution
-print(feols(use=="duplex" ~ priceCT+landWidth+elasticityND + residLaneway + w33 + distDowntown+longitude|year,data=dtChoice[year<2024],cluster="tract")) # laneway ambiguous -- substitution
-print(feols(use=="duplex" | use=="multiplex" ~ priceCT+residLaneway+landWidth+elasticityND|year,data=dtChoice),cluster="tract")
-print(feols( use=="multi" ~ priceCT+residLaneway+landArea+elasticityND|year,data=dtChoice[use!="single"],cluster="tract"))
-print(feols( use=="multi" ~ priceCT+residLaneway+w33+landArea+elasticityND|year,data=dtChoice[use!="single"],cluster="tract"))
-print(feols( use=="multi" ~ priceCT+residLaneway+w33+landArea+elasticityND|year,data=dtChoice,cluster="tract"))
-print(feols( use=="single" & laneway==0 ~ priceCT+w33+landArea+elasticityND|year,data=dtChoice,cluster="tract"))
-print(feols( use=="single" & laneway==0 ~ priceCT+w33+landArea+elasticityND|year,data=dtChoice,cluster="tract"))
-dtChoice[,discreteUse:=ifelse(use=="single"&laneway==0,"singleOnly",ifelse(use=="single"&laneway==1,"singleLaneway",ifelse(use=="duplex","duplex","multiplex")))]
-print(summary(multinom(discreteUse ~ log(priceCT)+w33 + landArea+elasticityND+factor(year), data=dtChoice)))
-# probit regression for when single==0
-print(summary(feglm(use=="multi" ~ priceCT+landArea+w33+ factor(year),data=dtChoice[use!="single" & year>2023],cluster="tract",family=binomial(link="probit"))))
-print(summary(feglm(use=="multi" ~ priceCT+residLaneway+landArea+w33+elasticityND + factor(year),data=dtChoice[use!="single" & year>2023],cluster="tract",family=binomial(link="probit"))))
-print(summary(feglm(use=="multi" ~ priceCT+landArea+w33+ factor(year),data=dtChoice[use!="single" & year>2023],cluster="tract",family=binomial(link="logit"))))
-print(summary(feglm(use=="multi" ~ priceCT+residLaneway+landArea+w33+elasticityND + factor(year),data=dtChoice[use!="single" & year>2023],cluster="tract",family=binomial(link="logit"))))
+rdc <- feols(use=="duplex" ~ lmedianPPSF + landWidth|year,data=dtChoice[year<2024],cluster="tract")
+rdi <- feols(use=="duplex" ~ lmedianPPSF + landWidth + lmedianIncome|year,data=dtChoice[year<2024],cluster="tract")
+rd <- feols(use=="duplex" ~ lmedianPPSF +landWidth+lmedianIncome+ elasticity|year,data=dtChoice[year<2024],cluster="tract")
+print(etable(rdc,rdi,rd))
+
+rpc <- feols(use!="singleOnly" ~ lmedianPPSF + landWidth|year,data=dtChoice,cluster="tract")
+rpi <- feols(use!="singleOnly" ~ lmedianPPSF + landWidth + lmedianIncome|year,data=dtChoice,cluster="tract")
+rp <- feols(use!="singleOnly" ~ lmedianPPSF + landWidth+ lmedianIncome+ elasticity|year,data=dtChoice,cluster="tract")
+print(etable(rpc,rpi,rp))
+
+rmc <- feols(use=="multi" ~ lmedianPPSF + landWidth |year,data=dtChoice[year>2023 & use!="single"],cluster="tract")
+rmi <- feols(use=="multi" ~ lmedianPPSF + landWidth + lmedianIncome|year,data=dtChoice[year>2023 & use!="single"],cluster="tract")
+rm <- feols(use=="multi" ~ lmedianPPSF + landWidth + lmedianIncome +elasticity|year,data=dtChoice[year>2023 & use!="single"],cluster="tract")
+rme <- feols(use=="multi" ~ lmedianPPSF + landWidth + lmedianIncome + elasticity|year,data=dtChoice[year>2023 & use!="single"],cluster="tract")
+print(etable(rmc,rmi,rm,rme))
+
+rmc <- feols(multiplex ~ lmedianPPSF + landWidth |year,data=dtChoice[year>2023 ],cluster="tract")
+rm <- feols(multiplex ~ lmedianPPSF + landWidth + elasticity|year,data=dtChoice[year>2023 ],cluster="tract")
+print(etable(rmc,rm ))
+
+dtChoice[use=="single" & distToLaneway < CUTDISTANCE,use:="laneway"]
+dtChoice[,use:=factor(use,ordered=FALSE)]
+dtChoice[,use := relevel(use, ref = "singleOnly")]
+#multinomial logit
+mlogitc <- multinom(use ~ lmedianPPSF + landWidth + lmedianIncome + factor(year),data=dtChoice[landWidth<40],cluster="tract")
+mlogit <- multinom(use ~ lmedianPPSF + landWidth + lmedianIncome + elasticity + factor(year),data=dtChoice[landWidth<40],cluster="tract")
+print(summary(mlogitc))
+print(summary(mlogit))
+
+# plot with bubbles proportional to nobs
+dPlot <- dtChoice[,.(elasticity=mean(elasticity),medianPPSF=mean(medianPPSF),nobs=.N),by="tract"]
+ggplot(dPlot, aes(x=medianPPSF, y=elasticity, size=nobs)) + geom_point()
+ggsave("text/elasticityMedianPrice.png")
+
+stop()

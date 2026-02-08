@@ -79,7 +79,7 @@ three cities, we find a highly positive correlation between neighbourhood
 average hedonically-adjusted price per square foot levels and the elasticity of
 price with respect to home square footage.
 
-In Vancouver, the relationship between price level and the elasticity of price with respect to home size is so strong that the former (more precisely estimated) is an \emph{better} measure out of sample of that elasticity than in-sample elasticity estimates. That is, an empirical issue in applying our model is that in cities with strong income sorting, it may be impossible meaningfully to distinguish price per square foot levels from the elasticity of price with respect to square footage.
+In Vancouver, the relationship between price level and the elasticity of price with respect to home size is so strong that the former (more precisely estimated) is an \emph{better} measure out of sample of that elasticity than in-sample elasticity estimates. That is, an empirical issue in applying our model is that in cities with strong income sorting, it may be impossible to distinguish meaningfully price per square foot levels from the elasticity of price with respect to square footage.
 
 \section{A model of infill housing}
 To see the offsetting addition and division effects formally, consider a developer choosing the intensity of development on a parcel of land with area normalized to one unit. Profits are a function of the (continuous, for simplicity) number of units $n$ built on the lot. Zoning regulations impose a schedule of density limits $f(n)$ governing how many square feet $f$ can be built on the lot as a function of $n$. The price $p$ per square foot is a function of $n$ and $\theta$, a characteristic of the neighbourhood. $\theta$ is a form of vertical differentiation, so $\frac{\partial p(n,\theta)}{\partial \theta}>0$. For simplicity, $c(n)$, the cost per square foot is assumed constant with respect to $\theta$. Realistically, higher-end finishes would likely follow the price-$\theta$ relationship. In our empirical work, we control for a small set of charactersitics to approximate this.
@@ -152,7 +152,7 @@ In this paper, we assess patterns of redevelopment of single-family sites to mod
 
 \textit{Minneapolis, MN USA}
 
-Of the cities included here, Minneapolis was the first to move away from single-family zoning, with the City Council voting in December 2018 to allow more than one unit on all single-family lots. The changes came into effect in January 2020 following approval by the region’s Metropolitan Council in 2019. The rezoning divides the city into three major regions, with additional distinct policies for transit corridors. These corridors were rezoned to allow 3–6 storey buildings, with 10–30 storeys permitted close to transit stations. Additionally, in May 2021, off-street parking minimums were eliminated.
+Minneapolis was moved away from single-family zoning, with the City Council voting in December 2018 to allow more than one unit on all single-family lots. The changes came into effect in January 2020 following approval by the region’s Metropolitan Council in 2019. The rezoning divides the city into three major regions, with additional distinct policies for transit corridors. These corridors were rezoned to allow 3–6 storey buildings, with 10–30 storeys permitted close to transit stations. Additionally, in May 2021, off-street parking minimums were eliminated.
 
 Our interest is in the three largest regions of the city: ``Interior-1,'' ``Interior-2,'' and ``Interior-3,'' where the rezoning permitted up to three units on all previously single-family-zoned lots. The largest land area is in Interior-1, which consists of neighborhoods most distant from the city’s core. In this area, the floor space ratio (FSR) remained unchanged at 0.5, with a maximum height of 2.5 storeys or 28 feet (8.5 meters). In Interior-2, the ring around the core, the same restrictions apply. Only in Interior-3—the single-family areas immediately south and northeast (across the Mississippi River) of the downtown core—did the rezoning increase FSR, from 0.5 to 0.6 for duplexes and 0.7 for triplexes. Triplexes also received a relaxation of the height restriction, to three storeys or 42 feet (12.8 meters). The standard residential lot size in Minneapolis is 5,000 sf, with newer single-family units typically maximizing the allowed buildable area.
 
@@ -189,7 +189,7 @@ City & Subject & Data Source & Coverage/Use \\
 Vancouver & Building Permits by  & City of Vancouver & 2019-2025 (laneway and duplex era)\\
 & &  & 2024-2025 (laneway, duplex, and multiplex era)\\
 Vancouver & Zoning & City of Vancouver & Current R1-1 zones  \\
-Vancouver & Transactions & B.C. Assessment & 2015-2019 for baseline price and elasticities \\
+Vancouver & Transactions & B.C. Assessment & 2012-2018 for baseline price and elasticities \\
 Vancouver & Home and lot Characteristics & B.C. Assessment & All \\
 \hline
 Portland & Building permit  & City of Portland & 2022-2025 (RIP-2 era)\\
@@ -210,13 +210,11 @@ Minneapolis & Home and lot Characteristics & Attom\\
 
 \section{Sorting in Vancouver single family zones}
 
-While Vancouver has been referred to\footnote{At least by one of the authors.} as a ``great place to have money, not to make money,'' there is a high degree of income sorting into high-priced neighbourhoods. Table \ref{tab:vancouverCorrelate} shows correlations among income, mean single detached home price (2025 dollars), the elasticity of home price per square foot with respect to square footage, the share of single family permits with laneways (2019-2025), the share of duplex permits (2019-2025), and the share of multiplex permits (2024-2025) in R1-1 zones. In the top panel, the unit of observation is a census tract. In the bottom panel, the unit of observation is a (larger) neighbourhood.\footnote{For now, neighbourhood values are means across census tracts.} The generally much larger correlations at the neighbourhood rather than tract level strongly suggest that the neighbourhood is a better unit of observation as the tract-level means are affected by small-sample noise.
+While Vancouver has been referred to\footnote{At least by one of the authors.} as a ``great place to have money, not to make money,'' there is a high degree of income sorting into high-priced neighbourhoods. Table \ref{tab:vancouverCorrelate} shows correlations among income, mean single detached home price (2025 dollars), the elasticity of home price per square foot with respect to square footage, the share of single family permits with laneways (2019-2025), the share of duplex permits (2019-2025), and the share of multiplex permits (2024-2025) in R1-1 zones. The unit of observation is a census tract. In the bottom panel, the unit of observation is a (larger) neighbourhood.\footnote{For now, neighbourhood values are means across census tracts.} The generally much larger correlations at the neighbourhood rather than tract level strongly suggest that the neighbourhood is a better unit of observation as the tract-level means are affected by small-sample noise.
 
 \begin{table}
-\caption{\label{tab:vancouverCorrelate} Vancouver correlations: top panel, census tracts, bottom panel means at neighbourhood level}
-\input{text/tractCorrelationVancouver.tex}
-\par\bigskip\par
-\input{text/neighbourhoodCorrelationVancouver.tex}
+\caption{\label{tab:vancouverCorrelate} Vancouver correlations: census tracts, bottom panel means at neighbourhood level}
+\input{text/vancouverCorrelate.tex}
 \end{table}
 
 Analysis at the neighbourhood level is also rationalized by Table \ref{tab:outSample}. There, we find that at the neighbourhood level, the elasticity of home price per square foot with respect to square footage computed using 2012-2018 transactions predicts the same elasticity out-of-sample for 2019-2023 transaction.The same is only marginally true at the census tract level, where the mean price per square foot predicts the subsequent period elasticity more strongly.
