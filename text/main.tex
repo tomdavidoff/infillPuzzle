@@ -212,14 +212,24 @@ Minneapolis & Home and lot Characteristics & Attom\\
 
 While Vancouver has been referred to as a ``great place to have money, not to make money,'' there is a high degree of income sorting into high-priced neighbourhoods. Table \ref{tab:vancouverCorrelate} shows correlations among income, mean single detached home price (2025 dollars), the elasticity of home price per square foot with respect to square footage, the share of single family permits with laneways (2019-2025), the share of duplex permits (2019-2025), and the share of multiplex permits (2024-2025) in R1-1 zones. 
 
+The elasticity of home price per square foot is calculated based on a
+regression of log sale price per square foot divided by (main) structure square
+feet for duplex and single family homes in the years 2012-2018, before new
+duplexes were permitted throughout R zones (almost all R1-1 zones have a
+non-trivial fraction of grandfathered or otherwise enabled duplex
+sales).\footnote{For older home sales, the presence or absence of a laneway
+home is not easily obtained.} That regression has the form:
+
+\begin{equation}
+	\log \frac{p_{ict}}{s_{ict}} = \sum_{c}\beta_{c}\log s_{ict}
+
+
 \begin{table}
 \caption{\label{tab:vancouverCorrelate} Vancouver correlations: census tracts, bottom panel means at neighbourhood level}
 \input{vancouverCorrelate.tex}
 \end{table}
-
-Analysis at the neighbourhood level is also rationalized by Table \ref{tab:outSample}. There, we find that at the neighbourhood level, the elasticity of home price per square foot with respect to square footage computed using 2012-2018 transactions predicts the same elasticity out-of-sample for 2019-2023 transaction.The same is only marginally true at the census tract level, where the mean price per square foot predicts the subsequent period elasticity more strongly.
-
 \begin{table}
+
 \caption{\label{tab:outSample} Out-of-sample prediction of home price per square foot elasticity at the census tract and neighbourhood levels.}
 \input{outSample.tex}
 \end{table}
