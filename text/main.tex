@@ -7,7 +7,7 @@
 \usepackage{booktabs}
 
 \usepackage[style=authoryear,backend=biber]{biblatex}
-\addbibresource{text/infillPuzzle.bib}
+\addbibresource{infillPuzzle.bib}
 
 \begin{document}
 
@@ -210,18 +210,18 @@ Minneapolis & Home and lot Characteristics & Attom\\
 
 \section{Sorting in Vancouver single family zones}
 
-While Vancouver has been referred to\footnote{At least by one of the authors.} as a ``great place to have money, not to make money,'' there is a high degree of income sorting into high-priced neighbourhoods. Table \ref{tab:vancouverCorrelate} shows correlations among income, mean single detached home price (2025 dollars), the elasticity of home price per square foot with respect to square footage, the share of single family permits with laneways (2019-2025), the share of duplex permits (2019-2025), and the share of multiplex permits (2024-2025) in R1-1 zones. The unit of observation is a census tract. In the bottom panel, the unit of observation is a (larger) neighbourhood.\footnote{For now, neighbourhood values are means across census tracts.} The generally much larger correlations at the neighbourhood rather than tract level strongly suggest that the neighbourhood is a better unit of observation as the tract-level means are affected by small-sample noise.
+While Vancouver has been referred to as a ``great place to have money, not to make money,'' there is a high degree of income sorting into high-priced neighbourhoods. Table \ref{tab:vancouverCorrelate} shows correlations among income, mean single detached home price (2025 dollars), the elasticity of home price per square foot with respect to square footage, the share of single family permits with laneways (2019-2025), the share of duplex permits (2019-2025), and the share of multiplex permits (2024-2025) in R1-1 zones. 
 
 \begin{table}
 \caption{\label{tab:vancouverCorrelate} Vancouver correlations: census tracts, bottom panel means at neighbourhood level}
-\input{text/vancouverCorrelate.tex}
+\input{vancouverCorrelate.tex}
 \end{table}
 
 Analysis at the neighbourhood level is also rationalized by Table \ref{tab:outSample}. There, we find that at the neighbourhood level, the elasticity of home price per square foot with respect to square footage computed using 2012-2018 transactions predicts the same elasticity out-of-sample for 2019-2023 transaction.The same is only marginally true at the census tract level, where the mean price per square foot predicts the subsequent period elasticity more strongly.
 
 \begin{table}
 \caption{\label{tab:outSample} Out-of-sample prediction of home price per square foot elasticity at the census tract and neighbourhood levels.}
-\input{text/outSample.tex}
+\input{outSample.tex}
 \end{table}
 
 
@@ -239,15 +239,15 @@ Figure \ref{fig:vancouverSpatial} plots the latitude and longitude of all new co
 
 \begin{figure}
   \caption{\label{fig:vancouverSpatial} Latitude and longitude of City of Vancouver permits issued in R1-1 zones. Top panel: census tract-specific mean price per square foot for single family homes, 2012-2019, CPI-adjusted to 2025. Bottom panel: type of permit issued since January, 2019.}
-  \includegraphics[width=.6\textwidth]{text/vancouverPPSFSpatial.png}\\
-  \includegraphics[width=.6\textwidth]{text/vancouverUseSpatial.png}
+  \includegraphics[width=.6\textwidth]{vancouverPPSFSpatial.png}\\
+  \includegraphics[width=.6\textwidth]{vancouverUseSpatial.png}
 \end{figure}
 
 Figure \ref{fig:vancouverBar} shows the percentage of permits issued by use type, this type binning by decile of housing prices. Again, it is clear that infill housing is most prevalent in lower-priced neighbourhoods.
 
 \begin{figure}
   \caption{\label{fig:vancouverBar} Percentage of permits issued by use type, binned by decile of census tract mean price per square foot for single family homes, 2012-2019, CPI-adjusted to 2025.}
-  \includegraphics[width=\textwidth]{text/vancouverUseShareByPPSF.png}
+  \includegraphics[width=\textwidth]{vancouverUseShareByPPSF.png}
 \end{figure}
 
 Figure \ref{fig:vancouverRelativeMulti} plots the fraction of permits issued for multiplexes in 2024 and 2025 divided by the fraction for duplexes over the same period by census tract mean price per square foot bin.

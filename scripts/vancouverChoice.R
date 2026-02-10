@@ -16,6 +16,7 @@ MINWIDTH <- 30
 
 # Choices data
 dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
+print(table(dtChoice[,use]))
 print(head(dtChoice))
 dtChoice[,year:=year(permitnumbercreateddate)]
 dtChoice[,c("latitude","longitude"):=tstrsplit(geo_point_2d,","  )  ]
@@ -57,7 +58,7 @@ print(head(dtElasticityN))
 print(head(dtPriceCT))
 print(head(dtChoice))
 print(nrow(dtChoice))
-dtElasticityN[,neighbourhoodDescription:=str_to_upper(NEIGHBOURHOOD)]
+dtElasticityN[,neighbourhoodDescription:=toupper(NEIGHBOURHOOD)]
 dtElasticityN[neighbourhoodDescription=="ARBUTUS RIDGE - MACKENZIE HEIGHTS",neighbourhoodDescription:="ARBUTUS/MACKENZIE HEIGHTS"]
 dtElasticityN[neighbourhoodDescription=="MAIN & FRASER",neighbourhoodDescription:="MAIN/FRASER"]
 s1 <- unique(dtChoice[,neighbourhoodDescription])
@@ -91,30 +92,43 @@ dtChoice[,mergeZone:=tract] # ND or tract
 dtChoice[,lmedianIncome := log(medianIncome)]
 
 dtChoice[,lmedianPPSF:=log(medianPPSF)]
-dtChoice[distToLaneway<CUTDISTANCE & use=="single",use:="singleLaneway"]
-dtChoice[distToLaneway>=CUTDISTANCE & use=="single",use:="singleOnly"]
 dtChoice[,singleLaneway:=use=="single" & distToLaneway<CUTDISTANCE]
 dtChoice[,singleNoLaneway:=use=="single" & distToLaneway>=CUTDISTANCE]
+dtChoice[distToLaneway<CUTDISTANCE & use=="single",use:="singleLaneway"]
+dtChoice[distToLaneway>=CUTDISTANCE & use=="single",use:="singleOnly"]
 dtChoice[,duplex:=use=="duplex"]
 dtChoice[,multiplex:=use=="multi"]
 cols <- c("laneway","singleNoLaneway","singleLaneway","duplex","multiplex", "medianPPSF","medianIncome","elasticity")
 print(dtChoice[,median(landWidth),by=use])
-dfd
 
 x <- copy(dtChoice)[, (cols) := lapply(.SD, function(v) unname(as.numeric(v))), .SDcols = cols]
 
 print(stargazer(as.data.frame(x[, ..cols]), type = "latex", file = "text/summaryChoice.tex"))
 
-
-dtSingle <- dtChoice[use=="singleOnly" | use=="singleLaneway"]
-C <- cor(dtSingle[,.(laneway,lmedianIncome,interactionSingle,elasticity,medianPPSF)])
+dtLaneway <- dtChoice[use=="singleLaneway" | use=="singleOnly",.(laneway=mean(use=="singleLaneway")),by="tract"]
+dtDuplex <- dtChoice[year<2024,.(duplex=mean(duplex)),by="tract"]
+dtMultiplex <- dtChoice[year>=2024,.(multiplex=mean(multiplex)),by="tract"]
+dtStats <- dtChoice[,.(lmedianIncome = mean(lmedianIncome, na.rm = TRUE), singlePremium = mean(interactionSingle, na.rm = TRUE), elasticity = mean(elasticity, na.rm = TRUE), medianPPSF = mean(medianPPSF, na.rm = TRUE)), by=tract]
+print(head(dtStats))
+print(head(dtLaneway))
+print(summary(dtLaneway))
+print(head(dtDuplex))
+print(head(dtMultiplex))
+dtStats <- merge(dtStats,dtLaneway,by="tract",all.x=TRUE)
+dtStats <- merge(dtStats,dtMultiplex,by="tract",all.x=TRUE)
+dtStats  <- merge(dtStats,dtDuplex,by="tract",all.x=TRUE)
+print(summary(dtChoice))
+print(table(dtChoice[,use]))
+C <- cor(dtStats[,.(laneway,lmedianIncome,singlePremium,elasticity,duplex,multiplex,medianPPSF) ],use="complete.obs")
 # correlation matrix
 # convert to data.table (optional, but tidy)
 C_dt <- as.data.table(C, keep.rownames = "Variable")
 # export to LaTeX
-print( xtable(C_dt, digits = 3), file = "text/vancouverCorrelate.tex", floating=FALSE, include.rownames = FALSE )
+print( xtable(C_dt, digits = 2), file = "text/vancouverCorrelate.tex", floating=FALSE, include.rownames = FALSE )
 # toggle for lanewayResidual estimation level
+
 # print summary statistics for tabulating in R
+dtSingle <- dtChoice[use=="singleOnly" | use=="singleLaneway"]
 rrc <- feols(laneway ~ lmedianPPSF + landWidth |year  ,data=dtSingle,cluster="tract")
 rri <- feols(laneway ~ lmedianPPSF + landWidth + lmedianIncome|year  ,data=dtSingle,cluster="tract")
 rr <- feols(laneway ~ lmedianPPSF + landWidth +   elasticity|year  ,data=dtSingle,cluster="tract")
