@@ -144,11 +144,13 @@ war2_mat <- do.call(rbind, lapply(specs, function(s)
 ))
 df[,lsqft := log(MB_Total_Finished_Area)]
 regT <- feols(log(ppsf) ~ 0+ lsqft*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-regN <- feols(log(CONVEYANCE_PRICE) ~ 0+ lsqft*i(NEIGHBOURHOOD) | saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
-regL <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon | saleYear + age,data=df[age<MAXAGE])
+regN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*i(NEIGHBOURHOOD) + single*i(NEIGHBOURHOOD)| saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
+regL <- feols(log(CONVEYANCE_PRICE) ~  lsqft*lon | saleYear + age,data=df[age<MAXAGE])
+regLL <- feols( ppsf ~ MB_Total_Finished_Area*lon| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
+regLP <- feols( log(CONVEYANCE_PRICE) ~ lsqft*lon + single*lon| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
 regLN <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon | saleYear + age + NEIGHBOURHOOD,data=df[age<MAXAGE])
 regLNN <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon + lsqft*i(NEIGHBOURHOOD)| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
-for (reg in list(regT, regN, regL, regLN, regLNN)) {
+for (reg in list(regT, regN, regL, regLP,regLL,regLN, regLNN)) {
   print(fitstat(reg, c("war2","r2","ar2")))
 }
 #lsqft:NEIGHBOURHOOD::Renfrew Heights  
@@ -162,4 +164,5 @@ for (n in unique(df[,NEIGHBOURHOOD])) {
 	dtInteractionsNeighbourhood <- rbind(dtInteractionsNeighbourhood, x)
 }
 fwrite(dtInteractionsNeighbourhood,file="~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv")
+print(etable(regL,regLL,regLP))
 q("no")

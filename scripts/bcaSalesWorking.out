@@ -425,24 +425,32 @@ The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::
 > df[,lsqft := log(MB_Total_Finished_Area)]
 > regT <- feols(log(ppsf) ~ 0+ lsqft*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
 The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 82 others have been removed because of collinearity (see $collin.var).
-> regN <- feols(log(CONVEYANCE_PRICE) ~ 0+ lsqft*i(NEIGHBOURHOOD) | saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
-The variables 'NEIGHBOURHOOD::Cambie', 'NEIGHBOURHOOD::Cedar Cottage', 'NEIGHBOURHOOD::Collingwood', 'NEIGHBOURHOOD::Dunbar', 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview' and 21 others have been removed because of collinearity (see $collin.var).
-> regL <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon | saleYear + age,data=df[age<MAXAGE])
+> regN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*i(NEIGHBOURHOOD) + single*i(NEIGHBOURHOOD)| saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
+The variables 'NEIGHBOURHOOD::Cambie', 'NEIGHBOURHOOD::Cedar Cottage', 'NEIGHBOURHOOD::Collingwood', 'NEIGHBOURHOOD::Dunbar', 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview' and 32 others have been removed because of collinearity (see $collin.var).
+> regL <- feols(log(CONVEYANCE_PRICE) ~  lsqft*lon | saleYear + age,data=df[age<MAXAGE])
+> regLL <- feols( ppsf ~ MB_Total_Finished_Area*lon| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
+> regLP <- feols( log(CONVEYANCE_PRICE) ~ lsqft*lon + single*lon| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
 > regLN <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon | saleYear + age + NEIGHBOURHOOD,data=df[age<MAXAGE])
 > regLNN <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon + lsqft*i(NEIGHBOURHOOD)| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
 The variables 'NEIGHBOURHOOD::Killarney', 'NEIGHBOURHOOD::Kitsilano', 'NEIGHBOURHOOD::Knight', 'NEIGHBOURHOOD::Main & Fraser', 'NEIGHBOURHOOD::Marine Drive', 'NEIGHBOURHOOD::Marpole' and 10 others have been removed because of collinearity (see $collin.var).
-> for (reg in list(regT, regN, regL, regLN, regLNN)) {
+> for (reg in list(regT, regN, regL, regLP,regLL,regLN, regLNN)) {
 +   print(fitstat(reg, c("war2","r2","ar2")))
 + }
 Within Adj. R2: 0.157911
             R2: 0.858922
        Adj. R2: 0.854232
-Within Adj. R2: 0.463705
-            R2: 0.883306
-       Adj. R2: 0.881621
+Within Adj. R2: 0.474091
+            R2: 0.885853
+       Adj. R2: 0.883914
 Within Adj. R2: 0.805763
             R2: 0.855003
        Adj. R2: 0.853986
+Within Adj. R2: 0.405264
+            R2: 0.894409
+       Adj. R2: 0.891798
+Within Adj. R2: 0.084643
+            R2: 0.824123
+       Adj. R2: 0.819831
 Within Adj. R2: 0.458651
             R2: 0.8818
        Adj. R2: 0.880506
@@ -460,7 +468,51 @@ Within Adj. R2: 0.396937
 + 	dtInteractionsNeighbourhood <- rbind(dtInteractionsNeighbourhood, x)
 + }
 > fwrite(dtInteractionsNeighbourhood,file="~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv")
+> print(etable(regL,regLL,regLP))
+                                              regL             regLL
+Dependent Var.:              log(CONVEYANCE_PRICE)              ppsf
+                                                                    
+lsqft                            -205.7*** (22.95)                  
+lon                               8.544*** (1.419) -1,842.5* (638.4)
+lsqft x lon                     -1.677*** (0.1865)                  
+MB_Total_Finished_Area                                -4.860 (27.68)
+MB_Total_Finished_Area x lon                        -0.0387 (0.2249)
+singleTRUE                                                          
+lon x singleTRUE                                                    
+Fixed-Effects:               --------------------- -----------------
+saleYear                                       Yes               Yes
+age                                            Yes               Yes
+NEIGHBOURHOOD                                   No               Yes
+CTNAME                                          No               Yes
+____________________________ _____________________ _________________
+S.E.: Clustered                       by: saleYear      by: saleYear
+Observations                                 6,466             6,466
+R2                                         0.85500           0.82412
+Within R2                                  0.80585           0.08508
+
+                                             regLP
+Dependent Var.:              log(CONVEYANCE_PRICE)
+                                                  
+lsqft                              -178.8* (62.24)
+lon                                 9.494* (3.809)
+lsqft x lon                       -1.457* (0.5057)
+MB_Total_Finished_Area                            
+MB_Total_Finished_Area x lon                      
+singleTRUE                         -152.9. (71.43)
+lon x singleTRUE                  -1.243. (0.5803)
+Fixed-Effects:               ---------------------
+saleYear                                       Yes
+age                                            Yes
+NEIGHBOURHOOD                                  Yes
+CTNAME                                         Yes
+____________________________ _____________________
+S.E.: Clustered                       by: saleYear
+Observations                                 6,466
+R2                                         0.89441
+Within R2                                  0.40573
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > q("no")
 > proc.time()
    user  system elapsed 
- 21.496   6.928   9.408 
+ 22.312   6.948   9.646 
