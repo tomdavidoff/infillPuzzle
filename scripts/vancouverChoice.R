@@ -18,6 +18,10 @@ MINWIDTH <- 30
 dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
 print(table(dtChoice[,use]))
 print(head(dtChoice))
+dtChoice[,landWidth:=as.numeric(landWidth)]
+dtChoice <- dtChoice[!is.na(landWidth)]
+print(quantile(dtChoice[,landWidth],seq(.1,.9,.05)))
+q("no")
 dtChoice[,year:=year(permitnumbercreateddate)]
 dtChoice[,c("latitude","longitude"):=tstrsplit(geo_point_2d,","  )  ]
 # Downtown is Vancouver's primary business district, houses many arts, entertainment, and sports venues, and is close to several vibrant residential communities.
@@ -27,11 +31,9 @@ dtChoice[,lonDowntown:=-123.1207]
 dtChoice[,latitude:=as.numeric(latitude)]
 dtChoice[,longitude:=as.numeric(longitude)]
 dtChoice[,distDowntown:=distGeo(dtChoice[,c("longitude","latitude")],dtChoice[,c("lonDowntown","latDowntown")])]
-dtChoice[,landWidth:=as.numeric(landWidth)]
 dtChoice[,landDepth:=as.numeric(landDepth)]
 dtChoice[,landArea:=landWidth*landDepth  ]
 dtChoice <- dtChoice[landWidth>=MINWIDTH & landWidth<=MINDEPTH]
-dtChoice <- dtChoice[!is.na(landWidth)]
 dtPriceCT <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_tract.csv",colClasses=c(CTUID="character"))
 dtChoice <- merge(dtChoice,dtPriceCT,by="CTUID")
 dtChoice[,w33:=abs(landWidth-33)<=3]
