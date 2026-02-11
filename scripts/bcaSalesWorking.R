@@ -145,8 +145,10 @@ war2_mat <- do.call(rbind, lapply(specs, function(s)
 df[,lsqft := log(MB_Total_Finished_Area)]
 regT <- feols(log(ppsf) ~ 0+ lsqft*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
 regN <- feols(log(CONVEYANCE_PRICE) ~ 0+ lsqft*i(NEIGHBOURHOOD) | saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
+regL <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon | saleYear + age,data=df[age<MAXAGE])
 print(summary(regT))
 print(summary(regN))
+print(summary(regL))
 #lsqft:NEIGHBOURHOOD::Renfrew Heights  
 # turn coefficients of this form into a data.table
 df <- df[NEIGHBOURHOOD!="Shaughnessy"]

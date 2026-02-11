@@ -427,6 +427,7 @@ The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::
 The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 82 others have been removed because of collinearity (see $collin.var).
 > regN <- feols(log(CONVEYANCE_PRICE) ~ 0+ lsqft*i(NEIGHBOURHOOD) | saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
 The variables 'NEIGHBOURHOOD::Cambie', 'NEIGHBOURHOOD::Cedar Cottage', 'NEIGHBOURHOOD::Collingwood', 'NEIGHBOURHOOD::Dunbar', 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview' and 21 others have been removed because of collinearity (see $collin.var).
+> regL <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon | saleYear + age,data=df[age<MAXAGE])
 > print(summary(regT))
 OLS estimation, Dep. Var.: log(ppsf)
 Observations: 6,466
@@ -608,6 +609,19 @@ lsqft:NEIGHBOURHOOD::South Vancouver
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.155676     Adj. R2: 0.881621
                  Within R2: 0.4658  
+> print(summary(regL))
+OLS estimation, Dep. Var.: log(CONVEYANCE_PRICE)
+Observations: 6,466
+Fixed-effects: saleYear: 7,  age: 37
+Standard-errors: Clustered (saleYear) 
+            Estimate Std. Error  t value   Pr(>|t|)    
+lsqft     -205.65233  22.945945 -8.96247 0.00010778 ***
+lon          8.54368   1.418541  6.02287 0.00094547 ***
+lsqft:lon   -1.67686   0.186500 -8.99119 0.00010585 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.173531     Adj. R2: 0.853986
+                 Within R2: 0.805853
 > #lsqft:NEIGHBOURHOOD::Renfrew Heights  
 > # turn coefficients of this form into a data.table
 > df <- df[NEIGHBOURHOOD!="Shaughnessy"]
@@ -622,4 +636,4 @@ RMSE: 0.155676     Adj. R2: 0.881621
 > q("no")
 > proc.time()
    user  system elapsed 
- 20.661   6.472   9.213 
+ 19.119   4.762   9.244 
