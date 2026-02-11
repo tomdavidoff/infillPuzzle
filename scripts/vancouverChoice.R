@@ -1,4 +1,4 @@
-# VancouverChoice.int
+# VancouverChoice.R
 # R to analyze discrete choices of developers, maybe aggregate
 # Tom Davidoff
 # Feb 5, 2026
@@ -12,7 +12,9 @@ library(stargazer)
 library(xtable)
 CUTDISTANCE <- 20 # laneay
 MINDEPTH <- 100
+MAXDEPTH <- 140
 MINWIDTH <- 30
+MAXWIDTH <- 36
 
 # Choices data
 dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
@@ -20,24 +22,91 @@ print(table(dtChoice[,use]))
 print(head(dtChoice))
 dtChoice[,landWidth:=as.numeric(landWidth)]
 dtChoice <- dtChoice[!is.na(landWidth)]
-print(quantile(dtChoice[,landWidth],seq(.1,.9,.05)))
-q("no")
+print(quantile(dtChoice[,landWidth],seq(.0,.9,.05)))
+dtCoef <- fread("~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv",na.strings=c("","NA"))
+dtCoef[,neighbourhoodDescription:=toupper(neighbourhood)]
+dtCoef[neighbourhoodDescription=="ARBUTUS RIDGE - MACKENZIE HEIGHTS",neighbourhoodDescription:="ARBUTUS/MACKENZIE HEIGHTS"]
+
+dtCoef[neighbourhoodDescription=="MAIN & FRASER",neighbourhoodDescription:="MAIN/FRASER"]
+dtChoice <- merge(dtChoice,dtCoef,by="neighbourhoodDescription")
+
 dtChoice[,year:=year(permitnumbercreateddate)]
 dtChoice[,c("latitude","longitude"):=tstrsplit(geo_point_2d,","  )  ]
-# Downtown is Vancouver's primary business district, houses many arts, entertainment, and sports venues, and is close to several vibrant residential communities.
-# 49.2827° N, 123.1207° W per google
 dtChoice[,latDowntown:=49.2827]
 dtChoice[,lonDowntown:=-123.1207]
 dtChoice[,latitude:=as.numeric(latitude)]
 dtChoice[,longitude:=as.numeric(longitude)]
 dtChoice[,distDowntown:=distGeo(dtChoice[,c("longitude","latitude")],dtChoice[,c("lonDowntown","latDowntown")])]
+dtChoice <- dtChoice[landWidth %between% c(MINWIDTH,MAXWIDTH)]
+dtChoice <- dtChoice[landDepth %between% c(MINDEPTH,MAXDEPTH)]
+print(names(dtChoice))
+# Downtown is Vancouver's primary business district, houses many arts, entertainment, and sports venues, and is close to several vibrant residential communities.
 dtChoice[,landDepth:=as.numeric(landDepth)]
 dtChoice[,landArea:=landWidth*landDepth  ]
-dtChoice <- dtChoice[landWidth>=MINWIDTH & landWidth<=MINDEPTH]
-dtPriceCT <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_tract.csv",colClasses=c(CTUID="character"))
-dtChoice <- merge(dtChoice,dtPriceCT,by="CTUID")
-dtChoice[,w33:=abs(landWidth-33)<=3]
-dtChoice <- dtChoice[!is.na(landWidth)]
+setnames(dtChoice,"interactionLSF","elasticity")
+dtChoice[,duplexRatio:=2*exp(elasticity*.5)]
+
+# duplex sample
+dtChoice <- dtChoice[use!="laneway"] # not laneway only
+dtChoice[,single:=use=="single"]
+dtChoice[,duplex:=use=="duplex"]
+dtChoice[,multi:=use=="multi"]
+print(summary(dtChoice))
+
+# laneway
+dtChoice[use=="single",laneway:=distToLaneway<CUTDISTANCE]
+print(mean(dtChoice[use=="single",laneway]))
+
+ggplot(dtChoice[use=="single"],aes(x=longitude,y=latitude,color=laneway)) + geom_point()
+ggsave("text/lanewayMap.png")
+
+ggplot(dtChoice,aes(x=longitude,y=latitude,color=single)) + geom_point()
+ggsave("text/singleMap.png")
+
+ggplot(dtChoice,aes(x=longitude,y=latitude,color=multi)) + geom_point()
+ggsave("text/multiMap.png")
+
+
+
+
+
+
+print(cor(dtChoice[year>=2018 & use=="single",.(laneway,elasticity,medianPPSF,longitude)],use="complete.obs"))
+print(summary(feols(laneway ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
+print(summary(feols(laneway ~  medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
+print(summary(feols(laneway ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
+print(summary(feols(laneway ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
+print(summary(feols(laneway ~ elasticity +  landWidth + longitude, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
+
+
+# Duplex
+print(cor(dtChoice[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown)],use="complete.obs"))
+print(summary(feols(duplex ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
+print(summary(feols(duplex ~  medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
+print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
+print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
+q("no")
+
+# plot with bubbles proportional to nobs
+dPlot <- dtChoice[,.(elasticity=mean(elasticity),medianPPSF=mean(medianPPSF),nobs=.N),by="neighbourhoodDescription"]
+ggplot(dPlot, aes(x=medianPPSF, y=elasticity, size=nobs)) + geom_point()
+ggsave("text/elasticityMedianPrice.png")
+
+# Multiplex
+dtChoice[,multiplex:=use=="multi"]
+print(cor(dtChoice[year>=2024 ,.(multiplex,elasticity,medianPPSF)],use="complete.obs"))
+
+
+print(summary(feols(multiplex ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+print(summary(feols(multiplex ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+
+# All plex
+dtChoice[,single:=use=="single"]
+print(summary(feols(single ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2019,2026)], cluster="neighbourhoodDescription")))
+print(summary(feols(single ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2026)], cluster="neighbourhoodDescription")))
+
+print(table(dtChoice[,use]))
+q("no")
 
 # Income by census tract
 dtIncome <- fread("~/OneDrive - UBC/dataRaw/9810005801_databaseLoadingData.csv",
@@ -51,6 +120,8 @@ dtIncome[, tract := substr(DGUID, 13, 19)]
 dtChoice[,tract:=substring(CTUID,4,10)]
 a <- nrow(dtChoice)
 dtChoice <- merge(dtChoice,dtIncome,by="tract")
+
+
 
 # Mean price, single vs duplex premium and elasticity of ppsf among single/duplex, mean price by neighbourhood
 
@@ -74,7 +145,6 @@ print(setdiff(a,b))
 print(c("LOSS OF OBS?",a - nrow(dtChoice)))
 
 
-dtChoice <- dtChoice[use!="laneway"] # not laneway only
 dtChoice[,elasticity:=interactionlSqft]
 print(head(dtChoice))
 print(head(dtPriceCT))
@@ -165,9 +235,10 @@ mlogit <- multinom(use ~ lmedianPPSF + landWidth + lmedianIncome + elasticity + 
 print(summary(mlogitc))
 print(summary(mlogit))
 
-# plot with bubbles proportional to nobs
-dPlot <- dtChoice[,.(elasticity=mean(elasticity),medianPPSF=mean(medianPPSF),nobs=.N),by="tract"]
-ggplot(dPlot, aes(x=medianPPSF, y=elasticity, size=nobs)) + geom_point()
-ggsave("text/elasticityMedianPrice.png")
-
 stop()
+
+# 49.2827° N, 123.1207° W per google
+dtPriceCT <- fread("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_tract.csv",colClasses=c(CTUID="character"))
+dtChoice <- merge(dtChoice,dtPriceCT,by="CTUID")
+
+

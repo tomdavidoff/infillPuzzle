@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -160,13 +160,11 @@ Stratified Rental Apartment (Hi-Rise Construction)
 > 
 > dtMerge[,distDowntown:=distGeo(cbind(lon,lat),c(lonDowntown,latDowntown))]
 > regValue1 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) +lon*distDowntown|saleYear^ACTUAL_USE_DESCRIPTION,data=dtMerge )
-NOTES: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
-       3 fixed-effect singletons were removed (3 observations).
+NOTE: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
 Warning message:
 In log(age + 1) : NaNs produced
 > regValue2 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) +lon*distDowntown + i(NEIGHBOURHOOD)|saleYear^ACTUAL_USE_DESCRIPTION,data=dtMerge )
-NOTES: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
-       3 fixed-effect singletons were removed (3 observations).
+NOTE: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
 Warning message:
 In log(age + 1) : NaNs produced
 > # add census tract merge from Lon/Lat
@@ -189,13 +187,11 @@ In log(age + 1) : NaNs produced
 > print(nrow(df))
 [1] 77853
 > regValue3 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) +lon*distDowntown |saleYear^ACTUAL_USE_DESCRIPTION + CTNAME,data=df )
-NOTES: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
-       3/0 fixed-effect singletons were removed (3 observations).
+NOTE: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
 Warning message:
 In log(age + 1) : NaNs produced
 > regValue4 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) |saleYear^ACTUAL_USE_DESCRIPTION + CTNAME,data=df )
-NOTES: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
-       3/0 fixed-effect singletons were removed (3 observations).
+NOTE: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
 Warning message:
 In log(age + 1) : NaNs produced
 > # print etable with adjusted r2
@@ -203,55 +199,55 @@ In log(age + 1) : NaNs produced
                                             regValue1             regValue2
 Dependent Var.:                 log(CONVEYANCE_PRICE) log(CONVEYANCE_PRICE)
                                                                            
-log(MB_Total_Finished_Area)         1.124*** (0.0024)     1.071*** (0.0025)
-log(age+1)                        -0.0403*** (0.0007)   -0.0358*** (0.0007)
-lon                                -5.394*** (0.0693)    -9.232*** (0.1524)
-distDowntown                       0.0446*** (0.0013)    0.0805*** (0.0023)
-lon x distDowntown                0.0004*** (1.05e-5)   0.0007*** (1.84e-5)
-NEIGHBOURHOOD = Cambie                                   0.0988*** (0.0089)
-NEIGHBOURHOOD = CedarCottage                             0.1605*** (0.0106)
-NEIGHBOURHOOD = CoalHarbour                              0.4580*** (0.0117)
-NEIGHBOURHOOD = Collingwood                              0.3261*** (0.0113)
-NEIGHBOURHOOD = Downtown                                 0.0440*** (0.0102)
-NEIGHBOURHOOD = DowntownSouth                              -0.0086 (0.0100)
-NEIGHBOURHOOD = Dunbar                                     -0.0006 (0.0088)
-NEIGHBOURHOOD = Fairview                                -0.0512*** (0.0084)
-NEIGHBOURHOOD = FalseCreekNorth                          0.1296*** (0.0100)
-NEIGHBOURHOOD = Fraserview                               0.2198*** (0.0127)
-NEIGHBOURHOOD = Grandview                                0.2194*** (0.0114)
-NEIGHBOURHOOD = HastingsEast                             0.2654*** (0.0130)
-NEIGHBOURHOOD = Kerrisdale                               0.0578*** (0.0085)
-NEIGHBOURHOOD = Killarney                                0.2811*** (0.0126)
-NEIGHBOURHOOD = Kitsilano                               -0.1276*** (0.0072)
-NEIGHBOURHOOD = Knight                                   0.1338*** (0.0114)
-NEIGHBOURHOOD = Main&Fraser                              0.1042*** (0.0097)
-NEIGHBOURHOOD = MarineDrive                              0.2961*** (0.0113)
-NEIGHBOURHOOD = Marpole                                  0.2017*** (0.0091)
-NEIGHBOURHOOD = MountPleasant                            0.0735*** (0.0097)
-NEIGHBOURHOOD = Oakridge                                 0.2055*** (0.0096)
-NEIGHBOURHOOD = PointGrey                                0.0435*** (0.0094)
-NEIGHBOURHOOD = Renfrew                                  0.1742*** (0.0137)
-NEIGHBOURHOOD = RenfrewHeights                           0.2814*** (0.0136)
-NEIGHBOURHOOD = Shaughnessy                              0.1824*** (0.0103)
-NEIGHBOURHOOD = SouthGranville                           0.1736*** (0.0098)
-NEIGHBOURHOOD = SouthVancouver                           0.0918*** (0.0107)
-NEIGHBOURHOOD = Southlands                               0.0940*** (0.0115)
-NEIGHBOURHOOD = WestEnd                                 -0.0892*** (0.0098)
+log(MB_Total_Finished_Area)         1.124*** (0.0275)     1.071*** (0.0311)
+log(age+1)                        -0.0403*** (0.0111)    -0.0358** (0.0111)
+lon                                -5.394*** (0.3731)     -9.232*** (1.021)
+distDowntown                       0.0446*** (0.0068)    0.0805*** (0.0150)
+lon x distDowntown                0.0004*** (5.56e-5)    0.0007*** (0.0001)
+NEIGHBOURHOOD = Cambie                                     0.0988* (0.0435)
+NEIGHBOURHOOD = CedarCottage                              0.1605** (0.0507)
+NEIGHBOURHOOD = CoalHarbour                              0.4580*** (0.0374)
+NEIGHBOURHOOD = Collingwood                              0.3261*** (0.0621)
+NEIGHBOURHOOD = Downtown                                    0.0440 (0.0421)
+NEIGHBOURHOOD = DowntownSouth                              -0.0086 (0.0319)
+NEIGHBOURHOOD = Dunbar                                     -0.0006 (0.0226)
+NEIGHBOURHOOD = Fairview                                  -0.0512* (0.0226)
+NEIGHBOURHOOD = FalseCreekNorth                           0.1296** (0.0382)
+NEIGHBOURHOOD = Fraserview                               0.2198*** (0.0568)
+NEIGHBOURHOOD = Grandview                                0.2194*** (0.0612)
+NEIGHBOURHOOD = HastingsEast                             0.2654*** (0.0654)
+NEIGHBOURHOOD = Kerrisdale                                0.0578** (0.0217)
+NEIGHBOURHOOD = Killarney                                0.2811*** (0.0526)
+NEIGHBOURHOOD = Kitsilano                               -0.1276*** (0.0171)
+NEIGHBOURHOOD = Knight                                     0.1338* (0.0565)
+NEIGHBOURHOOD = Main&Fraser                                0.1042* (0.0505)
+NEIGHBOURHOOD = MarineDrive                              0.2961*** (0.0572)
+NEIGHBOURHOOD = Marpole                                  0.2017*** (0.0370)
+NEIGHBOURHOOD = MountPleasant                               0.0735 (0.0464)
+NEIGHBOURHOOD = Oakridge                                 0.2055*** (0.0308)
+NEIGHBOURHOOD = PointGrey                                   0.0435 (0.0352)
+NEIGHBOURHOOD = Renfrew                                   0.1742** (0.0634)
+NEIGHBOURHOOD = RenfrewHeights                           0.2814*** (0.0589)
+NEIGHBOURHOOD = Shaughnessy                              0.1824*** (0.0408)
+NEIGHBOURHOOD = SouthGranville                           0.1736*** (0.0298)
+NEIGHBOURHOOD = SouthVancouver                             0.0918* (0.0437)
+NEIGHBOURHOOD = Southlands                               0.0940*** (0.0263)
+NEIGHBOURHOOD = WestEnd                                 -0.0892*** (0.0244)
 Fixed-Effects:                  --------------------- ---------------------
 saleYear-ACTUAL_USE_DESCRIPTION                   Yes                   Yes
 CTNAME                                             No                    No
 _______________________________ _____________________ _____________________
-S.E. type                                         IID                   IID
-Adj. R2                                       0.90708               0.91697
+S.E.: Clustered                 by: saleYear-ACTUAL.. by: saleYear-ACTUAL..
+Adj. R2                                       0.90713               0.91701
 
                                             regValue3             regValue4
 Dependent Var.:                 log(CONVEYANCE_PRICE) log(CONVEYANCE_PRICE)
                                                                            
-log(MB_Total_Finished_Area)         1.073*** (0.0024)     1.076*** (0.0025)
-log(age+1)                        -0.0324*** (0.0007)   -0.0304*** (0.0007)
-lon                                 2.088*** (0.3412)                      
-distDowntown                      -0.1004*** (0.0053)                      
-lon x distDowntown               -0.0008*** (4.31e-5)                      
+log(MB_Total_Finished_Area)         1.073*** (0.0305)     1.076*** (0.0303)
+log(age+1)                         -0.0324** (0.0107)    -0.0304** (0.0110)
+lon                                     2.088 (1.422)                      
+distDowntown                      -0.1004*** (0.0253)                      
+lon x distDowntown                -0.0008*** (0.0002)                      
 NEIGHBOURHOOD = Cambie                                                     
 NEIGHBOURHOOD = CedarCottage                                               
 NEIGHBOURHOOD = CoalHarbour                                                
@@ -285,14 +281,10 @@ Fixed-Effects:                  --------------------- ---------------------
 saleYear-ACTUAL_USE_DESCRIPTION                   Yes                   Yes
 CTNAME                                            Yes                   Yes
 _______________________________ _____________________ _____________________
-S.E. type                                         IID                   IID
-Adj. R2                                       0.92156               0.92061
+S.E.: Clustered                 by: saleYear-ACTUAL.. by: saleYear-ACTUAL..
+Adj. R2                                       0.92160               0.92065
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-Warning messages:
-1: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
-2: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
-3: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
 > df[,propertyType:=ifelse(ACTUAL_USE_DESCRIPTION %chin% c("Single Family Dwelling","Residential Dwelling with Suite"),"single",ifelse(grepl("Duplex,",ACTUAL_USE_DESCRIPTION),"duplex",ifelse(ACTUAL_USE_DESCRIPTION=="Row Housing (Single Unit Ownership)","TH","condo")))]
 > df <- df[propertyType!="single" | Zoning=="R1-1"]
 > df[,single:=propertyType=="single"]
@@ -379,848 +371,255 @@ Warning messages:
 > df <- df[propertyType %chin% c("condo","TH")==FALSE] # apples to apples!
 > ONTARIOLON <- -123.105 # google
 > df[,east:=lon>ONTARIOLON]
-> regEast <- feols(ppsf ~ i(roundSQFT) | saleYear + age + CTNAME, data=df[east==1 & age<MAXAGE])
-> regEastPoly <- feols(ppsf ~ sfk + I(sfk^2) + I(sfk^3) | saleYear + age + CTNAME, data=df[east==0& age<MAXAGE])
-NOTE: 0/0/4 fixed-effect singletons were removed (4 observations).
-> regWest <- feols(ppsf ~ i(roundSQFT) | saleYear + age + CTNAME, data=df[east==0 & age<MAXAGE])
-NOTE: 0/0/4 fixed-effect singletons were removed (4 observations).
-> regWestPoly <- feols(ppsf ~ sfk + I(sfk^2) + I(sfk^3) | saleYear + age + CTNAME, data=df[east==0& age<MAXAGE])
-NOTE: 0/0/4 fixed-effect singletons were removed (4 observations).
-> etable(regEast,regEastPoly)
-                          regEast      regEastPoly
-Dependent Var.:              ppsf             ppsf
-                                                  
-roundSQFT = 6    -38.99** (14.37)                 
-roundSQFT = 7   -58.50*** (14.68)                 
-roundSQFT = 8   -75.25*** (15.00)                 
-roundSQFT = 9   -107.1*** (14.71)                 
-roundSQFT = 10  -130.1*** (14.03)                 
-roundSQFT = 11  -143.2*** (13.87)                 
-roundSQFT = 12  -167.6*** (14.02)                 
-roundSQFT = 13  -191.9*** (14.15)                 
-roundSQFT = 14  -204.6*** (14.16)                 
-roundSQFT = 15  -222.1*** (15.70)                 
-roundSQFT = 16  -261.1*** (17.92)                 
-roundSQFT = 17  -263.0*** (24.77)                 
-roundSQFT = 18  -201.9*** (27.78)                 
-roundSQFT = 19  -244.3*** (36.70)                 
-roundSQFT = 20  -324.7*** (37.12)                 
-sfk                                 318.8* (158.6)
-I(I(sfk^2))                       -181.3** (67.60)
-I(I(sfk^3))                        25.17** (9.212)
-Fixed-Effects:  ----------------- ----------------
-saleYear                      Yes              Yes
-age                           Yes              Yes
-CTNAME                        Yes              Yes
-_______________ _________________ ________________
-S.E. type                     IID              IID
-Observations                3,765            2,697
-R2                        0.78667          0.74876
-Within R2                 0.17849          0.04489
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-> etable(regWest,regWestPoly)
-                          regWest      regWestPoly
-Dependent Var.:              ppsf             ppsf
-                                                  
-roundSQFT = 5      -117.3 (145.4)                 
-roundSQFT = 6     -273.9. (142.7)                 
-roundSQFT = 7     -245.8. (142.3)                 
-roundSQFT = 8     -331.6* (143.6)                 
-roundSQFT = 9     -251.1. (143.6)                 
-roundSQFT = 10    -293.5* (143.9)                 
-roundSQFT = 11    -321.9* (143.3)                 
-roundSQFT = 12    -328.2* (143.0)                 
-roundSQFT = 13   -382.7** (143.1)                 
-roundSQFT = 14   -399.5** (143.0)                 
-roundSQFT = 15   -417.8** (143.1)                 
-roundSQFT = 16   -427.6** (143.7)                 
-roundSQFT = 17   -436.0** (144.5)                 
-roundSQFT = 18  -503.2*** (148.8)                 
-roundSQFT = 19    -382.7* (154.8)                 
-roundSQFT = 20   686.1*** (200.8)                 
-roundSQFT = 21   -647.3** (201.2)                 
-roundSQFT = 23    -459.3* (203.6)                 
-sfk                                 318.8* (158.6)
-I(I(sfk^2))                       -181.3** (67.60)
-I(I(sfk^3))                        25.17** (9.212)
-Fixed-Effects:  ----------------- ----------------
-saleYear                      Yes              Yes
-age                           Yes              Yes
-CTNAME                        Yes              Yes
-_______________ _________________ ________________
-S.E. type                     IID              IID
-Observations                2,697            2,697
-R2                        0.75857          0.74876
-Within R2                 0.08221          0.04489
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > # functional form
-> regEW <- feols(ppsf ~ (sfk + I(sfk^2) + I(sfk^3))*i(east) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variables 'sfk:east::TRUE', 'I(I(sfk^2)):east::TRUE' and
-'I(I(sfk^3)):east::TRUE' have been removed because of collinearity (see
-$collin.var).
-> regN <- feols(ppsf ~ (sfk + I(sfk^2) + I(sfk^3))*i(NEIGHBOURHOOD) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variables 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey',
-'sfk:NEIGHBOURHOOD::Southlands', 'I(I(sfk^2)):NEIGHBOURHOOD::Shaughnessy',
-'I(I(sfk^2)):NEIGHBOURHOOD::Southlands', 'I(I(sfk^3)):NEIGHBOURHOOD::Marine
-Drive' and 2 others have been removed because of collinearity (see $collin.var).
-> regT <- feols(ppsf ~ (sfk + I(sfk^2) + I(sfk^3))*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01',
-'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 87 others have been
-removed because of collinearity (see $collin.var).
-> print(c(fitstat(regEW,"war2"),fitstat(regN,"war2"),fitstat(regT,"war2")))
-$war2
-      war2 
-0.08899775 
-
-$war2
-     war2 
-0.1245315 
-
-$war2
-     war2 
-0.1421968 
-
-> regEW <- feols(ppsf ~ (sfk + I(sfk^2))*i(east) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variables 'sfk:east::TRUE' and 'I(I(sfk^2)):east::TRUE' have been removed
-because of collinearity (see $collin.var).
-> regN <- feols(ppsf ~ (sfk + I(sfk^2) )*i(NEIGHBOURHOOD) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variables 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey',
-'sfk:NEIGHBOURHOOD::Southlands', 'I(I(sfk^2)):NEIGHBOURHOOD::Shaughnessy' and
-'I(I(sfk^2)):NEIGHBOURHOOD::Southlands' have been removed because of
-collinearity (see $collin.var).
-> regT <- feols(ppsf ~ (sfk + I(sfk^2) )*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01',
-'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 81 others have been
-removed because of collinearity (see $collin.var).
-> print(c(fitstat(regEW,"war2"),fitstat(regN,"war2"),fitstat(regT,"war2")))
-$war2
-      war2 
-0.08696621 
-
-$war2
-     war2 
-0.1170449 
-
-$war2
-     war2 
-0.1272736 
-
-> regEW <- feols(log(ppsf) ~ log(sfk)*i(east) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variable 'log(sfk):east::TRUE' has been removed because of collinearity (see
-$collin.var).
-> regN <- feols(log(ppsf) ~ log(sfk )*i(NEIGHBOURHOOD) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variables 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey' and
-'log(sfk):NEIGHBOURHOOD::Southlands' have been removed because of collinearity
-(see $collin.var).
-> regT <- feols(log(ppsf) ~ log(sfk)*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01',
-'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 77 others have been
-removed because of collinearity (see $collin.var).
-> print(c(fitstat(regEW,"war2"),fitstat(regN,"war2"),fitstat(regT,"war2")))
-$war2
-     war2 
-0.1409831 
-
-$war2
-     war2 
-0.1578719 
-
-$war2
-     war2 
-0.1580453 
-
-> regEW <- feols(ppsf ~ (sfk)*i(east) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variable 'sfk:east::TRUE' has been removed because of collinearity (see
-$collin.var).
-> regN <- feols(ppsf ~ (sfk )*i(NEIGHBOURHOOD) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variables 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey' and
-'sfk:NEIGHBOURHOOD::Southlands' have been removed because of collinearity (see
-$collin.var).
-> regT <- feols(ppsf ~ (sfk)*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-NOTE: 0/0/3 fixed-effect singletons were removed (3 observations).
-The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01',
-'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 77 others have been
-removed because of collinearity (see $collin.var).
-> print(c(fitstat(regEW,"war2"),fitstat(regN,"war2"),fitstat(regT,"war2")))
-$war2
-      war2 
-0.08670987 
-
-$war2
-      war2 
-0.09983353 
-
-$war2
-     war2 
-0.1154374 
-
-> df[,single:=propertyType=="single"]
-> regEW <- feols(ppsf ~ single*i(east) | saleYear + age +CTNAME, data=df[age<20])
-NOTE: 0/0/5 fixed-effect singletons were removed (5 observations).
-The variables 'singleTRUE:east::FALSE', 'singleFALSE:east::TRUE' and
-'singleTRUE:east::TRUE' have been removed because of collinearity (see
-$collin.var).
-> regN <- feols(ppsf ~ single*i(NEIGHBOURHOOD) | saleYear + age +CTNAME, data=df[age<20])
-NOTE: 0/0/5 fixed-effect singletons were removed (5 observations).
-The variables 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey',
-'singleTRUE:NEIGHBOURHOOD::Arbutus Ridge - Mackenzie Heights',
-'singleTRUE:NEIGHBOURHOOD::Cambie', 'singleTRUE:NEIGHBOURHOOD::Cedar Cottage',
-'singleTRUE:NEIGHBOURHOOD::Collingwood' and 21 others have been removed because
-of collinearity (see $collin.var).
-> regT <- feols(ppsf ~ single*i(CTNAME) | saleYear + age +CTNAME, data=df[age<20])
-NOTE: 0/0/5 fixed-effect singletons were removed (5 observations).
-The variables 'CTNAME::0002.03', 'CTNAME::0003.01', 'CTNAME::0003.02',
-'CTNAME::0004.01', 'CTNAME::0004.02', 'CTNAME::0005.00' and 154 others have been
-removed because of collinearity (see $collin.var).
-> print(c(fitstat(regEW,"war2"),fitstat(regN,"war2"),fitstat(regT,"war2")))
-$war2
-      war2 
-0.01784865 
-
-$war2
-      war2 
-0.03036667 
-
-$war2
-      war2 
-0.06308069 
-
-> nBy <- df[age<20 & propertyType %in% c("single","duplex"),.(ner=.N),by=CTNAME]
-> df <- merge(df,nBy,by="CTNAME")
-> df <- df[ner>MINOBS] # only keep census tracts with more than 10 single/duplex sales
-> print(table(nBy$ner))
-
-  1   2   3   5   6   7   8   9  10  16  18  19  21  26  29  33  34  36  37  38 
-  5   2   1   1   1   1   1   1   1   1   2   2   1   2   2   2   1   1   2   1 
- 41  42  44  45  48  55  56  57  59  60  62  64  65  69  70  71  72  74  78  81 
-  1   1   1   1   3   1   2   2   1   1   1   1   1   4   1   1   2   1   1   2 
- 86  87  88  89  94  96  99 100 105 108 111 112 117 121 124 133 135 170 177 180 
-  1   1   1   1   1   1   1   1   2   1   1   1   1   1   1   1   1   1   1   1 
-181 185 247 380 
-  1   1   1   1 
-> # winner is 3rd order polynomial by census tract
-> # now for each CT, find a fitted value for age 0 to 3, and sqft 1/4*33*122, 1/2*.7*33*122, 1*.7*33*122, 1/3*1*33*122
-> # (find modal age between 0 and 5)
-> winAGE <- -1
-> winN <- 0
-> for (a in seq(0,5)) {
-+   nAge <- nrow(df[age==a ])
-+   if (nAge>winN) {
-+ 	  winAGE <- a
-+ 	  winN <- nAge
-+   }
-+ }
-> regT <- feols(ppsf ~ (sfk + I(sfk^2) + I(sfk^3))*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-The variables 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02',
-'CTNAME::0006.01', 'CTNAME::0006.02', 'CTNAME::0007.01' and 62 others have been
-removed because of collinearity (see $collin.var).
-> dtFit <- data.table(CTNAME=character(),sqft=numeric(),fittedPPSF=numeric())
-> print(coef(regT))
-                        sfk                 I(I(sfk^2)) 
-                  9345.1720                  -5513.3475 
-                I(I(sfk^3))         sfk:CTNAME::0003.01 
-                  1020.3635                  -9347.0832 
-        sfk:CTNAME::0003.02         sfk:CTNAME::0004.01 
-                 -9224.2453                   9979.8086 
-        sfk:CTNAME::0004.02         sfk:CTNAME::0006.01 
-                 -9390.5338                  -6350.6083 
-        sfk:CTNAME::0006.02         sfk:CTNAME::0007.01 
-                -10091.9933                  -4004.9395 
-        sfk:CTNAME::0008.02         sfk:CTNAME::0009.00 
-                -12297.3832                 -18647.4775 
-        sfk:CTNAME::0011.00         sfk:CTNAME::0012.01 
-                 -7719.9901                  -7158.2681 
-        sfk:CTNAME::0012.02         sfk:CTNAME::0013.01 
-                 -8645.0051                 -14226.6875 
-        sfk:CTNAME::0013.03         sfk:CTNAME::0013.04 
-                 -8832.3576                  -8040.3709 
-        sfk:CTNAME::0014.01         sfk:CTNAME::0014.02 
-                 -9189.3398                  -9660.8815 
-        sfk:CTNAME::0015.01         sfk:CTNAME::0015.02 
-                 -9545.5497                 -10766.7742 
-        sfk:CTNAME::0016.01         sfk:CTNAME::0016.04 
-                 -5997.2966                 -10890.5952 
-        sfk:CTNAME::0016.05         sfk:CTNAME::0017.02 
-                -15053.4781                  -9638.2068 
-        sfk:CTNAME::0017.03         sfk:CTNAME::0017.04 
-                -14910.1039                 -10566.9275 
-        sfk:CTNAME::0018.01         sfk:CTNAME::0018.02 
-                 -8809.8157                 -10963.7306 
-        sfk:CTNAME::0019.00         sfk:CTNAME::0023.00 
-                 -7619.3968                 -15144.3846 
-        sfk:CTNAME::0024.00         sfk:CTNAME::0025.00 
-                -10328.6664                 -10504.6814 
-        sfk:CTNAME::0026.00         sfk:CTNAME::0029.00 
-                -10771.8073                  -6873.4110 
-        sfk:CTNAME::0030.00         sfk:CTNAME::0031.01 
-                 -9372.9330                  -9456.8109 
-        sfk:CTNAME::0031.02         sfk:CTNAME::0032.01 
-                 -7663.6375                 -11445.6348 
-        sfk:CTNAME::0032.02         sfk:CTNAME::0033.01 
-                 -9559.2821                  -8198.9801 
-        sfk:CTNAME::0033.02         sfk:CTNAME::0034.01 
-                 -9868.9834                  -9867.5921 
-        sfk:CTNAME::0034.02         sfk:CTNAME::0035.01 
-                 -9263.6525                  -8266.6185 
-        sfk:CTNAME::0035.02         sfk:CTNAME::0036.01 
-                 -8488.2318                  -6552.5319 
-        sfk:CTNAME::0036.02         sfk:CTNAME::0037.01 
-                -18120.1421                 -10527.0920 
-        sfk:CTNAME::0037.02         sfk:CTNAME::0042.00 
-                 -9459.4494                 -18864.0813 
-        sfk:CTNAME::0043.01         sfk:CTNAME::0043.02 
-                -13749.6118                  -7144.2276 
-        sfk:CTNAME::0044.00         sfk:CTNAME::0045.01 
-                -22427.6527                 -12812.7402 
-        sfk:CTNAME::0045.02         sfk:CTNAME::0048.01 
-                 -3207.6098                 -32061.7253 
-        sfk:CTNAME::0050.02         sfk:CTNAME::0051.01 
-                 -1474.2191                 -14604.6772 
-        sfk:CTNAME::0051.02         sfk:CTNAME::0052.01 
-                 -8183.0216                  -6223.9486 
-        sfk:CTNAME::0052.02         sfk:CTNAME::0053.01 
-                 -9792.4752                  -9709.9174 
-        sfk:CTNAME::0053.02         sfk:CTNAME::0054.01 
-                -12674.1354                 -47536.6597 
-        sfk:CTNAME::0054.02         sfk:CTNAME::0055.02 
-                 -8851.8888                  -9331.2090 
-I(I(sfk^2)):CTNAME::0003.01 I(I(sfk^2)):CTNAME::0003.02 
-                  5244.1437                   5462.5410 
-I(I(sfk^2)):CTNAME::0004.01 I(I(sfk^2)):CTNAME::0004.02 
-                 -3017.7534                   5478.3294 
-I(I(sfk^2)):CTNAME::0006.01 I(I(sfk^2)):CTNAME::0006.02 
-                  4151.8938                   5960.3470 
-I(I(sfk^2)):CTNAME::0007.01 I(I(sfk^2)):CTNAME::0008.02 
-                  3684.7471                   6565.2350 
-I(I(sfk^2)):CTNAME::0009.00 I(I(sfk^2)):CTNAME::0011.00 
-                  8915.5879                   4683.4628 
-I(I(sfk^2)):CTNAME::0012.01 I(I(sfk^2)):CTNAME::0012.02 
-                  4557.0586                   5166.4018 
-I(I(sfk^2)):CTNAME::0013.01 I(I(sfk^2)):CTNAME::0013.03 
-                  7576.0744                   5159.3998 
-I(I(sfk^2)):CTNAME::0013.04 I(I(sfk^2)):CTNAME::0014.01 
-                  4926.9384                   5402.9641 
-I(I(sfk^2)):CTNAME::0014.02 I(I(sfk^2)):CTNAME::0015.01 
-                  5609.8967                   5551.1566 
-I(I(sfk^2)):CTNAME::0015.02 I(I(sfk^2)):CTNAME::0016.01 
-                  5870.8634                   4284.3066 
-I(I(sfk^2)):CTNAME::0016.04 I(I(sfk^2)):CTNAME::0016.05 
-                  6249.9198                   8164.9720 
-I(I(sfk^2)):CTNAME::0017.02 I(I(sfk^2)):CTNAME::0017.03 
-                  5598.8492                   8463.6382 
-I(I(sfk^2)):CTNAME::0017.04 I(I(sfk^2)):CTNAME::0018.01 
-                  6036.9068                   5324.0427 
-I(I(sfk^2)):CTNAME::0018.02 I(I(sfk^2)):CTNAME::0019.00 
-                  6153.6054                   4498.2995 
-I(I(sfk^2)):CTNAME::0023.00 I(I(sfk^2)):CTNAME::0024.00 
-                  7937.2818                   6015.5576 
-I(I(sfk^2)):CTNAME::0025.00 I(I(sfk^2)):CTNAME::0026.00 
-                  5963.4481                   6054.9170 
-I(I(sfk^2)):CTNAME::0029.00 I(I(sfk^2)):CTNAME::0030.00 
-                  4460.6981                   5358.3375 
-I(I(sfk^2)):CTNAME::0031.01 I(I(sfk^2)):CTNAME::0031.02 
-                  5506.8029                   4745.5457 
-I(I(sfk^2)):CTNAME::0032.01 I(I(sfk^2)):CTNAME::0032.02 
-                  6555.6057                   5634.0621 
-I(I(sfk^2)):CTNAME::0033.01 I(I(sfk^2)):CTNAME::0033.02 
-                  4954.6764                   5725.0172 
-I(I(sfk^2)):CTNAME::0034.01 I(I(sfk^2)):CTNAME::0034.02 
-                  5707.1392                   5399.2450 
-I(I(sfk^2)):CTNAME::0035.01 I(I(sfk^2)):CTNAME::0035.02 
-                  5009.6895                   5063.9510 
-I(I(sfk^2)):CTNAME::0036.01 I(I(sfk^2)):CTNAME::0036.02 
-                  4136.1999                   9270.5700 
-I(I(sfk^2)):CTNAME::0037.01 I(I(sfk^2)):CTNAME::0037.02 
-                  6521.7749                   5199.0293 
-I(I(sfk^2)):CTNAME::0042.00 I(I(sfk^2)):CTNAME::0043.01 
-                  9531.6640                   7356.2545 
-I(I(sfk^2)):CTNAME::0043.02 I(I(sfk^2)):CTNAME::0044.00 
-                  4534.6631                  10138.1924 
-I(I(sfk^2)):CTNAME::0045.01 I(I(sfk^2)):CTNAME::0045.02 
-                  7057.0933                    512.2892 
-I(I(sfk^2)):CTNAME::0048.01 I(I(sfk^2)):CTNAME::0050.02 
-                 20387.5431                    156.9498 
-I(I(sfk^2)):CTNAME::0051.01 I(I(sfk^2)):CTNAME::0051.02 
-                  8874.9395                   4775.8991 
-I(I(sfk^2)):CTNAME::0052.01 I(I(sfk^2)):CTNAME::0052.02 
-                  3923.3634                   5625.5682 
-I(I(sfk^2)):CTNAME::0053.01 I(I(sfk^2)):CTNAME::0053.02 
-                  5576.2870                   6774.2008 
-I(I(sfk^2)):CTNAME::0054.01 I(I(sfk^2)):CTNAME::0054.02 
-                 35064.9583                   5204.8232 
-I(I(sfk^2)):CTNAME::0055.02 I(I(sfk^3)):CTNAME::0003.01 
-                  5485.6096                   -949.3345 
-I(I(sfk^3)):CTNAME::0003.02 I(I(sfk^3)):CTNAME::0004.01 
-                 -1017.8010                    213.8992 
-I(I(sfk^3)):CTNAME::0004.02 I(I(sfk^3)):CTNAME::0006.01 
-                 -1012.9989                   -829.0563 
-I(I(sfk^3)):CTNAME::0006.02 I(I(sfk^3)):CTNAME::0007.01 
-                 -1106.9853                   -821.0668 
-I(I(sfk^3)):CTNAME::0008.02 I(I(sfk^3)):CTNAME::0009.00 
-                 -1148.2004                  -1436.7388 
-I(I(sfk^3)):CTNAME::0011.00 I(I(sfk^3)):CTNAME::0012.01 
-                  -893.6021                   -896.8100 
-I(I(sfk^3)):CTNAME::0012.02 I(I(sfk^3)):CTNAME::0013.01 
-                  -972.9411                  -1310.4776 
-I(I(sfk^3)):CTNAME::0013.03 I(I(sfk^3)):CTNAME::0013.04 
-                  -960.3901                   -940.7482 
-I(I(sfk^3)):CTNAME::0014.01 I(I(sfk^3)):CTNAME::0014.02 
-                 -1004.3074                  -1033.3296 
-I(I(sfk^3)):CTNAME::0015.01 I(I(sfk^3)):CTNAME::0015.02 
-                 -1025.7623                  -1045.8371 
-I(I(sfk^3)):CTNAME::0016.01 I(I(sfk^3)):CTNAME::0016.04 
-                  -876.0262                  -1138.5929 
-I(I(sfk^3)):CTNAME::0016.05 I(I(sfk^3)):CTNAME::0017.02 
-                 -1435.2405                  -1032.3707 
-I(I(sfk^3)):CTNAME::0017.03 I(I(sfk^3)):CTNAME::0017.04 
-                 -1507.8287                  -1097.8073 
-I(I(sfk^3)):CTNAME::0018.01 I(I(sfk^3)):CTNAME::0018.02 
-                 -1004.5782                  -1110.8996 
-I(I(sfk^3)):CTNAME::0019.00 I(I(sfk^3)):CTNAME::0023.00 
-                  -848.6887                  -1355.6379 
-I(I(sfk^3)):CTNAME::0024.00 I(I(sfk^3)):CTNAME::0025.00 
-                 -1099.5050                  -1083.5464 
-I(I(sfk^3)):CTNAME::0026.00 I(I(sfk^3)):CTNAME::0029.00 
-                 -1092.8495                   -883.5485 
-I(I(sfk^3)):CTNAME::0030.00 I(I(sfk^3)):CTNAME::0031.01 
-                  -985.0105                  -1017.6338 
-I(I(sfk^3)):CTNAME::0031.02 I(I(sfk^3)):CTNAME::0032.01 
-                  -910.9410                  -1186.2790 
-I(I(sfk^3)):CTNAME::0032.02 I(I(sfk^3)):CTNAME::0033.01 
-                 -1052.5197                   -939.1862 
-I(I(sfk^3)):CTNAME::0033.02 I(I(sfk^3)):CTNAME::0034.01 
-                 -1051.4399                  -1048.2406 
-I(I(sfk^3)):CTNAME::0034.02 I(I(sfk^3)):CTNAME::0035.01 
-                 -1001.4078                   -950.4209 
-I(I(sfk^3)):CTNAME::0035.02 I(I(sfk^3)):CTNAME::0036.01 
-                  -955.8516                   -808.0930 
-I(I(sfk^3)):CTNAME::0036.02 I(I(sfk^3)):CTNAME::0037.01 
-                 -1558.9098                  -1308.7754 
-I(I(sfk^3)):CTNAME::0037.02 I(I(sfk^3)):CTNAME::0042.00 
-                  -892.1813                  -1585.7095 
-I(I(sfk^3)):CTNAME::0043.01 I(I(sfk^3)):CTNAME::0043.02 
-                 -1285.9338                   -891.6705 
-I(I(sfk^3)):CTNAME::0044.00 I(I(sfk^3)):CTNAME::0045.01 
-                 -1548.1627                  -1211.7642 
-I(I(sfk^3)):CTNAME::0045.02 I(I(sfk^3)):CTNAME::0048.01 
-                   233.6581                  -4245.3591 
-I(I(sfk^3)):CTNAME::0050.02 I(I(sfk^3)):CTNAME::0051.01 
-                   129.4991                  -1744.4634 
-I(I(sfk^3)):CTNAME::0051.02 I(I(sfk^3)):CTNAME::0052.01 
-                  -893.3573                   -772.3440 
-I(I(sfk^3)):CTNAME::0052.02 I(I(sfk^3)):CTNAME::0053.01 
-                 -1030.5992                  -1023.9642 
-I(I(sfk^3)):CTNAME::0053.02 I(I(sfk^3)):CTNAME::0054.01 
-                 -1178.2595                  -8657.6969 
-I(I(sfk^3)):CTNAME::0054.02 I(I(sfk^3)):CTNAME::0055.02 
-                  -971.5887                  -1015.5222 
-> for (ct in unique(df$CTNAME)) {
-+ 	# confirm ct is in regression
-+ 	  if (is.na(coef(regT)[paste0("I(I(sfk^2)):CTNAME::",ct)])) {
-+ 	    next
-+ 	  }
-+ 	for (sqft in c(.25,.35,.7)) {
-+ 		newDt <- data.table(sfk=sqft*33*122/1000,age=winAGE,saleYear=2018,CTNAME=ct)
-+ 		fittedPPSF <- predict(regT,newdata=newDt)
-+ 		dtFit <- rbind(dtFit,data.table(CTNAME=ct,sqft=sqft,fittedPPSF=fittedPPSF))
-+ 	}
-+ }
-> print(dtFit)
-      CTNAME  sqft fittedPPSF
-      <char> <num>      <num>
-  1: 0003.01  0.25  1184.6877
-  2: 0003.01  0.35  1048.4179
-  3: 0003.01  0.70   833.2644
-  4: 0003.02  0.25   834.5699
-  5: 0003.02  0.35   838.4013
- ---                         
-191: 0054.02  0.35   950.4543
-192: 0054.02  0.70   763.0102
-193: 0055.02  0.25   875.3089
-194: 0055.02  0.35   862.5637
-195: 0055.02  0.70   811.8295
-> print(summary(dtFit)) # note absurd
-    CTNAME               sqft          fittedPPSF      
- Length:195         Min.   :0.2500   Min.   :-26404.7  
- Class :character   1st Qu.:0.2500   1st Qu.:   834.8  
- Mode  :character   Median :0.3500   Median :   972.4  
-                    Mean   :0.4333   Mean   :   911.1  
-                    3rd Qu.:0.7000   3rd Qu.:  1180.1  
-                    Max.   :0.7000   Max.   :  4604.0  
-> regT <- feols(ppsf ~ (sfk + I(sfk^2))*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-The variables 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02',
-'CTNAME::0006.01', 'CTNAME::0006.02', 'CTNAME::0007.01' and 61 others have been
-removed because of collinearity (see $collin.var).
-> dtFit <- data.table(CTNAME=character(),sqft=numeric(),fittedPPSF=numeric())
-> print(coef(regT))
-                        sfk                 I(I(sfk^2)) 
-                -371.132886                   74.657898 
-        sfk:CTNAME::0003.01         sfk:CTNAME::0003.02 
-                -764.264202                  460.807773 
-        sfk:CTNAME::0004.01         sfk:CTNAME::0004.02 
-               -1953.811555                  189.246154 
-        sfk:CTNAME::0006.01         sfk:CTNAME::0006.02 
-                 718.165564                  766.907358 
-        sfk:CTNAME::0007.01         sfk:CTNAME::0008.02 
-                1125.686718                 -149.959486 
-        sfk:CTNAME::0009.00         sfk:CTNAME::0011.00 
-                 748.958610                  487.902134 
-        sfk:CTNAME::0012.01         sfk:CTNAME::0012.02 
-                 955.668752                  439.428454 
-        sfk:CTNAME::0013.01         sfk:CTNAME::0013.03 
-                 184.873707                 -237.697593 
-        sfk:CTNAME::0013.04         sfk:CTNAME::0014.01 
-                 116.863505                  292.326313 
-        sfk:CTNAME::0014.02         sfk:CTNAME::0015.01 
-                 275.535159                  299.881038 
-        sfk:CTNAME::0015.02         sfk:CTNAME::0016.01 
-                -561.719952                  501.758150 
-        sfk:CTNAME::0016.04         sfk:CTNAME::0016.05 
-                 340.670803                  627.650624 
-        sfk:CTNAME::0017.02         sfk:CTNAME::0017.03 
-                 228.504709                  921.667255 
-        sfk:CTNAME::0017.04         sfk:CTNAME::0018.01 
-                 195.413927                  660.950201 
-        sfk:CTNAME::0018.02         sfk:CTNAME::0019.00 
-                  40.321533                  -34.709101 
-        sfk:CTNAME::0023.00         sfk:CTNAME::0024.00 
-                 902.480981                 1275.985035 
-        sfk:CTNAME::0025.00         sfk:CTNAME::0026.00 
-                 394.966045                  299.063452 
-        sfk:CTNAME::0029.00         sfk:CTNAME::0030.00 
-                 418.974249                 -236.519272 
-        sfk:CTNAME::0031.01         sfk:CTNAME::0031.02 
-                 200.825387                  663.408585 
-        sfk:CTNAME::0032.01         sfk:CTNAME::0032.02 
-                 212.277541                  374.628328 
-        sfk:CTNAME::0033.01         sfk:CTNAME::0033.02 
-                  37.377637                  215.302827 
-        sfk:CTNAME::0034.01         sfk:CTNAME::0034.02 
-                 187.276190                  188.086975 
-        sfk:CTNAME::0035.01         sfk:CTNAME::0035.02 
-                 530.305630                  312.936613 
-        sfk:CTNAME::0036.01         sfk:CTNAME::0036.02 
-                -103.230377                  -39.885832 
-        sfk:CTNAME::0037.01         sfk:CTNAME::0037.02 
-                1037.032481                 -630.708157 
-        sfk:CTNAME::0042.00         sfk:CTNAME::0043.01 
-                -319.945594                  218.911677 
-        sfk:CTNAME::0043.02         sfk:CTNAME::0044.00 
-                 391.205550                 -117.474051 
-        sfk:CTNAME::0045.01         sfk:CTNAME::0045.02 
-                -303.752833                 -732.898106 
-        sfk:CTNAME::0048.01         sfk:CTNAME::0050.02 
-               -2661.269986                 -340.698790 
-        sfk:CTNAME::0051.01         sfk:CTNAME::0051.02 
-               -1524.481146                 -456.041307 
-        sfk:CTNAME::0052.01         sfk:CTNAME::0052.02 
-                 192.711223                   87.551396 
-        sfk:CTNAME::0053.01         sfk:CTNAME::0053.02 
-                  73.181545                   92.136796 
-        sfk:CTNAME::0054.01         sfk:CTNAME::0054.02 
-               -1774.363495                   93.837946 
-        sfk:CTNAME::0055.02 I(I(sfk^2)):CTNAME::0003.01 
-                 320.187988                  150.011940 
-I(I(sfk^2)):CTNAME::0003.02 I(I(sfk^2)):CTNAME::0004.01 
-                -109.660960                  381.861221 
-I(I(sfk^2)):CTNAME::0004.02 I(I(sfk^2)):CTNAME::0006.01 
-                 -53.240900                 -167.685704 
-I(I(sfk^2)):CTNAME::0006.02 I(I(sfk^2)):CTNAME::0007.01 
-                -187.717479                 -236.728455 
-I(I(sfk^2)):CTNAME::0008.02 I(I(sfk^2)):CTNAME::0009.00 
-                  -7.201591                 -164.287073 
-I(I(sfk^2)):CTNAME::0011.00 I(I(sfk^2)):CTNAME::0012.01 
-                -125.256093                 -233.255179 
-I(I(sfk^2)):CTNAME::0012.02 I(I(sfk^2)):CTNAME::0013.01 
-                -113.391962                  -52.287190 
-I(I(sfk^2)):CTNAME::0013.03 I(I(sfk^2)):CTNAME::0013.04 
-                  23.141210                  -45.141719 
-I(I(sfk^2)):CTNAME::0014.01 I(I(sfk^2)):CTNAME::0014.02 
-                 -74.674004                  -75.203114 
-I(I(sfk^2)):CTNAME::0015.01 I(I(sfk^2)):CTNAME::0015.02 
-                 -83.415159                   87.443562 
-I(I(sfk^2)):CTNAME::0016.01 I(I(sfk^2)):CTNAME::0016.04 
-                -108.895746                  -94.603751 
-I(I(sfk^2)):CTNAME::0016.05 I(I(sfk^2)):CTNAME::0017.02 
-                -173.562288                  -65.686723 
-I(I(sfk^2)):CTNAME::0017.03 I(I(sfk^2)):CTNAME::0017.04 
-                -195.565898                  -56.255254 
-I(I(sfk^2)):CTNAME::0018.01 I(I(sfk^2)):CTNAME::0018.02 
-                -154.681388                  -34.899410 
-I(I(sfk^2)):CTNAME::0019.00 I(I(sfk^2)):CTNAME::0023.00 
-                 -20.531654                 -197.537983 
-I(I(sfk^2)):CTNAME::0024.00 I(I(sfk^2)):CTNAME::0025.00 
-                -245.185523                 -102.121109 
-I(I(sfk^2)):CTNAME::0026.00 I(I(sfk^2)):CTNAME::0029.00 
-                 -84.998134                 -117.702108 
-I(I(sfk^2)):CTNAME::0030.00 I(I(sfk^2)):CTNAME::0031.01 
-                  22.114208                  -58.953927 
-I(I(sfk^2)):CTNAME::0031.02 I(I(sfk^2)):CTNAME::0032.01 
-                -154.754184                  -45.877949 
-I(I(sfk^2)):CTNAME::0032.02 I(I(sfk^2)):CTNAME::0033.01 
-                -103.424734                  -20.990118 
-I(I(sfk^2)):CTNAME::0033.02 I(I(sfk^2)):CTNAME::0034.01 
-                 -52.474915                  -53.823951 
-I(I(sfk^2)):CTNAME::0034.02 I(I(sfk^2)):CTNAME::0035.01 
-                 -62.524629                 -129.152152 
-I(I(sfk^2)):CTNAME::0035.02 I(I(sfk^2)):CTNAME::0036.01 
-                 -89.509510                   -1.043508 
-I(I(sfk^2)):CTNAME::0036.02 I(I(sfk^2)):CTNAME::0037.01 
-                 -16.648236                 -342.615747 
-I(I(sfk^2)):CTNAME::0037.02 I(I(sfk^2)):CTNAME::0042.00 
-                 201.874941                   25.440093 
-I(I(sfk^2)):CTNAME::0043.01 I(I(sfk^2)):CTNAME::0043.02 
-                 -88.729068                 -128.759546 
-I(I(sfk^2)):CTNAME::0044.00 I(I(sfk^2)):CTNAME::0045.01 
-                  29.820271                  124.218804 
-I(I(sfk^2)):CTNAME::0045.02 I(I(sfk^2)):CTNAME::0048.01 
-                 212.206687                  876.666907 
-I(I(sfk^2)):CTNAME::0050.02 I(I(sfk^2)):CTNAME::0051.01 
-                  59.103757                  563.682693 
-I(I(sfk^2)):CTNAME::0051.02 I(I(sfk^2)):CTNAME::0052.01 
-                  65.993015                  -63.121680 
-I(I(sfk^2)):CTNAME::0052.02 I(I(sfk^2)):CTNAME::0053.01 
-                 -34.671146                  -39.143856 
-I(I(sfk^2)):CTNAME::0053.02 I(I(sfk^2)):CTNAME::0054.01 
-                 -29.542536                  664.978862 
-I(I(sfk^2)):CTNAME::0054.02 I(I(sfk^2)):CTNAME::0055.02 
-                 -42.894997                  -71.075554 
-> for (ct in unique(df$CTNAME)) {
-+ 	# confirm ct is in regression
-+ 	  if (is.na(coef(regT)[paste0("I(I(sfk^2)):CTNAME::",ct)])) {
-+ 	    next
-+ 	  }
-+ 	for (sqft in c(.25,.35,.7)) {
-+ 		newDt <- data.table(sfk=sqft*33*122/1000,age=winAGE,saleYear=2018,CTNAME=ct)
-+ 		fittedPPSF <- predict(regT,newdata=newDt)
-+ 		dtFit <- rbind(dtFit,data.table(CTNAME=ct,sqft=sqft,fittedPPSF=fittedPPSF))
-+ 	}
-+ }
-> print(dtFit)
-      CTNAME  sqft fittedPPSF
-      <char> <num>      <num>
-  1: 0003.01  0.25  1330.0811
-  2: 0003.01  0.35  1091.4663
-  3: 0003.01  0.70   829.8665
-  4: 0003.02  0.25   836.3548
-  5: 0003.02  0.35   838.4167
- ---                         
-191: 0054.02  0.35   969.0546
-192: 0054.02  0.70   767.5200
-193: 0055.02  0.25   879.4743
-194: 0055.02  0.35   862.4478
-195: 0055.02  0.70   812.0003
-> print(summary(dtFit)) # note absurd
-    CTNAME               sqft          fittedPPSF    
- Length:195         Min.   :0.2500   Min.   : 296.8  
- Class :character   1st Qu.:0.2500   1st Qu.: 870.5  
- Mode  :character   Median :0.3500   Median : 979.0  
-                    Mean   :0.4333   Mean   :1056.2  
-                    3rd Qu.:0.7000   3rd Qu.:1147.0  
-                    Max.   :0.7000   Max.   :2845.2  
-> regT <- feols(log(ppsf) ~ log(MB_Total_Finished_Area)*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-The variables 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02',
-'CTNAME::0006.01', 'CTNAME::0006.02', 'CTNAME::0007.01' and 60 others have been
-removed because of collinearity (see $collin.var).
-> dtFit <- data.table(CTNAME=character(),sqft=numeric(),fittedPPSF=numeric(),elasticity=numeric(),medianPPSF=numeric())
-> print(coef(regT))
-                log(MB_Total_Finished_Area) 
-                                -0.23780194 
-log(MB_Total_Finished_Area):CTNAME::0003.01 
-                                -0.17912326 
-log(MB_Total_Finished_Area):CTNAME::0003.02 
-                                -0.05125433 
-log(MB_Total_Finished_Area):CTNAME::0004.01 
-                                -0.31320177 
-log(MB_Total_Finished_Area):CTNAME::0004.02 
-                                -0.13905609 
-log(MB_Total_Finished_Area):CTNAME::0006.01 
-                                 0.17351667 
-log(MB_Total_Finished_Area):CTNAME::0006.02 
-                                 0.13535365 
-log(MB_Total_Finished_Area):CTNAME::0007.01 
-                                -0.15111420 
-log(MB_Total_Finished_Area):CTNAME::0008.02 
-                                -0.22308092 
-log(MB_Total_Finished_Area):CTNAME::0009.00 
-                                -0.15152166 
-log(MB_Total_Finished_Area):CTNAME::0011.00 
-                                -0.18273184 
-log(MB_Total_Finished_Area):CTNAME::0012.01 
-                                 0.05450474 
-log(MB_Total_Finished_Area):CTNAME::0012.02 
-                                -0.02420857 
-log(MB_Total_Finished_Area):CTNAME::0013.01 
-                                -0.17487524 
-log(MB_Total_Finished_Area):CTNAME::0013.03 
-                                -0.34116715 
-log(MB_Total_Finished_Area):CTNAME::0013.04 
-                                -0.14027911 
-log(MB_Total_Finished_Area):CTNAME::0014.01 
-                                -0.02829544 
-log(MB_Total_Finished_Area):CTNAME::0014.02 
-                                -0.13487463 
-log(MB_Total_Finished_Area):CTNAME::0015.01 
-                                -0.30250178 
-log(MB_Total_Finished_Area):CTNAME::0015.02 
-                                -0.40695400 
-log(MB_Total_Finished_Area):CTNAME::0016.01 
-                                -0.17198711 
-log(MB_Total_Finished_Area):CTNAME::0016.04 
-                                -0.17152263 
-log(MB_Total_Finished_Area):CTNAME::0016.05 
-                                -0.50629278 
-log(MB_Total_Finished_Area):CTNAME::0017.02 
-                                -0.15519696 
-log(MB_Total_Finished_Area):CTNAME::0017.03 
-                                 0.07391253 
-log(MB_Total_Finished_Area):CTNAME::0017.04 
-                                -0.12487435 
-log(MB_Total_Finished_Area):CTNAME::0018.01 
-                                -0.12200815 
-log(MB_Total_Finished_Area):CTNAME::0018.02 
-                                -0.32074484 
-log(MB_Total_Finished_Area):CTNAME::0019.00 
-                                -0.29589417 
-log(MB_Total_Finished_Area):CTNAME::0023.00 
-                                -0.02367959 
-log(MB_Total_Finished_Area):CTNAME::0024.00 
-                                 0.18897436 
-log(MB_Total_Finished_Area):CTNAME::0025.00 
-                                 0.05004774 
-log(MB_Total_Finished_Area):CTNAME::0026.00 
-                                -0.08892240 
-log(MB_Total_Finished_Area):CTNAME::0029.00 
-                                -0.18433481 
-log(MB_Total_Finished_Area):CTNAME::0030.00 
-                                -0.33645726 
-log(MB_Total_Finished_Area):CTNAME::0031.01 
-                                -0.03187509 
-log(MB_Total_Finished_Area):CTNAME::0031.02 
-                                 0.13948478 
-log(MB_Total_Finished_Area):CTNAME::0032.01 
-                                 0.03539765 
-log(MB_Total_Finished_Area):CTNAME::0032.02 
-                                 0.01159427 
-log(MB_Total_Finished_Area):CTNAME::0033.01 
-                                -0.03792404 
-log(MB_Total_Finished_Area):CTNAME::0033.02 
-                                -0.06787940 
-log(MB_Total_Finished_Area):CTNAME::0034.01 
-                                -0.12371798 
-log(MB_Total_Finished_Area):CTNAME::0034.02 
-                                -0.24090271 
-log(MB_Total_Finished_Area):CTNAME::0035.01 
-                                -0.07922941 
-log(MB_Total_Finished_Area):CTNAME::0035.02 
-                                -0.13927482 
-log(MB_Total_Finished_Area):CTNAME::0036.01 
-                                -0.37558701 
-log(MB_Total_Finished_Area):CTNAME::0036.02 
-                                -0.45179158 
-log(MB_Total_Finished_Area):CTNAME::0037.01 
-                                 0.01402278 
-log(MB_Total_Finished_Area):CTNAME::0037.02 
-                                -0.22409334 
-log(MB_Total_Finished_Area):CTNAME::0042.00 
-                                -0.28070549 
-log(MB_Total_Finished_Area):CTNAME::0043.01 
-                                -0.15807538 
-log(MB_Total_Finished_Area):CTNAME::0043.02 
-                                -0.18984325 
-log(MB_Total_Finished_Area):CTNAME::0044.00 
-                                 0.51660863 
-log(MB_Total_Finished_Area):CTNAME::0045.01 
-                                 0.55258363 
-log(MB_Total_Finished_Area):CTNAME::0045.02 
-                                -0.28091599 
-log(MB_Total_Finished_Area):CTNAME::0048.01 
-                                -0.24641980 
-log(MB_Total_Finished_Area):CTNAME::0050.02 
-                                -0.37786475 
-log(MB_Total_Finished_Area):CTNAME::0051.01 
-                                -0.12782017 
-log(MB_Total_Finished_Area):CTNAME::0051.02 
-                                -0.32769194 
-log(MB_Total_Finished_Area):CTNAME::0052.01 
-                                -0.27107335 
-log(MB_Total_Finished_Area):CTNAME::0052.02 
-                                -0.22620613 
-log(MB_Total_Finished_Area):CTNAME::0053.01 
-                                -0.29794277 
-log(MB_Total_Finished_Area):CTNAME::0053.02 
-                                -0.04117166 
-log(MB_Total_Finished_Area):CTNAME::0054.01 
-                                -0.16615681 
-log(MB_Total_Finished_Area):CTNAME::0054.02 
-                                -0.31700297 
-log(MB_Total_Finished_Area):CTNAME::0055.02 
-                                 0.11551689 
-> for (ct in unique(df$CTNAME)) {
-+ 	# confirm ct is in regression
-+ 	  if (is.na(coef(regT)[paste0("log(MB_Total_Finished_Area):CTNAME::",ct)])) {
-+ 	    next
-+ 	  }
-+ 	for (sqft in c(.25,.35,.7)) {
-+ 		newDt <- data.table(MB_Total_Finished_Area=sqft*33*122,age=winAGE,saleYear=2018,CTNAME=ct)
-+ 		fittedPPSF <- predict(regT,newdata=newDt)
-+ 		medianPPSF <- df[CTNAME==ct & age<MAXAGE & propertyType=="single",mean(ppsf,na.rm=TRUE)]
-+ 		elasticity <- coef(regT)[paste0("log(MB_Total_Finished_Area):CTNAME::",ct)]
-+ 		dtFit <- rbind(dtFit,data.table(CTNAME=ct,sqft=sqft,fittedPPSF=fittedPPSF,elasticity=elasticity,medianPPSF=medianPPSF))
-+ 	}
-+ }
-> print(dtFit)
-      CTNAME  sqft fittedPPSF  elasticity medianPPSF
-      <char> <num>      <num>       <num>      <num>
-  1: 0003.01  0.25   6.983035 -0.17912326   479.0143
-  2: 0003.01  0.35   6.842751 -0.17912326   479.0143
-  3: 0003.01  0.70   6.553761 -0.17912326   479.0143
-  4: 0003.02  0.25   6.828149 -0.05125433   503.0346
-  5: 0003.02  0.35   6.730890 -0.05125433   503.0346
- ---                                                
-191: 0054.02  0.35   6.906136 -0.31700297   509.2914
-192: 0054.02  0.70   6.521574 -0.31700297   509.2914
-193: 0055.02  0.25   6.734474  0.11551689   525.7020
-194: 0055.02  0.35   6.693329  0.11551689   525.7020
-195: 0055.02  0.70   6.608567  0.11551689   525.7020
-> print(summary(dtFit)) # note absurd
-    CTNAME               sqft          fittedPPSF      elasticity      
- Length:195         Min.   :0.2500   Min.   :6.404   Min.   :-0.50629  
- Class :character   1st Qu.:0.2500   1st Qu.:6.757   1st Qu.:-0.27107  
- Mode  :character   Median :0.3500   Median :6.950   Median :-0.15152  
-                    Mean   :0.4333   Mean   :6.963   Mean   :-0.13024  
-                    3rd Qu.:0.7000   3rd Qu.:7.148   3rd Qu.:-0.03188  
-                    Max.   :0.7000   Max.   :7.680   Max.   : 0.55258  
-                                                                       
-   medianPPSF    
- Min.   : 479.0  
- 1st Qu.: 513.1  
- Median : 540.6  
- Mean   : 637.7  
- 3rd Qu.: 731.0  
- Max.   :1511.4  
- NA's   :21      
-> print(summary(df[age<MAXAGE & propertyType=="single",ppsf]))
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-  259.8   468.2   626.3   681.6   836.6  1922.5 
-> print(winAGE)
-[1] 1
-> fwrite(dtFit,file="~/OneDrive - UBC/dataProcessed/tractInteractionsVancouver.csv")
+> # Automate some of this code
+> library(data.table)
+> library(fixest)
 > 
+> setDT(df)
+> df[, single := propertyType == "single"]
+> 
+> 
+> setDT(df)
+> 
+> # precompute raw polynomial terms as plain numeric columns
+> df[, `:=`(
++   sfk1 = sfk,
++   sfk2 = sfk^2,
++   sfk3 = sfk^3,
++   single = propertyType == "single"
++ )]
+> 
+> gvars <- c("east", "NEIGHBOURHOOD", "CTNAME")
+> fes   <- "saleYear + age + CTNAME"
+> 
+> run_triplet <- function(dt, y, x, gvars, fes) {
++   sapply(gvars, function(g) {
++     fml <- as.formula(sprintf("%s ~ (%s)*i(%s) | %s", y, x, g, fes))
++     fitstat(feols(fml, data = dt), "war2")
++   })
++ }
+> 
+> specs <- list(
++   cubic  = list(dt = df[age < MAXAGE], y = "ppsf",      x = "sfk1 + sfk2 + sfk3"),
++   loglog = list(dt = df[age < MAXAGE], y = "log(ppsf)", x = "log(sfk)"),
++   linear = list(dt = df[age < MAXAGE], y = "ppsf",      x = "sfk"),
++   single = list(dt = df[age < 20],     y = "ppsf",      x = "single")
++ )
+> 
+> war2_mat <- do.call(rbind, lapply(specs, function(s)
++   run_triplet(s$dt, s$y, s$x, gvars, fes)
++ ))
+The variables 'sfk1:east::TRUE' and 'sfk3:east::TRUE' have been removed because of collinearity (see $collin.var).
+The variables 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey', 'NEIGHBOURHOOD::West End', 'sfk1:NEIGHBOURHOOD::Fairview', 'sfk1:NEIGHBOURHOOD::Southlands' and 8 others have been removed because of collinearity (see $collin.var).
+The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 98 others have been removed because of collinearity (see $collin.var).
+The variable 'log(sfk):east::TRUE' has been removed because of collinearity (see $collin.var).
+The variables 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey', 'NEIGHBOURHOOD::West End', 'log(sfk):NEIGHBOURHOOD::Fairview', 'log(sfk):NEIGHBOURHOOD::Southlands' and 'log(sfk):NEIGHBOURHOOD::West End' have been removed because of collinearity (see $collin.var).
+The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 83 others have been removed because of collinearity (see $collin.var).
+The variable 'sfk:east::TRUE' has been removed because of collinearity (see $collin.var).
+The variables 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey', 'NEIGHBOURHOOD::West End', 'sfk:NEIGHBOURHOOD::Fairview', 'sfk:NEIGHBOURHOOD::Southlands' and 'sfk:NEIGHBOURHOOD::West End' have been removed because of collinearity (see $collin.var).
+The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 83 others have been removed because of collinearity (see $collin.var).
+The variables 'singleTRUE:east::FALSE', 'singleFALSE:east::TRUE' and 'singleTRUE:east::TRUE' have been removed because of collinearity (see $collin.var).
+The variables 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey', 'NEIGHBOURHOOD::West End', 'singleTRUE:NEIGHBOURHOOD::Arbutus Ridge - Mackenzie Heights', 'singleTRUE:NEIGHBOURHOOD::Cambie' and 35 others have been removed because of collinearity (see $collin.var).
+The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 209 others have been removed because of collinearity (see $collin.var).
+> df[,lsqft := log(MB_Total_Finished_Area)]
+> regT <- feols(log(ppsf) ~ 0+ lsqft*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
+The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 82 others have been removed because of collinearity (see $collin.var).
+> regN <- feols(log(CONVEYANCE_PRICE) ~ 0+ lsqft*i(NEIGHBOURHOOD) | saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
+The variables 'NEIGHBOURHOOD::Cambie', 'NEIGHBOURHOOD::Cedar Cottage', 'NEIGHBOURHOOD::Collingwood', 'NEIGHBOURHOOD::Dunbar', 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview' and 21 others have been removed because of collinearity (see $collin.var).
+> print(summary(regT))
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 6,466
+Fixed-effects: saleYear: 7,  age: 37,  CTNAME: 85
+Standard-errors: Clustered (saleYear) 
+                        Estimate Std. Error       t value Pr(>|t|) 
+lsqft                  -0.434995    9602.12 -0.0000453020  0.99997 
+lsqft:CTNAME::0002.01  -0.221221    9602.35 -0.0000230382  0.99998 
+lsqft:CTNAME::0002.03   0.179236    9602.22  0.0000186661  0.99999 
+lsqft:CTNAME::0002.04   0.441917    9602.06  0.0000460232  0.99996 
+lsqft:CTNAME::0003.01   0.019344    9602.17  0.0000020145  1.00000 
+lsqft:CTNAME::0003.02   0.146277    9602.11  0.0000152338  0.99999 
+lsqft:CTNAME::0004.01  -0.118855    9602.14 -0.0000123779  0.99999 
+lsqft:CTNAME::0004.02   0.057767    9602.10  0.0000060161  1.00000 
+lsqft:CTNAME::0005.00   0.168430    9602.01  0.0000175412  0.99999 
+lsqft:CTNAME::0006.01   0.370796    9602.14  0.0000386159  0.99997 
+lsqft:CTNAME::0006.02   0.332789    9602.15  0.0000346578  0.99997 
+lsqft:CTNAME::0007.01   0.046194    9602.12  0.0000048108  1.00000 
+lsqft:CTNAME::0007.02   0.187420    9602.12  0.0000195186  0.99999 
+lsqft:CTNAME::0008.02  -0.027134    9602.14 -0.0000028258  1.00000 
+lsqft:CTNAME::0009.00   0.043455    9602.17  0.0000045255  1.00000 
+lsqft:CTNAME::0011.00   0.013917    9602.12  0.0000014494  1.00000 
+lsqft:CTNAME::0012.01   0.250614    9602.13  0.0000260998  0.99998 
+lsqft:CTNAME::0012.02   0.172967    9602.15  0.0000180134  0.99999 
+lsqft:CTNAME::0013.01   0.020646    9602.12  0.0000021501  1.00000 
+lsqft:CTNAME::0013.03  -0.147469    9602.12 -0.0000153579  0.99999 
+lsqft:CTNAME::0013.04   0.058968    9602.15  0.0000061411  1.00000 
+lsqft:CTNAME::0014.01   0.167989    9602.15  0.0000174949  0.99999 
+lsqft:CTNAME::0014.02   0.062461    9602.10  0.0000065050  1.00000 
+lsqft:CTNAME::0015.01  -0.103348    9602.13 -0.0000107630  0.99999 
+lsqft:CTNAME::0015.02  -0.210698    9602.12 -0.0000219428  0.99998 
+lsqft:CTNAME::0016.01   0.022388    9602.15  0.0000023315  1.00000 
+lsqft:CTNAME::0016.04   0.025518    9602.20  0.0000026575  1.00000 
+lsqft:CTNAME::0016.05  -0.312260    9602.11 -0.0000325200  0.99998 
+lsqft:CTNAME::0017.02   0.041968    9602.15  0.0000043707  1.00000 
+lsqft:CTNAME::0017.03   0.271534    9602.16  0.0000282784  0.99998 
+lsqft:CTNAME::0017.04   0.070813    9602.07  0.0000073747  0.99999 
+lsqft:CTNAME::0018.01   0.075778    9602.19  0.0000078917  0.99999 
+lsqft:CTNAME::0018.02  -0.122974    9602.13 -0.0000128069  0.99999 
+lsqft:CTNAME::0019.00  -0.101415    9602.10 -0.0000105618  0.99999 
+lsqft:CTNAME::0021.00  -0.434667    9602.07 -0.0000452680  0.99997 
+lsqft:CTNAME::0022.00   0.524056    9602.20  0.0000545766  0.99996 
+lsqft:CTNAME::0023.00   0.172338    9602.03  0.0000179481  0.99999 
+lsqft:CTNAME::0024.00   0.385096    9602.20  0.0000401050  0.99997 
+lsqft:CTNAME::0025.00   0.246372    9602.09  0.0000256582  0.99998 
+lsqft:CTNAME::0026.00   0.107828    9602.14  0.0000112296  0.99999 
+lsqft:CTNAME::0029.00   0.010363    9602.13  0.0000010793  1.00000 
+lsqft:CTNAME::0030.00  -0.139455    9602.11 -0.0000145234  0.99999 
+lsqft:CTNAME::0031.01   0.165965    9602.14  0.0000172842  0.99999 
+lsqft:CTNAME::0031.02   0.336122    9602.12  0.0000350049  0.99997 
+lsqft:CTNAME::0032.01   0.232271    9602.18  0.0000241894  0.99998 
+lsqft:CTNAME::0032.02   0.208878    9602.16  0.0000217532  0.99998 
+lsqft:CTNAME::0033.01   0.159300    9602.08  0.0000165901  0.99999 
+lsqft:CTNAME::0033.02   0.129289    9602.14  0.0000134646  0.99999 
+lsqft:CTNAME::0034.01   0.072651    9602.12  0.0000075661  0.99999 
+lsqft:CTNAME::0034.02  -0.044446    9602.17 -0.0000046288  1.00000 
+lsqft:CTNAME::0035.01   0.119202    9602.13  0.0000124141  0.99999 
+lsqft:CTNAME::0035.02   0.056839    9602.10  0.0000059194  1.00000 
+lsqft:CTNAME::0036.01  -0.178066    9602.07 -0.0000185445  0.99999 
+lsqft:CTNAME::0036.02  -0.254250    9602.09 -0.0000264786  0.99998 
+lsqft:CTNAME::0037.01   0.212677    9602.19  0.0000221488  0.99998 
+lsqft:CTNAME::0037.02  -0.029890    9602.08 -0.0000031129  1.00000 
+lsqft:CTNAME::0038.00   0.327276    9602.10  0.0000340838  0.99997 
+lsqft:CTNAME::0039.01   0.465710    9601.94  0.0000485017  0.99996 
+lsqft:CTNAME::0041.02   0.708492    9602.12  0.0000737850  0.99994 
+lsqft:CTNAME::0042.00  -0.083722    9602.09 -0.0000087192  0.99999 
+lsqft:CTNAME::0043.01   0.038908    9602.17  0.0000040520  1.00000 
+lsqft:CTNAME::0043.02   0.006024    9602.09  0.0000006274  1.00000 
+lsqft:CTNAME::0044.00   0.714911    9602.03  0.0000744542  0.99994 
+lsqft:CTNAME::0045.01   0.751294    9602.05  0.0000782431  0.99994 
+lsqft:CTNAME::0045.02  -0.082450    9602.17 -0.0000085866  0.99999 
+lsqft:CTNAME::0046.00 -18.866718    9602.12 -0.0019648483  0.99850 
+lsqft:CTNAME::0048.01  -0.048953    9602.30 -0.0000050981  1.00000 
+lsqft:CTNAME::0050.02  -0.181584    9602.10 -0.0000189108  0.99999 
+lsqft:CTNAME::0050.03  -0.139691    9602.08 -0.0000145480  0.99999 
+lsqft:CTNAME::0050.04   0.055466    9602.14  0.0000057764  1.00000 
+lsqft:CTNAME::0051.01   0.073048    9602.09  0.0000076075  0.99999 
+lsqft:CTNAME::0051.02  -0.130670    9602.16 -0.0000136084  0.99999 
+lsqft:CTNAME::0052.01  -0.074413    9602.06 -0.0000077496  0.99999 
+lsqft:CTNAME::0052.02  -0.031011    9602.11 -0.0000032296  1.00000 
+lsqft:CTNAME::0053.01  -0.100767    9602.15 -0.0000104943  0.99999 
+lsqft:CTNAME::0053.02   0.154892    9602.10  0.0000161310  0.99999 
+lsqft:CTNAME::0054.01   0.030403    9602.03  0.0000031663  1.00000 
+lsqft:CTNAME::0054.02  -0.120017    9602.08 -0.0000124991  0.99999 
+lsqft:CTNAME::0055.01  -0.000315    9602.11 -0.0000000329  1.00000 
+lsqft:CTNAME::0055.02   0.310422    9602.05  0.0000323287  0.99998 
+lsqft:CTNAME::0056.01  -0.593434    9602.01 -0.0000618031  0.99995 
+lsqft:CTNAME::0056.02   0.199886    9602.12  0.0000208169  0.99998 
+... 88 variables were removed because of collinearity (CTNAME::0002.03, CTNAME::0002.04 and 86 others [full set in $collin.var])
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.148647     Adj. R2: 0.854232
+                 Within R2: 0.168804
+> print(summary(regN))
+OLS estimation, Dep. Var.: log(CONVEYANCE_PRICE)
+Observations: 6,466
+Fixed-effects: saleYear: 7,  age: 37,  NEIGHBOURHOOD: 26
+Standard-errors: Clustered (saleYear) 
+                                                        Estimate Std. Error
+lsqft                                                   0.470411   0.125569
+lsqft:NEIGHBOURHOOD::Arbutus Ridge - Mackenzie Heights  0.168260   0.151833
+lsqft:NEIGHBOURHOOD::Cambie                             0.045528   0.117397
+lsqft:NEIGHBOURHOOD::Cedar Cottage                      0.423839   0.118176
+lsqft:NEIGHBOURHOOD::Collingwood                        0.192339   0.114396
+lsqft:NEIGHBOURHOOD::Dunbar                             0.299935   0.202553
+lsqft:NEIGHBOURHOOD::Fairview                           0.214969   0.127478
+lsqft:NEIGHBOURHOOD::Fraserview                         0.369661   0.299850
+lsqft:NEIGHBOURHOOD::Grandview                          0.074516   0.125056
+lsqft:NEIGHBOURHOOD::Hastings East                      0.086478   0.152103
+lsqft:NEIGHBOURHOOD::Kerrisdale                         0.199801   0.171732
+lsqft:NEIGHBOURHOOD::Killarney                          0.116160   0.131725
+lsqft:NEIGHBOURHOOD::Kitsilano                          0.294356   0.120666
+lsqft:NEIGHBOURHOOD::Knight                             0.148721   0.124289
+lsqft:NEIGHBOURHOOD::Main & Fraser                      0.182435   0.140031
+lsqft:NEIGHBOURHOOD::Marine Drive                       1.205730   0.468910
+lsqft:NEIGHBOURHOOD::Marpole                            0.437391   0.121596
+lsqft:NEIGHBOURHOOD::Mount Pleasant                     0.246562   0.076081
+lsqft:NEIGHBOURHOOD::Oakridge                          -0.118199   0.292143
+lsqft:NEIGHBOURHOOD::Point Grey                         0.359154   0.168635
+lsqft:NEIGHBOURHOOD::Renfrew                            0.007937   0.126233
+lsqft:NEIGHBOURHOOD::Renfrew Heights                    0.041667   0.174578
+lsqft:NEIGHBOURHOOD::Shaughnessy                       -7.105163   0.412372
+lsqft:NEIGHBOURHOOD::South Granville                    0.311329   0.194221
+lsqft:NEIGHBOURHOOD::South Vancouver                    0.171426   0.105426
+                                                          t value   Pr(>|t|)
+lsqft                                                    3.746229 9.5521e-03
+lsqft:NEIGHBOURHOOD::Arbutus Ridge - Mackenzie Heights   1.108191 3.1021e-01
+lsqft:NEIGHBOURHOOD::Cambie                              0.387810 7.1154e-01
+lsqft:NEIGHBOURHOOD::Cedar Cottage                       3.586497 1.1552e-02
+lsqft:NEIGHBOURHOOD::Collingwood                         1.681339 1.4369e-01
+lsqft:NEIGHBOURHOOD::Dunbar                              1.480775 1.8917e-01
+lsqft:NEIGHBOURHOOD::Fairview                            1.686317 1.4271e-01
+lsqft:NEIGHBOURHOOD::Fraserview                          1.232820 2.6375e-01
+lsqft:NEIGHBOURHOOD::Grandview                           0.595856 5.7305e-01
+lsqft:NEIGHBOURHOOD::Hastings East                       0.568546 5.9029e-01
+lsqft:NEIGHBOURHOOD::Kerrisdale                          1.163451 2.8882e-01
+lsqft:NEIGHBOURHOOD::Killarney                           0.881841 4.1179e-01
+lsqft:NEIGHBOURHOOD::Kitsilano                           2.439434 5.0511e-02
+lsqft:NEIGHBOURHOOD::Knight                              1.196572 2.7661e-01
+lsqft:NEIGHBOURHOOD::Main & Fraser                       1.302819 2.4040e-01
+lsqft:NEIGHBOURHOOD::Marine Drive                        2.571345 4.2258e-02
+lsqft:NEIGHBOURHOOD::Marpole                             3.597075 1.1407e-02
+lsqft:NEIGHBOURHOOD::Mount Pleasant                      3.240763 1.7670e-02
+lsqft:NEIGHBOURHOOD::Oakridge                           -0.404594 6.9980e-01
+lsqft:NEIGHBOURHOOD::Point Grey                          2.129768 7.7234e-02
+lsqft:NEIGHBOURHOOD::Renfrew                             0.062873 9.5191e-01
+lsqft:NEIGHBOURHOOD::Renfrew Heights                     0.238671 8.1930e-01
+lsqft:NEIGHBOURHOOD::Shaughnessy                       -17.229993 2.4478e-06
+lsqft:NEIGHBOURHOOD::South Granville                     1.602967 1.6006e-01
+lsqft:NEIGHBOURHOOD::South Vancouver                     1.626031 1.5507e-01
+                                                          
+lsqft                                                  ** 
+lsqft:NEIGHBOURHOOD::Arbutus Ridge - Mackenzie Heights    
+lsqft:NEIGHBOURHOOD::Cambie                               
+lsqft:NEIGHBOURHOOD::Cedar Cottage                     *  
+lsqft:NEIGHBOURHOOD::Collingwood                          
+lsqft:NEIGHBOURHOOD::Dunbar                               
+lsqft:NEIGHBOURHOOD::Fairview                             
+lsqft:NEIGHBOURHOOD::Fraserview                           
+lsqft:NEIGHBOURHOOD::Grandview                            
+lsqft:NEIGHBOURHOOD::Hastings East                        
+lsqft:NEIGHBOURHOOD::Kerrisdale                           
+lsqft:NEIGHBOURHOOD::Killarney                            
+lsqft:NEIGHBOURHOOD::Kitsilano                         .  
+lsqft:NEIGHBOURHOOD::Knight                               
+lsqft:NEIGHBOURHOOD::Main & Fraser                        
+lsqft:NEIGHBOURHOOD::Marine Drive                      *  
+lsqft:NEIGHBOURHOOD::Marpole                           *  
+lsqft:NEIGHBOURHOOD::Mount Pleasant                    *  
+lsqft:NEIGHBOURHOOD::Oakridge                             
+lsqft:NEIGHBOURHOOD::Point Grey                        .  
+lsqft:NEIGHBOURHOOD::Renfrew                              
+lsqft:NEIGHBOURHOOD::Renfrew Heights                      
+lsqft:NEIGHBOURHOOD::Shaughnessy                       ***
+lsqft:NEIGHBOURHOOD::South Granville                      
+lsqft:NEIGHBOURHOOD::South Vancouver                      
+... 27 variables were removed because of collinearity (NEIGHBOURHOOD::Cambie, NEIGHBOURHOOD::Cedar Cottage and 25 others [full set in $collin.var])
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.155676     Adj. R2: 0.881621
+                 Within R2: 0.4658  
+> #lsqft:NEIGHBOURHOOD::Renfrew Heights  
+> # turn coefficients of this form into a data.table
+> df <- df[NEIGHBOURHOOD!="Shaughnessy"]
+> dtInteractionsNeighbourhood <- data.table(neighbourhood=character(),interactionLSF=numeric(),medianPPSF=numeric())
+> interceptLSF <- coef(regN)["lsqft"]
+> for (n in unique(df[,NEIGHBOURHOOD])) {
++ 	medianPPSF <- median(df[NEIGHBOURHOOD==n & propertyType=="single" & age<MAXAGE,ppsf])
++ 	x <- data.table(neighbourhood=n,interactionLSF=coef(regN)[paste0("lsqft:NEIGHBOURHOOD::",n)][1]+interceptLSF,medianPPSF=medianPPSF)
++ 	dtInteractionsNeighbourhood <- rbind(dtInteractionsNeighbourhood, x)
++ }
+> fwrite(dtInteractionsNeighbourhood,file="~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv")
 > q("no")
 > proc.time()
    user  system elapsed 
- 29.241   0.972  18.260 
+ 20.661   6.472   9.213 

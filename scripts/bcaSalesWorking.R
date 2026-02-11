@@ -103,152 +103,59 @@ df[,sfk:=MB_Total_Finished_Area/1000]
 df <- df[propertyType %chin% c("condo","TH")==FALSE] # apples to apples!
 ONTARIOLON <- -123.105 # google
 df[,east:=lon>ONTARIOLON]
-regEast <- feols(ppsf ~ i(roundSQFT) | saleYear + age + CTNAME, data=df[east==1 & age<MAXAGE])
-regEastPoly <- feols(ppsf ~ sfk + I(sfk^2) + I(sfk^3) | saleYear + age + CTNAME, data=df[east==0& age<MAXAGE])
-regWest <- feols(ppsf ~ i(roundSQFT) | saleYear + age + CTNAME, data=df[east==0 & age<MAXAGE])
-regWestPoly <- feols(ppsf ~ sfk + I(sfk^2) + I(sfk^3) | saleYear + age + CTNAME, data=df[east==0& age<MAXAGE])
-etable(regEast,regEastPoly)
-etable(regWest,regWestPoly)
 # functional form
-regEW <- feols(ppsf ~ (sfk + I(sfk^2) + I(sfk^3))*i(east) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-regN <- feols(ppsf ~ (sfk + I(sfk^2) + I(sfk^3))*i(NEIGHBOURHOOD) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-regT <- feols(ppsf ~ (sfk + I(sfk^2) + I(sfk^3))*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-print(c(fitstat(regEW,"war2"),fitstat(regN,"war2"),fitstat(regT,"war2")))
-regEW <- feols(ppsf ~ (sfk + I(sfk^2))*i(east) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-regN <- feols(ppsf ~ (sfk + I(sfk^2) )*i(NEIGHBOURHOOD) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-regT <- feols(ppsf ~ (sfk + I(sfk^2) )*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-print(c(fitstat(regEW,"war2"),fitstat(regN,"war2"),fitstat(regT,"war2")))
-regEW <- feols(log(ppsf) ~ log(sfk)*i(east) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-regN <- feols(log(ppsf) ~ log(sfk )*i(NEIGHBOURHOOD) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-regT <- feols(log(ppsf) ~ log(sfk)*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-print(c(fitstat(regEW,"war2"),fitstat(regN,"war2"),fitstat(regT,"war2")))
-regEW <- feols(ppsf ~ (sfk)*i(east) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-regN <- feols(ppsf ~ (sfk )*i(NEIGHBOURHOOD) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-regT <- feols(ppsf ~ (sfk)*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-print(c(fitstat(regEW,"war2"),fitstat(regN,"war2"),fitstat(regT,"war2")))
-df[,single:=propertyType=="single"]
-regEW <- feols(ppsf ~ single*i(east) | saleYear + age +CTNAME, data=df[age<20])
-regN <- feols(ppsf ~ single*i(NEIGHBOURHOOD) | saleYear + age +CTNAME, data=df[age<20])
-regT <- feols(ppsf ~ single*i(CTNAME) | saleYear + age +CTNAME, data=df[age<20])
-print(c(fitstat(regEW,"war2"),fitstat(regN,"war2"),fitstat(regT,"war2")))
-nBy <- df[age<20 & propertyType %in% c("single","duplex"),.(ner=.N),by=CTNAME]
-df <- merge(df,nBy,by="CTNAME")
-df <- df[ner>MINOBS] # only keep census tracts with more than 10 single/duplex sales
-print(table(nBy$ner))
-# winner is 3rd order polynomial by census tract
-# now for each CT, find a fitted value for age 0 to 3, and sqft 1/4*33*122, 1/2*.7*33*122, 1*.7*33*122, 1/3*1*33*122
-# (find modal age between 0 and 5)
-winAGE <- -1
-winN <- 0
-for (a in seq(0,5)) {
-  nAge <- nrow(df[age==a ])
-  if (nAge>winN) {
-	  winAGE <- a
-	  winN <- nAge
-  }
-}
-regT <- feols(ppsf ~ (sfk + I(sfk^2) + I(sfk^3))*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-dtFit <- data.table(CTNAME=character(),sqft=numeric(),fittedPPSF=numeric())
-print(coef(regT))
-for (ct in unique(df$CTNAME)) {
-	# confirm ct is in regression
-	  if (is.na(coef(regT)[paste0("I(I(sfk^2)):CTNAME::",ct)])) {
-	    next
-	  }
-	for (sqft in c(.25,.35,.7)) {
-		newDt <- data.table(sfk=sqft*33*122/1000,age=winAGE,saleYear=2018,CTNAME=ct)
-		fittedPPSF <- predict(regT,newdata=newDt)
-		dtFit <- rbind(dtFit,data.table(CTNAME=ct,sqft=sqft,fittedPPSF=fittedPPSF))
-	}
-}
-print(dtFit)
-print(summary(dtFit)) # note absurd
-regT <- feols(ppsf ~ (sfk + I(sfk^2))*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-dtFit <- data.table(CTNAME=character(),sqft=numeric(),fittedPPSF=numeric())
-print(coef(regT))
-for (ct in unique(df$CTNAME)) {
-	# confirm ct is in regression
-	  if (is.na(coef(regT)[paste0("I(I(sfk^2)):CTNAME::",ct)])) {
-	    next
-	  }
-	for (sqft in c(.25,.35,.7)) {
-		newDt <- data.table(sfk=sqft*33*122/1000,age=winAGE,saleYear=2018,CTNAME=ct)
-		fittedPPSF <- predict(regT,newdata=newDt)
-		dtFit <- rbind(dtFit,data.table(CTNAME=ct,sqft=sqft,fittedPPSF=fittedPPSF))
-	}
-}
-print(dtFit)
-print(summary(dtFit)) # note absurd
-regT <- feols(log(ppsf) ~ log(MB_Total_Finished_Area)*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-dtFit <- data.table(CTNAME=character(),sqft=numeric(),fittedPPSF=numeric(),elasticity=numeric(),medianPPSF=numeric())
-print(coef(regT))
-for (ct in unique(df$CTNAME)) {
-	# confirm ct is in regression
-	  if (is.na(coef(regT)[paste0("log(MB_Total_Finished_Area):CTNAME::",ct)])) {
-	    next
-	  }
-	for (sqft in c(.25,.35,.7)) {
-		newDt <- data.table(MB_Total_Finished_Area=sqft*33*122,age=winAGE,saleYear=2018,CTNAME=ct)
-		fittedPPSF <- predict(regT,newdata=newDt)
-		medianPPSF <- df[CTNAME==ct & age<MAXAGE & propertyType=="single",mean(ppsf,na.rm=TRUE)]
-		elasticity <- coef(regT)[paste0("log(MB_Total_Finished_Area):CTNAME::",ct)]
-		dtFit <- rbind(dtFit,data.table(CTNAME=ct,sqft=sqft,fittedPPSF=fittedPPSF,elasticity=elasticity,medianPPSF=medianPPSF))
-	}
-}
-print(dtFit)
-print(summary(dtFit)) # note absurd
-print(summary(df[age<MAXAGE & propertyType=="single",ppsf]))
-print(winAGE)
-fwrite(dtFit,file="~/OneDrive - UBC/dataProcessed/tractInteractionsVancouver.csv")
+# Automate some of this code
+library(data.table)
+library(fixest)
 
-q("no")
-for (y in seq(2012,2018)) {
-	print(c(y,mean(df[saleYear==y,mean(ppsf,na.rm=TRUE)])))
+setDT(df)
+df[, single := propertyType == "single"]
+
+
+setDT(df)
+
+# precompute raw polynomial terms as plain numeric columns
+df[, `:=`(
+  sfk1 = sfk,
+  sfk2 = sfk^2,
+  sfk3 = sfk^3,
+  single = propertyType == "single"
+)]
+
+gvars <- c("east", "NEIGHBOURHOOD", "CTNAME")
+fes   <- "saleYear + age + CTNAME"
+
+run_triplet <- function(dt, y, x, gvars, fes) {
+  sapply(gvars, function(g) {
+    fml <- as.formula(sprintf("%s ~ (%s)*i(%s) | %s", y, x, g, fes))
+    fitstat(feols(fml, data = dt), "war2")
+  })
 }
-for (k in seq(400,4000,100)) {
-	print(c(k,mean(df[saleYear>2016 & round(MB_Total_Finished_Area/100)==k/100,mean(ppsf,na.rm=TRUE)])))
-}
-print(mean(df[saleYear>2016,mean(ppsf,na.rm=TRUE),by=ACTUAL_USE_DESCRIPTION]))
-q("no")
 
-# conclusion: ct
-df[,multi:=propertyType %chin% c("TH","condo")]
+specs <- list(
+  cubic  = list(dt = df[age < MAXAGE], y = "ppsf",      x = "sfk1 + sfk2 + sfk3"),
+  loglog = list(dt = df[age < MAXAGE], y = "log(ppsf)", x = "log(sfk)"),
+  linear = list(dt = df[age < MAXAGE], y = "ppsf",      x = "sfk"),
+  single = list(dt = df[age < 20],     y = "ppsf",      x = "single")
+)
 
-# get single premium and mean ppsf
-dfMean <- df[multi==0,.(meanPPSF=mean(ppsf),medianPPSF=median(ppsf)),by=CTNAME]
-df[,localWidth:=median(Land_Width_Width,na.rm=TRUE),by=CTNAME]
-df <- df[,abs(Land_Width_Width-localWidth)<(WIDTHTOL*localWidth)]
-df[,meanPPSF:=mean(ppsf),by=CTNAME]
-df[,lppsf:=log(ppsf)]
-df[,lsqft:=log(MB_Total_Finished_Area)]
-minSqft <- quantile(df[,MB_Total_Finished_Area], EXTREME_VAL)
-maxSqft <- quantile(df[,MB_Total_Finished_Area], 1-EXTREME_VAL)
-df <- df[MB_Total_Finished_Area %between% c(minSqft,maxSqft)]
-df <- df[age<MAXAGE]
-
-regSingle <- feols(lppsf ~ 0 + i(NEIGHBOURHOOD,single) + log(age+1) + log(Land_Width_Width)|saleYear ,data=df[multi==0])
-regSqft <- feols(lppsf ~ 0 + i(NEIGHBOURHOOD,lsqft) + log(age+1) + log(Land_Width_Width)|saleYear ,data=df[multi==0])
-regUnited <- feols(lppsf ~ 0 + i(NEIGHBOURHOOD,single) + i(NEIGHBOURHOOD,lsqft) + log(age+1) + log(Land_Width_Width)|saleYear ,data=df[multi==0])
-# create a data table that has the interactions on single and on lsqft by neighbourhood from regOut coefficients, can't use df column names
-dfInteractions <- data.table(NEIGHBOURHOOD=character(),interactionSingle=numeric(),interactionlSqft=numeric())
+war2_mat <- do.call(rbind, lapply(specs, function(s)
+  run_triplet(s$dt, s$y, s$x, gvars, fes)
+))
+df[,lsqft := log(MB_Total_Finished_Area)]
+regT <- feols(log(ppsf) ~ 0+ lsqft*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
+regN <- feols(log(CONVEYANCE_PRICE) ~ 0+ lsqft*i(NEIGHBOURHOOD) | saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
+print(summary(regT))
+print(summary(regN))
+#lsqft:NEIGHBOURHOOD::Renfrew Heights  
+# turn coefficients of this form into a data.table
+df <- df[NEIGHBOURHOOD!="Shaughnessy"]
+dtInteractionsNeighbourhood <- data.table(neighbourhood=character(),interactionLSF=numeric(),medianPPSF=numeric())
+interceptLSF <- coef(regN)["lsqft"]
 for (n in unique(df[,NEIGHBOURHOOD])) {
-  x <- data.table(NEIGHBOURHOOD=n, interactionSingle=coef(regSingle)[paste0("NEIGHBOURHOOD::",n,":single")], interactionlSqft=coef(regSqft)[paste0("NEIGHBOURHOOD::",n,":lsqft")])
-  dfInteractions <- rbind(dfInteractions, x)
+	medianPPSF <- median(df[NEIGHBOURHOOD==n & propertyType=="single" & age<MAXAGE,ppsf])
+	x <- data.table(neighbourhood=n,interactionLSF=coef(regN)[paste0("lsqft:NEIGHBOURHOOD::",n)][1]+interceptLSF,medianPPSF=medianPPSF)
+	dtInteractionsNeighbourhood <- rbind(dtInteractionsNeighbourhood, x)
 }
-# interactionlSqft most sensible
-print(dfInteractions)
-# Note more sensible results from separate regressions?
-fwrite(dfInteractions,file="~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv")
-fwrite(dfMean, file="~/OneDrive - UBC/dataProcessed/tractMeansVancouver.csv")
-
-regSqftTract <- feols(lppsf ~ 0 + i(CTNAME,lsqft) + log(age+1) + log(Land_Width_Width)|saleYear ,data=df[multi==0])
-print(summary(regSqftTract))
-regPriceTract <- feols(log(CONVEYANCE_PRICE) ~ 0 + i(CTNAME,log(MB_Total_Finished_Area)) + log(age+1) + log(Land_Width_Width)|saleYear ,data=df[multi==0])
-dfInteractionsTract <- data.table(CTNAME=character(),interactionSqft=numeric(),nobs=numeric())
-for (n in unique(df[,CTNAME])) {
-  x <- data.table(CTNAME=n, interactionSqft=coef(regSqftTract)[paste0("CTNAME::",n,":lsqft")], nobs=nrow(df[CTNAME==n & multi==0]))
-  dfInteractionsTract <- rbind(dfInteractionsTract, x)
-}
-print(dfInteractionsTract)
-fwrite(dfInteractionsTract,file="~/OneDrive - UBC/dataProcessed/tractInteractionsVancouver.csv")
-print((df[,median(Land_Width_Width,na.rm=TRUE),by=propertyType]))
+fwrite(dtInteractionsNeighbourhood,file="~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv")
+q("no")
