@@ -428,200 +428,27 @@ The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::
 > regN <- feols(log(CONVEYANCE_PRICE) ~ 0+ lsqft*i(NEIGHBOURHOOD) | saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
 The variables 'NEIGHBOURHOOD::Cambie', 'NEIGHBOURHOOD::Cedar Cottage', 'NEIGHBOURHOOD::Collingwood', 'NEIGHBOURHOOD::Dunbar', 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview' and 21 others have been removed because of collinearity (see $collin.var).
 > regL <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon | saleYear + age,data=df[age<MAXAGE])
-> print(summary(regT))
-OLS estimation, Dep. Var.: log(ppsf)
-Observations: 6,466
-Fixed-effects: saleYear: 7,  age: 37,  CTNAME: 85
-Standard-errors: Clustered (saleYear) 
-                        Estimate Std. Error       t value Pr(>|t|) 
-lsqft                  -0.434995    9602.12 -0.0000453020  0.99997 
-lsqft:CTNAME::0002.01  -0.221221    9602.35 -0.0000230382  0.99998 
-lsqft:CTNAME::0002.03   0.179236    9602.22  0.0000186661  0.99999 
-lsqft:CTNAME::0002.04   0.441917    9602.06  0.0000460232  0.99996 
-lsqft:CTNAME::0003.01   0.019344    9602.17  0.0000020145  1.00000 
-lsqft:CTNAME::0003.02   0.146277    9602.11  0.0000152338  0.99999 
-lsqft:CTNAME::0004.01  -0.118855    9602.14 -0.0000123779  0.99999 
-lsqft:CTNAME::0004.02   0.057767    9602.10  0.0000060161  1.00000 
-lsqft:CTNAME::0005.00   0.168430    9602.01  0.0000175412  0.99999 
-lsqft:CTNAME::0006.01   0.370796    9602.14  0.0000386159  0.99997 
-lsqft:CTNAME::0006.02   0.332789    9602.15  0.0000346578  0.99997 
-lsqft:CTNAME::0007.01   0.046194    9602.12  0.0000048108  1.00000 
-lsqft:CTNAME::0007.02   0.187420    9602.12  0.0000195186  0.99999 
-lsqft:CTNAME::0008.02  -0.027134    9602.14 -0.0000028258  1.00000 
-lsqft:CTNAME::0009.00   0.043455    9602.17  0.0000045255  1.00000 
-lsqft:CTNAME::0011.00   0.013917    9602.12  0.0000014494  1.00000 
-lsqft:CTNAME::0012.01   0.250614    9602.13  0.0000260998  0.99998 
-lsqft:CTNAME::0012.02   0.172967    9602.15  0.0000180134  0.99999 
-lsqft:CTNAME::0013.01   0.020646    9602.12  0.0000021501  1.00000 
-lsqft:CTNAME::0013.03  -0.147469    9602.12 -0.0000153579  0.99999 
-lsqft:CTNAME::0013.04   0.058968    9602.15  0.0000061411  1.00000 
-lsqft:CTNAME::0014.01   0.167989    9602.15  0.0000174949  0.99999 
-lsqft:CTNAME::0014.02   0.062461    9602.10  0.0000065050  1.00000 
-lsqft:CTNAME::0015.01  -0.103348    9602.13 -0.0000107630  0.99999 
-lsqft:CTNAME::0015.02  -0.210698    9602.12 -0.0000219428  0.99998 
-lsqft:CTNAME::0016.01   0.022388    9602.15  0.0000023315  1.00000 
-lsqft:CTNAME::0016.04   0.025518    9602.20  0.0000026575  1.00000 
-lsqft:CTNAME::0016.05  -0.312260    9602.11 -0.0000325200  0.99998 
-lsqft:CTNAME::0017.02   0.041968    9602.15  0.0000043707  1.00000 
-lsqft:CTNAME::0017.03   0.271534    9602.16  0.0000282784  0.99998 
-lsqft:CTNAME::0017.04   0.070813    9602.07  0.0000073747  0.99999 
-lsqft:CTNAME::0018.01   0.075778    9602.19  0.0000078917  0.99999 
-lsqft:CTNAME::0018.02  -0.122974    9602.13 -0.0000128069  0.99999 
-lsqft:CTNAME::0019.00  -0.101415    9602.10 -0.0000105618  0.99999 
-lsqft:CTNAME::0021.00  -0.434667    9602.07 -0.0000452680  0.99997 
-lsqft:CTNAME::0022.00   0.524056    9602.20  0.0000545766  0.99996 
-lsqft:CTNAME::0023.00   0.172338    9602.03  0.0000179481  0.99999 
-lsqft:CTNAME::0024.00   0.385096    9602.20  0.0000401050  0.99997 
-lsqft:CTNAME::0025.00   0.246372    9602.09  0.0000256582  0.99998 
-lsqft:CTNAME::0026.00   0.107828    9602.14  0.0000112296  0.99999 
-lsqft:CTNAME::0029.00   0.010363    9602.13  0.0000010793  1.00000 
-lsqft:CTNAME::0030.00  -0.139455    9602.11 -0.0000145234  0.99999 
-lsqft:CTNAME::0031.01   0.165965    9602.14  0.0000172842  0.99999 
-lsqft:CTNAME::0031.02   0.336122    9602.12  0.0000350049  0.99997 
-lsqft:CTNAME::0032.01   0.232271    9602.18  0.0000241894  0.99998 
-lsqft:CTNAME::0032.02   0.208878    9602.16  0.0000217532  0.99998 
-lsqft:CTNAME::0033.01   0.159300    9602.08  0.0000165901  0.99999 
-lsqft:CTNAME::0033.02   0.129289    9602.14  0.0000134646  0.99999 
-lsqft:CTNAME::0034.01   0.072651    9602.12  0.0000075661  0.99999 
-lsqft:CTNAME::0034.02  -0.044446    9602.17 -0.0000046288  1.00000 
-lsqft:CTNAME::0035.01   0.119202    9602.13  0.0000124141  0.99999 
-lsqft:CTNAME::0035.02   0.056839    9602.10  0.0000059194  1.00000 
-lsqft:CTNAME::0036.01  -0.178066    9602.07 -0.0000185445  0.99999 
-lsqft:CTNAME::0036.02  -0.254250    9602.09 -0.0000264786  0.99998 
-lsqft:CTNAME::0037.01   0.212677    9602.19  0.0000221488  0.99998 
-lsqft:CTNAME::0037.02  -0.029890    9602.08 -0.0000031129  1.00000 
-lsqft:CTNAME::0038.00   0.327276    9602.10  0.0000340838  0.99997 
-lsqft:CTNAME::0039.01   0.465710    9601.94  0.0000485017  0.99996 
-lsqft:CTNAME::0041.02   0.708492    9602.12  0.0000737850  0.99994 
-lsqft:CTNAME::0042.00  -0.083722    9602.09 -0.0000087192  0.99999 
-lsqft:CTNAME::0043.01   0.038908    9602.17  0.0000040520  1.00000 
-lsqft:CTNAME::0043.02   0.006024    9602.09  0.0000006274  1.00000 
-lsqft:CTNAME::0044.00   0.714911    9602.03  0.0000744542  0.99994 
-lsqft:CTNAME::0045.01   0.751294    9602.05  0.0000782431  0.99994 
-lsqft:CTNAME::0045.02  -0.082450    9602.17 -0.0000085866  0.99999 
-lsqft:CTNAME::0046.00 -18.866718    9602.12 -0.0019648483  0.99850 
-lsqft:CTNAME::0048.01  -0.048953    9602.30 -0.0000050981  1.00000 
-lsqft:CTNAME::0050.02  -0.181584    9602.10 -0.0000189108  0.99999 
-lsqft:CTNAME::0050.03  -0.139691    9602.08 -0.0000145480  0.99999 
-lsqft:CTNAME::0050.04   0.055466    9602.14  0.0000057764  1.00000 
-lsqft:CTNAME::0051.01   0.073048    9602.09  0.0000076075  0.99999 
-lsqft:CTNAME::0051.02  -0.130670    9602.16 -0.0000136084  0.99999 
-lsqft:CTNAME::0052.01  -0.074413    9602.06 -0.0000077496  0.99999 
-lsqft:CTNAME::0052.02  -0.031011    9602.11 -0.0000032296  1.00000 
-lsqft:CTNAME::0053.01  -0.100767    9602.15 -0.0000104943  0.99999 
-lsqft:CTNAME::0053.02   0.154892    9602.10  0.0000161310  0.99999 
-lsqft:CTNAME::0054.01   0.030403    9602.03  0.0000031663  1.00000 
-lsqft:CTNAME::0054.02  -0.120017    9602.08 -0.0000124991  0.99999 
-lsqft:CTNAME::0055.01  -0.000315    9602.11 -0.0000000329  1.00000 
-lsqft:CTNAME::0055.02   0.310422    9602.05  0.0000323287  0.99998 
-lsqft:CTNAME::0056.01  -0.593434    9602.01 -0.0000618031  0.99995 
-lsqft:CTNAME::0056.02   0.199886    9602.12  0.0000208169  0.99998 
-... 88 variables were removed because of collinearity (CTNAME::0002.03, CTNAME::0002.04 and 86 others [full set in $collin.var])
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.148647     Adj. R2: 0.854232
-                 Within R2: 0.168804
-> print(summary(regN))
-OLS estimation, Dep. Var.: log(CONVEYANCE_PRICE)
-Observations: 6,466
-Fixed-effects: saleYear: 7,  age: 37,  NEIGHBOURHOOD: 26
-Standard-errors: Clustered (saleYear) 
-                                                        Estimate Std. Error
-lsqft                                                   0.470411   0.125569
-lsqft:NEIGHBOURHOOD::Arbutus Ridge - Mackenzie Heights  0.168260   0.151833
-lsqft:NEIGHBOURHOOD::Cambie                             0.045528   0.117397
-lsqft:NEIGHBOURHOOD::Cedar Cottage                      0.423839   0.118176
-lsqft:NEIGHBOURHOOD::Collingwood                        0.192339   0.114396
-lsqft:NEIGHBOURHOOD::Dunbar                             0.299935   0.202553
-lsqft:NEIGHBOURHOOD::Fairview                           0.214969   0.127478
-lsqft:NEIGHBOURHOOD::Fraserview                         0.369661   0.299850
-lsqft:NEIGHBOURHOOD::Grandview                          0.074516   0.125056
-lsqft:NEIGHBOURHOOD::Hastings East                      0.086478   0.152103
-lsqft:NEIGHBOURHOOD::Kerrisdale                         0.199801   0.171732
-lsqft:NEIGHBOURHOOD::Killarney                          0.116160   0.131725
-lsqft:NEIGHBOURHOOD::Kitsilano                          0.294356   0.120666
-lsqft:NEIGHBOURHOOD::Knight                             0.148721   0.124289
-lsqft:NEIGHBOURHOOD::Main & Fraser                      0.182435   0.140031
-lsqft:NEIGHBOURHOOD::Marine Drive                       1.205730   0.468910
-lsqft:NEIGHBOURHOOD::Marpole                            0.437391   0.121596
-lsqft:NEIGHBOURHOOD::Mount Pleasant                     0.246562   0.076081
-lsqft:NEIGHBOURHOOD::Oakridge                          -0.118199   0.292143
-lsqft:NEIGHBOURHOOD::Point Grey                         0.359154   0.168635
-lsqft:NEIGHBOURHOOD::Renfrew                            0.007937   0.126233
-lsqft:NEIGHBOURHOOD::Renfrew Heights                    0.041667   0.174578
-lsqft:NEIGHBOURHOOD::Shaughnessy                       -7.105163   0.412372
-lsqft:NEIGHBOURHOOD::South Granville                    0.311329   0.194221
-lsqft:NEIGHBOURHOOD::South Vancouver                    0.171426   0.105426
-                                                          t value   Pr(>|t|)
-lsqft                                                    3.746229 9.5521e-03
-lsqft:NEIGHBOURHOOD::Arbutus Ridge - Mackenzie Heights   1.108191 3.1021e-01
-lsqft:NEIGHBOURHOOD::Cambie                              0.387810 7.1154e-01
-lsqft:NEIGHBOURHOOD::Cedar Cottage                       3.586497 1.1552e-02
-lsqft:NEIGHBOURHOOD::Collingwood                         1.681339 1.4369e-01
-lsqft:NEIGHBOURHOOD::Dunbar                              1.480775 1.8917e-01
-lsqft:NEIGHBOURHOOD::Fairview                            1.686317 1.4271e-01
-lsqft:NEIGHBOURHOOD::Fraserview                          1.232820 2.6375e-01
-lsqft:NEIGHBOURHOOD::Grandview                           0.595856 5.7305e-01
-lsqft:NEIGHBOURHOOD::Hastings East                       0.568546 5.9029e-01
-lsqft:NEIGHBOURHOOD::Kerrisdale                          1.163451 2.8882e-01
-lsqft:NEIGHBOURHOOD::Killarney                           0.881841 4.1179e-01
-lsqft:NEIGHBOURHOOD::Kitsilano                           2.439434 5.0511e-02
-lsqft:NEIGHBOURHOOD::Knight                              1.196572 2.7661e-01
-lsqft:NEIGHBOURHOOD::Main & Fraser                       1.302819 2.4040e-01
-lsqft:NEIGHBOURHOOD::Marine Drive                        2.571345 4.2258e-02
-lsqft:NEIGHBOURHOOD::Marpole                             3.597075 1.1407e-02
-lsqft:NEIGHBOURHOOD::Mount Pleasant                      3.240763 1.7670e-02
-lsqft:NEIGHBOURHOOD::Oakridge                           -0.404594 6.9980e-01
-lsqft:NEIGHBOURHOOD::Point Grey                          2.129768 7.7234e-02
-lsqft:NEIGHBOURHOOD::Renfrew                             0.062873 9.5191e-01
-lsqft:NEIGHBOURHOOD::Renfrew Heights                     0.238671 8.1930e-01
-lsqft:NEIGHBOURHOOD::Shaughnessy                       -17.229993 2.4478e-06
-lsqft:NEIGHBOURHOOD::South Granville                     1.602967 1.6006e-01
-lsqft:NEIGHBOURHOOD::South Vancouver                     1.626031 1.5507e-01
-                                                          
-lsqft                                                  ** 
-lsqft:NEIGHBOURHOOD::Arbutus Ridge - Mackenzie Heights    
-lsqft:NEIGHBOURHOOD::Cambie                               
-lsqft:NEIGHBOURHOOD::Cedar Cottage                     *  
-lsqft:NEIGHBOURHOOD::Collingwood                          
-lsqft:NEIGHBOURHOOD::Dunbar                               
-lsqft:NEIGHBOURHOOD::Fairview                             
-lsqft:NEIGHBOURHOOD::Fraserview                           
-lsqft:NEIGHBOURHOOD::Grandview                            
-lsqft:NEIGHBOURHOOD::Hastings East                        
-lsqft:NEIGHBOURHOOD::Kerrisdale                           
-lsqft:NEIGHBOURHOOD::Killarney                            
-lsqft:NEIGHBOURHOOD::Kitsilano                         .  
-lsqft:NEIGHBOURHOOD::Knight                               
-lsqft:NEIGHBOURHOOD::Main & Fraser                        
-lsqft:NEIGHBOURHOOD::Marine Drive                      *  
-lsqft:NEIGHBOURHOOD::Marpole                           *  
-lsqft:NEIGHBOURHOOD::Mount Pleasant                    *  
-lsqft:NEIGHBOURHOOD::Oakridge                             
-lsqft:NEIGHBOURHOOD::Point Grey                        .  
-lsqft:NEIGHBOURHOOD::Renfrew                              
-lsqft:NEIGHBOURHOOD::Renfrew Heights                      
-lsqft:NEIGHBOURHOOD::Shaughnessy                       ***
-lsqft:NEIGHBOURHOOD::South Granville                      
-lsqft:NEIGHBOURHOOD::South Vancouver                      
-... 27 variables were removed because of collinearity (NEIGHBOURHOOD::Cambie, NEIGHBOURHOOD::Cedar Cottage and 25 others [full set in $collin.var])
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.155676     Adj. R2: 0.881621
-                 Within R2: 0.4658  
-> print(summary(regL))
-OLS estimation, Dep. Var.: log(CONVEYANCE_PRICE)
-Observations: 6,466
-Fixed-effects: saleYear: 7,  age: 37
-Standard-errors: Clustered (saleYear) 
-            Estimate Std. Error  t value   Pr(>|t|)    
-lsqft     -205.65233  22.945945 -8.96247 0.00010778 ***
-lon          8.54368   1.418541  6.02287 0.00094547 ***
-lsqft:lon   -1.67686   0.186500 -8.99119 0.00010585 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.173531     Adj. R2: 0.853986
-                 Within R2: 0.805853
+> regLN <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon | saleYear + age + NEIGHBOURHOOD,data=df[age<MAXAGE])
+> regLNN <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon + lsqft*i(NEIGHBOURHOOD)| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
+The variables 'NEIGHBOURHOOD::Killarney', 'NEIGHBOURHOOD::Kitsilano', 'NEIGHBOURHOOD::Knight', 'NEIGHBOURHOOD::Main & Fraser', 'NEIGHBOURHOOD::Marine Drive', 'NEIGHBOURHOOD::Marpole' and 10 others have been removed because of collinearity (see $collin.var).
+> for (reg in list(regT, regN, regL, regLN, regLNN)) {
++   print(fitstat(reg, c("war2","r2","ar2")))
++ }
+Within Adj. R2: 0.157911
+            R2: 0.858922
+       Adj. R2: 0.854232
+Within Adj. R2: 0.463705
+            R2: 0.883306
+       Adj. R2: 0.881621
+Within Adj. R2: 0.805763
+            R2: 0.855003
+       Adj. R2: 0.853986
+Within Adj. R2: 0.458651
+            R2: 0.8818
+       Adj. R2: 0.880506
+Within Adj. R2: 0.396937
+            R2: 0.893491
+       Adj. R2: 0.890283
 > #lsqft:NEIGHBOURHOOD::Renfrew Heights  
 > # turn coefficients of this form into a data.table
 > df <- df[NEIGHBOURHOOD!="Shaughnessy"]
@@ -636,4 +463,4 @@ RMSE: 0.173531     Adj. R2: 0.853986
 > q("no")
 > proc.time()
    user  system elapsed 
- 19.119   4.762   9.244 
+ 21.496   6.928   9.408 
