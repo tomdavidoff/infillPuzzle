@@ -50,6 +50,13 @@ dt <- merge(dt,dtCensus,by="zip",all.x=TRUE)
 print(nrow(dt))
 print(head(dt))
 print(cor(dt[,.(slope,price_level,propensity,medianIncome)],))
+print(table(dt[,zone]))
+print(cor(dt[zone %chin% c("R2.5","R5"),.(slope,price_level,propensity,medianIncome)],))
+print(cor(dt[zone %chin% c("R2.5"),.(slope,price_level,propensity,medianIncome)],))
+print(cor(dt[zone %chin% c("R5"),.(slope,price_level,propensity,medianIncome)],))
+print(dt[,.(mp=mean(propensity),mpl=mean(price_level)),by=zone])
+print(dt[zone=="R2.5" | zone=="R5"])
+print(dt[,sum(infill_lot_count),by=zone])
 
 
 
@@ -58,11 +65,12 @@ print(cor(dt[,.(slope,price_level,propensity,medianIncome)],))
 # we use robust standard errors (hc1)
 m1 <- feols(propensity ~ slope, dt, vcov = "hc1")
 m2 <- feols(propensity ~ slope + medianIncome, dt, vcov = "hc1")
-m3 <- feols(propensity ~ price_level, dt, vcov = "hc1")
-m4 <- feols(propensity ~ price_level + medianIncome, dt, vcov = "hc1")
+m3 <- feols(propensity ~ log(price_level), dt, vcov = "hc1")
+m4 <- feols(propensity ~ log(price_level) + slope, dt[zone %chin% c("R2.5","R5")], vcov = "hc1")
+m5 <- feols(propensity ~ log(price_level) + slope|zone, dt[zone %chin% c("R2.5","R5")], vcov = "hc1")
 
 # Zen summary: No complex tables, just the facts
-print(etable(m1, m2,m3,m4))
+print(etable(m1, m2,m3,m4,m5))
 
 # 5. Plot ------------------------------------------------------------------
 ggplot(dt, aes(size_slope, propensity)) +

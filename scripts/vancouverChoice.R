@@ -53,12 +53,16 @@ dtChoice[,single:=use=="single"]
 dtChoice[,duplex:=use=="duplex"]
 dtChoice[,multi:=use=="multi"]
 print(summary(dtChoice))
-dtWide <- dtChoice[landWidth>MAXWIDTH]
+dtChoice[,multiplex:=use=="multi"]
+MINWIDEWIDTH <- 40
+dtWide <- dtChoice[landWidth>MINWIDEWIDTH]
 dtChoice <- dtChoice[landWidth %between% c(MINWIDTH,MAXWIDTH)]
 
 # laneway
 dtChoice[use=="single",laneway:=distToLaneway<CUTDISTANCE]
 print(mean(dtChoice[use=="single",laneway]))
+print((dtChoice[use=="single",mean(laneway),by="east"]))
+print((dtChoice[year>2023 & use=="single",mean(laneway),by="east"]))
 
 ggplot(dtChoice[use=="single"],aes(x=longitude,y=latitude,color=laneway)) + geom_point()
 ggsave("text/lanewayMap.png")
@@ -66,10 +70,10 @@ ggsave("text/lanewayMap.png")
 ggplot(dtChoice,aes(x=longitude,y=latitude,color=single)) + geom_point()
 ggsave("text/singleMap.png")
 
-ggplot(dtChoice,aes(x=longitude,y=latitude,color=multi)) + geom_point()
-ggsave("text/multiMap.png")
+ggplot(dtChoice[year>2018],aes(x=longitude,y=latitude,color=duplex)) + geom_point()
+ggsave("text/duplexMap.png")
 
-ggplot(dtWide,aes(x=longitude,y=latitude,color=multi)) + geom_point()
+ggplot(dtWide[year>2023],aes(x=longitude,y=latitude,color=multi)) + geom_point()
 ggsave("text/multiMapWide.png")
 
 
@@ -88,6 +92,8 @@ print(summary(feols(laneway ~ elasticity +  landWidth + longitude, data=dtChoice
 
 # Duplex
 print(cor(dtChoice[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown,east)],use="complete.obs"))
+print(dtChoice[year>=2019 & year<=2023,mean(duplex),by=east])
+
 print(cor(dtWide[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown)],use="complete.obs"))
 print(summary(feols(duplex ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
 print(summary(feols(duplex ~  medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
@@ -131,7 +137,6 @@ for (u in c("singleLaneway","singleOnly")) {
 	print(dtSingle[order(year),mean(use==u),by=c("year","east")])
 }
 
-q("no")
 
 # plot with bubbles proportional to nobs
 dPlot <- dtChoice[,.(elasticity=mean(elasticity),medianPPSF=mean(medianPPSF),nobs=.N),by="neighbourhoodDescription"]
@@ -139,8 +144,10 @@ ggplot(dPlot, aes(x=medianPPSF, y=elasticity, size=nobs)) + geom_point()
 ggsave("text/elasticityMedianPrice.png")
 
 # Multiplex
-dtChoice[,multiplex:=use=="multi"]
-print(cor(dtChoice[year>=2024 ,.(multiplex,elasticity,medianPPSF)],use="complete.obs"))
+print(cor(dtChoice[year>=2024 ,.(multiplex,elasticity,medianPPSF,east)],use="complete.obs"))
+print(cor(dtWide[year>=2024 ,.(multiplex,elasticity,medianPPSF,east)],use="complete.obs"))
+print(dtChoice[year>=2024,mean(multiplex),by=east])
+print(dtWide[year>=2024,mean(multiplex),by=east])
 
 
 print(summary(feols(multiplex ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
@@ -152,7 +159,6 @@ print(summary(feols(single ~  medianPPSF + landWidth, data=dtChoice[year %betwee
 print(summary(feols(single ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2026)], cluster="neighbourhoodDescription")))
 
 print(table(dtChoice[,use]))
-q("no")
 
 # Income by census tract
 dtIncome <- fread("~/OneDrive - UBC/dataRaw/9810005801_databaseLoadingData.csv",

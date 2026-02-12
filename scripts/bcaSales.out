@@ -43,497 +43,350 @@ The following object is masked from ‘package:fixest’:
 
 > library(stringr)
 > library(readxl)
+> library(geosphere)
+> library(nnet)
+> library(xtable)
 > 
-> BCA19    <- "~/OneDrive - UBC/dataRaw/REVD19_and_inventory_extracts.sqlite3"
-> BCA26 <- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
+> # per google
+> latDowntown <- 49.2827
+> lonDowntown <- -123.1207
+> ONTARIOLON <- -123.105 # google
+> WIDTHTOL <- .10
+> MAXAGE <- 25
+> MINOBS <- 20
 > 
-> # use 2026 data to get floor(roll number/1000) to get lot polygons -> centroid , maybe zoning 
-> fRollLatLon <- "~/OneDrive - UBC/dataProcessed/bca26RollCensusTract.rds"
-> fLaneway <-  "~/OneDrive - UBC/dataRaw/20231231_UBC_CustomLanewayReport.xlsx"
-> 
-> # drop duplex
-> if (!file.exists(fRollLatLon)) {
-+   cat("Extracting lot centroids from BCA 2026 data...\n")
-+   desc26 <- st_read(BCA26,
-+       layer="WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
-+       query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV WHERE JURISDICTION_CODE=='200' AND ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling')  > 0", 
-+       quiet = TRUE
-+   )
-+   print(head(desc26))
-+   stDesc <- st_crs(desc26)
-+   roll_pt <- st_point_on_surface(desc26)
-+   # convert geom to centroid
-+   # --- 2021 Census Tracts (cartographic) via download
-+   ct_file <- "~/OneDrive - UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
-+   sCT <- st_read(ct_file, quiet = TRUE)
-+   sCT <- st_make_valid(sCT)
-+   sCT <- st_transform(sCT, stDesc)
-+ 
-+   roll_ct <- st_join(roll_pt, sCT[, c("CTUID", "DGUID", "CTNAME", "PRUID")], join = st_within, left = TRUE)
-+   print(head(roll_ct))
-+   saveRDS(roll_ct, fRollLatLon)
+> centroidsFile <- "~/OneDrive - UBC/dataProcessed/bca25Centroids.rds"
+> print(centroidsFile)
+[1] "~/OneDrive - UBC/dataProcessed/bca25Centroids.rds"
+> print(file.exists(centroidsFile))
+[1] TRUE
+> if (!file.exists(centroidsFile)) {
++   source("scripts/getBCAVancouverCentroids.R")
 + }
+> dtCentroids <- readRDS(centroidsFile)
+> # add to data.table
 > 
-> # Load BCA 2019 sales data (all residential)
-> fSales <- "~/OneDrive - UBC/dataProcessed/bca19Sales.rds"
-> if (!file.exists(fSales)) {
-+   cat("Extracting BCA 2019 sales data...\n")
-+   db <- dbConnect(SQLite(), BCA19)
-+   dtBCA2019 <- as.data.table(dbGetQuery(db, "
-+       SELECT s.folioID, s.conveyancePrice, s.conveyanceDate,
-+              i.MB_effective_year, i.MB_total_finished_area, i.land_width, i.land_depth, i.land_area, i.roll_number, i.zoning,
-+              d.actualUseDescription, d.neighbourhoodDescription, a.postalCode
-+       FROM sales s
-+       JOIN folio f ON s.folioID = f.folioID
-+       JOIN residentialInventory i ON f.rollNumber = i.roll_number
-+       JOIN folioDescription d ON f.folioID = d.folioID
-+       JOIN address a ON f.folioID = a.folioID
-+       WHERE s.conveyanceTypeDescription = 'Improved Single Property Transaction'
-+         AND i.jurisdiction = 200
-+         AND (d.actualUseDescription IN ('Residential Dwelling with Suite','Single Family Dwelling') OR INSTR(d.actualUseDescription, 'uplex') > 0)
-+   "))
-+   dbDisconnect(db)
-+   saveRDS(dtBCA2019, fSales)
-+ } 
-> dtBCA2019 <- readRDS(fSales)
-> print(head(dtBCA2019))
-      folioID conveyancePrice conveyanceDate MB_effective_year
-       <char>          <char>         <char>            <char>
-1: A000000009         9450000     2014-06-16              2019
-2: A00000000A         8800000     2013-02-08              1997
-3: A00000000A         1700000     1991-07-09              1997
-4: A00000000B         3850000     2006-12-04              1945
-5: A00000000B          190000     1977-04-15              1945
-6: A00000000C         2308000     1991-09-03              2011
-   MB_total_finished_area land_width land_depth land_area     roll_number
-                   <char>     <char>     <char>    <char>          <char>
-1:                  11895                                 001019632060000
-2:                   7760        195      251.9           001019632290000
-3:                   7760        195      251.9           001019632290000
-4:                   3215        150        250           001019632450000
-5:                   3215        150        250           001019632450000
-6:                   8673        150        250           001019632650000
-   zoning   actualUseDescription neighbourhoodDescription postalCode
-   <char>                 <char>                   <char>     <char>
-1:    RS1 Single Family Dwelling               POINT GREY    V6T 1A9
-2:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2
-3:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2
-4:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2
-5:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2
-6:    RS1 Single Family Dwelling               POINT GREY    V6T 1B2
-> 
-> # merge back with census tract on roll number/1000
-> dtRollLatLon <- as.data.table(readRDS(fRollLatLon))
-> dtBCA2019[, roll_base := floor(as.numeric(roll_number) / 1000)]
-> dtRollLatLon[, roll_base := floor(as.numeric(ROLL_NUMBER) / 1000)]
-> dtBCA2019 <- merge(dtBCA2019, dtRollLatLon[, .(roll_base, CTUID, DGUID, CTNAME)], by = "roll_base", all.x = TRUE)
-> print(table(is.na(dtBCA2019[, CTUID])))
+> dtInventory <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/Residential_inventory_202501/20250101_A09_Residential_Inventory_Extract.txt",select=c("Roll_Number","MB_Total_Finished_Area","Zoning","Land_Width_Width","Land_Depth_Depth","MB_Effective_Year"),colClasses=c(Roll_Number="character",MB_Total_Finished_Area="numeric",Zoning="character",Land_Width_Width="numeric",Land_Depth_Depth="numeric"))
+> print(head(dtInventory))
+       Roll_Number MB_Total_Finished_Area Zoning Land_Width_Width
+            <char>                  <num> <char>            <num>
+1: 001019632060000                  11895   R1-1               NA
+2: 001019632290000                   7760   R1-1              195
+3: 001019632450000                   3215   R1-1              150
+4: 001019632650000                   8673   R1-1              150
+5: 001019632760000                   2942   R1-1              170
+6: 001019635070000                   4739   R1-1              170
+   Land_Depth_Depth MB_Effective_Year
+              <num>             <int>
+1:                0              2020
+2:              252              1997
+3:              250              1945
+4:              250              2011
+5:              215              2022
+6:              219              1995
+> dtSales <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_sales_20250331_REVD25.csv",select=c("ROLL_NUMBER","FOLIO_ID","CONVEYANCE_DATE","CONVEYANCE_PRICE","CONVEYANCE_TYPE_DESCRIPTION"))
+> dtSales <- dtSales[CONVEYANCE_TYPE_DESCRIPTION=="Improved Single Property Transaction"]
+> dtSales[,saleYear:=as.numeric(substring(CONVEYANCE_DATE,1,4))]
+> print(head(dtSales))
+       ROLL_NUMBER   FOLIO_ID CONVEYANCE_DATE CONVEYANCE_PRICE
+            <char>     <char>           <i64>            <int>
+1: 001029650840000 A000000045  20080415000000          2775000
+2: 001029650840000 A000000045  19880830000000           570000
+3: 001029650840000 A000000045  19830127000000           266000
+4: 001029650870000 A000000046  20121031000000          2698000
+5: 001029650950000 A000000047  19771115000000           111500
+6: 001030683570000 A00000004C  19950427000000           751000
+            CONVEYANCE_TYPE_DESCRIPTION saleYear
+                                 <char>    <num>
+1: Improved Single Property Transaction     2008
+2: Improved Single Property Transaction     1988
+3: Improved Single Property Transaction     1983
+4: Improved Single Property Transaction     2012
+5: Improved Single Property Transaction     1977
+6: Improved Single Property Transaction     1995
+> dtDescription <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_descriptions_20250331_REVD25.csv",select=c("FOLIO_ID","ROLL_NUMBER","ACTUAL_USE_DESCRIPTION","NEIGHBOURHOOD","JURISDICTION_CODE"))
+> dtDescription <- dtDescription[JURISDICTION_CODE==200]
+> dtMerge <- merge(dtDescription,dtCentroids,by="ROLL_NUMBER")
+> dtMerge <- merge(dtMerge,dtInventory,by.x="ROLL_NUMBER",by.y="Roll_Number")
+> print(nrow(dtMerge))
+[1] 199693
+> dtMerge <- merge(dtMerge,dtSales,by="ROLL_NUMBER")
+> # order by frequency
+> print(table(dtMerge[,ACTUAL_USE_DESCRIPTION])[order(table(dtMerge[,ACTUAL_USE_DESCRIPTION]),decreasing=TRUE)])
 
- FALSE   TRUE 
-148653  10995 
-> print(table(dtBCA2019[is.na(CTUID), actualUseDescription]))
-
-2 Acres Or More (Single Family Dwelling, Duplex) 
-                                              75 
- Duplex, Non-Strata Side by Side or Front / Back 
-                                            2100 
-                    Duplex, Non-Strata Up / Down 
-                                             254 
-                     Duplex, Strata Front / Back 
-                                            4207 
-                     Duplex, Strata Side by Side 
-                                            2497 
-                        Duplex, Strata Up / Down 
-                                             239 
-                 Residential Dwelling with Suite 
-                                             753 
-                          Single Family Dwelling 
-                                             870 
-> print(table(dtBCA2019[!is.na(CTUID), actualUseDescription]))
-
-2 Acres Or More (Single Family Dwelling, Duplex) 
-                                               2 
- Duplex, Non-Strata Side by Side or Front / Back 
-                                               9 
-                     Duplex, Strata Front / Back 
-                                              18 
-                 Residential Dwelling with Suite 
-                                           78968 
-                          Single Family Dwelling 
-                                           69656 
+                Strata-Lot Residence (Condominium) 
+                                            194246 
+                   Residential Dwelling with Suite 
+                                             66161 
+                            Single Family Dwelling 
+                                             58666 
+               Row Housing (Single Unit Ownership) 
+                                             22642 
+                       Duplex, Strata Front / Back 
+                                              5443 
+                       Duplex, Strata Side by Side 
+                                              3004 
+                 Property Subject To Section 19(8) 
+                                              1512 
+   Duplex, Non-Strata Side by Side or Front / Back 
+                                              1317 
+  Stratified Rental Apartment (Frame Construction) 
+                                               498 
+                          Duplex, Strata Up / Down 
+                                               269 
+              Vacant Residential Less Than 2 Acres 
+                                               195 
+                      Duplex, Non-Strata Up / Down 
+                                               151 
+Stratified Rental Apartment (Hi-Rise Construction) 
+                                               104 
+  2 Acres Or More (Single Family Dwelling, Duplex) 
+                                                63 
+                                           Triplex 
+                                                56 
+                       Stratified Rental Townhouse 
+                                                38 
+       Bed & Breakfast Operation Less Than 4 Units 
+                                                29 
+                      Residential Outbuilding Only 
+                                                 5 
+                     2 Acres Or More (Outbuilding) 
+                                                 3 
+                          2 Acres Or More (Vacant) 
+                                                 2 
+                                             Other 
+                                                 2 
+> dtMerge <- dtMerge[ACTUAL_USE_DESCRIPTION %in% c("Strata-Lot Residence (Condominium)", "Residential Dwelling with Suite", "Single Family Dwelling", "Row Housing (Single Unit Ownership)") | grepl("Duplex",ACTUAL_USE_DESCRIPTION)]
+> # first question: among single family homes are neighbourhoods relevant?
+> dtMerge[,age:=saleYear-MB_Effective_Year]
+> # citywide optimal square feet?
 > 
+> dtMerge[,distDowntown:=distGeo(cbind(lon,lat),c(lonDowntown,latDowntown))]
+> regValue1 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) +lon*distDowntown|saleYear^ACTUAL_USE_DESCRIPTION,data=dtMerge )
+NOTE: 30,749 observations removed because of NA and infinite values (LHS: 40, RHS: 30,710).
+Warning message:
+In log(age + 1) : NaNs produced
+> regValue2 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) +lon*distDowntown + i(NEIGHBOURHOOD)|saleYear^ACTUAL_USE_DESCRIPTION,data=dtMerge )
+NOTE: 30,749 observations removed because of NA and infinite values (LHS: 40, RHS: 30,710).
+Warning message:
+In log(age + 1) : NaNs produced
+> # add census tract merge from Lon/Lat
+> ct_file <- "~/OneDrive - UBC/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
+> sCT <- st_read(ct_file, quiet = TRUE)
+> sCT <- st_make_valid(sCT)
 > 
-> # Numeric conversion and cleaning
-> cols <- c("conveyancePrice", "MB_effective_year", "MB_total_finished_area","land_area","land_width","land_depth")
-> dtBCA2019[, (cols) := lapply(.SD, as.numeric), .SDcols = cols]
-> dtBCA2019 <- dtBCA2019[!is.na(MB_total_finished_area) & conveyancePrice > 100000]
-> dtBCA2019[, land_area_approximate := land_width * land_depth]
-> dtBCA2019 <- dtBCA2019[!is.na(land_depth) & !is.na(land_width)]
+> # turn lon/lat into a spatial point, then merge with census tract geometry as a spatial merge
+> # plain vanilla crs lat lon
+> sMerge <- st_as_sf(dtMerge, coords = c("lon", "lat"),crs=4326)
+> sMerge <- st_transform(sMerge, crs = st_crs(sCT))
+> sMerge <- st_join(sMerge, sCT, left = TRUE)
+> # reconvert to better crs and get lon/lat familiarly
+> sMerge <- st_transform(sMerge, crs = 4326)
+> sMerge$lon <- st_coordinates(sMerge)[,1]
+> sMerge$lat <- st_coordinates(sMerge)[,2]
+> df <- as.data.table(sMerge)
+> MINSQFT <- 400
+> df[,propertyType:=ifelse(ACTUAL_USE_DESCRIPTION %chin% c("Single Family Dwelling","Residential Dwelling with Suite"),"single",ifelse(grepl("Duplex,",ACTUAL_USE_DESCRIPTION),"duplex",ifelse(ACTUAL_USE_DESCRIPTION=="Row Housing (Single Unit Ownership)","TH","condo")))]
+> df[,lsqft := log(MB_Total_Finished_Area)]
+> df <- df[!is.na(lsqft) & !is.na(CONVEYANCE_PRICE) & !is.na(age) & !is.na(lon) & !is.na(lat) & !is.na(saleYear) & !is.na(CTNAME) & CONVEYANCE_PRICE>0 & age>=0 & MB_Total_Finished_Area>MINSQFT]
+> MINWIDTH <- 30
+> MAXWIDTH <- 35 # over half of properties
+> df <- df[Land_Width_Width %between% c(MINWIDTH,MAXWIDTH)]
+> df[,east:=lon>ONTARIOLON]
+> df[,single:=propertyType=="single"]
 > 
-> # Metrics
-> dtBCA2019[, `:=`(
-+     age = year(conveyanceDate) - MB_effective_year, 
-+     ppsf = conveyancePrice / MB_total_finished_area 
-+ )]
-> 
-> # Outlier removal (global)
-> CUT <- 0.05
-> dtBCA2019 <- dtBCA2019[
-+     age >= 0 &
-+     MB_total_finished_area %between% quantile(MB_total_finished_area, c(CUT, 1-CUT)) &
-+     ppsf %between% quantile(ppsf, c(CUT, 1-CUT))
-+ ]
-> 
-> cat("BCA 2019 transactions loaded:", nrow(dtBCA2019), "\n")
-BCA 2019 transactions loaded: 84520 
-> 
-> # ==========================================
-> # Exclude from the sales homes with laneways
-> # NO, don't because this is about MB slope
-> # ==========================================
-> 
-> dtLaneway <- as.data.table(read_excel(fLaneway, sheet = "DATA"))
-> setnames(dtLaneway, "ROLL_NUM", "Roll_Number_char")
-> dtLaneway[, `:=`(
-+   Roll_Number = as.numeric(Roll_Number_char),
-+   roll_base = floor(as.numeric(Roll_Number_char) / 1000)
-+ )]
-> 
-> dtBCA2019 <- merge(dtBCA2019, dtLaneway[, .(roll_base, lanewayBuilt = YEAR_BUILT)], by = "roll_base", all.x = TRUE)
-> dtBCA2019[, hasLaneway := !is.na(lanewayBuilt) & (year(conveyanceDate) >= lanewayBuilt)]
-> 
-> MINYEAR <- 2012
-> MEANYEAR <- 2015
-> WIDTHCUT <- 0.15
-> DEPTHMIN <- 110
-> DEPTHMAX <- 150
-> 
-> dtBCA2019 <- dtBCA2019[grepl("RS", zoning)]
-> # Exclude Shaughnessy and West End
-> dtBCA2019 <- dtBCA2019[!neighbourhoodDescription %chin% c("SHAUGNESSY", "WEST END")]
-> 
-> # ==========================================
-> # Function to run analysis at a given geographic level
-> # ==========================================
-> 
-> runAnalysis <- function(dt, groupVar, label) {
-+   cat("\n==========================================\n")
-+   cat("Running analysis at", label, "level\n")
-+   cat("==========================================\n")
-+   
-+   # Compute median land_width within each group
-+   dt[, landWidthMedian := median(land_width, na.rm = TRUE), by = groupVar]
-+   dt[, saleYear := year(conveyanceDate)]
-+   
-+   # Filter to observations near median width for that group
-+   dtFiltered <- dt[
-+     land_width >= landWidthMedian * (1 - WIDTHCUT) & 
-+     land_width <= landWidthMedian * (1 + WIDTHCUT) &
-+     land_depth >= DEPTHMIN & 
-+     land_depth < DEPTHMAX
-+   ]
-+   
-+   # Analysis sample: newer builds , post-MINYEAR
-+   MAXAGE <- 15
-+   dtAnalysis <- dtFiltered[age<15 & year(conveyanceDate) >= MINYEAR]
-+   cat("Analysis sample size:", nrow(dtAnalysis), "\n")
-+   
-+   # Build formulas dynamically
-+   fmlaMain <- as.formula(paste0(
-+     "ppsf ~ i(", groupVar, ", MB_total_finished_area) + log(age + 1) + MB_total_finished_area + log(land_width) + log(land_depth) | ", groupVar
-+   ))
-+ 
-+   fmlaLog <- as.formula(paste0(
-+     "log(ppsf) ~ 0 + i(", groupVar, ", log(MB_total_finished_area)) + log(age + 1) + log(land_width) + log(land_depth) | saleYear + ", groupVar 
-+   ))# no main effect for Wald purposes
-+   
-+   # Run regressions
-+   mainReg <- feols(fmlaMain, data = dtAnalysis)
-+   print(r2(mainReg, typ = c("r2", "ar2")))
-+   
-+   logReg <- feols(fmlaLog, data = dtAnalysis)
-+   print(r2(logReg, typ = c("r2", "ar2")))
-+ 
-+   # Extract slopes
-+   dtSlopes <- as.data.table(coeftable(mainReg), keep.rownames = "term")[grepl("MB_total_finished_area", term)]
-+   # Extract group identifier from term
-+   pattern <- paste0(groupVar, "::(.*):MB_total_finished_area")
-+   dtSlopes[, (groupVar) := gsub(pattern, "\\1", term)]
-+   
-+   # Extract elasticities
-+   dtElasticities <- as.data.table(coeftable(logReg), keep.rownames = "term")[grepl("log\\(MB_total_finished_area\\)", term)]
-+   patternLog <- paste0(groupVar, "::(.*):log\\(MB_total_finished_area\\)")
-+   dtElasticities[, (groupVar) := gsub(patternLog, "\\1", term)]
-+   
-+   # Compute means, adjust for CPI
-+   dtCPI <- fread("~/OneDrive - UBC/dataRaw/1810000501_databaseLoadingData.csv",select=c("REF_DATE","VALUE","Products and product groups"))
-+   dtCPI <- dtCPI[`Products and product groups` == "All-items"]
-+   setnames(dtCPI, c("REF_DATE", "VALUE"), c("year", "CPI"))
-+   dtCPI[,CPI:=CPI / CPI[year==2025]]
-+   dtFiltered <- merge(dtFiltered, dtCPI, by.x = "saleYear", by.y = "year", all.x = TRUE)
-+   print(head(dtFiltered))
-+   print(head(dtCPI))
-+ 
-+   dtMeans <- dtFiltered[hasLaneway == FALSE & year(conveyanceDate) >= MEANYEAR, 
-+                         .(meanPPSF = mean(ppsf/CPI, na.rm = TRUE), nobs = .N), 
-+                         by = groupVar]
-+   
-+   # Merge slopes and elasticities
-+   dtMeans <- merge(dtMeans, dtSlopes[, c(groupVar, "Estimate"), with = FALSE], by = groupVar, all.x = TRUE)
-+   setnames(dtMeans, "Estimate", "slope")
-+   dtMeans <- merge(dtMeans, dtElasticities[, c(groupVar, "Estimate"), with = FALSE], by = groupVar, all.x = TRUE)
-+   setnames(dtMeans, "Estimate", "elasticity")
-+   
-+   # Output
-+   fwrite(dtMeans, paste0("~/OneDrive - UBC/dataProcessed/bca19_mean_ppsf_slope_by_", label, ".csv"))
-+   
-+   # Plot
-+   p <- ggplot(dtMeans[nobs > quantile(nobs, .025) & !is.na(slope)], aes(x = slope, y = meanPPSF)) + 
-+     geom_point() + 
-+     geom_smooth(method = "lm") + 
-+     labs(title = paste("Mean BCA Price per SqFt vs Pricing Slope by", label), 
-+          x = "BCA Pricing Slope ($/sqft per sqft)", 
-+          y = "Mean Price per SqFt")
-+   ggsave(paste0("text/bca19_mean_ppsf_vs_slope_", label, ".png"), plot = p)
-+   
-+   # Correlations
-+   cat("\nCorrelations (", label, "):\n", sep = "")
-+   print(cor(dtMeans[!is.na(slope), .(slope, meanPPSF)]))
-+   print(cor(dtMeans[!is.na(elasticity), .(elasticity, meanPPSF)]))
-+   print(cor(dtMeans[!is.na(slope) & nobs > quantile(nobs, .025), .(slope, meanPPSF)]))
-+   print(cor(dtMeans[!is.na(elasticity) & nobs > quantile(nobs, .05), .(elasticity, meanPPSF)]))
-+   print(cor(dtMeans[!is.na(elasticity) & nobs > quantile(nobs, .1), .(elasticity, meanPPSF)]))
-+   print(summary(dtMeans[!is.na(elasticity) & nobs > quantile(nobs, .025), .(elasticity, meanPPSF)]))
-+   print(summary(dtMeans[!is.na(elasticity) & nobs > quantile(nobs, .05), .(elasticity, meanPPSF)]))
-+   print(summary(dtMeans[!is.na(elasticity) & nobs > quantile(nobs, .1), .(elasticity, meanPPSF)]))
-+   
-+   return(dtMeans)
+> ancientYears <- c(2002,2004)
+> oldYears <- c(2012,2014)
+> modYears <- c(2017,2018)
+> newYears <- c(2022,2024)
+> residPlot <- function(yearList) {
++ 	dmap <- df[propertyType %in% c("single","duplex","TH") & age<MAXAGE & saleYear %in% yearList]
++ 	rr <- feols(log(CONVEYANCE_PRICE) ~ lsqft | saleYear + age ,  data=dmap)
++ 	dmap[,rrResidual := resid(rr)]
++ 	ggplot(dmap,aes(x=lon,y=lat,color=rrResidual)) + geom_point() + scale_color_gradient2(low="grey80",high="grey10",limits = c(-1,1),
++     oob = scales::squish) + theme_minimal() + labs(color="Residual") + geom_vline(xintercept=ONTARIOLON, linetype="dashed", color="black") + theme(legend.position = "bottom") 
++ 	ggsave(paste0("text/residualsMap",yearList[1],"to",yearList[2],".png"))
 + }
-> 
-> # ==========================================
-> # Run analyses
-> # ==========================================
-> 
-> dtResultsTract <- runAnalysis(copy(dtBCA2019), "CTUID", "tract")
-
-==========================================
-Running analysis at tract level
-==========================================
-Analysis sample size: 3081 
-NOTE: 1 observation removed because of NA values (RHS: 1, Fixed-effects: 1).
-The variables 'CTUID::9330001.02:MB_total_finished_area', 'CTUID::9330017.02:MB_total_finished_area', 'CTUID::9330021.00:MB_total_finished_area', 'CTUID::9330032.02:MB_total_finished_area' and 'MB_total_finished_area' have been removed because of collinearity (see $collin.var).
-       r2       ar2 
-0.3645173 0.3328840 
-NOTE: 1 observation removed because of NA values (RHS: 1, Fixed-effects: 1).
-The variables 'CTUID::9330001.02:log(MB_total_finished_area)', 'CTUID::9330017.02:log(MB_total_finished_area)', 'CTUID::9330021.00:log(MB_total_finished_area)' and 'CTUID::9330032.02:log(MB_total_finished_area)' have been removed because of collinearity (see $collin.var).
-       r2       ar2 
-0.6720355 0.6548863 
-Key: <saleYear>
-   saleYear   roll_base    folioID conveyancePrice conveyanceDate
-      <int>       <num>     <char>           <num>         <char>
-1:     1974 11161792870 A000001DFJ          137500     1974-07-15
-2:     1976 11765152610 A000001EGL          129000     1976-08-15
-3:     1977  4707070530 A000000MZL          108000     1977-12-15
-4:     1977  5733073310 A000000QRZ          152000     1977-09-15
-5:     1977 11152757590 A000001D6Z          145000     1977-07-15
-6:     1978  3707037570 A000000HPH          131000     1978-12-15
-   MB_effective_year MB_total_finished_area land_width land_depth land_area
-               <num>                  <num>      <num>      <num>     <num>
-1:              1959                   2205       57.0      120.0        NA
-2:              1963                   2310       56.0      122.5        NA
-3:              1977                   1900       33.0      122.0        NA
-4:              1976                   2707       60.0      130.0        NA
-5:              1963                   2593       62.5      120.0        NA
-6:              1978                   2078       33.0      122.1        NA
-       roll_number zoning   actualUseDescription  neighbourhoodDescription
-            <char> <char>                 <char>                    <char>
-1: 011161792870000    RS1 Single Family Dwelling                  OAKRIDGE
-2: 011765152610000    RS1 Single Family Dwelling                  OAKRIDGE
-3: 004707070530000    RS1 Single Family Dwelling ARBUTUS/MACKENZIE HEIGHTS
-4: 005733073310000    RS5 Single Family Dwelling                KERRISDALE
-5: 011152757590000    RS1 Single Family Dwelling                  OAKRIDGE
-6: 003707037570000    RS5 Single Family Dwelling                    DUNBAR
-   postalCode      CTUID               DGUID  CTNAME land_area_approximate
-       <char>     <char>              <char>  <char>                 <num>
-1:    V6P 3N4 9330010.02 2021S05079330010.02 0010.02                6840.0
-2:    V5Z 2R7 9330010.01 2021S05079330010.01 0010.01                6860.0
-3:    V6L 1R2 9330026.00 2021S05079330026.00 0026.00                4026.0
-4:    V6N 2L9 9330027.02 2021S05079330027.02 0027.02                7800.0
-5:    V5Z 3W8 9330010.01 2021S05079330010.01 0010.01                7500.0
-6:    V6S 1L7 9330025.00 2021S05079330025.00 0025.00                4029.3
-     age     ppsf lanewayBuilt hasLaneway landWidthMedian       CPI
-   <num>    <num>        <num>     <lgcl>           <num>     <num>
-1:    15 62.35828           NA      FALSE            57.0 0.1595615
-2:    13 55.84416           NA      FALSE            60.1 0.1894032
-3:     0 56.84211           NA      FALSE            37.0 0.2046285
-4:     1 56.15072           NA      FALSE            60.0 0.2046285
-5:    14 55.91978           NA      FALSE            60.1 0.2046285
-6:     0 63.04139           NA      FALSE            33.0 0.2228989
-   Products and product groups
-                        <char>
-1:                   All-items
-2:                   All-items
-3:                   All-items
-4:                   All-items
-5:                   All-items
-6:                   All-items
-    year        CPI Products and product groups
-   <int>      <num>                      <char>
-1:  1960 0.09439708                   All-items
-2:  1961 0.09561510                   All-items
-3:  1962 0.09683313                   All-items
-4:  1963 0.09805116                   All-items
-5:  1964 0.09987820                   All-items
-6:  1965 0.10231425                   All-items
+> lapply(list(ancientYears,oldYears,modYears,newYears), residPlot)
 Saving 7 x 7 in image
-`geom_smooth()` using formula = 'y ~ x'
-
-Correlations (tract):
-             slope  meanPPSF
-slope    1.0000000 0.1501751
-meanPPSF 0.1501751 1.0000000
-           elasticity  meanPPSF
-elasticity  1.0000000 0.3392742
-meanPPSF    0.3392742 1.0000000
-             slope  meanPPSF
-slope    1.0000000 0.1501751
-meanPPSF 0.1501751 1.0000000
-           elasticity  meanPPSF
-elasticity  1.0000000 0.3287942
-meanPPSF    0.3287942 1.0000000
-           elasticity  meanPPSF
-elasticity  1.0000000 0.3903182
-meanPPSF    0.3903182 1.0000000
-   elasticity           meanPPSF     
- Min.   :-1.081182   Min.   : 747.5  
- 1st Qu.:-0.549168   1st Qu.: 821.4  
- Median :-0.356534   Median : 866.3  
- Mean   :-0.247091   Mean   : 897.7  
- 3rd Qu.: 0.008195   3rd Qu.: 991.2  
- Max.   : 1.305754   Max.   :1097.0  
-   elasticity           meanPPSF     
- Min.   :-1.081182   Min.   : 747.5  
- 1st Qu.:-0.543790   1st Qu.: 823.8  
- Median :-0.350039   Median : 871.9  
- Mean   :-0.238933   Mean   : 899.1  
- 3rd Qu.: 0.009613   3rd Qu.: 991.8  
- Max.   : 1.305754   Max.   :1097.0  
-   elasticity          meanPPSF     
- Min.   :-1.08118   Min.   : 747.5  
- 1st Qu.:-0.54286   1st Qu.: 821.4  
- Median :-0.33999   Median : 855.8  
- Mean   :-0.22765   Mean   : 895.1  
- 3rd Qu.: 0.02895   3rd Qu.: 991.2  
- Max.   : 1.30575   Max.   :1097.0  
-> dtResultsNbhd <- runAnalysis(copy(dtBCA2019), "neighbourhoodDescription", "neighbourhood")
-
-==========================================
-Running analysis at neighbourhood level
-==========================================
-Analysis sample size: 2949 
-       r2       ar2 
-0.2832575 0.2716453 
-       r2       ar2 
-0.6495260 0.6431097 
-Key: <saleYear>
-   saleYear   roll_base    folioID conveyancePrice conveyanceDate
-      <int>       <num>     <char>           <num>         <char>
-1:     1974 11161792870 A000001DFJ          137500     1974-07-15
-2:     1976 11765152610 A000001EGL          129000     1976-08-15
-3:     1978  3707037570 A000000HPH          131000     1978-12-15
-4:     1978  3726040500 A000000JUD          108000     1978-03-15
-5:     1978  6034750460 A000000T2K          183000     1978-06-15
-6:     1978  6791036180 A000000U7C          165000     1978-04-15
-   MB_effective_year MB_total_finished_area land_width land_depth land_area
-               <num>                  <num>      <num>      <num>     <num>
-1:              1959                   2205         57      120.0        NA
-2:              1963                   2310         56      122.5        NA
-3:              1978                   2078         33      122.1        NA
-4:              1978                   1747         33      130.8        NA
-5:              1977                   2955         66      116.5        NA
-6:              1977                   2836         66      136.0        NA
-       roll_number zoning   actualUseDescription neighbourhoodDescription
-            <char> <char>                 <char>                   <char>
-1: 011161792870000    RS1 Single Family Dwelling                 OAKRIDGE
-2: 011765152610000    RS1 Single Family Dwelling                 OAKRIDGE
-3: 003707037570000    RS5 Single Family Dwelling                   DUNBAR
-4: 003726040500000    RS5 Single Family Dwelling                   DUNBAR
-5: 006034750460000    RS5 Single Family Dwelling               SOUTHLANDS
-6: 006791036180000    RS6 Single Family Dwelling               SOUTHLANDS
-   postalCode      CTUID               DGUID  CTNAME land_area_approximate
-       <char>     <char>              <char>  <char>                 <num>
-1:    V6P 3N4 9330010.02 2021S05079330010.02 0010.02                6840.0
-2:    V5Z 2R7 9330010.01 2021S05079330010.01 0010.01                6860.0
-3:    V6S 1L7 9330025.00 2021S05079330025.00 0025.00                4029.3
-4:    V6S 1Z2 9330024.00 2021S05079330024.00 0024.00                4316.4
-5:    V6N 2A4 9330008.02 2021S05079330008.02 0008.02                7689.0
-6:    V6N 3T8 9330008.02 2021S05079330008.02 0008.02                8976.0
-     age     ppsf lanewayBuilt hasLaneway landWidthMedian       CPI
-   <num>    <num>        <num>     <lgcl>           <num>     <num>
-1:    15 62.35828           NA      FALSE           54.00 0.1595615
-2:    13 55.84416           NA      FALSE           54.00 0.1894032
-3:     0 63.04139           NA      FALSE           33.65 0.2228989
-4:     0 61.82026           NA      FALSE           33.65 0.2228989
-5:     1 61.92893           NA      FALSE           60.00 0.2228989
-6:     1 58.18054           NA      FALSE           60.00 0.2228989
-   Products and product groups
-                        <char>
-1:                   All-items
-2:                   All-items
-3:                   All-items
-4:                   All-items
-5:                   All-items
-6:                   All-items
-    year        CPI Products and product groups
-   <int>      <num>                      <char>
-1:  1960 0.09439708                   All-items
-2:  1961 0.09561510                   All-items
-3:  1962 0.09683313                   All-items
-4:  1963 0.09805116                   All-items
-5:  1964 0.09987820                   All-items
-6:  1965 0.10231425                   All-items
 Saving 7 x 7 in image
-`geom_smooth()` using formula = 'y ~ x'
+Saving 7 x 7 in image
+Saving 7 x 7 in image
+[[1]]
+[1] "text/residualsMap2002to2004.png"
 
-Correlations (neighbourhood):
-             slope  meanPPSF
-slope    1.0000000 0.2456097
-meanPPSF 0.2456097 1.0000000
-           elasticity  meanPPSF
-elasticity  1.0000000 0.6932651
-meanPPSF    0.6932651 1.0000000
-             slope  meanPPSF
-slope    1.0000000 0.2456097
-meanPPSF 0.2456097 1.0000000
-           elasticity  meanPPSF
-elasticity  1.0000000 0.6737718
-meanPPSF    0.6737718 1.0000000
-           elasticity  meanPPSF
-elasticity  1.0000000 0.6529039
-meanPPSF    0.6529039 1.0000000
-   elasticity         meanPPSF     
- Min.   :-0.6430   Min.   : 781.9  
- 1st Qu.:-0.4102   1st Qu.: 824.0  
- Median :-0.2765   Median : 937.1  
- Mean   :-0.0735   Mean   : 928.2  
- 3rd Qu.: 0.2781   3rd Qu.:1007.7  
- Max.   : 0.9667   Max.   :1066.7  
-   elasticity         meanPPSF     
- Min.   :-0.6430   Min.   : 781.9  
- 1st Qu.:-0.4139   1st Qu.: 819.8  
- Median :-0.3211   Median : 907.7  
- Mean   :-0.1137   Mean   : 923.3  
- 3rd Qu.: 0.2507   3rd Qu.:1002.3  
- Max.   : 0.9667   Max.   :1066.7  
-   elasticity         meanPPSF     
- Min.   :-0.6430   Min.   : 781.9  
- 1st Qu.:-0.4179   1st Qu.: 819.3  
- Median :-0.3371   Median : 903.8  
- Mean   :-0.1345   Mean   : 916.8  
- 3rd Qu.: 0.1882   3rd Qu.:1001.8  
- Max.   : 0.9667   Max.   :1066.7  
+[[2]]
+[1] "text/residualsMap2012to2014.png"
+
+[[3]]
+[1] "text/residualsMap2017to2018.png"
+
+[[4]]
+[1] "text/residualsMap2022to2024.png"
+
+> 
+> print(etable(feols(log(CONVEYANCE_PRICE) ~ lsqft + i(propertyType)*east | saleYear + age,data=df[age<MAXAGE])))
+The variables 'eastTRUE:propertyType::duplex', 'eastTRUE:propertyType::single', 'eastFALSE:propertyType::TH' and 'eastTRUE:propertyType::TH' have been removed because of collinearity (see $collin.var).
+                                  feols(log(CONVEYANC..
+Dependent Var.:                   log(CONVEYANCE_PRICE)
+                                                       
+lsqft                                0.5506*** (0.0117)
+propertyType = single                0.0918*** (0.0104)
+propertyType = TH                      0.6190 (7,641.5)
+eastTRUE                              -0.0857 (7,641.5)
+eastFALSE x propertyType = duplex      0.3077 (7,641.5)
+eastFALSE x propertyType = single      0.3299 (7,641.5)
+Fixed-Effects:                    ---------------------
+saleYear                                            Yes
+age                                                 Yes
+_________________________________ _____________________
+S.E.: Clustered                            by: saleYear
+Observations                                     39,435
+R2                                              0.94103
+Within R2                                       0.48955
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> df <- df[saleYear>2016 & saleYear<2020,]
+> 
+> r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE])
+> rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft + east|saleYear+age+east,data=df[age<MAXAGE])
+The variable 'eastTRUE' has been removed because of collinearity (see $collin.var).
+> rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon|saleYear+age,data=df[age<MAXAGE])
+> rG <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon*distDowntown|saleYear+age,data=df[age<MAXAGE])
+> rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+NEIGHBOURHOOD,data=df[age<MAXAGE])
+> rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+CTNAME,data=df[age<MAXAGE])
+> # create a latex table of adjusted r2 for these regressions with brief descriptive names
+> baseRegTable <- data.table(
++   Specification = c("Baseline", "East Dummy", "Longitude ", "Longitude x Distance","Neighbourhood FE", "Census Tract FE"),
++   Adjusted_R2 = sapply(list(r0,rD, rG,rL, rLN, rLT), function(reg) round(as.numeric(fitstat(reg, "ar2")),2))
++ )
+> print(xtable(baseRegTable),file="text/vancouverRegressionComparisonTable.tex",include.rownames=FALSE, floating=FALSE)
+> 
+> r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE])
+> rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east|saleYear+age ,data=df[age<MAXAGE])
+> rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft*lon|saleYear+age ,data=df[age<MAXAGE])
+> rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*NEIGHBOURHOOD |saleYear+age,data=df[age<MAXAGE])
+The variable 'lsqft:NEIGHBOURHOODFairview' has been removed because of collinearity (see $collin.var).
+> rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft*CTNAME |saleYear+age,data=df[age<MAXAGE])
+The variables 'lsqft:CTNAME0039.02', 'lsqft:CTNAME0041.02', 'lsqft:CTNAME0047.02' and 'lsqft:CTNAME0050.04' have been removed because of collinearity (see $collin.var).
+> interRegTable <- data.table(
++   Specification = c("Baseline", "East Dummy Interaction", "Longitude Interaction", "Neighbourhood Interaction", "Census Tract Interaction"),
++   Adjusted_R2 = sapply(list(r0,rD, rL, rLN, rLT), function(reg) round(as.numeric(fitstat(reg, "ar2")),2))
++ )
+> print(xtable(interRegTable),file="text/vancouverInteractionRegressionComparisonTable.tex",include.rownames=FALSE, floating=FALSE)
+> 
+> rD0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft + east|saleYear+age,data=df[age<MAXAGE])
+> rL0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon|saleYear+age,data=df[age<MAXAGE])
+> 
+> rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east|saleYear+age,data=df[age<MAXAGE])
+> rDR <- feols(log(CONVEYANCE_PRICE) ~ lsqft+ single*east|saleYear+age,data=df[age<MAXAGE])
+> print(etable(rD0,rL0,rD,rL,rDR,tex=TRUE))
+\begingroup
+\centering
+\begin{tabular}{lccccc}
+   \tabularnewline \midrule \midrule
+   Dependent Variable: & \multicolumn{5}{c}{log(CONVEYANCE\_PRICE)}\\
+   Model:                        & (1)             & (2)            & (3)            & (4)      & (5)\\  
+   \midrule
+   \emph{Variables}\\
+   lsqft                         & 0.7202$^{***}$  & 0.7311$^{***}$ & 0.8504$^{***}$ & -101.1   & 0.6278$^{***}$\\   
+                                 & (0.0295)        & (0.0288)       & (0.0689)       & (74.07)  & (0.0092)\\   
+   eastTRUE                      & -0.4198$^{***}$ &                & 1.097          &          & -0.3278$^{**}$\\   
+                                 & (0.0367)        &                & (0.5071)       &          & (0.0437)\\   
+   lon                           &                 & -3.903$^{***}$ &                & 2.510    &   \\   
+                                 &                 & (0.2563)       &                & (4.594)  &   \\   
+   lsqft $\times$ eastTRUE       &                 &                & -0.1966$^{*}$  &          &   \\   
+                                 &                 &                & (0.0665)       &          &   \\   
+   lsqft $\times$ lon            &                 &                &                & -0.8269  &   \\   
+                                 &                 &                &                & (0.6019) &   \\   
+   singleTRUE                    &                 &                &                &          & 0.1613$^{**}$\\   
+                                 &                 &                &                &          & (0.0358)\\   
+   singleTRUE $\times$ eastTRUE  &                 &                &                &          & -0.1201$^{*}$\\   
+                                 &                 &                &                &          & (0.0340)\\   
+   \midrule
+   \emph{Fixed-effects}\\
+   saleYear                      & Yes             & Yes            & Yes            & Yes      & Yes\\  
+   age                           & Yes             & Yes            & Yes            & Yes      & Yes\\  
+   \midrule
+   \emph{Fit statistics}\\
+   Observations                  & 1,592           & 1,592          & 1,592          & 1,592    & 1,592\\  
+   R$^2$                         & 0.77255         & 0.78560        & 0.77715        & 0.78638  & 0.77723\\  
+   Within R$^2$                  & 0.75673         & 0.77069        & 0.76165        & 0.77152  & 0.76174\\  
+   \midrule \midrule
+   \multicolumn{6}{l}{\emph{Clustered (saleYear) standard-errors in parentheses}}\\
+   \multicolumn{6}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+\end{tabular}
+\par\endgroup
+> 
+> df[,ppsf:=CONVEYANCE_PRICE/MB_Total_Finished_Area]
+> rDL <- feols(log(ppsf) ~ lsqft + east|saleYear+age,data=df[age<MAXAGE])
+> rD <- feols(log(ppsf) ~ lsqft*east|saleYear+age,data=df[age<MAXAGE])
+> print(etable(rDL,rD,tex=TRUE,file="text/vancouverEastPPSF.tex"),append=FALSE)
+\begingroup
+\centering
+\begin{tabular}{lcc}
+   \tabularnewline \midrule \midrule
+   Dependent Variable: & \multicolumn{2}{c}{log(ppsf)}\\
+   Model:                   & (1)             & (2)\\  
+   \midrule
+   \emph{Variables}\\
+   lsqft                    & -0.2798$^{**}$  & -0.1496\\   
+                            & (0.0295)        & (0.0689)\\   
+   eastTRUE                 & -0.4198$^{***}$ & 1.097\\   
+                            & (0.0367)        & (0.5071)\\   
+   lsqft $\times$ eastTRUE  &                 & -0.1966$^{*}$\\   
+                            &                 & (0.0665)\\   
+   \midrule
+   \emph{Fixed-effects}\\
+   saleYear                 & Yes             & Yes\\  
+   age                      & Yes             & Yes\\  
+   \midrule
+   \emph{Fit statistics}\\
+   Observations             & 1,592           & 1,592\\  
+   R$^2$                    & 0.57012         & 0.57881\\  
+   Within R$^2$             & 0.53592         & 0.54530\\  
+   \midrule \midrule
+   \multicolumn{3}{l}{\emph{Clustered (saleYear) standard-errors in parentheses}}\\
+   \multicolumn{3}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+\end{tabular}
+\par\endgroup
+> WIDTH <- 33
+> WIDEWIDTH <- 50
+> DEPTH <- 110
+> Laneway <- WIDTH*DEPTH*.16
+> Duplex <- WIDTH*DEPTH*.7/2
+> Single <- WIDTH*DEPTH*.7
+> plex4 <- WIDTH*DEPTH*1/4
+> sqft <- c(Laneway,Single,Duplex,plex4)
+> print(summary(df[,.(lsqft,CONVEYANCE_PRICE,age,saleYear,east)]))
+     lsqft       CONVEYANCE_PRICE        age           saleYear   
+ Min.   :6.458   Min.   :  490000   Min.   : 0.00   Min.   :2017  
+ 1st Qu.:7.485   1st Qu.: 1350000   1st Qu.: 9.00   1st Qu.:2017  
+ Median :7.688   Median : 1620000   Median :22.00   Median :2018  
+ Mean   :7.633   Mean   : 1874711   Mean   :24.56   Mean   :2018  
+ 3rd Qu.:7.819   3rd Qu.: 2218000   3rd Qu.:38.00   3rd Qu.:2019  
+ Max.   :8.281   Max.   :10500000   Max.   :94.00   Max.   :2019  
+    east        
+ Mode :logical  
+ FALSE:908      
+ TRUE :1989     
+                
+                
+                
+> playData <- data.table(lsqft =rep(log(sqft),2),east=c(rep("FALSE",length(sqft)),rep("TRUE",length(sqft))),age=rep(0,2*length(sqft)),saleYear=rep(2019,2*length(sqft)))
+> playData[,pred := predict(rD, newdata=playData)]
+> playData[,fittedPPSF := round(exp(pred),2)]
+> playData[,type:=rep(c("laneway","single","duplex","quadplex"),2)]
+> playData[,sqft:=rep(sqft,2)]
+> playData[,units:=rep(c(1,1,2,4),2)]
+> playData[,totalPrice:=round(fittedPPSF*sqft*units,2)]
+> playData[,singlePrice:=max(totalPrice*(type=="single")),by=east]
+> playData[type %chin% c("duplex","quadplex"),diffSingle:=totalPrice-singlePrice]
+> print(xtable(playData[,.(type,east,sqft,fittedPPSF,units,totalPrice,diffSingle)]), file="text/vancouverFittedValues.tex",include.rownames=FALSE,floating=FALSE)
+> 
 > 
 > q("no")
 > proc.time()
    user  system elapsed 
-  9.007   2.372   3.441 
+ 24.291   6.784  12.012 

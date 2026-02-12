@@ -360,4 +360,4 @@ Sample zone values (first 20 unique):
 > 
 > proc.time()
    user  system elapsed 
-  2.331   0.363   1.866 
+  2.363   0.363   1.905 

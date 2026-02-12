@@ -141,11 +141,11 @@ Projected CRS: WGS 84 / Pseudo-Mercator
 > # GEOGRAPHY-LEVEL PROPENSITY (Based on Lots)
 > # ==========================================
 > 
-> dtGeo <- dtNews[, .(
+> dtGeo <- dtLots[, .(
 +   infill_lot_count = sum(isPlexLot, na.rm = TRUE),
 +   total_lots_active = .N,
 +   propensity = sum(isPlexLot, na.rm = TRUE) / .N
-+ ), by = .(geo_id, geo_name)]
++ ), by = .(geo_id, geo_name,zone)]
 > 
 > setorder(dtGeo, -total_lots_active)
 > 
@@ -164,27 +164,27 @@ Total Active Lots (R-Zones): 3563
 Total Infill Lots (Plexes): 403 
 > cat("Overall Infill Propensity (Lot-based):",
 +     round(sum(dtGeo$infill_lot_count) / sum(dtGeo$total_lots_active), 4), "\n")
-Overall Infill Propensity (Lot-based): 0.2233 
+Overall Infill Propensity (Lot-based): 0.1131 
 > 
 > print(head(dtGeo, 15))
-    geo_id  geo_name infill_lot_count total_lots_active propensity
-    <char>    <char>            <int>             <int>      <num>
- 1:  97206 ZIP 97206               64               244 0.26229508
- 2:  97219 ZIP 97219               22               176 0.12500000
- 3:  97211 ZIP 97211               44               152 0.28947368
- 4:  97203 ZIP 97203               49               147 0.33333333
- 5:  97202 ZIP 97202               36               138 0.26086957
- 6:  97236 ZIP 97236               15               106 0.14150943
- 7:  97217 ZIP 97217               33               103 0.32038835
- 8:  97213 ZIP 97213               21                86 0.24418605
- 9:  97212 ZIP 97212                9                80 0.11250000
-10:  97266 ZIP 97266               19                69 0.27536232
-11:  97221 ZIP 97221                2                63 0.03174603
-12:  97215 ZIP 97215                9                59 0.15254237
-13:  97218 ZIP 97218               13                50 0.26000000
-14:  97220 ZIP 97220                9                39 0.23076923
-15:  97214 ZIP 97214                9                37 0.24324324
+    geo_id  geo_name   zone infill_lot_count total_lots_active propensity
+    <char>    <char> <char>            <int>             <int>      <num>
+ 1:  97206 ZIP 97206     R5               31               268 0.11567164
+ 2:  97202 ZIP 97202     R5               15               213 0.07042254
+ 3:  97212 ZIP 97212     R5                4               176 0.02272727
+ 4:  97203 ZIP 97203     R5               32               175 0.18285714
+ 5:  97211 ZIP 97211     R5               20               166 0.12048193
+ 6:  97213 ZIP 97213     R5               10               147 0.06802721
+ 7:  97219 ZIP 97219     R7                4               144 0.02777778
+ 8:  97206 ZIP 97206   R2.5               35               133 0.26315789
+ 9:  97217 ZIP 97217     R5               18               127 0.14173228
+10:  97215 ZIP 97215     R5                4               105 0.03809524
+11:  97211 ZIP 97211   R2.5               25                90 0.27777778
+12:  97236 ZIP 97236    R10                4                87 0.04597701
+13:  97202 ZIP 97202   R2.5               23                85 0.27058824
+14:  97219 ZIP 97219    R10                3                75 0.04000000
+15:  97221 ZIP 97221     R7                2                72 0.02777778
 > 
 > proc.time()
    user  system elapsed 
-  2.532   0.291  12.587 
+  2.297   0.462   1.598 

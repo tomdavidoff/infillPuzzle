@@ -107,11 +107,11 @@ print(dtNews[,.(mean(total_sqft_lot),median(total_sqft_lot,by=isPlexlot)),by=isP
 # GEOGRAPHY-LEVEL PROPENSITY (Based on Lots)
 # ==========================================
 
-dtGeo <- dtNews[, .(
+dtGeo <- dtLots[, .(
   infill_lot_count = sum(isPlexLot, na.rm = TRUE),
   total_lots_active = .N,
   propensity = sum(isPlexLot, na.rm = TRUE) / .N
-), by = .(geo_id, geo_name)]
+), by = .(geo_id, geo_name,zone)]
 
 setorder(dtGeo, -total_lots_active)
 

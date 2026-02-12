@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -214,14 +214,14 @@ Please cite as:
                       3rd Qu.:49.26   3rd Qu.:-123.1                  
                       Max.   :49.29   Max.   :-123.0                  
                                                                       
- neighbourhood        elasticity       medianPPSF          year     
- Length:2925        Min.   :0.3119   Min.   : 452.3   Min.   :2017  
- Class :character   1st Qu.:0.5002   1st Qu.: 493.9   1st Qu.:2018  
- Mode  :character   Median :0.5055   Median : 555.6   Median :2021  
-                    Mean   :0.5761   Mean   : 656.1   Mean   :2021  
-                    3rd Qu.:0.7274   3rd Qu.: 810.8   3rd Qu.:2023  
-                    Max.   :0.8733   Max.   :1045.2   Max.   :2025  
-                    NA's   :49                                      
+ neighbourhood        elasticity       medianPPSF         year     
+ Length:2925        Min.   :0.2234   Min.   :366.0   Min.   :2017  
+ Class :character   1st Qu.:0.3837   1st Qu.:406.0   1st Qu.:2018  
+ Mode  :character   Median :0.4497   Median :448.6   Median :2021  
+                    Mean   :0.4788   Mean   :538.6   Mean   :2021  
+                    3rd Qu.:0.6099   3rd Qu.:711.8   3rd Qu.:2023  
+                    Max.   :0.7701   Max.   :827.9   Max.   :2025  
+                    NA's   :49                                     
   latDowntown     lonDowntown      distDowntown     landArea    
  Min.   :49.28   Min.   :-123.1   Min.   :2927   Min.   : 2013  
  1st Qu.:49.28   1st Qu.:-123.1   1st Qu.:5295   1st Qu.: 4022  
@@ -231,20 +231,32 @@ Please cite as:
  Max.   :49.28   Max.   :-123.1   Max.   :9857   Max.   :13805  
                                                                 
   duplexRatio      single          duplex          multi        
- Min.   :2.337   Mode :logical   Mode :logical   Mode :logical  
- 1st Qu.:2.568   FALSE:806       FALSE:2263      FALSE:2781     
- Median :2.575   TRUE :2119      TRUE :662       TRUE :144      
- Mean   :2.674                                                  
- 3rd Qu.:2.877                                                  
- Max.   :3.095                                                  
+ Min.   :2.236   Mode :logical   Mode :logical   Mode :logical  
+ 1st Qu.:2.423   FALSE:806       FALSE:2263      FALSE:2781     
+ Median :2.504   TRUE :2119      TRUE :662       TRUE :144      
+ Mean   :2.548                                                  
+ 3rd Qu.:2.713                                                  
+ Max.   :2.939                                                  
  NA's   :49                                                     
-> dtWide <- dtChoice[landWidth>MAXWIDTH]
+> dtChoice[,multiplex:=use=="multi"]
+> MINWIDEWIDTH <- 40
+> dtWide <- dtChoice[landWidth>MINWIDEWIDTH]
 > dtChoice <- dtChoice[landWidth %between% c(MINWIDTH,MAXWIDTH)]
 > 
 > # laneway
 > dtChoice[use=="single",laneway:=distToLaneway<CUTDISTANCE]
 > print(mean(dtChoice[use=="single",laneway]))
 [1] 0.4348214
+> print((dtChoice[use=="single",mean(laneway),by="east"]))
+     east        V1
+   <lgcl>     <num>
+1:  FALSE 0.3925926
+2:   TRUE 0.4587413
+> print((dtChoice[year>2023 & use=="single",mean(laneway),by="east"]))
+     east        V1
+   <lgcl>     <num>
+1:  FALSE 0.7058824
+2:   TRUE 0.6444444
 > 
 > ggplot(dtChoice[use=="single"],aes(x=longitude,y=latitude,color=laneway)) + geom_point()
 > ggsave("text/lanewayMap.png")
@@ -254,11 +266,11 @@ Saving 7 x 7 in image
 > ggsave("text/singleMap.png")
 Saving 7 x 7 in image
 > 
-> ggplot(dtChoice,aes(x=longitude,y=latitude,color=multi)) + geom_point()
-> ggsave("text/multiMap.png")
+> ggplot(dtChoice[year>2018],aes(x=longitude,y=latitude,color=duplex)) + geom_point()
+> ggsave("text/duplexMap.png")
 Saving 7 x 7 in image
 > 
-> ggplot(dtWide,aes(x=longitude,y=latitude,color=multi)) + geom_point()
+> ggplot(dtWide[year>2023],aes(x=longitude,y=latitude,color=multi)) + geom_point()
 > ggsave("text/multiMapWide.png")
 Saving 7 x 7 in image
 > 
@@ -270,160 +282,166 @@ Saving 7 x 7 in image
 > 
 > print(cor(dtChoice[year>=2019 & use=="single",.(laneway,elasticity,medianPPSF,longitude,east)],use="complete.obs"))
                laneway elasticity  medianPPSF   longitude        east
-laneway     1.00000000 -0.1484528 -0.08568701  0.07272915  0.05828077
-elasticity -0.14845282  1.0000000  0.76778696 -0.78811229 -0.57805349
-medianPPSF -0.08568701  0.7677870  1.00000000 -0.93589916 -0.90889900
-longitude   0.07272915 -0.7881123 -0.93589916  1.00000000  0.85088027
-east        0.05828077 -0.5780535 -0.90889900  0.85088027  1.00000000
+laneway     1.00000000 -0.1564642 -0.08197568  0.07272915  0.05828077
+elasticity -0.15646423  1.0000000  0.78658147 -0.82872648 -0.65570921
+medianPPSF -0.08197568  0.7865815  1.00000000 -0.94123863 -0.90805343
+longitude   0.07272915 -0.8287265 -0.94123863  1.00000000  0.85088027
+east        0.05828077 -0.6557092 -0.90805343  0.85088027  1.00000000
 > print(summary(feols(laneway ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
 NOTE: 1 observation removed because of NA values (LHS: 1).
 OLS estimation, Dep. Var.: laneway
 Observations: 407
 Standard-errors: Clustered (neighbourhoodDescription) 
              Estimate Std. Error   t value Pr(>|t|)    
-(Intercept)  1.054553   0.960666  1.097731 0.286790    
-medianPPSF  -0.000301   0.000141 -2.139300 0.046366 *  
-landWidth   -0.018452   0.029459 -0.626356 0.538944    
+(Intercept)  1.036333   0.968292  1.070268 0.298641    
+medianPPSF  -0.000364   0.000160 -2.275456 0.035338 *  
+landWidth   -0.017914   0.029636 -0.604464 0.553079    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.437312   Adj. R2: 0.00823
+RMSE: 0.436743   Adj. R2: 0.010806
 > print(summary(feols(laneway ~  medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
 NOTE: 1 observation removed because of NA values (LHS: 1).
 OLS estimation, Dep. Var.: laneway
 Observations: 407
 Standard-errors: Clustered (neighbourhoodDescription) 
-             Estimate Std. Error   t value Pr(>|t|) 
-(Intercept) 22.520855 180.392733  0.124843  0.90203 
-medianPPSF  -0.000249   0.000467 -0.532401  0.60096 
-landWidth   -0.019122   0.032083 -0.596016  0.55859 
-longitude    0.174465   1.462937  0.119256  0.90639 
+              Estimate Std. Error   t value Pr(>|t|) 
+(Intercept) -64.493385 173.679087 -0.371337  0.71472 
+medianPPSF   -0.000540   0.000494 -1.094643  0.28811 
+landWidth    -0.015644   0.032562 -0.480450  0.63669 
+longitude    -0.532453   1.408699 -0.377975  0.70987 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.437299   Adj. R2: 0.005827
+RMSE: 0.436632   Adj. R2: 0.008859
 > print(summary(feols(laneway ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
 NOTE: 1 observation removed because of NA values (LHS: 1).
 OLS estimation, Dep. Var.: laneway
 Observations: 407
 Standard-errors: Clustered (neighbourhoodDescription) 
              Estimate Std. Error   t value Pr(>|t|)    
-(Intercept)  1.022442   0.971139  1.052827 0.306349    
-elasticity   0.265820   0.300485  0.884636 0.388017    
-medianPPSF  -0.000455   0.000199 -2.292991 0.034108 *  
-landWidth   -0.019019   0.029660 -0.641227 0.529456    
+(Intercept)  1.023207   0.980701  1.043343 0.310600    
+elasticity   0.299314   0.253802  1.179319 0.253624    
+medianPPSF  -0.000596   0.000244 -2.446680 0.024914 *  
+landWidth   -0.018028   0.029948 -0.601979 0.554696    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.43683   Adj. R2: 0.00796
+RMSE: 0.43608   Adj. R2: 0.011365
 > print(summary(feols(laneway ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
 NOTE: 1 observation removed because of NA values (LHS: 1).
 OLS estimation, Dep. Var.: laneway
 Observations: 407
 Standard-errors: Clustered (neighbourhoodDescription) 
              Estimate Std. Error   t value Pr(>|t|) 
-(Intercept) 84.896327 199.372611  0.425817  0.67529 
-elasticity   0.329598   0.306656  1.074814  0.29665 
-medianPPSF  -0.000287   0.000479 -0.599877  0.55607 
-landWidth   -0.021772   0.032666 -0.666500  0.51354 
-longitude    0.681737   1.616974  0.421613  0.67830 
+(Intercept) 25.882109 218.024093  0.118712  0.90682 
+elasticity   0.323705   0.309641  1.045419  0.30967 
+medianPPSF  -0.000548   0.000522 -1.049373  0.30789 
+landWidth   -0.018898   0.034266 -0.551514  0.58806 
+longitude    0.201997   1.767803  0.114264  0.91029 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.436665   Adj. R2: 0.006243
+RMSE: 0.436068   Adj. R2: 0.008958
 > print(summary(feols(laneway ~ elasticity +  landWidth + longitude, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
 NOTE: 1 observation removed because of NA values (LHS: 1).
 OLS estimation, Dep. Var.: laneway
 Observations: 407
 Standard-errors: Clustered (neighbourhoodDescription) 
               Estimate Std. Error   t value Pr(>|t|)    
-(Intercept) 181.570388  82.638830  2.197156 0.041342 *  
-elasticity    0.307045   0.315091  0.974464 0.342741    
-landWidth    -0.024838   0.028898 -0.859505 0.401365    
-longitude     1.467579   0.669827  2.190982 0.041853 *  
+(Intercept) 201.470811 112.020792  1.798513 0.088888 .  
+elasticity    0.315851   0.371059  0.851216 0.405832    
+landWidth    -0.025227   0.030006 -0.840729 0.411529    
+longitude     1.628930   0.906711  1.796526 0.089213 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.436989   Adj. R2: 0.007235
+RMSE: 0.437009   Adj. R2: 0.007147
 > 
 > 
 > # Duplex
 > print(cor(dtChoice[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown,east)],use="complete.obs"))
                   duplex elasticity medianPPSF  longitude distDowntown
-duplex        1.00000000 -0.1194221 -0.2034171  0.2212335   0.01424803
-elasticity   -0.11942212  1.0000000  0.7686530 -0.7762072  -0.28240895
-medianPPSF   -0.20341706  0.7686530  1.0000000 -0.9325190  -0.21071894
-longitude     0.22123352 -0.7762072 -0.9325190  1.0000000   0.15940931
-distDowntown  0.01424803 -0.2824090 -0.2107189  0.1594093   1.00000000
-east          0.18342852 -0.5889257 -0.9086395  0.8569085   0.22376415
+duplex        1.00000000 -0.1534498 -0.2018298  0.2212335   0.01424803
+elasticity   -0.15344985  1.0000000  0.7795313 -0.8202031  -0.29306661
+medianPPSF   -0.20182976  0.7795313  1.0000000 -0.9386852  -0.18929561
+longitude     0.22123352 -0.8202031 -0.9386852  1.0000000   0.15940931
+distDowntown  0.01424803 -0.2930666 -0.1892956  0.1594093   1.00000000
+east          0.18342852 -0.6554678 -0.9110430  0.8569085   0.22376415
                    east
 duplex        0.1834285
-elasticity   -0.5889257
-medianPPSF   -0.9086395
+elasticity   -0.6554678
+medianPPSF   -0.9110430
 longitude     0.8569085
 distDowntown  0.2237641
 east          1.0000000
+> print(dtChoice[year>=2019 & year<=2023,mean(duplex),by=east])
+     east        V1
+   <lgcl>     <num>
+1:  FALSE 0.2033898
+2:   TRUE 0.3899083
+> 
 > print(cor(dtWide[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown)],use="complete.obs"))
-                  duplex elasticity medianPPSF  longitude distDowntown
-duplex        1.00000000 -0.2376507 -0.2998782  0.2675152   0.09743229
-elasticity   -0.23765070  1.0000000  0.8356259 -0.7986797  -0.31853021
-medianPPSF   -0.29987822  0.8356259  1.0000000 -0.8820414  -0.29942805
-longitude     0.26751524 -0.7986797 -0.8820414  1.0000000   0.37336275
-distDowntown  0.09743229 -0.3185302 -0.2994280  0.3733627   1.00000000
+                 duplex elasticity medianPPSF  longitude distDowntown
+duplex        1.0000000 -0.2008186 -0.2985885  0.2711123    0.1165813
+elasticity   -0.2008186  1.0000000  0.8200904 -0.8643178   -0.3724419
+medianPPSF   -0.2985885  0.8200904  1.0000000 -0.9560765   -0.3981801
+longitude     0.2711123 -0.8643178 -0.9560765  1.0000000    0.3922036
+distDowntown  0.1165813 -0.3724419 -0.3981801  0.3922036    1.0000000
 > print(summary(feols(duplex ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
 OLS estimation, Dep. Var.: duplex
 Observations: 949
 Standard-errors: Clustered (neighbourhoodDescription) 
-             Estimate Std. Error  t value  Pr(>|t|)    
-(Intercept) -1.040919   0.689327 -1.51005 0.1466684    
-medianPPSF  -0.000601   0.000158 -3.81635 0.0010805 ** 
-landWidth    0.052624   0.021655  2.43011 0.0246331 *  
+             Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept) -1.056229   0.687094 -1.53724 0.13990510    
+medianPPSF  -0.000663   0.000171 -3.87111 0.00095082 ***
+landWidth    0.052095   0.021614  2.41027 0.02568712 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.459689   Adj. R2: 0.045057
+RMSE: 0.459864   Adj. R2: 0.044329
 > print(summary(feols(duplex ~  medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
 OLS estimation, Dep. Var.: duplex
 Observations: 949
 Standard-errors: Clustered (neighbourhoodDescription) 
-                Estimate Std. Error   t value Pr(>|t|)    
-(Intercept) 238.00681966 183.574135  1.296516 0.209558    
-medianPPSF   -0.00000275   0.000501 -0.005492 0.995673    
-landWidth     0.04820348   0.021546  2.237273 0.036814 *  
-longitude     1.94371049   1.492128  1.302643 0.207497    
+              Estimate Std. Error  t value Pr(>|t|)    
+(Intercept) 262.777053 175.717919 1.495448 0.150411    
+medianPPSF    0.000076   0.000524 0.144708 0.886390    
+landWidth     0.047733   0.021454 2.224866 0.037762 *  
+longitude     2.145131   1.427899 1.502299 0.148645    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.458188   Adj. R2: 0.050279
+RMSE: 0.458172   Adj. R2: 0.050344
 > print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
 NOTE: 4 observations removed because of NA values (RHS: 4).
 OLS estimation, Dep. Var.: duplex
 Observations: 945
 Standard-errors: Clustered (neighbourhoodDescription) 
-             Estimate Std. Error  t value  Pr(>|t|)    
-(Intercept) -1.353027   0.732233 -1.84781 0.0802591 .  
-elasticity   0.390398   0.277274  1.40799 0.1752872    
-medianPPSF  -0.000838   0.000241 -3.47272 0.0025483 ** 
-landWidth    0.059888   0.023083  2.59443 0.0177953 *  
+             Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept) -1.180234   0.714518 -1.651790 0.1150083    
+elasticity   0.079984   0.203288  0.393452 0.6983660    
+medianPPSF  -0.000724   0.000237 -3.062053 0.0064148 ** 
+landWidth    0.055674   0.022452  2.479673 0.0226910 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.458616   Adj. R2: 0.04899
+RMSE: 0.459808   Adj. R2: 0.04404
 > print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
 NOTE: 4 observations removed because of NA values (RHS: 4).
 OLS estimation, Dep. Var.: duplex
 Observations: 945
 Standard-errors: Clustered (neighbourhoodDescription) 
-              Estimate Std. Error   t value Pr(>|t|)    
-(Intercept) 316.085537 151.103322  2.091850 0.050116 .  
-elasticity    0.543460   0.411754  1.319865 0.202563    
-medianPPSF   -0.000138   0.000422 -0.327025 0.747225    
-landWidth     0.055967   0.022767  2.458296 0.023733 *  
-longitude     2.581859   1.226763  2.104610 0.048866 *  
+              Estimate Std. Error  t value Pr(>|t|)    
+(Intercept) 349.497714 166.758161 2.095836 0.049723 *  
+elasticity    0.314812   0.292322 1.076937 0.294993    
+medianPPSF    0.000073   0.000457 0.160512 0.874172    
+landWidth     0.052946   0.022304 2.373836 0.028301 *  
+longitude     2.852186   1.354774 2.105285 0.048801 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.456132   Adj. R2: 0.058264
+RMSE: 0.457348   Adj. R2: 0.053235
 > 
 > # Wide Lot multi
 > print(cor(dtWide[year>=2024 ,.(multi,landWidth,longitude,distDowntown,east)],use="complete.obs"))
-                    multi   landWidth  longitude distDowntown       east
-multi         1.000000000 -0.11126802  0.1809072 -0.002050853  0.1836266
-landWidth    -0.111268020  1.00000000 -0.3814608  0.069758420 -0.4362197
-longitude     0.180907167 -0.38146079  1.0000000  0.334555476  0.8955524
-distDowntown -0.002050853  0.06975842  0.3345555  1.000000000  0.3129600
-east          0.183626608 -0.43621971  0.8955524  0.312959961  1.0000000
+                   multi   landWidth  longitude distDowntown       east
+multi         1.00000000 -0.12848330  0.2402398   0.01536864  0.2421240
+landWidth    -0.12848330  1.00000000 -0.4022182  -0.02411683 -0.4566771
+longitude     0.24023985 -0.40221825  1.0000000   0.31402605  0.8878719
+distDowntown  0.01536864 -0.02411683  0.3140260   1.00000000  0.2938381
+east          0.24212400 -0.45667712  0.8878719   0.29383808  1.0000000
 > print(summary(feols(multi ~  longitude + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
 OLS estimation, Dep. Var.: multi
 Observations: 291
@@ -439,41 +457,41 @@ RMSE: 0.391641   Adj. R2: 0.044505
 OLS estimation, Dep. Var.: multi
 Observations: 291
 Standard-errors: Clustered (neighbourhoodDescription) 
-              Estimate Std. Error  t value  Pr(>|t|)    
-(Intercept) 149.313617 116.177736 1.285217 0.2150079    
-medianPPSF    0.000031   0.000325 0.096815 0.9239430    
-landWidth     0.089301   0.030498 2.928054 0.0089837 ** 
-longitude     1.235328   0.942881 1.310163 0.2066146    
+                Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept) 138.75137424 128.272124 1.081695 0.2936672    
+medianPPSF    0.00000138   0.000393 0.003503 0.9972438    
+landWidth     0.08939178   0.030802 2.902179 0.0095006 ** 
+longitude     1.14939828   1.040728 1.104418 0.2839573    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.391638   Adj. R2: 0.041194
+RMSE: 0.391641   Adj. R2: 0.041175
 > print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
 NOTE: 1 observation removed because of NA values (RHS: 1).
 OLS estimation, Dep. Var.: duplex
 Observations: 290
 Standard-errors: Clustered (neighbourhoodDescription) 
-             Estimate Std. Error  t value Pr(>|t|)    
-(Intercept)  2.489921   1.416080  1.75832 0.096681 .  
-elasticity   0.846252   0.298853  2.83166 0.011511 *  
-medianPPSF  -0.000362   0.000230 -1.57656 0.133323    
-landWidth   -0.067468   0.043243 -1.56020 0.137134    
+             Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)  2.431889   1.439816  1.68903 0.1094698    
+elasticity   0.983147   0.336271  2.92368 0.0094747 ** 
+medianPPSF  -0.000573   0.000301 -1.90020 0.0745038 .  
+landWidth   -0.063243   0.043812 -1.44349 0.1670571    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.489607   Adj. R2: 0.028124
+RMSE: 0.486216   Adj. R2: 0.041538
 > print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
 NOTE: 1 observation removed because of NA values (RHS: 1).
 OLS estimation, Dep. Var.: duplex
 Observations: 290
 Standard-errors: Clustered (neighbourhoodDescription) 
-               Estimate Std. Error   t value  Pr(>|t|)    
-(Intercept) -101.557205 325.079926 -0.312407 0.7585308    
-elasticity     0.815258   0.278566  2.926624 0.0094156 ** 
-medianPPSF    -0.000610   0.000854 -0.713773 0.4850523    
-landWidth     -0.066880   0.043607 -1.533695 0.1435042    
-longitude     -0.846448   2.642689 -0.320298 0.7526457    
+             Estimate Std. Error   t value Pr(>|t|)    
+(Intercept) 72.603560 367.322957  0.197656 0.845658    
+elasticity   1.018996   0.401103  2.540485 0.021119 *  
+medianPPSF  -0.000403   0.000958 -0.420545 0.679355    
+landWidth   -0.063800   0.044836 -1.422953 0.172842    
+longitude    0.570732   2.984478  0.191233 0.850608    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.489372   Adj. R2: 0.025651
+RMSE: 0.48613   Adj. R2: 0.038517
 > 
 > print(dtChoice[use=="single",mean(east),by="year"])
     year        V1
@@ -499,9 +517,9 @@ FALSE  TRUE
 OLS estimation, Dep. Var.: laneway
 Observations: 713
 Fixed-effects: year: 7
-Standard-errors: IID 
-         Estimate Std. Error t value Pr(>|t|)    
-eastTRUE 0.068329   0.036908 1.85133  0.06454 .  
+Standard-errors: Clustered (year) 
+         Estimate Std. Error t value Pr(>|t|) 
+eastTRUE 0.068329   0.036393 1.87753  0.10953 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.47163     Adj. R2: 0.097506
@@ -510,9 +528,9 @@ RMSE: 0.47163     Adj. R2: 0.097506
 OLS estimation, Dep. Var.: duplex
 Observations: 1,240
 Fixed-effects: year: 7
-Standard-errors: IID 
-         Estimate Std. Error t value   Pr(>|t|)    
-eastTRUE 0.114743    0.02799 4.09942 4.4132e-05 ***
+Standard-errors: Clustered (year) 
+         Estimate Std. Error t value Pr(>|t|)    
+eastTRUE 0.114743     0.0543 2.11314 0.079029 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.456844     Adj. R2: 0.106744
@@ -521,9 +539,9 @@ RMSE: 0.456844     Adj. R2: 0.106744
 OLS estimation, Dep. Var.: duplex
 Observations: 949
 Fixed-effects: year: 5
-Standard-errors: IID 
-         Estimate Std. Error t value   Pr(>|t|)    
-eastTRUE 0.171812   0.031057 5.53217 4.0973e-08 ***
+Standard-errors: Clustered (year) 
+         Estimate Std. Error t value  Pr(>|t|)    
+eastTRUE 0.171812   0.033979 5.05647 0.0071983 ** 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.440425     Adj. R2: 0.120629
@@ -532,32 +550,32 @@ RMSE: 0.440425     Adj. R2: 0.120629
 OLS estimation, Dep. Var.: multi
 Observations: 291
 Fixed-effects: year: 2
-Standard-errors: IID 
-         Estimate Std. Error t value  Pr(>|t|)    
-eastTRUE 0.132752   0.049059   2.706 0.0072161 ** 
+Standard-errors: Clustered (year) 
+         Estimate Std. Error t value Pr(>|t|)    
+eastTRUE 0.132752   0.012743 10.4177 0.060923 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.395698     Adj. R2: 0.024607
                  Within R2: 0.024795
 > print(summary(feols(multi~ east | year,data=dtWide[year>=2024])))
 OLS estimation, Dep. Var.: multi
-Observations: 228
+Observations: 201
 Fixed-effects: year: 2
-Standard-errors: IID 
-         Estimate Std. Error t value  Pr(>|t|)    
-eastTRUE  0.17702   0.063671 2.78022 0.0058922 ** 
+Standard-errors: Clustered (year) 
+         Estimate Std. Error t value Pr(>|t|)    
+eastTRUE 0.238169   0.014549 16.3696 0.038842 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.463784     Adj. R2: 0.029765
-                 Within R2: 0.033213
+RMSE: 0.456362     Adj. R2: 0.053337
+                 Within R2: 0.058926
 > 
 > print(summary(feols(laneway~ longitude | year,data=dtChoice[use =="single" & year>=2019])))
 OLS estimation, Dep. Var.: laneway
 Observations: 713
 Fixed-effects: year: 7
-Standard-errors: IID 
-          Estimate Std. Error t value Pr(>|t|)    
-longitude 0.653541   0.330632 1.97664 0.048471 *  
+Standard-errors: Clustered (year) 
+          Estimate Std. Error t value Pr(>|t|) 
+longitude 0.653541    0.36758 1.77796  0.12573 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.47147     Adj. R2: 0.098116
@@ -566,9 +584,9 @@ RMSE: 0.47147     Adj. R2: 0.098116
 OLS estimation, Dep. Var.: duplex
 Observations: 1,240
 Fixed-effects: year: 7
-Standard-errors: IID 
-          Estimate Std. Error t value   Pr(>|t|)    
-longitude  1.17605   0.242628 4.84713 1.4122e-06 ***
+Standard-errors: Clustered (year) 
+          Estimate Std. Error t value Pr(>|t|)    
+longitude  1.17605   0.581162 2.02361 0.089451 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.455625     Adj. R2: 0.111503
@@ -577,9 +595,9 @@ RMSE: 0.455625     Adj. R2: 0.111503
 OLS estimation, Dep. Var.: duplex
 Observations: 949
 Fixed-effects: year: 5
-Standard-errors: IID 
-          Estimate Std. Error t value   Pr(>|t|)    
-longitude  1.80343   0.269068 6.70249 3.5219e-11 ***
+Standard-errors: Clustered (year) 
+          Estimate Std. Error t value Pr(>|t|)    
+longitude  1.80343   0.392131 4.59904 0.010038 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.437221     Adj. R2: 0.133374
@@ -588,24 +606,24 @@ RMSE: 0.437221     Adj. R2: 0.133374
 OLS estimation, Dep. Var.: multi
 Observations: 291
 Fixed-effects: year: 2
-Standard-errors: IID 
-          Estimate Std. Error t value  Pr(>|t|)    
-longitude  1.33286   0.419155 3.17986 0.0016341 ** 
+Standard-errors: Clustered (year) 
+          Estimate Std. Error t value Pr(>|t|) 
+longitude  1.33286   0.238118 5.59746  0.11255 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.393843     Adj. R2: 0.033733
                  Within R2: 0.033919
 > print(summary(feols(multi~ longitude | year,data=dtWide[year>=2024])))
 OLS estimation, Dep. Var.: multi
-Observations: 228
+Observations: 201
 Fixed-effects: year: 2
-Standard-errors: IID 
-          Estimate Std. Error t value  Pr(>|t|)    
-longitude  1.49052    0.54739 2.72296 0.0069773 ** 
+Standard-errors: Clustered (year) 
+          Estimate Std. Error t value Pr(>|t|) 
+longitude  2.01641   0.588181 3.42821  0.18069 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.464098     Adj. R2: 0.028449
-                 Within R2: 0.031902
+RMSE: 0.456635     Adj. R2: 0.052202
+                 Within R2: 0.057797
 > 
 > 
 > for (u in c("single","duplex","multi")) {
@@ -640,20 +658,20 @@ RMSE: 0.464098     Adj. R2: 0.028449
  2:  2017   TRUE 1.0000000
  3:  2018  FALSE 1.0000000
  4:  2018   TRUE 1.0000000
- 5:  2019  FALSE 0.9342105
- 6:  2019   TRUE 0.9574468
- 7:  2020  FALSE 0.8906250
- 8:  2020   TRUE 0.8409091
- 9:  2021  FALSE 0.8134328
-10:  2021   TRUE 0.4344262
-11:  2022  FALSE 0.9285714
-12:  2022   TRUE 0.7297297
-13:  2023  FALSE 0.8750000
-14:  2023   TRUE 0.6000000
-15:  2024  FALSE 0.6250000
-16:  2024   TRUE 0.3829787
-17:  2025  FALSE 0.4590164
-18:  2025   TRUE 0.1750000
+ 5:  2019  FALSE 0.9324324
+ 6:  2019   TRUE 0.9500000
+ 7:  2020  FALSE 0.8852459
+ 8:  2020   TRUE 0.8421053
+ 9:  2021  FALSE 0.8095238
+10:  2021   TRUE 0.4380952
+11:  2022  FALSE 0.9245283
+12:  2022   TRUE 0.7000000
+13:  2023  FALSE 0.9148936
+14:  2023   TRUE 0.6666667
+15:  2024  FALSE 0.6533333
+16:  2024   TRUE 0.3809524
+17:  2025  FALSE 0.4814815
+18:  2025   TRUE 0.1666667
 [1] "duplex"
      year   east          V1
     <int> <lgcl>       <num>
@@ -681,20 +699,20 @@ RMSE: 0.464098     Adj. R2: 0.028449
  2:  2017   TRUE 0.00000000
  3:  2018  FALSE 0.00000000
  4:  2018   TRUE 0.00000000
- 5:  2019  FALSE 0.06578947
- 6:  2019   TRUE 0.04255319
- 7:  2020  FALSE 0.09375000
- 8:  2020   TRUE 0.15909091
- 9:  2021  FALSE 0.17164179
-10:  2021   TRUE 0.56557377
-11:  2022  FALSE 0.05357143
-12:  2022   TRUE 0.27027027
-13:  2023  FALSE 0.10714286
-14:  2023   TRUE 0.31428571
-15:  2024  FALSE 0.13750000
-16:  2024   TRUE 0.19148936
-17:  2025  FALSE 0.22950820
-18:  2025   TRUE 0.35000000
+ 5:  2019  FALSE 0.06756757
+ 6:  2019   TRUE 0.05000000
+ 7:  2020  FALSE 0.09836066
+ 8:  2020   TRUE 0.15789474
+ 9:  2021  FALSE 0.17460317
+10:  2021   TRUE 0.56190476
+11:  2022  FALSE 0.05660377
+12:  2022   TRUE 0.30000000
+13:  2023  FALSE 0.06382979
+14:  2023   TRUE 0.25000000
+15:  2024  FALSE 0.12000000
+16:  2024   TRUE 0.16666667
+17:  2025  FALSE 0.24074074
+18:  2025   TRUE 0.30000000
 [1] "multi"
      year   east        V1
     <int> <lgcl>     <num>
@@ -724,18 +742,18 @@ RMSE: 0.464098     Adj. R2: 0.028449
  4:  2018   TRUE 0.00000000
  5:  2019  FALSE 0.00000000
  6:  2019   TRUE 0.00000000
- 7:  2020  FALSE 0.01562500
+ 7:  2020  FALSE 0.01639344
  8:  2020   TRUE 0.00000000
- 9:  2021  FALSE 0.01492537
+ 9:  2021  FALSE 0.01587302
 10:  2021   TRUE 0.00000000
-11:  2022  FALSE 0.01785714
+11:  2022  FALSE 0.01886792
 12:  2022   TRUE 0.00000000
-13:  2023  FALSE 0.01785714
-14:  2023   TRUE 0.08571429
-15:  2024  FALSE 0.23750000
-16:  2024   TRUE 0.42553191
-17:  2025  FALSE 0.31147541
-18:  2025   TRUE 0.47500000
+13:  2023  FALSE 0.02127660
+14:  2023   TRUE 0.08333333
+15:  2024  FALSE 0.22666667
+16:  2024   TRUE 0.45238095
+17:  2025  FALSE 0.27777778
+18:  2025   TRUE 0.53333333
 > dtSingle <- dtChoice[use=="single"]
 > dtSingle[distToLaneway<CUTDISTANCE & use=="single",use:="singleLaneway"]
 > dtSingle[distToLaneway>=CUTDISTANCE & use=="single",use:="singleOnly"]
@@ -787,7 +805,233 @@ RMSE: 0.464098     Adj. R2: 0.028449
 17:  2025  FALSE 0.2631579
 18:  2025   TRUE 0.3333333
 > 
-> q("no")
-> proc.time()
-   user  system elapsed 
-  1.762   0.117   1.873 
+> 
+> # plot with bubbles proportional to nobs
+> dPlot <- dtChoice[,.(elasticity=mean(elasticity),medianPPSF=mean(medianPPSF),nobs=.N),by="neighbourhoodDescription"]
+> ggplot(dPlot, aes(x=medianPPSF, y=elasticity, size=nobs)) + geom_point()
+Warning message:
+Removed 1 row containing missing values or values outside the scale range
+(`geom_point()`). 
+> ggsave("text/elasticityMedianPrice.png")
+Saving 7 x 7 in image
+Warning message:
+Removed 1 row containing missing values or values outside the scale range
+(`geom_point()`). 
+> 
+> # Multiplex
+> print(cor(dtChoice[year>=2024 ,.(multiplex,elasticity,medianPPSF,east)],use="complete.obs"))
+            multiplex elasticity medianPPSF       east
+multiplex   1.0000000 -0.2055050 -0.1603848  0.1500728
+elasticity -0.2055050  1.0000000  0.7679491 -0.6696486
+medianPPSF -0.1603848  0.7679491  1.0000000 -0.9369086
+east        0.1500728 -0.6696486 -0.9369086  1.0000000
+> print(cor(dtWide[year>=2024 ,.(multiplex,elasticity,medianPPSF,east)],use="complete.obs"))
+            multiplex elasticity medianPPSF       east
+multiplex   1.0000000 -0.1674175 -0.2375618  0.2296074
+elasticity -0.1674175  1.0000000  0.7818060 -0.6145684
+medianPPSF -0.2375618  0.7818060  1.0000000 -0.9140439
+east        0.2296074 -0.6145684 -0.9140439  1.0000000
+> print(dtChoice[year>=2024,mean(multiplex),by=east])
+     east        V1
+   <lgcl>     <num>
+1:  FALSE 0.1296296
+2:   TRUE 0.2459016
+> print(dtWide[year>=2024,mean(multiplex),by=east])
+     east        V1
+   <lgcl>     <num>
+1:  FALSE 0.2480620
+2:   TRUE 0.4861111
+> 
+> 
+> print(summary(feols(multiplex ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+OLS estimation, Dep. Var.: multiplex
+Observations: 291
+Standard-errors: Clustered (neighbourhoodDescription) 
+             Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept) -2.621629   0.968626 -2.70654 0.0144494 *  
+medianPPSF  -0.000395   0.000128 -3.09650 0.0062268 ** 
+landWidth    0.091941   0.029588  3.10738 0.0060803 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.392137   Adj. R2: 0.042085
+> print(summary(feols(multiplex ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+NOTE: 1 observation removed because of NA values (RHS: 1).
+OLS estimation, Dep. Var.: multiplex
+Observations: 290
+Standard-errors: Clustered (neighbourhoodDescription) 
+             Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept) -2.275830   0.969312 -2.347883 0.0312426 *  
+elasticity  -0.447518   0.119876 -3.733185 0.0016542 ** 
+medianPPSF  -0.000072   0.000163 -0.443521 0.6629817    
+landWidth    0.082878   0.029656  2.794676 0.0124440 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.38736   Adj. R2: 0.052364
+> 
+> # All plex
+> dtChoice[,single:=use=="single"]
+> print(summary(feols(single ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2019,2026)], cluster="neighbourhoodDescription")))
+OLS estimation, Dep. Var.: single
+Observations: 1,240
+Standard-errors: Clustered (neighbourhoodDescription) 
+             Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)  1.546499   0.556542  2.77876 0.0115881 *  
+medianPPSF   0.000465   0.000160  2.90554 0.0087452 ** 
+landWidth   -0.036564   0.017902 -2.04243 0.0545155 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.488973   Adj. R2: 0.020024
+> print(summary(feols(single ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2026)], cluster="neighbourhoodDescription")))
+NOTE: 5 observations removed because of NA values (RHS: 5).
+OLS estimation, Dep. Var.: single
+Observations: 1,235
+Standard-errors: Clustered (neighbourhoodDescription) 
+               Estimate Std. Error   t value Pr(>|t|)    
+(Intercept) -327.462551 194.740941 -1.681529 0.109024    
+elasticity    -0.505438   0.302531 -1.670696 0.111173    
+medianPPSF    -0.000066   0.000504 -0.131260 0.896950    
+landWidth     -0.041223   0.021008 -1.962226 0.064552 .  
+longitude     -2.678072   1.581447 -1.693431 0.106705    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.486112   Adj. R2: 0.029939
+> 
+> print(table(dtChoice[,use]))
+
+duplex  multi single 
+   469     59   1120 
+> 
+> # Income by census tract
+> dtIncome <- fread("~/OneDrive - UBC/dataRaw/9810005801_databaseLoadingData.csv",
++   select = c("GEO", "DGUID", "Household income statistics (6)", "VALUE")
++ )
+> dtIncome <- dtIncome[grepl("Vancouver", GEO)]
+> setnames(dtIncome, c("DGUID", "Household income statistics (6)", "VALUE"), c("DGUID", "incomeStat", "medianIncome"))
+> dtIncome <- dtIncome[incomeStat == "Median household total income (2020) (2020 constant dollars)"]
+> dtIncome[, tract := substr(DGUID, 13, 19)]
+> 
+> dtChoice[,tract:=substring(CTUID,4,10)]
+> a <- nrow(dtChoice)
+> dtChoice <- merge(dtChoice,dtIncome,by="tract")
+> 
+> 
+> 
+> # Mean price, single vs duplex premium and elasticity of ppsf among single/duplex, mean price by neighbourhood
+> 
+> dtElasticityN <- fread("~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv")
+> dtPriceCT <- fread("~/OneDrive - UBC/dataProcessed/tractMeansVancouver.csv",colClasses=c(CTNAME="character"))
+> print(head(dtElasticityN))
+                       neighbourhood interactionLSF medianPPSF
+                              <char>          <num>      <num>
+1:                        Point Grey      0.6997299   827.9051
+2:                         Kitsilano      0.6953877   653.0926
+3:                            Dunbar      0.6679352   753.3525
+4: Arbutus Ridge - Mackenzie Heights      0.5430374   766.7416
+5:                        Kerrisdale      0.6098701   711.7624
+6:                        Southlands             NA   622.6539
+> print(head(dtPriceCT))
+    CTNAME  meanPPSF medianPPSF
+    <char>     <num>      <num>
+1: 0044.00 1113.6812  1127.7303
+2: 0043.01  955.0606   923.8692
+3: 0043.02  994.7940   980.7295
+4: 0042.00  840.7464   801.9324
+5: 0045.01 1012.6041   960.4759
+6: 0045.02  951.0984   890.8046
+> print(head(dtChoice))
+Key: <tract>
+     tract neighbourhoodDescription      CTUID     ROLL_NUMBER
+    <char>                   <char>     <char>          <char>
+1: 0002.01               FRASERVIEW 9330002.01 025811276440000
+2: 0002.03               FRASERVIEW 9330002.03 025816256430000
+3: 0002.03               FRASERVIEW 9330002.03 025811244470000
+4: 0002.03               FRASERVIEW 9330002.03 025258810400000
+5: 0002.03               FRASERVIEW 9330002.03 025811244850000
+6: 0003.01          SOUTH VANCOUVER 9330003.01 017817221050000
+   zoning_classification zoning_category zoning_district    folioID
+                  <char>          <char>          <char>     <char>
+1: Residential Inclusive              R1            R1-1 A000003FF0
+2: Residential Inclusive              R1            R1-1 A000003G0L
+3: Residential Inclusive              R1            R1-1 A000003FD2
+4: Residential Inclusive              R1            R1-1 A000003DBQ
+5: Residential Inclusive              R1            R1-1 A000003FDD
+6: Residential Inclusive              R1            R1-1 A000002FAF
+    permitnumber permitnumbercreateddate    use MB_effective_year
+          <char>                  <IDat> <char>            <char>
+1: DB-2021-00140              2021-01-14 single              1962
+2: DB-2021-06388              2021-12-04 single              1936
+3: DB-2021-03726              2021-07-16 single              1947
+4: DB-2017-03777              2017-07-18 single              2018
+5: DB-2021-03749              2021-07-16 duplex              1975
+6: DB-2019-04036              2019-09-09 single              1970
+   MB_total_finished_area                                     address LANDAREA
+                   <char>                                      <char>    <num>
+1:                   2200   2714 E 56TH AVENUE, Vancouver, BC V5S 1Z7   1.9403
+2:                   1920  2213 NEWPORT AVENUE, Vancouver, BC V5P 2J1   0.7852
+3:                   1638    1947 NASSAU DRIVE, Vancouver, BC V5P 2B7   0.7852
+4:                   2583 7032 STIRLING STREET, Vancouver, BC V5P 4H5   0.7852
+5:                   2278    1985 NASSAU DRIVE, Vancouver, BC V5P 2B7   0.7852
+6:                   2206     7696 ROSS STREET, Vancouver, BC V5X 4B9   0.5432
+   landWidth landDepth             geo_point_2d   typeofwork
+       <num>     <num>                   <char>       <char>
+1:     32.61    124.04 49.2186956, -123.0521362 New Building
+2:     33.00    112.00  49.215532, -123.0616419 New Building
+3:     33.00    135.61 49.2192592, -123.0671843 New Building
+4:     33.00    112.00 49.2195496, -123.0603171 New Building
+5:     33.00    134.18  49.2192529, -123.066622 New Building
+6:     33.00    116.80 49.2149217, -123.0829524 New Building
+                                    applicant distToSingle distToLaneway
+                                       <char>        <num>         <num>
+1:        Vincent Wan DBA: Vincent Wan Design           NA    42.9872075
+2:        Aman Sidhu DBA: JSS DEVELOPMENT LTD           NA     0.9987124
+3:       Mumta Karra DBA: Karra Turner Design           NA     0.0000000
+4:        Vincent Wan DBA: Vincent Wan Design           NA    24.6994274
+5: Bhupinder (Raj) Singh DBA: Raj Home Design           NA            NA
+6: Bhupinder (Raj) Singh DBA: Raj Home Design           NA    10.1189471
+   nearestSinglePermit nearestLanewayPermit latitude longitude   east
+                <char>               <char>    <num>     <num> <lgcl>
+1:                <NA>        DB-2021-06569 49.21870 -123.0521   TRUE
+2:                <NA>        DB-2021-05928 49.21553 -123.0616   TRUE
+3:                <NA>        DB-2021-03729 49.21926 -123.0672   TRUE
+4:                <NA>        DB-2017-03780 49.21955 -123.0603   TRUE
+5:                <NA>                 <NA> 49.21925 -123.0666   TRUE
+6:                <NA>        DB-2019-04039 49.21492 -123.0830   TRUE
+     neighbourhood elasticity medianPPSF  year latDowntown lonDowntown
+            <char>      <num>      <num> <int>       <num>       <num>
+1:      Fraserview  0.3841524   406.8755  2021     49.2827   -123.1207
+2:      Fraserview  0.3841524   406.8755  2021     49.2827   -123.1207
+3:      Fraserview  0.3841524   406.8755  2021     49.2827   -123.1207
+4:      Fraserview  0.3841524   406.8755  2017     49.2827   -123.1207
+5:      Fraserview  0.3841524   406.8755  2021     49.2827   -123.1207
+6: South Vancouver  0.3836674   405.9609  2019     49.2827   -123.1207
+   distDowntown landArea duplexRatio single duplex  multi multiplex laneway
+          <num>    <num>       <num> <lgcl> <lgcl> <lgcl>    <lgcl>  <lgcl>
+1:     8694.035 4044.944    2.423526   TRUE  FALSE  FALSE     FALSE   FALSE
+2:     8619.165 3696.000    2.423526   TRUE  FALSE  FALSE     FALSE    TRUE
+3:     8059.807 4475.130    2.423526   TRUE  FALSE  FALSE     FALSE    TRUE
+4:     8285.615 3696.000    2.423526   TRUE  FALSE  FALSE     FALSE   FALSE
+5:     8080.287 4427.940    2.423526  FALSE   TRUE  FALSE     FALSE      NA
+6:     8023.307 3854.400    2.422938   TRUE  FALSE  FALSE     FALSE    TRUE
+                   GEO               DGUID
+                <char>              <char>
+1: 0002.01 - Vancouver 2021S05079330002.01
+2: 0002.03 - Vancouver 2021S05079330002.03
+3: 0002.03 - Vancouver 2021S05079330002.03
+4: 0002.03 - Vancouver 2021S05079330002.03
+5: 0002.03 - Vancouver 2021S05079330002.03
+6: 0003.01 - Vancouver 2021S05079330003.01
+                                                     incomeStat medianIncome
+                                                         <char>        <int>
+1: Median household total income (2020) (2020 constant dollars)        88000
+2: Median household total income (2020) (2020 constant dollars)        91000
+3: Median household total income (2020) (2020 constant dollars)        91000
+4: Median household total income (2020) (2020 constant dollars)        91000
+5: Median household total income (2020) (2020 constant dollars)        91000
+6: Median household total income (2020) (2020 constant dollars)        94000
+> print(nrow(dtChoice))
+[1] 1648
+> dtElasticityN[,neighbourhoodDescription:=toupper(NEIGHBOURHOOD)]
+Error in eval(jsub, SDenv, parent.frame()) : 
+  object 'NEIGHBOURHOOD' not found
+Calls: [ -> [.data.table -> eval -> eval -> toupper
+Execution halted
