@@ -82,28 +82,40 @@ price with respect to home square footage.
 In Vancouver, the relationship between price level and the elasticity of price with respect to home size is so strong that the former (more precisely estimated) is an \emph{better} measure out of sample of that elasticity than in-sample elasticity estimates. That is, an empirical issue in applying our model is that in cities with strong income sorting, it may be impossible to distinguish meaningfully price per square foot levels from the elasticity of price with respect to square footage.
 
 \section{A model of infill housing}
-To see the offsetting addition and division effects formally, consider a developer choosing the intensity of development on a parcel of land with area normalized to one unit. Profits are a function of the (continuous, for simplicity) number of units $n$ built on the lot. Zoning regulations impose a schedule of density limits $f(n)$ governing how many square feet $f$ can be built on the lot as a function of $n$. The price $p$ per square foot is a function of $n$ and $\theta$, a characteristic of the neighbourhood. $\theta$ is a form of vertical differentiation, so $\frac{\partial p(n,\theta)}{\partial \theta}>0$. For simplicity, $c(n)$, the cost per square foot is assumed constant with respect to $\theta$. Realistically, higher-end finishes would likely follow the price-$\theta$ relationship. In our empirical work, we control for a small set of charactersitics to approximate this.
+To see the offsetting addition and division effects formally, consider a developer choosing the intensity of development on a parcel of land with area normalized to one unit. Profits are a function of the (continuous, for simplicity) number of units $n$ built on the lot and the square feet $f$ built. Zoning regulations impose a schedule of density limits $f,n$ governing how many square feet $f$ can be built and the number of units, each assumed to have size $f/n$ . The price $p$ per square foot is a function of $n$ and $\theta$, a characteristic of the neighbourhood. $\theta$ is a form of vertical differentiation, so $\frac{\partial p(f/n,\theta)}{\partial \theta}>0$. For simplicity, $c$, the cost per square foot is assumed constant with respect to $\theta$. Realistically, higher-end finishes would likely follow the price-$\theta$ relationship. In our empirical work, we control for a small set of charactersitics to approximate this.
 
 \begin{equation}
-  \pi(n) = f(n)\left[p\left(n,\theta\right) - c(n)\right]
+  \pi(f,n) = f\left[p\left(f/n,\theta\right) - c\right]
 \end{equation}
 
-The benefit from incrementing density is:
+The benefit from incrementing floor area $f$ is the ``addition effect'':
 \begin{equation}
   \label{eq:mb}
-\frac{\partial \pi}{\partial n} = f'(n)\left[p\left(n,\theta\right) - c(n)\right] + f(n)\left[\frac{\partial{p\left(n,\theta\right)}{\partial n}} - c'(n)\right]
+  \frac{\partial \pi}{\partial f} = \left[p\left(n,\theta\right) - c\right] + f\frac{\partial p}{\partial \frac{f}{n}}
 \end{equation}
 
-At an optimum, \eqref{eq:mb} is zero. Differentiating this first order condition yields:
+The derivative of this benefit with respect to the quality index $\theta$ is:
 \begin{equation}
-\frac{d n^{\star}}{d \theta} = -\frac{\underbrace{f'\frac{\partial p}{\partial \theta}}_{\text{addition effect}} + \underbrace{f\frac{\partial^2 p}{\partial n \partial \theta}}_{\text{division effect}}}{f''\left[p - c\right] + 2f'\left[\frac{\partial p}{\partial n} - c'\right] + f\left[\frac{\partial^2 p}{\partial n^2} - c''\right]}.
+	\label{eq:mbtheta}
+	\frac{d\frac{\partial \pi}{\partial f}}{d\theta} = \underbrace{\frac{\partial p}{\partial \theta}}_{\text{addition effect, positive}} + \underbrace{\frac{f}{n}\frac{\partial^2 p}{\partial \frac{f}{n} \partial \theta}.}_{\text{inverse division effect, likely positive}}
 \end{equation}
 
-Assuming second order conditions hold, the denominator is negative, and:
+The benefit of increasing $n$ is:
+\begin{equation}
+	\label{eq:mbn}
+	\frac{\partial \pi}{\partial n} =  - \frac{f^{2}}{n^{2}}\frac{\partial p}{\partial n}.
+\end{equation}
+
+The effect of $\theta$ on this marginal benefit is:
+
+\begin{equation}
+	\label{eq:mbntheta}
+	\frac{d\frac{\partial \pi}{\partial n}}{d\theta} = \underbrace{-\frac{f^{2}}{n^{2}}\frac{\partial^2 p}{\partial n \partial \theta}}_{\text{division effect, -likley negative}}.
+\end{equation}
 
 \subsection{Main theoretical contribution}
 \begin{itemize}
-  \item \emph{Addition effect:} Infill (increasing $n$) is more attractive where $\theta$ and (hence the price per square foot $p$) is greater when $f'$ is larger (i.e., where infill is rewarded with bonus density). In a regression of infill propensity on price, permitted density, and their interaction, a positive coefficient on the interaction would be expected, all else equal.
+  \item \emph{Addition effect:} Infill (increasing $f$ and $n$) is more attractive where $\theta$ and (hence the price per square foot $p$) is greater when $f'$ is larger (i.e., where infill is rewarded with bonus density). In a regression of infill propensity on price, permitted density, and their interaction, a positive coefficient on the interaction would be expected, all else equal.
   \item \emph{Division effect:} Infill is more attractive where price is declining more rapidly in density ($\frac{\partial p}{\partial n }$ is more positive). Assuming sorting is such that $\frac{\partial^2 p}{\partial n \partial \theta} < 0$, this effect implies that infill is less attractive where $\theta$ (and price) is greater.
 \end{itemize}
 
@@ -156,6 +168,8 @@ Minneapolis was moved away from single-family zoning, with the City Council voti
 
 Our interest is in the three largest regions of the city: ``Interior-1,'' ``Interior-2,'' and ``Interior-3,'' where the rezoning permitted up to three units on all previously single-family-zoned lots. The largest land area is in Interior-1, which consists of neighborhoods most distant from the city’s core. In this area, the floor space ratio (FSR) remained unchanged at 0.5, with a maximum height of 2.5 storeys or 28 feet (8.5 meters). In Interior-2, the ring around the core, the same restrictions apply. Only in Interior-3—the single-family areas immediately south and northeast (across the Mississippi River) of the downtown core—did the rezoning increase FSR, from 0.5 to 0.6 for duplexes and 0.7 for triplexes. Triplexes also received a relaxation of the height restriction, to three storeys or 42 feet (12.8 meters). The standard residential lot size in Minneapolis is 5,000 sf, with newer single-family units typically maximizing the allowed buildable area.
 
+\textbf{PREDICTION: likelier positive sorting in Interior-3, where there is more addition, versus others only division}
+
 \textit{Portland, OR USA}
 
 Broad upzoning in Portland was triggered by the Oregon legislature’s passage of House Bill 2001 in July 2019. This bill effectively banned exclusive single-family zoning and required jurisdictions with over 25,000 residents, among other changes, to allow up to four units per lot. Cities were given until June 2022 to update their zoning codes to meet the bill’s requirements.
@@ -174,6 +188,7 @@ Following the Province of British Columbia’s elimination of exclusive single-f
 
 With the 2023 changes, maximum allowed FSR depended on several factors. Single-family homes and duplexes were permitted maximum FSRs of 0.6 and 0.70, respectively, with an additional 0.25 FSR allowed for an ADU on single-family lots. For multiplexes (three or more units), the default maximum was 0.7, with 1.0 FSR attainable if one of the following applied: (i) all units are secured-rental housing; (ii) one unit is designated as ``below-market'' homeownership; or (iii) the developer pays a density bonus, which can vary from \$3.00 to \$140.00 per square foot of additional density depending on lot size and location. For lots of sufficient size, 7–8 rental units are also possible at an FSR of 1.0.
 
+\textbf{PREDICTION: duplex, only division should have negative sorting. Laneway ambiguous, multiplex quantitative}
 
 \section{Empirical Analysis}
 
@@ -218,14 +233,14 @@ A dominant feature of the Vancouver housing market is the role of location. In p
 \end{figure}
 
 \begin{figure}
-	\caption{\label{fig:WestOld} Price per square foot for single family homes and duplexes in Vancouver, 2022-2024. Residuals from a regression of price of homes on standard (30-36' wide by 100-140' deep) lots on log square footage and indicators for age and year sold.}
+	\caption{\label{fig:WestNew} Price per square foot for single family homes and duplexes in Vancouver, 2022-2024. Residuals from a regression of price of homes on standard (30-36' wide by 100-140' deep) lots on log square footage and indicators for age and year sold.}
 \includegraphics[width=\textwidth]{residualsMap2022to2024.png}
 \end{figure}
 
 Table \ref{tab:regSummariesVancouver} considers different spatial explanations for price per square and elasticity of price with respect to square foot for different levels of spatial aggregation. The unit of observation is a housing transaction between the intermediate years 2016-2020. The top panel of Table \ref{tab:regSummariesVancouver} shows that the East/West divide explains over two-thirds of residual price variation conditional on square footage. A continuous longitude variable subtracts from adjusted $R^{2}$, and dummies for census tract or broader neighbourhood add little further explanatory power. Thus the East/West divide explains the ``addition'' effect well. The bottom panel of Table \ref{tab:regSummariesVancouver} shows that the same is true for the ``division'' effect. There adjusted $R^{2}$s are presented for regressions with interactions between log square footage and the geography in question. Again, the East/West divide does most of the geographic work.
 
 \begin{table}
-\caption{\label{tab:regSummariesVancouver} Adjusted $R^{2}$ for regressions of log price per square foot (top panel) and location additively (top panel) and interactively (capturing geographic heterogeneity in the elasticity of price with respect to square feet, bottom panel). Single and duplex sales in R1-1 zones 2017-2019. Sales confined to properties 25 years old or less. In the top panel, Longitude x Distance includes longitude, distance to downtown, and their interaction.}
+	\caption{\label{tab:regSummariesVancouver} Adjusted $R^{2}$ for regressions of log price per square foot (top panel) and location additively (top panel) and interactively (capturing geographic heterogeneity in the elasticity of price with respect to square feet, bottom panel). Single and duplex sales in R1-1 zones 2017-2019. Sales confined to properties 25 years old or less. In the top panel, Longitude x Distance includes longitude, distance to downtown, and their interaction. \textbf{Takeaway: East almost sufficient for $\theta$ } \textbf{Takeaway: clear support for division effect sign prediction. For sufficiently small units (100 sqft $\approx e^{5}$, quantitatively!), predicted East Price higher}}
 	\include{vancouverRegressionComparisonTable.tex}
 
 	\par\bigskip\par
@@ -243,7 +258,7 @@ Table \ref{tab:vancouverEastPPSF} presents the East/West regressions described a
 Table \ref{tab:vancouverFittedValues} presents out-of-sample fitted values for different homes on a 33x110 foot lot, with a laneway home at .16 FSR, a single-family stand-alone and duplex at .7 FSR and .7/2 FSR, respectively, and a fourplex unit at 1/4 FSR. We find that in all cases, the West Side values are greater. However, the difference in total price (units times price per unit) for a duplex and a fourplex versus a single family home are greater on the East Side than on the West Side. This rationalizes the differential patterns of duplex and fourplex housing we see in Vancouver, with more infill on the East Side than the West Side, even though prices are higher on the West Side. 
 
 \begin{table}
-	\caption{\label{tab:vancouverFittedValues} Out-of-sample fitted values for different home types on a 33x110 foot lot, with a laneway home at .16 FSR, a single-family stand-alone and duplex at .7 FSR and .7/2 FSR, respectively, and a fourplex unit at 1/4 FSR. No delta method or similar correction for exponentiaing estimated price per square foot.}
+	\caption{\label{tab:vancouverFittedValues} Out-of-sample fitted values for different home types on a 33x110 foot lot, with a laneway home at .16 FSR, a single-family stand-alone and duplex at .7 FSR and .7/2 FSR, respectively, and a fourplex unit at 1/4 FSR. No delta method or similar correction for exponentiaing estimated price per square foot. \textbf{Takeaway: Duplex for sure negatively sorted, fourplex closer call. Laneway ambiguous, hard to quantify expected privacy effect}}
 	\include{vancouverFittedValues.tex}
 \end{table}
 
@@ -287,7 +302,7 @@ In Minneapolis and Portland, using Attom transaction data, we estimate the mean 
 We combine the estimated elasticities $\beta{1}$ and simply calculated median price per square foot by zip code, and then merge at the zip code level with each city's permit data to find the fraction of permits in upzoned formerly single-family zones that are for duplexes or triplexes (or more in the case of Portland). We then calculate correlations between the estimated elasticities, price per square foot, median income, and the propensity to build duplexes or triplexes. For Minneapolis, Table \ref{tab:MinneapolisCorrelations} shows this for all 34 affected Zip Codes/ZCTAs (top panel), for those inside the interior-3 zone, in which density bonuses of .2/.5 and .3/.5 floor area ratios were granted. Pursuant to our theoretical discussion, we expect a more positive correlation between price level and propensity to build plexes where the addition effect is larger (or existent, zone 3) than where the division effect is the only effect (zones 1 and 2). That theoretical result is supported by comparing the middle to the bottom panel, with the caveat that the number of zip codes is very small. Overall, in Minneapolis, we identify 509 permits on affected lots of which 198 are multiplex applications. 
 
 \begin{table}
-	\caption{\label{tab:MinneapolisCorrelations} Correlations between price level, elasticity of price with respect to square footage, median income, and propensity to build duplexes or triplexes in Minneapolis. All affected Zips (top panel), Interior-3 zone (middle panel, addition and division effects apply), and Interior-1 and 2 zones (bottom panel, division effect only).}
+	\caption{\label{tab:MinneapolisCorrelations} Correlations between price level, elasticity of price with respect to square footage, median income, and propensity to build duplexes or triplexes in Minneapolis. All affected Zips (top panel), Interior-3 zone (middle panel, addition and division effects apply), and Interior-1 and 2 zones (bottom panel, division effect only). \textbf{Takeaway: positive sorting only where there is an addition effect.}}
 
 	\textbf{All affected Zips}
 
@@ -333,7 +348,7 @@ elasticity & 1.00 & 0.58 & 0.36 & 0.29 \\
 
 \subsection{Portland}
 
-In Portland, almost all of the infill uptake is in Zones 2.5 and 5, close to the urban core. Plausibly, FAR limits were not binding on large lots in the outer zones. Among building permits by zone, the mean infill propensity across zip codes (one mean per zip code) is 26.3\% for R 2.5, 10\% for R5, 5.9\% for R7, 2.9\% for R10, and 0\% for R20. Across all zip codes-zoning code pairs for which we compute infill propensities, mean prices, and elasticities of price in square foot, the correlation between uptake and price level is -.2. Across the only 5 zip codes in R2.5, we find a correlation of .71, and across the 9 zip codes in R5, the correlation is -.85. These samples are too small to draw conclusions, but the overall negative correlation reflects differences driven by an apparent negative correlation between lot size and price per square foot (driven by a higher price per square foot in R5 than R2.5). 
+\textbf{In Portland, almost all of the infill uptake is in Zones 2.5 and 5, close to the urban core. Plausibly, FAR limits were not binding on large lots in the outer zones. Among building permits by zone, the mean infill propensity across zip codes (one mean per zip code) is 26.3\% for R 2.5, 10\% for R5, 5.9\% for R7, 2.9\% for R10, and 0\% for R20. Across all zip codes-zoning code pairs for which we compute infill propensities, mean prices, and elasticities of price in square foot, the correlation between uptake and price level is -.2. Across the only 5 zip codes in R2.5, we find a correlation of .71, and across the 9 zip codes in R5, the correlation is -.85. These samples are too small to draw conclusions, but the overall negative correlation reflects differences driven by an apparent negative correlation between lot size and price per square foot (driven by a higher price per square foot in R5 than R2.5). }
 
 \section{Conclusion}
 
@@ -345,6 +360,12 @@ In Vancouver, there are generally negative correlations between price per square
 
 In Minneapolis, we find again a negative correlation between infill activity and price per square foot across all affected Zip Codes. However, in the relatively inner-city area where both addition and division effects apply, the correlation is positive, versus negative where there is only a division effect in outlying areas. Similarly in Portland, a strong negative correlation between price per square foot and infill activity is driven in large part by differences in lot sizes and the extent to which older floor space ratios were binding. In the active inner zones, the correlation is ambiguous within the small and larger-lot zones.
 
+\begin{itemize}
+	\item Division effects only: negative sorting (Vancouver duplexes)
+	\item Addition effects only: not observed
+	\item Mixed examples: mixed results (Interior-3 in Minneapolis positive, multiplexes in Vancouver negative, R2.5 in Portland positive, R5 in Portland negative, Vancouver laneways mostly negative)
+
+\end{itemize}
 
 \printbibliography
 \end{document}
