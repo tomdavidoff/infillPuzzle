@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  12 FEB 2026 12:10
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  12 FEB 2026 12:12
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -432,9 +432,7 @@ Package: blx-case-expl3 2024/03/21 v3.20 expl3 case changing code for biblatex
 \@quotelevel=\count417
 \@quotereset=\count418
 
-(./main.aux (./vancouverRegressionComparisonTable.aux)
-(./vancouverInteractionRegressionComparisonTable.aux) (./vancouverEastPPSF.aux)
-(./vancouverFittedValues.aux))
+(./main.aux)
 \openout1 = `main.aux'.
 
 LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 12.
@@ -537,12 +535,6 @@ al/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
 [3]
 
 [4]
-Overfull \hbox (4.461pt too wide) in paragraph at lines 131--132
-[][]\OT1/cmr/m/n/12 Marantz, El-men-dorf, and Kim (2023) find that ADU place-me
-nt in Cal-i-for-nia is widespread,
- []
-
-
 
 [5]
 
@@ -555,14 +547,20 @@ nt in Cal-i-for-nia is widespread,
 [9]
 
 [10]
-Overfull \hbox (97.79271pt too wide) in paragraph at lines 200--222
+Overfull \hbox (97.79271pt too wide) in paragraph at lines 199--221
 [][]
  []
 
 
-Underfull \hbox (badness 10000) in paragraph at lines 200--222
+Underfull \hbox (badness 10000) in paragraph at lines 199--221
 
  []
+
+
+LaTeX Warning: Reference `fig:WestOld' on page 11 undefined on input line 227.
+
+
+LaTeX Warning: Reference `fig:WestNew' on page 11 undefined on input line 227.
 
 
 
@@ -570,26 +568,56 @@ Underfull \hbox (badness 10000) in paragraph at lines 200--222
 <residualsMap2012to2014.png, id=54, 505.89pt x 505.89pt>
 File: residualsMap2012to2014.png Graphic file (type png)
 <use residualsMap2012to2014.png>
-Package pdftex.def Info: residualsMap2012to2014.png  used on input line 232.
+Package pdftex.def Info: residualsMap2012to2014.png  used on input line 231.
 (pdftex.def)             Requested size: 469.75502pt x 469.76265pt.
 <residualsMap2022to2024.png, id=56, 505.89pt x 505.89pt>
 File: residualsMap2022to2024.png Graphic file (type png)
 <use residualsMap2022to2024.png>
-Package pdftex.def Info: residualsMap2022to2024.png  used on input line 237.
+Package pdftex.def Info: residualsMap2022to2024.png  used on input line 236.
 (pdftex.def)             Requested size: 469.75502pt x 469.76265pt.
+
+
+LaTeX Warning: Reference `tab:regSummariesVancouver' on page 12 undefined on in
+put line 239.
+
+
+LaTeX Warning: Reference `tab:regSummariesVancouver' on page 12 undefined on in
+put line 239.
+
+
+LaTeX Warning: Reference `tab:regSummariesVancouver' on page 12 undefined on in
+put line 239.
+
 \openout2 = `vancouverRegressionComparisonTable.aux'.
 
- (./vancouverRegressionComparisonTable.tex)
+(./vancouverRegressionComparisonTable.tex)
 \openout2 = `vancouverInteractionRegressionComparisonTable.aux'.
 
 
 (./vancouverInteractionRegressionComparisonTable.tex)
+
+LaTeX Warning: Reference `tab:vancouverEastPPSF' on page 12 undefined on input 
+line 250.
+
 \openout2 = `vancouverEastPPSF.aux'.
 
- (./vancouverEastPPSF.tex)
+(./vancouverEastPPSF.tex)
+
+LaTeX Warning: Reference `tab:vancouverFittedValues' on page 12 undefined on in
+put line 257.
+
 \openout2 = `vancouverFittedValues.aux'.
 
 (./vancouverFittedValues.tex)
+
+LaTeX Warning: Reference `tab:vancouverFittedValues' on page 12 undefined on in
+put line 266.
+
+
+LaTeX Warning: Reference `fig:lanewayMap' on page 12 undefined on input line 26
+6.
+
+
 
 [12]
 
@@ -617,17 +645,34 @@ Package pdftex.def Info: residualsMap2022to2024.png  used on input line 237.
 <lanewayMap.png, id=75, 505.6491pt x 505.6491pt>
 File: lanewayMap.png Graphic file (type png)
 <use lanewayMap.png>
-Package pdftex.def Info: lanewayMap.png  used on input line 271.
+Package pdftex.def Info: lanewayMap.png  used on input line 270.
 (pdftex.def)             Requested size: 469.75502pt x 469.77042pt.
+
+
+LaTeX Warning: Reference `tab:vancouverFittedValues' on page 17 undefined on in
+put line 275.
+
+
+LaTeX Warning: Reference `fig:duplexMap' on page 17 undefined on input line 275
+.
+
 <duplexMap.png, id=76, 505.6491pt x 505.6491pt>
 File: duplexMap.png Graphic file (type png)
 <use duplexMap.png>
-Package pdftex.def Info: duplexMap.png  used on input line 280.
+Package pdftex.def Info: duplexMap.png  used on input line 279.
 (pdftex.def)             Requested size: 469.75502pt x 469.77042pt.
+
+LaTeX Warning: Reference `tab:vancouverFittedValues' on page 17 undefined on in
+put line 284.
+
+
+LaTeX Warning: Reference `fig:multiMap' on page 17 undefined on input line 284.
+
+
 <multiMap.png, id=77, 2106.87125pt x 2106.87125pt>
 File: multiMap.png Graphic file (type png)
 <use multiMap.png>
-Package pdftex.def Info: multiMap.png  used on input line 289.
+Package pdftex.def Info: multiMap.png  used on input line 288.
 (pdftex.def)             Requested size: 469.75502pt x 469.74986pt.
 
 
@@ -639,6 +684,11 @@ Package pdftex.def Info: multiMap.png  used on input line 289.
 
 [20 <./multiMap.png>]
 
+LaTeX Warning: Reference `tab:MinneapolisCorrelations' on page 21 undefined on 
+input line 301.
+
+
+
 [21]
 
 [22]
@@ -646,22 +696,22 @@ Package pdftex.def Info: multiMap.png  used on input line 289.
 [23]
 
 [24]
-Overfull \hbox (8.19232pt too wide) in paragraph at lines 371--371
+
+[25]
+Overfull \hbox (8.19232pt too wide) in paragraph at lines 370--370
 \OT1/cmr/m/it/12 State Gov-ern-ments\OT1/cmr/m/n/12 . Re-search Re-port. NYU Fu
 r-man Cen-ter. \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 https : 
 / / furmancenter .
  []
 
 
-Overfull \hbox (15.82265pt too wide) in paragraph at lines 371--371
+Overfull \hbox (15.82265pt too wide) in paragraph at lines 370--370
 \OT1/cmr/m/sc/12 doi\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 10 . 1177 / 00420980231
 159500$\OT1/cmr/m/n/12 . \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/1
 2 https : / / doi . org / 10 . 1177 / 00420980231159500$\OT1/cmr/m/n/12 . 
  []
 
 
-
-[25]
 
 [26] (./main.aux (./vancouverRegressionComparisonTable.aux)
 (./vancouverInteractionRegressionComparisonTable.aux) (./vancouverEastPPSF.aux)
@@ -670,15 +720,26 @@ Overfull \hbox (15.82265pt too wide) in paragraph at lines 371--371
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
+
+
+LaTeX Warning: There were undefined references.
+
+
+LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+
+Package biblatex Warning: Please rerun LaTeX.
+(biblatex)                Page breaks have changed.
+
 Package logreq Info: Writing requests to 'main.run.xml'.
 \openout1 = `main.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 11215 strings out of 473190
- 213764 string characters out of 5715801
- 1057262 words of memory out of 5000000
- 34350 multiletter control sequences out of 15000+600000
+ 11144 strings out of 473190
+ 212715 string characters out of 5715801
+ 1045725 words of memory out of 5000000
+ 34287 multiletter control sequences out of 15000+600000
  568633 words of font info for 70 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  66i,11n,81p,1551b,1271s stack positions out of 10000i,1000n,20000p,200000b,200000s
@@ -701,7 +762,7 @@ ive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive
 /texmf-dist/fonts/type1/public/cm-super/sfrm0700.pfb></usr/local/texlive/2025/t
 exmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2025/tex
 mf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
-Output written on main.pdf (26 pages, 1938323 bytes).
+Output written on main.pdf (26 pages, 1939431 bytes).
 PDF statistics:
  194 PDF objects out of 1000 (max. 8388607)
  118 compressed objects within 2 object streams
