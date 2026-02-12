@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -45,10 +45,12 @@ The following object is masked from ‘package:fixest’:
 > library(readxl)
 > library(geosphere)
 > library(nnet)
+> library(xtable)
 > 
 > # per google
 > latDowntown <- 49.2827
 > lonDowntown <- -123.1207
+> ONTARIOLON <- -123.105 # google
 > WIDTHTOL <- .10
 > MAXAGE <- 25
 > MINOBS <- 20
@@ -102,9 +104,6 @@ The following object is masked from ‘package:fixest’:
 4: Improved Single Property Transaction     2012
 5: Improved Single Property Transaction     1977
 6: Improved Single Property Transaction     1995
-> MINYEAR <- 2012
-> MAXYEAR <- 2018
-> dtSales <- dtSales[saleYear>=MINYEAR & saleYear<=MAXYEAR]
 > dtDescription <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_descriptions_20250331_REVD25.csv",select=c("FOLIO_ID","ROLL_NUMBER","ACTUAL_USE_DESCRIPTION","NEIGHBOURHOOD","JURISDICTION_CODE"))
 > dtDescription <- dtDescription[JURISDICTION_CODE==200]
 > dtMerge <- merge(dtDescription,dtCentroids,by="ROLL_NUMBER")
@@ -116,43 +115,47 @@ The following object is masked from ‘package:fixest’:
 > print(table(dtMerge[,ACTUAL_USE_DESCRIPTION])[order(table(dtMerge[,ACTUAL_USE_DESCRIPTION]),decreasing=TRUE)])
 
                 Strata-Lot Residence (Condominium) 
-                                             51652 
+                                            194246 
                    Residential Dwelling with Suite 
-                                             11182 
+                                             66161 
                             Single Family Dwelling 
-                                              8018 
+                                             58666 
                Row Housing (Single Unit Ownership) 
-                                              5151 
+                                             22642 
                        Duplex, Strata Front / Back 
-                                              1076 
+                                              5443 
                        Duplex, Strata Side by Side 
-                                               545 
-   Duplex, Non-Strata Side by Side or Front / Back 
-                                               145 
-                          Duplex, Strata Up / Down 
-                                                50 
-              Vacant Residential Less Than 2 Acres 
-                                                36 
-  Stratified Rental Apartment (Frame Construction) 
-                                                32 
-                      Duplex, Non-Strata Up / Down 
-                                                27 
+                                              3004 
                  Property Subject To Section 19(8) 
-                                                13 
-                                           Triplex 
-                                                 8 
-  2 Acres Or More (Single Family Dwelling, Duplex) 
-                                                 7 
+                                              1512 
+   Duplex, Non-Strata Side by Side or Front / Back 
+                                              1317 
+  Stratified Rental Apartment (Frame Construction) 
+                                               498 
+                          Duplex, Strata Up / Down 
+                                               269 
+              Vacant Residential Less Than 2 Acres 
+                                               195 
+                      Duplex, Non-Strata Up / Down 
+                                               151 
 Stratified Rental Apartment (Hi-Rise Construction) 
-                                                 5 
-       Bed & Breakfast Operation Less Than 4 Units 
-                                                 3 
-                     2 Acres Or More (Outbuilding) 
-                                                 1 
-                      Residential Outbuilding Only 
-                                                 1 
+                                               104 
+  2 Acres Or More (Single Family Dwelling, Duplex) 
+                                                63 
+                                           Triplex 
+                                                56 
                        Stratified Rental Townhouse 
-                                                 1 
+                                                38 
+       Bed & Breakfast Operation Less Than 4 Units 
+                                                29 
+                      Residential Outbuilding Only 
+                                                 5 
+                     2 Acres Or More (Outbuilding) 
+                                                 3 
+                          2 Acres Or More (Vacant) 
+                                                 2 
+                                             Other 
+                                                 2 
 > dtMerge <- dtMerge[ACTUAL_USE_DESCRIPTION %in% c("Strata-Lot Residence (Condominium)", "Residential Dwelling with Suite", "Single Family Dwelling", "Row Housing (Single Unit Ownership)") | grepl("Duplex",ACTUAL_USE_DESCRIPTION)]
 > # first question: among single family homes are neighbourhoods relevant?
 > dtMerge[,age:=saleYear-MB_Effective_Year]
@@ -160,11 +163,13 @@ Stratified Rental Apartment (Hi-Rise Construction)
 > 
 > dtMerge[,distDowntown:=distGeo(cbind(lon,lat),c(lonDowntown,latDowntown))]
 > regValue1 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) +lon*distDowntown|saleYear^ACTUAL_USE_DESCRIPTION,data=dtMerge )
-NOTE: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
+NOTES: 30,749 observations removed because of NA and infinite values (LHS: 40, RHS: 30,710).
+       35 fixed-effect singletons were removed (35 observations).
 Warning message:
 In log(age + 1) : NaNs produced
 > regValue2 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) +lon*distDowntown + i(NEIGHBOURHOOD)|saleYear^ACTUAL_USE_DESCRIPTION,data=dtMerge )
-NOTE: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
+NOTES: 30,749 observations removed because of NA and infinite values (LHS: 40, RHS: 30,710).
+       35 fixed-effect singletons were removed (35 observations).
 Warning message:
 In log(age + 1) : NaNs produced
 > # add census tract merge from Lon/Lat
@@ -182,337 +187,212 @@ In log(age + 1) : NaNs produced
 > sMerge$lon <- st_coordinates(sMerge)[,1]
 > sMerge$lat <- st_coordinates(sMerge)[,2]
 > df <- as.data.table(sMerge)
-> print(nrow(df))
-[1] 77853
-> print(nrow(df))
-[1] 77853
-> regValue3 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) +lon*distDowntown |saleYear^ACTUAL_USE_DESCRIPTION + CTNAME,data=df )
-NOTE: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
-Warning message:
-In log(age + 1) : NaNs produced
-> regValue4 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) |saleYear^ACTUAL_USE_DESCRIPTION + CTNAME,data=df )
-NOTE: 4,197 observations removed because of NA and infinite values (LHS: 1, RHS: 4,196).
-Warning message:
-In log(age + 1) : NaNs produced
-> # print etable with adjusted r2
-> print(etable(regValue1,regValue2,regValue3,regValue4,fitstat="ar2"))
-                                            regValue1             regValue2
-Dependent Var.:                 log(CONVEYANCE_PRICE) log(CONVEYANCE_PRICE)
-                                                                           
-log(MB_Total_Finished_Area)         1.124*** (0.0275)     1.071*** (0.0311)
-log(age+1)                        -0.0403*** (0.0111)    -0.0358** (0.0111)
-lon                                -5.394*** (0.3731)     -9.232*** (1.021)
-distDowntown                       0.0446*** (0.0068)    0.0805*** (0.0150)
-lon x distDowntown                0.0004*** (5.56e-5)    0.0007*** (0.0001)
-NEIGHBOURHOOD = Cambie                                     0.0988* (0.0435)
-NEIGHBOURHOOD = CedarCottage                              0.1605** (0.0507)
-NEIGHBOURHOOD = CoalHarbour                              0.4580*** (0.0374)
-NEIGHBOURHOOD = Collingwood                              0.3261*** (0.0621)
-NEIGHBOURHOOD = Downtown                                    0.0440 (0.0421)
-NEIGHBOURHOOD = DowntownSouth                              -0.0086 (0.0319)
-NEIGHBOURHOOD = Dunbar                                     -0.0006 (0.0226)
-NEIGHBOURHOOD = Fairview                                  -0.0512* (0.0226)
-NEIGHBOURHOOD = FalseCreekNorth                           0.1296** (0.0382)
-NEIGHBOURHOOD = Fraserview                               0.2198*** (0.0568)
-NEIGHBOURHOOD = Grandview                                0.2194*** (0.0612)
-NEIGHBOURHOOD = HastingsEast                             0.2654*** (0.0654)
-NEIGHBOURHOOD = Kerrisdale                                0.0578** (0.0217)
-NEIGHBOURHOOD = Killarney                                0.2811*** (0.0526)
-NEIGHBOURHOOD = Kitsilano                               -0.1276*** (0.0171)
-NEIGHBOURHOOD = Knight                                     0.1338* (0.0565)
-NEIGHBOURHOOD = Main&Fraser                                0.1042* (0.0505)
-NEIGHBOURHOOD = MarineDrive                              0.2961*** (0.0572)
-NEIGHBOURHOOD = Marpole                                  0.2017*** (0.0370)
-NEIGHBOURHOOD = MountPleasant                               0.0735 (0.0464)
-NEIGHBOURHOOD = Oakridge                                 0.2055*** (0.0308)
-NEIGHBOURHOOD = PointGrey                                   0.0435 (0.0352)
-NEIGHBOURHOOD = Renfrew                                   0.1742** (0.0634)
-NEIGHBOURHOOD = RenfrewHeights                           0.2814*** (0.0589)
-NEIGHBOURHOOD = Shaughnessy                              0.1824*** (0.0408)
-NEIGHBOURHOOD = SouthGranville                           0.1736*** (0.0298)
-NEIGHBOURHOOD = SouthVancouver                             0.0918* (0.0437)
-NEIGHBOURHOOD = Southlands                               0.0940*** (0.0263)
-NEIGHBOURHOOD = WestEnd                                 -0.0892*** (0.0244)
-Fixed-Effects:                  --------------------- ---------------------
-saleYear-ACTUAL_USE_DESCRIPTION                   Yes                   Yes
-CTNAME                                             No                    No
-_______________________________ _____________________ _____________________
-S.E.: Clustered                 by: saleYear-ACTUAL.. by: saleYear-ACTUAL..
-Adj. R2                                       0.90713               0.91701
-
-                                            regValue3             regValue4
-Dependent Var.:                 log(CONVEYANCE_PRICE) log(CONVEYANCE_PRICE)
-                                                                           
-log(MB_Total_Finished_Area)         1.073*** (0.0305)     1.076*** (0.0303)
-log(age+1)                         -0.0324** (0.0107)    -0.0304** (0.0110)
-lon                                     2.088 (1.422)                      
-distDowntown                      -0.1004*** (0.0253)                      
-lon x distDowntown                -0.0008*** (0.0002)                      
-NEIGHBOURHOOD = Cambie                                                     
-NEIGHBOURHOOD = CedarCottage                                               
-NEIGHBOURHOOD = CoalHarbour                                                
-NEIGHBOURHOOD = Collingwood                                                
-NEIGHBOURHOOD = Downtown                                                   
-NEIGHBOURHOOD = DowntownSouth                                              
-NEIGHBOURHOOD = Dunbar                                                     
-NEIGHBOURHOOD = Fairview                                                   
-NEIGHBOURHOOD = FalseCreekNorth                                            
-NEIGHBOURHOOD = Fraserview                                                 
-NEIGHBOURHOOD = Grandview                                                  
-NEIGHBOURHOOD = HastingsEast                                               
-NEIGHBOURHOOD = Kerrisdale                                                 
-NEIGHBOURHOOD = Killarney                                                  
-NEIGHBOURHOOD = Kitsilano                                                  
-NEIGHBOURHOOD = Knight                                                     
-NEIGHBOURHOOD = Main&Fraser                                                
-NEIGHBOURHOOD = MarineDrive                                                
-NEIGHBOURHOOD = Marpole                                                    
-NEIGHBOURHOOD = MountPleasant                                              
-NEIGHBOURHOOD = Oakridge                                                   
-NEIGHBOURHOOD = PointGrey                                                  
-NEIGHBOURHOOD = Renfrew                                                    
-NEIGHBOURHOOD = RenfrewHeights                                             
-NEIGHBOURHOOD = Shaughnessy                                                
-NEIGHBOURHOOD = SouthGranville                                             
-NEIGHBOURHOOD = SouthVancouver                                             
-NEIGHBOURHOOD = Southlands                                                 
-NEIGHBOURHOOD = WestEnd                                                    
-Fixed-Effects:                  --------------------- ---------------------
-saleYear-ACTUAL_USE_DESCRIPTION                   Yes                   Yes
-CTNAME                                            Yes                   Yes
-_______________________________ _____________________ _____________________
-S.E.: Clustered                 by: saleYear-ACTUAL.. by: saleYear-ACTUAL..
-Adj. R2                                       0.92160               0.92065
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> MINSQFT <- 400
 > df[,propertyType:=ifelse(ACTUAL_USE_DESCRIPTION %chin% c("Single Family Dwelling","Residential Dwelling with Suite"),"single",ifelse(grepl("Duplex,",ACTUAL_USE_DESCRIPTION),"duplex",ifelse(ACTUAL_USE_DESCRIPTION=="Row Housing (Single Unit Ownership)","TH","condo")))]
-> df <- df[propertyType!="single" | Zoning=="R1-1"]
-> df[,single:=propertyType=="single"]
-> df[,ppsf:=CONVEYANCE_PRICE/MB_Total_Finished_Area]
-> df <- df[!is.na(ppsf)]
-> EXTREME_VAL <- .005
-> minVal <- quantile(df[,ppsf], EXTREME_VAL)
-> maxVal <- quantile(df[,ppsf], 1-EXTREME_VAL)
-> df <- df[ppsf %between% c(minVal,maxVal)]
-> print(summary(df))
- ROLL_NUMBER         FOLIO_ID.x        ACTUAL_USE_DESCRIPTION
- Length:74706       Length:74706       Length:74706          
- Class :character   Class :character   Class :character      
- Mode  :character   Mode  :character   Mode  :character      
-                                                             
-                                                             
-                                                             
-                                                             
- NEIGHBOURHOOD      JURISDICTION_CODE MB_Total_Finished_Area    Zoning         
- Length:74706       Min.   :200       Min.   :  329          Length:74706      
- Class :character   1st Qu.:200       1st Qu.:  651          Class :character  
- Mode  :character   Median :200       Median :  911          Mode  :character  
-                    Mean   :200       Mean   : 1365                            
-                    3rd Qu.:200       3rd Qu.: 1642                            
-                    Max.   :200       Max.   :25164                            
-                                                                               
- Land_Width_Width Land_Depth_Depth MB_Effective_Year  FOLIO_ID.y       
- Min.   : 16.00   Min.   :  0.00   Min.   :   0      Length:74706      
- 1st Qu.: 33.00   1st Qu.:  0.00   1st Qu.:1994      Class :character  
- Median : 34.00   Median :  0.00   Median :2006      Mode  :character  
- Mean   : 42.62   Mean   : 29.91   Mean   :2002                        
- 3rd Qu.: 50.00   3rd Qu.:  0.00   3rd Qu.:2014                        
- Max.   :330.00   Max.   :573.00   Max.   :2024                        
- NA's   :56495                     NA's   :1                           
- CONVEYANCE_DATE          CONVEYANCE_PRICE   CONVEYANCE_TYPE_DESCRIPTION
- Min.   :20120103000000   Min.   :   92607   Length:74706               
- 1st Qu.:20140203000000   1st Qu.:  435000   Class :character           
- Median :20150903000000   Median :  667000   Mode  :character           
- Mean   :20151713121797   Mean   : 1031658                              
- 3rd Qu.:20170316000000   3rd Qu.: 1200000                              
- Max.   :20181231000000   Max.   :24500000                              
-                                                                        
-    saleYear         age           distDowntown        CTUID          
- Min.   :2012   Min.   : -12.00   Min.   :  169.3   Length:74706      
- 1st Qu.:2014   1st Qu.:   1.00   1st Qu.: 1243.3   Class :character  
- Median :2015   Median :   9.00   Median : 3160.6   Mode  :character  
- Mean   :2015   Mean   :  13.43   Mean   : 3883.1                     
- 3rd Qu.:2017   3rd Qu.:  21.00   3rd Qu.: 6178.6                     
- Max.   :2018   Max.   :2018.00   Max.   :10819.7                     
-                NA's   :1                                             
-    DGUID              CTNAME             LANDAREA         PRUID          
- Length:74706       Length:74706       Min.   :0.1238   Length:74706      
- Class :character   Class :character   1st Qu.:0.3375   Class :character  
- Mode  :character   Mode  :character   Median :0.6813   Mode  :character  
-                                       Mean   :0.8434                     
-                                       3rd Qu.:1.2593                     
-                                       Max.   :4.0575                     
-                                                                          
-          geometry          lon              lat        propertyType      
- POINT        :74706   Min.   :-123.2   Min.   :49.20   Length:74706      
- epsg:4326    :    0   1st Qu.:-123.1   1st Qu.:49.24   Class :character  
- +proj=long...:    0   Median :-123.1   Median :49.26   Mode  :character  
-                       Mean   :-123.1   Mean   :49.26                     
-                       3rd Qu.:-123.1   3rd Qu.:49.28                     
-                       Max.   :-123.0   Max.   :49.29                     
-                                                                          
-   single             ppsf       
- Mode :logical   Min.   : 259.7  
- FALSE:58309     1st Qu.: 564.9  
- TRUE :16397     Median : 694.6  
-                 Mean   : 745.9  
-                 3rd Qu.: 881.1  
-                 Max.   :1949.9  
-                                 
-> # turn the below into a regression
-> df[,roundSQFT:=round(MB_Total_Finished_Area/200)]
-> MINSQFT <- .25*.8*33*122
-> MAXSQFT <- 1.5*.8*33*122
+> df[,lsqft := log(MB_Total_Finished_Area)]
+> df <- df[!is.na(lsqft) & !is.na(CONVEYANCE_PRICE) & !is.na(age) & !is.na(lon) & !is.na(lat) & !is.na(saleYear) & !is.na(CTNAME) & CONVEYANCE_PRICE>0 & age>=0 & MB_Total_Finished_Area>MINSQFT]
 > MINWIDTH <- 30
 > MAXWIDTH <- 35 # over half of properties
 > df <- df[Land_Width_Width %between% c(MINWIDTH,MAXWIDTH)]
-> df <- df[MB_Total_Finished_Area %between% c(MINSQFT,MAXSQFT)]
-> df[,sfk:=MB_Total_Finished_Area/1000]
-> df <- df[propertyType %chin% c("condo","TH")==FALSE] # apples to apples!
-> ONTARIOLON <- -123.105 # google
 > df[,east:=lon>ONTARIOLON]
-> # functional form
-> # Automate some of this code
-> library(data.table)
-> library(fixest)
+> df[,single:=propertyType=="single"]
 > 
-> setDT(df)
-> df[, single := propertyType == "single"]
-> 
-> 
-> setDT(df)
-> 
-> # precompute raw polynomial terms as plain numeric columns
-> df[, `:=`(
-+   sfk1 = sfk,
-+   sfk2 = sfk^2,
-+   sfk3 = sfk^3,
-+   single = propertyType == "single"
-+ )]
-> 
-> gvars <- c("east", "NEIGHBOURHOOD", "CTNAME")
-> fes   <- "saleYear + age + CTNAME"
-> 
-> run_triplet <- function(dt, y, x, gvars, fes) {
-+   sapply(gvars, function(g) {
-+     fml <- as.formula(sprintf("%s ~ (%s)*i(%s) | %s", y, x, g, fes))
-+     fitstat(feols(fml, data = dt), "war2")
-+   })
+> ancientYears <- c(2002,2004)
+> oldYears <- c(2012,2014)
+> modYears <- c(2017,2018)
+> newYears <- c(2022,2024)
+> residPlot <- function(yearList) {
++ 	dmap <- df[propertyType %in% c("single","duplex") & age<MAXAGE & saleYear %in% yearList]
++ 	rr <- feols(log(CONVEYANCE_PRICE) ~ lsqft | saleYear + age ,  data=dmap)
++ 	dmap[,rrResidual := resid(rr)]
++ 	ggplot(dmap,aes(x=lon,y=lat,color=rrResidual)) + geom_point() + scale_color_gradient2(low="grey80",high="grey10",limits = c(-1,1),
++     oob = scales::squish) + theme_minimal() + labs(color="Residual") + geom_vline(xintercept=ONTARIOLON, linetype="dashed", color="black") + theme(legend.position = "bottom") 
++ 	ggsave(paste0("text/residualsMap",yearList[1],"to",yearList[2],".png"))
 + }
-> 
-> specs <- list(
-+   cubic  = list(dt = df[age < MAXAGE], y = "ppsf",      x = "sfk1 + sfk2 + sfk3"),
-+   loglog = list(dt = df[age < MAXAGE], y = "log(ppsf)", x = "log(sfk)"),
-+   linear = list(dt = df[age < MAXAGE], y = "ppsf",      x = "sfk"),
-+   single = list(dt = df[age < 20],     y = "ppsf",      x = "single")
-+ )
-> 
-> war2_mat <- do.call(rbind, lapply(specs, function(s)
-+   run_triplet(s$dt, s$y, s$x, gvars, fes)
-+ ))
-The variables 'sfk1:east::TRUE' and 'sfk3:east::TRUE' have been removed because of collinearity (see $collin.var).
-The variables 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey', 'NEIGHBOURHOOD::West End', 'sfk1:NEIGHBOURHOOD::Fairview', 'sfk1:NEIGHBOURHOOD::Southlands' and 8 others have been removed because of collinearity (see $collin.var).
-The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 98 others have been removed because of collinearity (see $collin.var).
-The variable 'log(sfk):east::TRUE' has been removed because of collinearity (see $collin.var).
-The variables 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey', 'NEIGHBOURHOOD::West End', 'log(sfk):NEIGHBOURHOOD::Fairview', 'log(sfk):NEIGHBOURHOOD::Southlands' and 'log(sfk):NEIGHBOURHOOD::West End' have been removed because of collinearity (see $collin.var).
-The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 83 others have been removed because of collinearity (see $collin.var).
-The variable 'sfk:east::TRUE' has been removed because of collinearity (see $collin.var).
-The variables 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey', 'NEIGHBOURHOOD::West End', 'sfk:NEIGHBOURHOOD::Fairview', 'sfk:NEIGHBOURHOOD::Southlands' and 'sfk:NEIGHBOURHOOD::West End' have been removed because of collinearity (see $collin.var).
-The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 83 others have been removed because of collinearity (see $collin.var).
-The variables 'singleTRUE:east::FALSE', 'singleFALSE:east::TRUE' and 'singleTRUE:east::TRUE' have been removed because of collinearity (see $collin.var).
-The variables 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview', 'NEIGHBOURHOOD::Point Grey', 'NEIGHBOURHOOD::West End', 'singleTRUE:NEIGHBOURHOOD::Arbutus Ridge - Mackenzie Heights', 'singleTRUE:NEIGHBOURHOOD::Cambie' and 35 others have been removed because of collinearity (see $collin.var).
-The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 209 others have been removed because of collinearity (see $collin.var).
-> df[,lsqft := log(MB_Total_Finished_Area)]
-> regT <- feols(log(ppsf) ~ 0+ lsqft*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-The variables 'CTNAME::0002.03', 'CTNAME::0002.04', 'CTNAME::0003.01', 'CTNAME::0003.02', 'CTNAME::0004.01', 'CTNAME::0004.02' and 82 others have been removed because of collinearity (see $collin.var).
-> regN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*i(NEIGHBOURHOOD) + single*i(NEIGHBOURHOOD)| saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
-The variables 'NEIGHBOURHOOD::Cambie', 'NEIGHBOURHOOD::Cedar Cottage', 'NEIGHBOURHOOD::Collingwood', 'NEIGHBOURHOOD::Dunbar', 'NEIGHBOURHOOD::Fairview', 'NEIGHBOURHOOD::Fraserview' and 32 others have been removed because of collinearity (see $collin.var).
-> regL <- feols(log(CONVEYANCE_PRICE) ~  lsqft*lon | saleYear + age,data=df[age<MAXAGE])
-> regLL <- feols( ppsf ~ MB_Total_Finished_Area*lon| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
-> regLP <- feols( log(CONVEYANCE_PRICE) ~ lsqft*lon + single*lon| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
-> regLN <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon | saleYear + age + NEIGHBOURHOOD,data=df[age<MAXAGE])
-> regLNN <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon + lsqft*i(NEIGHBOURHOOD)| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
-The variables 'NEIGHBOURHOOD::Killarney', 'NEIGHBOURHOOD::Kitsilano', 'NEIGHBOURHOOD::Knight', 'NEIGHBOURHOOD::Main & Fraser', 'NEIGHBOURHOOD::Marine Drive', 'NEIGHBOURHOOD::Marpole' and 10 others have been removed because of collinearity (see $collin.var).
-> for (reg in list(regT, regN, regL, regLP,regLL,regLN, regLNN)) {
-+   print(fitstat(reg, c("war2","r2","ar2")))
-+ }
-Within Adj. R2: 0.157911
-            R2: 0.858922
-       Adj. R2: 0.854232
-Within Adj. R2: 0.474091
-            R2: 0.885853
-       Adj. R2: 0.883914
-Within Adj. R2: 0.805763
-            R2: 0.855003
-       Adj. R2: 0.853986
-Within Adj. R2: 0.405264
-            R2: 0.894409
-       Adj. R2: 0.891798
-Within Adj. R2: 0.084643
-            R2: 0.824123
-       Adj. R2: 0.819831
-Within Adj. R2: 0.458651
-            R2: 0.8818
-       Adj. R2: 0.880506
-Within Adj. R2: 0.396937
-            R2: 0.893491
-       Adj. R2: 0.890283
-> #lsqft:NEIGHBOURHOOD::Renfrew Heights  
-> # turn coefficients of this form into a data.table
-> df <- df[NEIGHBOURHOOD!="Shaughnessy"]
-> dtInteractionsNeighbourhood <- data.table(neighbourhood=character(),interactionLSF=numeric(),medianPPSF=numeric())
-> interceptLSF <- coef(regN)["lsqft"]
-> for (n in unique(df[,NEIGHBOURHOOD])) {
-+ 	medianPPSF <- median(df[NEIGHBOURHOOD==n & propertyType=="single" & age<MAXAGE,ppsf])
-+ 	x <- data.table(neighbourhood=n,interactionLSF=coef(regN)[paste0("lsqft:NEIGHBOURHOOD::",n)][1]+interceptLSF,medianPPSF=medianPPSF)
-+ 	dtInteractionsNeighbourhood <- rbind(dtInteractionsNeighbourhood, x)
-+ }
-> fwrite(dtInteractionsNeighbourhood,file="~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv")
-> print(etable(regL,regLL,regLP))
-                                              regL             regLL
-Dependent Var.:              log(CONVEYANCE_PRICE)              ppsf
-                                                                    
-lsqft                            -205.7*** (22.95)                  
-lon                               8.544*** (1.419) -1,842.5* (638.4)
-lsqft x lon                     -1.677*** (0.1865)                  
-MB_Total_Finished_Area                                -4.860 (27.68)
-MB_Total_Finished_Area x lon                        -0.0387 (0.2249)
-singleTRUE                                                          
-lon x singleTRUE                                                    
-Fixed-Effects:               --------------------- -----------------
-saleYear                                       Yes               Yes
-age                                            Yes               Yes
-NEIGHBOURHOOD                                   No               Yes
-CTNAME                                          No               Yes
-____________________________ _____________________ _________________
-S.E.: Clustered                       by: saleYear      by: saleYear
-Observations                                 6,466             6,466
-R2                                         0.85500           0.82412
-Within R2                                  0.80585           0.08508
+> lapply(list(ancientYears,oldYears,modYears,newYears), residPlot)
+Saving 7 x 7 in image
+Saving 7 x 7 in image
+Saving 7 x 7 in image
+Saving 7 x 7 in image
+[[1]]
+[1] "text/residualsMap2002to2004.png"
 
-                                             regLP
-Dependent Var.:              log(CONVEYANCE_PRICE)
-                                                  
-lsqft                              -178.8* (62.24)
-lon                                 9.494* (3.809)
-lsqft x lon                       -1.457* (0.5057)
-MB_Total_Finished_Area                            
-MB_Total_Finished_Area x lon                      
-singleTRUE                         -152.9. (71.43)
-lon x singleTRUE                  -1.243. (0.5803)
-Fixed-Effects:               ---------------------
-saleYear                                       Yes
-age                                            Yes
-NEIGHBOURHOOD                                  Yes
-CTNAME                                         Yes
-____________________________ _____________________
-S.E.: Clustered                       by: saleYear
-Observations                                 6,466
-R2                                         0.89441
-Within R2                                  0.40573
+[[2]]
+[1] "text/residualsMap2012to2014.png"
+
+[[3]]
+[1] "text/residualsMap2017to2018.png"
+
+[[4]]
+[1] "text/residualsMap2022to2024.png"
+
+> 
+> print(etable(feols(log(CONVEYANCE_PRICE) ~ lsqft + i(propertyType)*east | saleYear + age,data=df[age<MAXAGE])))
+The variables 'eastTRUE:propertyType::duplex', 'eastFALSE:propertyType::single',
+'eastTRUE:propertyType::single', 'eastFALSE:propertyType::TH' and
+'eastTRUE:propertyType::TH' have been removed because of collinearity (see
+$collin.var).
+                                  feols(log(CONVEYANC..
+Dependent Var.:                   log(CONVEYANCE_PRICE)
+                                                       
+lsqft                                0.5506*** (0.0082)
+propertyType = single                0.0918*** (0.0070)
+propertyType = TH                       0.2905 (0.2653)
+eastTRUE                            -0.4143*** (0.0033)
+eastFALSE x propertyType = duplex     -0.0218* (0.0086)
+Fixed-Effects:                    ---------------------
+saleYear                                            Yes
+age                                                 Yes
+_________________________________ _____________________
+S.E. type                                           IID
+Observations                                     39,435
+R2                                              0.94103
+Within R2                                       0.48955
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> df <- df[saleYear>2016 & saleYear<2020,]
+> 
+> r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE])
+> rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon*east |saleYear+age+east,data=df[age<MAXAGE])
+The variable 'eastTRUE' has been removed because of collinearity (see
+$collin.var).
+> rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon|saleYear+age,data=df[age<MAXAGE])
+> rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+NEIGHBOURHOOD,data=df[age<MAXAGE])
+NOTE: 0/0/1 fixed-effect singleton was removed (1 observation).
+> rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+CTNAME,data=df[age<MAXAGE])
+NOTE: 0/0/4 fixed-effect singletons were removed (4 observations).
+> # create a latex table of adjusted r2 for these regressions with brief descriptive names
+> baseRegTable <- data.table(
++   Specification = c("Baseline", "East Dummy", "Longitude ", "Neighbourhood FE", "Census Tract FE"),
++   Adjusted_R2 = sapply(list(r0,rD, rL, rLN, rLT), function(reg) round(as.numeric(fitstat(reg, "ar2")),2))
++ )
+> print(xtable(baseRegTable),file="text/vancouverRegressionComparisonTable.tex",include.rownames=FALSE, floating=FALSE)
+> 
+> r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE])
+> rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east|saleYear+age ,data=df[age<MAXAGE])
+> rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft*lon|saleYear+age ,data=df[age<MAXAGE])
+> rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*NEIGHBOURHOOD |saleYear+age,data=df[age<MAXAGE])
+The variable 'lsqft:NEIGHBOURHOODFairview' has been removed because of
+collinearity (see $collin.var).
+> rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft*CTNAME |saleYear+age,data=df[age<MAXAGE])
+The variables 'lsqft:CTNAME0039.02', 'lsqft:CTNAME0041.02',
+'lsqft:CTNAME0047.02' and 'lsqft:CTNAME0050.04' have been removed because of
+collinearity (see $collin.var).
+> interRegTable <- data.table(
++   Specification = c("Baseline", "East Dummy Interaction", "Longitude Interaction", "Neighbourhood Interaction", "Census Tract Interaction"),
++   Adjusted_R2 = sapply(list(r0,rD, rL, rLN, rLT), function(reg) round(as.numeric(fitstat(reg, "ar2")),2))
++ )
+> print(xtable(interRegTable),file="text/vancouverInteractionRegressionComparisonTable.tex",include.rownames=FALSE, floating=FALSE)
+> 
+> rD0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft + east|saleYear+age,data=df[age<MAXAGE])
+> rL0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon|saleYear+age,data=df[age<MAXAGE])
+> 
+> rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east|saleYear+age,data=df[age<MAXAGE])
+> rDR <- feols(log(CONVEYANCE_PRICE) ~ lsqft+ single*east|saleYear+age,data=df[age<MAXAGE])
+> print(etable(rD0,rL0,rD,rL,rDR,tex=TRUE))
+\begingroup
+\centering
+\begin{tabular}{lccccc}
+   \tabularnewline \midrule \midrule
+   Dependent Variable: & \multicolumn{5}{c}{log(CONVEYANCE\_PRICE)}\\
+   Model:                        & (1)             & (2)            & (3)             & (4)            & (5)\\  
+   \midrule
+   \emph{Variables}\\
+   lsqft                         & 0.7202$^{***}$  & 0.7311$^{***}$ & 0.8504$^{***}$  & -101.1$^{**}$  & 0.6278$^{***}$\\   
+                                 & (0.0166)        & (0.0160)       & (0.0282)        & (42.71)        & (0.0293)\\   
+   eastTRUE                      & -0.4198$^{***}$ &                & 1.097$^{***}$   &                & -0.3278$^{***}$\\   
+                                 & (0.0100)        &                & (0.2673)        &                & (0.0235)\\   
+   lon                           &                 & -3.903$^{***}$ &                 & 2.510          &   \\   
+                                 &                 & (0.0881)       &                 & (2.692)        &   \\   
+   lsqft $\times$ eastTRUE       &                 &                & -0.1966$^{***}$ &                &   \\   
+                                 &                 &                & (0.0346)        &                &   \\   
+   lsqft $\times$ lon            &                 &                &                 & -0.8269$^{**}$ &   \\   
+                                 &                 &                &                 & (0.3470)       &   \\   
+   singleTRUE                    &                 &                &                 &                & 0.1613$^{***}$\\   
+                                 &                 &                &                 &                & (0.0286)\\   
+   singleTRUE $\times$ eastTRUE  &                 &                &                 &                & -0.1201$^{***}$\\   
+                                 &                 &                &                 &                & (0.0259)\\   
+   \midrule
+   \emph{Fixed-effects}\\
+   saleYear                      & Yes             & Yes            & Yes             & Yes            & Yes\\  
+   age                           & Yes             & Yes            & Yes             & Yes            & Yes\\  
+   \midrule
+   \emph{Fit statistics}\\
+   Observations                  & 1,592           & 1,592          & 1,592           & 1,592          & 1,592\\  
+   R$^2$                         & 0.77255         & 0.78560        & 0.77715         & 0.78638        & 0.77723\\  
+   Within R$^2$                  & 0.75673         & 0.77069        & 0.76165         & 0.77152        & 0.76174\\  
+   \midrule \midrule
+   \multicolumn{6}{l}{\emph{IID standard-errors in parentheses}}\\
+   \multicolumn{6}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+\end{tabular}
+\par\endgroup
+> 
+> df[,ppsf:=CONVEYANCE_PRICE/MB_Total_Finished_Area]
+> rDL <- feols(log(ppsf) ~ lsqft + east|saleYear+age,data=df[age<MAXAGE])
+> rD <- feols(log(ppsf) ~ lsqft*east|saleYear+age,data=df[age<MAXAGE])
+> print(etable(rDL,rD,tex=TRUE,file="text/vancouverEastPPSF.tex"))
+\begingroup
+\centering
+\begin{tabular}{lcc}
+   \tabularnewline \midrule \midrule
+   Dependent Variable: & \multicolumn{2}{c}{log(ppsf)}\\
+   Model:                   & (1)             & (2)\\  
+   \midrule
+   \emph{Variables}\\
+   lsqft                    & -0.2798$^{***}$ & -0.1496$^{***}$\\   
+                            & (0.0166)        & (0.0282)\\   
+   eastTRUE                 & -0.4198$^{***}$ & 1.097$^{***}$\\   
+                            & (0.0100)        & (0.2673)\\   
+   lsqft $\times$ eastTRUE  &                 & -0.1966$^{***}$\\   
+                            &                 & (0.0346)\\   
+   \midrule
+   \emph{Fixed-effects}\\
+   saleYear                 & Yes             & Yes\\  
+   age                      & Yes             & Yes\\  
+   \midrule
+   \emph{Fit statistics}\\
+   Observations             & 1,592           & 1,592\\  
+   R$^2$                    & 0.57012         & 0.57881\\  
+   Within R$^2$             & 0.53592         & 0.54530\\  
+   \midrule \midrule
+   \multicolumn{3}{l}{\emph{IID standard-errors in parentheses}}\\
+   \multicolumn{3}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+\end{tabular}
+\par\endgroup
+> WIDTH <- 33
+> DEPTH <- 110
+> Laneway <- WIDTH*DEPTH*.16
+> Duplex <- WIDTH*DEPTH*.7/2
+> Single <- WIDTH*DEPTH*.7
+> plex4 <- WIDTH*DEPTH*1/4
+> sqft <- c(Laneway,Single,Duplex,plex4)
+> print(summary(df[,.(lsqft,CONVEYANCE_PRICE,age,saleYear,east)]))
+     lsqft       CONVEYANCE_PRICE        age           saleYear   
+ Min.   :6.458   Min.   :  490000   Min.   : 0.00   Min.   :2017  
+ 1st Qu.:7.485   1st Qu.: 1350000   1st Qu.: 9.00   1st Qu.:2017  
+ Median :7.688   Median : 1620000   Median :22.00   Median :2018  
+ Mean   :7.633   Mean   : 1874711   Mean   :24.56   Mean   :2018  
+ 3rd Qu.:7.819   3rd Qu.: 2218000   3rd Qu.:38.00   3rd Qu.:2019  
+ Max.   :8.281   Max.   :10500000   Max.   :94.00   Max.   :2019  
+    east        
+ Mode :logical  
+ FALSE:908      
+ TRUE :1989     
+                
+                
+                
+> playData <- data.table(lsqft =rep(log(sqft),2),east=c(rep("FALSE",length(sqft)),rep("TRUE",length(sqft))),age=rep(0,2*length(sqft)),saleYear=rep(2019,2*length(sqft)))
+> playData[,pred := predict(rD, newdata=playData)]
+> playData[,fittedPPSF := round(exp(pred),2)]
+> playData[,type:=rep(c("laneway","single","duplex","quadplex"),2)]
+> playData[,sqft:=rep(sqft,2)]
+> playData[,units:=rep(c(1,1,2,4),2)]
+> playData[,totalPrice:=round(fittedPPSF*sqft*units,2)]
+> print(xtable(playData[,.(type,east,sqft,fittedPPSF,totalPrice)]), file="text/vancouverFittedValues.tex",include.rownames=FALSE,floating=FALSE)
+> 
+> 
 > q("no")
 > proc.time()
    user  system elapsed 
- 22.312   6.948   9.646 
+ 27.792   0.778  15.608 

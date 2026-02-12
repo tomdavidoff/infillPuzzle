@@ -18,10 +18,12 @@ library(stringr)
 library(readxl)
 library(geosphere)
 library(nnet)
+library(xtable)
 
 # per google
 latDowntown <- 49.2827
 lonDowntown <- -123.1207
+ONTARIOLON <- -123.105 # google
 WIDTHTOL <- .10
 MAXAGE <- 25
 MINOBS <- 20
@@ -41,9 +43,6 @@ dtSales <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/data_advice_REVD25_20250
 dtSales <- dtSales[CONVEYANCE_TYPE_DESCRIPTION=="Improved Single Property Transaction"]
 dtSales[,saleYear:=as.numeric(substring(CONVEYANCE_DATE,1,4))]
 print(head(dtSales))
-MINYEAR <- 2012
-MAXYEAR <- 2018
-dtSales <- dtSales[saleYear>=MINYEAR & saleYear<=MAXYEAR]
 dtDescription <- fread("~/OneDrive\ -\ UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_descriptions_20250331_REVD25.csv",select=c("FOLIO_ID","ROLL_NUMBER","ACTUAL_USE_DESCRIPTION","NEIGHBOURHOOD","JURISDICTION_CODE"))
 dtDescription <- dtDescription[JURISDICTION_CODE==200]
 dtMerge <- merge(dtDescription,dtCentroids,by="ROLL_NUMBER")
@@ -75,94 +74,84 @@ sMerge <- st_transform(sMerge, crs = 4326)
 sMerge$lon <- st_coordinates(sMerge)[,1]
 sMerge$lat <- st_coordinates(sMerge)[,2]
 df <- as.data.table(sMerge)
-print(nrow(df))
-print(nrow(df))
-regValue3 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) +lon*distDowntown |saleYear^ACTUAL_USE_DESCRIPTION + CTNAME,data=df )
-regValue4 <- feols(log(CONVEYANCE_PRICE) ~ log(MB_Total_Finished_Area) + log(age+1) |saleYear^ACTUAL_USE_DESCRIPTION + CTNAME,data=df )
-# print etable with adjusted r2
-print(etable(regValue1,regValue2,regValue3,regValue4,fitstat="ar2"))
+MINSQFT <- 400
 df[,propertyType:=ifelse(ACTUAL_USE_DESCRIPTION %chin% c("Single Family Dwelling","Residential Dwelling with Suite"),"single",ifelse(grepl("Duplex,",ACTUAL_USE_DESCRIPTION),"duplex",ifelse(ACTUAL_USE_DESCRIPTION=="Row Housing (Single Unit Ownership)","TH","condo")))]
-df <- df[propertyType!="single" | Zoning=="R1-1"]
-df[,single:=propertyType=="single"]
-df[,ppsf:=CONVEYANCE_PRICE/MB_Total_Finished_Area]
-df <- df[!is.na(ppsf)]
-EXTREME_VAL <- .005
-minVal <- quantile(df[,ppsf], EXTREME_VAL)
-maxVal <- quantile(df[,ppsf], 1-EXTREME_VAL)
-df <- df[ppsf %between% c(minVal,maxVal)]
-print(summary(df))
-# turn the below into a regression
-df[,roundSQFT:=round(MB_Total_Finished_Area/200)]
-MINSQFT <- .25*.8*33*122
-MAXSQFT <- 1.5*.8*33*122
+df[,lsqft := log(MB_Total_Finished_Area)]
+df <- df[!is.na(lsqft) & !is.na(CONVEYANCE_PRICE) & !is.na(age) & !is.na(lon) & !is.na(lat) & !is.na(saleYear) & !is.na(CTNAME) & CONVEYANCE_PRICE>0 & age>=0 & MB_Total_Finished_Area>MINSQFT]
 MINWIDTH <- 30
 MAXWIDTH <- 35 # over half of properties
 df <- df[Land_Width_Width %between% c(MINWIDTH,MAXWIDTH)]
-df <- df[MB_Total_Finished_Area %between% c(MINSQFT,MAXSQFT)]
-df[,sfk:=MB_Total_Finished_Area/1000]
-df <- df[propertyType %chin% c("condo","TH")==FALSE] # apples to apples!
-ONTARIOLON <- -123.105 # google
 df[,east:=lon>ONTARIOLON]
-# functional form
-# Automate some of this code
-library(data.table)
-library(fixest)
+df[,single:=propertyType=="single"]
 
-setDT(df)
-df[, single := propertyType == "single"]
-
-
-setDT(df)
-
-# precompute raw polynomial terms as plain numeric columns
-df[, `:=`(
-  sfk1 = sfk,
-  sfk2 = sfk^2,
-  sfk3 = sfk^3,
-  single = propertyType == "single"
-)]
-
-gvars <- c("east", "NEIGHBOURHOOD", "CTNAME")
-fes   <- "saleYear + age + CTNAME"
-
-run_triplet <- function(dt, y, x, gvars, fes) {
-  sapply(gvars, function(g) {
-    fml <- as.formula(sprintf("%s ~ (%s)*i(%s) | %s", y, x, g, fes))
-    fitstat(feols(fml, data = dt), "war2")
-  })
+ancientYears <- c(2002,2004)
+oldYears <- c(2012,2014)
+modYears <- c(2017,2018)
+newYears <- c(2022,2024)
+residPlot <- function(yearList) {
+	dmap <- df[propertyType %in% c("single","duplex") & age<MAXAGE & saleYear %in% yearList]
+	rr <- feols(log(CONVEYANCE_PRICE) ~ lsqft | saleYear + age ,  data=dmap)
+	dmap[,rrResidual := resid(rr)]
+	ggplot(dmap,aes(x=lon,y=lat,color=rrResidual)) + geom_point() + scale_color_gradient2(low="grey80",high="grey10",limits = c(-1,1),
+    oob = scales::squish) + theme_minimal() + labs(color="Residual") + geom_vline(xintercept=ONTARIOLON, linetype="dashed", color="black") + theme(legend.position = "bottom") 
+	ggsave(paste0("text/residualsMap",yearList[1],"to",yearList[2],".png"))
 }
+lapply(list(ancientYears,oldYears,modYears,newYears), residPlot)
 
-specs <- list(
-  cubic  = list(dt = df[age < MAXAGE], y = "ppsf",      x = "sfk1 + sfk2 + sfk3"),
-  loglog = list(dt = df[age < MAXAGE], y = "log(ppsf)", x = "log(sfk)"),
-  linear = list(dt = df[age < MAXAGE], y = "ppsf",      x = "sfk"),
-  single = list(dt = df[age < 20],     y = "ppsf",      x = "single")
+print(etable(feols(log(CONVEYANCE_PRICE) ~ lsqft + i(propertyType)*east | saleYear + age,data=df[age<MAXAGE])))
+
+df <- df[saleYear>2016 & saleYear<2020,]
+
+r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE])
+rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon*east |saleYear+age+east,data=df[age<MAXAGE])
+rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon|saleYear+age,data=df[age<MAXAGE])
+rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+NEIGHBOURHOOD,data=df[age<MAXAGE])
+rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+CTNAME,data=df[age<MAXAGE])
+# create a latex table of adjusted r2 for these regressions with brief descriptive names
+baseRegTable <- data.table(
+  Specification = c("Baseline", "East Dummy", "Longitude ", "Neighbourhood FE", "Census Tract FE"),
+  Adjusted_R2 = sapply(list(r0,rD, rL, rLN, rLT), function(reg) round(as.numeric(fitstat(reg, "ar2")),2))
 )
+print(xtable(baseRegTable),file="text/vancouverRegressionComparisonTable.tex",include.rownames=FALSE, floating=FALSE)
 
-war2_mat <- do.call(rbind, lapply(specs, function(s)
-  run_triplet(s$dt, s$y, s$x, gvars, fes)
-))
-df[,lsqft := log(MB_Total_Finished_Area)]
-regT <- feols(log(ppsf) ~ 0+ lsqft*i(CTNAME) | saleYear + age +CTNAME, data=df[age<MAXAGE])
-regN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*i(NEIGHBOURHOOD) + single*i(NEIGHBOURHOOD)| saleYear + age +NEIGHBOURHOOD, data=df[age<MAXAGE])
-regL <- feols(log(CONVEYANCE_PRICE) ~  lsqft*lon | saleYear + age,data=df[age<MAXAGE])
-regLL <- feols( ppsf ~ MB_Total_Finished_Area*lon| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
-regLP <- feols( log(CONVEYANCE_PRICE) ~ lsqft*lon + single*lon| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
-regLN <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon | saleYear + age + NEIGHBOURHOOD,data=df[age<MAXAGE])
-regLNN <- feols(log(CONVEYANCE_PRICE) ~ 0 + lsqft*lon + lsqft*i(NEIGHBOURHOOD)| saleYear + age + NEIGHBOURHOOD + CTNAME,data=df[age<MAXAGE])
-for (reg in list(regT, regN, regL, regLP,regLL,regLN, regLNN)) {
-  print(fitstat(reg, c("war2","r2","ar2")))
-}
-#lsqft:NEIGHBOURHOOD::Renfrew Heights  
-# turn coefficients of this form into a data.table
-df <- df[NEIGHBOURHOOD!="Shaughnessy"]
-dtInteractionsNeighbourhood <- data.table(neighbourhood=character(),interactionLSF=numeric(),medianPPSF=numeric())
-interceptLSF <- coef(regN)["lsqft"]
-for (n in unique(df[,NEIGHBOURHOOD])) {
-	medianPPSF <- median(df[NEIGHBOURHOOD==n & propertyType=="single" & age<MAXAGE,ppsf])
-	x <- data.table(neighbourhood=n,interactionLSF=coef(regN)[paste0("lsqft:NEIGHBOURHOOD::",n)][1]+interceptLSF,medianPPSF=medianPPSF)
-	dtInteractionsNeighbourhood <- rbind(dtInteractionsNeighbourhood, x)
-}
-fwrite(dtInteractionsNeighbourhood,file="~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv")
-print(etable(regL,regLL,regLP))
+r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE])
+rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east|saleYear+age ,data=df[age<MAXAGE])
+rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft*lon|saleYear+age ,data=df[age<MAXAGE])
+rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*NEIGHBOURHOOD |saleYear+age,data=df[age<MAXAGE])
+rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft*CTNAME |saleYear+age,data=df[age<MAXAGE])
+interRegTable <- data.table(
+  Specification = c("Baseline", "East Dummy Interaction", "Longitude Interaction", "Neighbourhood Interaction", "Census Tract Interaction"),
+  Adjusted_R2 = sapply(list(r0,rD, rL, rLN, rLT), function(reg) round(as.numeric(fitstat(reg, "ar2")),2))
+)
+print(xtable(interRegTable),file="text/vancouverInteractionRegressionComparisonTable.tex",include.rownames=FALSE, floating=FALSE)
+
+rD0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft + east|saleYear+age,data=df[age<MAXAGE])
+rL0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon|saleYear+age,data=df[age<MAXAGE])
+
+rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east|saleYear+age,data=df[age<MAXAGE])
+rDR <- feols(log(CONVEYANCE_PRICE) ~ lsqft+ single*east|saleYear+age,data=df[age<MAXAGE])
+print(etable(rD0,rL0,rD,rL,rDR,tex=TRUE))
+
+df[,ppsf:=CONVEYANCE_PRICE/MB_Total_Finished_Area]
+rDL <- feols(log(ppsf) ~ lsqft + east|saleYear+age,data=df[age<MAXAGE])
+rD <- feols(log(ppsf) ~ lsqft*east|saleYear+age,data=df[age<MAXAGE])
+print(etable(rDL,rD,tex=TRUE,file="text/vancouverEastPPSF.tex"))
+WIDTH <- 33
+DEPTH <- 110
+Laneway <- WIDTH*DEPTH*.16
+Duplex <- WIDTH*DEPTH*.7/2
+Single <- WIDTH*DEPTH*.7
+plex4 <- WIDTH*DEPTH*1/4
+sqft <- c(Laneway,Single,Duplex,plex4)
+print(summary(df[,.(lsqft,CONVEYANCE_PRICE,age,saleYear,east)]))
+playData <- data.table(lsqft =rep(log(sqft),2),east=c(rep("FALSE",length(sqft)),rep("TRUE",length(sqft))),age=rep(0,2*length(sqft)),saleYear=rep(2019,2*length(sqft)))
+playData[,pred := predict(rD, newdata=playData)]
+playData[,fittedPPSF := round(exp(pred),2)]
+playData[,type:=rep(c("laneway","single","duplex","quadplex"),2)]
+playData[,sqft:=rep(sqft,2)]
+playData[,units:=rep(c(1,1,2,4),2)]
+playData[,totalPrice:=round(fittedPPSF*sqft*units,2)]
+print(xtable(playData[,.(type,east,sqft,fittedPPSF,totalPrice)]), file="text/vancouverFittedValues.tex",include.rownames=FALSE,floating=FALSE)
+
+
 q("no")

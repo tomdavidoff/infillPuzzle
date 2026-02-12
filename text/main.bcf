@@ -2405,6 +2405,7 @@
     <bcf:citekey order="30" intorder="1">Freemark2020</bcf:citekey>
     <bcf:citekey order="31" intorder="1">Ma_2025</bcf:citekey>
     <bcf:citekey order="32" intorder="1">DongHansz_2019</bcf:citekey>
+    <bcf:citekey order="33" intorder="1">SanghoonDaryl</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nyt">
@@ -2436,14 +2437,4 @@
     </bcf:sort>
   </bcf:sortingtemplate>
   <!-- DATALISTS -->
-  <bcf:datalist section="0"
-                name="nyt/global//global/global/global"
-                type="entry"
-                sortingtemplatename="nyt"
-                sortingnamekeytemplatename="global"
-                labelprefix=""
-                uniquenametemplatename="global"
-                labelalphanametemplatename="global"
-                namehashtemplatename="global">
-  </bcf:datalist>
 </bcf:controlfile>

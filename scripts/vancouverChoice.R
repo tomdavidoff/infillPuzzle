@@ -15,6 +15,7 @@ MINDEPTH <- 100
 MAXDEPTH <- 140
 MINWIDTH <- 30
 MAXWIDTH <- 36
+ONTARIOLON <- -123.105 # google
 
 # Choices data
 dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
@@ -22,6 +23,10 @@ print(table(dtChoice[,use]))
 print(head(dtChoice))
 dtChoice[,landWidth:=as.numeric(landWidth)]
 dtChoice <- dtChoice[!is.na(landWidth)]
+dtChoice[,c("latitude","longitude"):=tstrsplit(geo_point_2d,","  )  ]
+dtChoice[,latitude:=as.numeric(latitude)]
+dtChoice[,longitude:=as.numeric(longitude)]
+dtChoice[,east:=longitude>ONTARIOLON]
 print(quantile(dtChoice[,landWidth],seq(.0,.9,.05)))
 dtCoef <- fread("~/OneDrive - UBC/dataProcessed/neighbourhoodInteractionsVancouver.csv",na.strings=c("","NA"))
 dtCoef[,neighbourhoodDescription:=toupper(neighbourhood)]
@@ -31,13 +36,9 @@ dtCoef[neighbourhoodDescription=="MAIN & FRASER",neighbourhoodDescription:="MAIN
 dtChoice <- merge(dtChoice,dtCoef,by="neighbourhoodDescription")
 
 dtChoice[,year:=year(permitnumbercreateddate)]
-dtChoice[,c("latitude","longitude"):=tstrsplit(geo_point_2d,","  )  ]
 dtChoice[,latDowntown:=49.2827]
 dtChoice[,lonDowntown:=-123.1207]
-dtChoice[,latitude:=as.numeric(latitude)]
-dtChoice[,longitude:=as.numeric(longitude)]
 dtChoice[,distDowntown:=distGeo(dtChoice[,c("longitude","latitude")],dtChoice[,c("lonDowntown","latDowntown")])]
-dtChoice <- dtChoice[landWidth %between% c(MINWIDTH,MAXWIDTH)]
 dtChoice <- dtChoice[landDepth %between% c(MINDEPTH,MAXDEPTH)]
 print(names(dtChoice))
 # Downtown is Vancouver's primary business district, houses many arts, entertainment, and sports venues, and is close to several vibrant residential communities.
@@ -52,6 +53,8 @@ dtChoice[,single:=use=="single"]
 dtChoice[,duplex:=use=="duplex"]
 dtChoice[,multi:=use=="multi"]
 print(summary(dtChoice))
+dtWide <- dtChoice[landWidth>MAXWIDTH]
+dtChoice <- dtChoice[landWidth %between% c(MINWIDTH,MAXWIDTH)]
 
 # laneway
 dtChoice[use=="single",laneway:=distToLaneway<CUTDISTANCE]
@@ -66,12 +69,16 @@ ggsave("text/singleMap.png")
 ggplot(dtChoice,aes(x=longitude,y=latitude,color=multi)) + geom_point()
 ggsave("text/multiMap.png")
 
+ggplot(dtWide,aes(x=longitude,y=latitude,color=multi)) + geom_point()
+ggsave("text/multiMapWide.png")
 
 
 
 
 
-print(cor(dtChoice[year>=2018 & use=="single",.(laneway,elasticity,medianPPSF,longitude)],use="complete.obs"))
+
+
+print(cor(dtChoice[year>=2019 & use=="single",.(laneway,elasticity,medianPPSF,longitude,east)],use="complete.obs"))
 print(summary(feols(laneway ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
 print(summary(feols(laneway ~  medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
 print(summary(feols(laneway ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
@@ -80,11 +87,50 @@ print(summary(feols(laneway ~ elasticity +  landWidth + longitude, data=dtChoice
 
 
 # Duplex
-print(cor(dtChoice[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown)],use="complete.obs"))
+print(cor(dtChoice[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown,east)],use="complete.obs"))
+print(cor(dtWide[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown)],use="complete.obs"))
 print(summary(feols(duplex ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
 print(summary(feols(duplex ~  medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
 print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
 print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
+
+# Wide Lot multi
+print(cor(dtWide[year>=2024 ,.(multi,landWidth,longitude,distDowntown,east)],use="complete.obs"))
+print(summary(feols(multi ~  longitude + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+print(summary(feols(multi ~  medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+
+print(dtChoice[use=="single",mean(east),by="year"])
+print(table(dtChoice[,use]))
+print(table(dtChoice[,east]))
+print(summary(feols(laneway~ east | year,data=dtChoice[use =="single" & year>=2019])))
+print(summary(feols(duplex~ east | year,data=dtChoice[year>=2019])))
+print(summary(feols(duplex~ east | year,data=dtChoice[year>=2019 & year<2024])))
+print(summary(feols(multi~ east | year,data=dtChoice[year>=2024])))
+print(summary(feols(multi~ east | year,data=dtWide[year>=2024])))
+
+print(summary(feols(laneway~ longitude | year,data=dtChoice[use =="single" & year>=2019])))
+print(summary(feols(duplex~ longitude | year,data=dtChoice[year>=2019])))
+print(summary(feols(duplex~ longitude | year,data=dtChoice[year>=2019 & year<2024])))
+print(summary(feols(multi~ longitude | year,data=dtChoice[year>=2024])))
+print(summary(feols(multi~ longitude | year,data=dtWide[year>=2024])))
+
+
+for (u in c("single","duplex","multi")) {
+	print(u)
+	print(dtChoice[order(year),mean(use==u),by=c("year","east")])
+	print(dtWide[order(year),mean(use==u),by=c("year","east")])
+}
+dtSingle <- dtChoice[use=="single"]
+dtSingle[distToLaneway<CUTDISTANCE & use=="single",use:="singleLaneway"]
+dtSingle[distToLaneway>=CUTDISTANCE & use=="single",use:="singleOnly"]
+
+for (u in c("singleLaneway","singleOnly")) {
+	print(u)
+	print(dtSingle[order(year),mean(use==u),by=c("year","east")])
+}
+
 q("no")
 
 # plot with bubbles proportional to nobs
@@ -166,8 +212,6 @@ dtChoice[,lmedianIncome := log(medianIncome)]
 dtChoice[,lmedianPPSF:=log(medianPPSF)]
 dtChoice[,singleLaneway:=use=="single" & distToLaneway<CUTDISTANCE]
 dtChoice[,singleNoLaneway:=use=="single" & distToLaneway>=CUTDISTANCE]
-dtChoice[distToLaneway<CUTDISTANCE & use=="single",use:="singleLaneway"]
-dtChoice[distToLaneway>=CUTDISTANCE & use=="single",use:="singleOnly"]
 dtChoice[,duplex:=use=="duplex"]
 dtChoice[,multiplex:=use=="multi"]
 cols <- c("laneway","singleNoLaneway","singleLaneway","duplex","multiplex", "medianPPSF","medianIncome","elasticity")

@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -40,6 +40,7 @@ Please cite as:
 > MAXDEPTH <- 140
 > MINWIDTH <- 30
 > MAXWIDTH <- 36
+> ONTARIOLON <- -123.105 # google
 > 
 > # Choices data
 > dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
@@ -106,6 +107,10 @@ Please cite as:
 6:       DB-2021-00712                 <NA>
 > dtChoice[,landWidth:=as.numeric(landWidth)]
 > dtChoice <- dtChoice[!is.na(landWidth)]
+> dtChoice[,c("latitude","longitude"):=tstrsplit(geo_point_2d,","  )  ]
+> dtChoice[,latitude:=as.numeric(latitude)]
+> dtChoice[,longitude:=as.numeric(longitude)]
+> dtChoice[,east:=longitude>ONTARIOLON]
 > print(quantile(dtChoice[,landWidth],seq(.0,.9,.05)))
   0%   5%  10%  15%  20%  25%  30%  35%  40%  45%  50%  55%  60%  65%  70%  75% 
 16.5 32.4 33.0 33.0 33.0 33.0 33.0 33.0 33.0 33.0 34.0 39.6 41.3 44.0 46.5 49.5 
@@ -119,13 +124,9 @@ Please cite as:
 > dtChoice <- merge(dtChoice,dtCoef,by="neighbourhoodDescription")
 > 
 > dtChoice[,year:=year(permitnumbercreateddate)]
-> dtChoice[,c("latitude","longitude"):=tstrsplit(geo_point_2d,","  )  ]
 > dtChoice[,latDowntown:=49.2827]
 > dtChoice[,lonDowntown:=-123.1207]
-> dtChoice[,latitude:=as.numeric(latitude)]
-> dtChoice[,longitude:=as.numeric(longitude)]
 > dtChoice[,distDowntown:=distGeo(dtChoice[,c("longitude","latitude")],dtChoice[,c("lonDowntown","latDowntown")])]
-> dtChoice <- dtChoice[landWidth %between% c(MINWIDTH,MAXWIDTH)]
 > dtChoice <- dtChoice[landDepth %between% c(MINDEPTH,MAXDEPTH)]
 > print(names(dtChoice))
  [1] "neighbourhoodDescription" "CTUID"                   
@@ -139,11 +140,12 @@ Please cite as:
 [17] "geo_point_2d"             "typeofwork"              
 [19] "applicant"                "distToSingle"            
 [21] "distToLaneway"            "nearestSinglePermit"     
-[23] "nearestLanewayPermit"     "neighbourhood"           
-[25] "interactionLSF"           "medianPPSF"              
-[27] "year"                     "latitude"                
-[29] "longitude"                "latDowntown"             
-[31] "lonDowntown"              "distDowntown"            
+[23] "nearestLanewayPermit"     "latitude"                
+[25] "longitude"                "east"                    
+[27] "neighbourhood"            "interactionLSF"          
+[29] "medianPPSF"               "year"                    
+[31] "latDowntown"              "lonDowntown"             
+[33] "distDowntown"            
 > # Downtown is Vancouver's primary business district, houses many arts, entertainment, and sports venues, and is close to several vibrant residential communities.
 > dtChoice[,landDepth:=as.numeric(landDepth)]
 > dtChoice[,landArea:=landWidth*landDepth  ]
@@ -157,7 +159,7 @@ Please cite as:
 > dtChoice[,multi:=use=="multi"]
 > print(summary(dtChoice))
  neighbourhoodDescription    CTUID           ROLL_NUMBER       
- Length:1648              Length:1648        Length:1648       
+ Length:2925              Length:2925        Length:2925       
  Class :character         Class :character   Class :character  
  Mode  :character         Mode  :character   Mode  :character  
                                                                
@@ -165,7 +167,7 @@ Please cite as:
                                                                
                                                                
  zoning_classification zoning_category    zoning_district      folioID         
- Length:1648           Length:1648        Length:1648        Length:1648       
+ Length:2925           Length:2925        Length:2925        Length:2925       
  Class :character      Class :character   Class :character   Class :character  
  Mode  :character      Mode  :character   Mode  :character   Mode  :character  
                                                                                
@@ -173,69 +175,71 @@ Please cite as:
                                                                                
                                                                                
  permitnumber       permitnumbercreateddate     use           
- Length:1648        Min.   :2017-01-04      Length:1648       
- Class :character   1st Qu.:2019-01-13      Class :character  
- Mode  :character   Median :2021-08-09      Mode  :character  
-                    Mean   :2021-05-09                        
-                    3rd Qu.:2023-05-30                        
+ Length:2925        Min.   :2017-01-03      Length:2925       
+ Class :character   1st Qu.:2018-11-29      Class :character  
+ Mode  :character   Median :2021-07-06      Mode  :character  
+                    Mean   :2021-03-22                        
+                    3rd Qu.:2023-04-03                        
                     Max.   :2025-10-17                        
                                                               
  MB_effective_year  MB_total_finished_area   address             LANDAREA     
- Length:1648        Length:1648            Length:1648        Min.   :0.3178  
- Class :character   Class :character       Class :character   1st Qu.:0.7927  
- Mode  :character   Mode  :character       Mode  :character   Median :1.0874  
-                                                              Mean   :1.2030  
-                                                              3rd Qu.:1.5016  
+ Length:2925        Length:2925            Length:2925        Min.   :0.3178  
+ Class :character   Class :character       Class :character   1st Qu.:0.8070  
+ Mode  :character   Mode  :character       Mode  :character   Median :1.2002  
+                                                              Mean   :1.2950  
+                                                              3rd Qu.:1.5554  
                                                               Max.   :3.5378  
                                                                               
-   landWidth       landDepth     geo_point_2d        typeofwork       
- Min.   :30.00   Min.   :100.0   Length:1648        Length:1648       
- 1st Qu.:33.00   1st Qu.:114.8   Class :character   Class :character  
- Median :33.00   Median :122.0   Mode  :character   Mode  :character  
- Mean   :32.99   Mean   :119.7                                        
- 3rd Qu.:33.00   3rd Qu.:122.2                                        
- Max.   :36.00   Max.   :140.0                                        
-                                                                      
+   landWidth        landDepth     geo_point_2d        typeofwork       
+ Min.   : 16.50   Min.   :100.0   Length:2925        Length:2925       
+ 1st Qu.: 33.00   1st Qu.:115.0   Class :character   Class :character  
+ Median : 33.00   Median :122.0   Mode  :character   Mode  :character  
+ Mean   : 40.01   Mean   :120.2                                        
+ 3rd Qu.: 48.00   3rd Qu.:123.5                                        
+ Max.   :110.00   Max.   :140.0                                        
+                                                                       
   applicant          distToSingle  distToLaneway     nearestSinglePermit
- Length:1648        Min.   : NA    Min.   :  0.000   Length:1648        
- Class :character   1st Qu.: NA    1st Qu.:  1.997   Class :character   
- Mode  :character   Median : NA    Median : 24.594   Mode  :character   
-                    Mean   :NaN    Mean   : 34.042                      
-                    3rd Qu.: NA    3rd Qu.: 50.370                      
+ Length:2925        Min.   : NA    Min.   :  0.000   Length:2925        
+ Class :character   1st Qu.: NA    1st Qu.:  2.232   Class :character   
+ Mode  :character   Median : NA    Median : 25.493   Mode  :character   
+                    Mean   :NaN    Mean   : 38.780                      
+                    3rd Qu.: NA    3rd Qu.: 56.674                      
                     Max.   : NA    Max.   :811.437                      
-                    NA's   :1648   NA's   :528                          
- nearestLanewayPermit neighbourhood        elasticity       medianPPSF    
- Length:1648          Length:1648        Min.   :0.3522   Min.   : 452.3  
- Class :character     Class :character   1st Qu.:0.5569   1st Qu.: 493.4  
- Mode  :character     Mode  :character   Median :0.6418   Median : 504.3  
-                                         Mean   :0.6425   Mean   : 610.6  
-                                         3rd Qu.:0.6702   3rd Qu.: 747.8  
-                                         Max.   :0.9078   Max.   :1045.2  
-                                         NA's   :5                        
-      year         latitude       longitude       latDowntown   
- Min.   :2017   Min.   :49.21   Min.   :-123.2   Min.   :49.28  
- 1st Qu.:2019   1st Qu.:49.23   1st Qu.:-123.1   1st Qu.:49.28  
- Median :2021   Median :49.25   Median :-123.1   Median :49.28  
- Mean   :2021   Mean   :49.25   Mean   :-123.1   Mean   :49.28  
- 3rd Qu.:2023   3rd Qu.:49.26   3rd Qu.:-123.1   3rd Qu.:49.28  
- Max.   :2025   Max.   :49.29   Max.   :-123.0   Max.   :49.28  
+                    NA's   :2925   NA's   :806                          
+ nearestLanewayPermit    latitude       longitude         east        
+ Length:2925          Min.   :49.21   Min.   :-123.2   Mode :logical  
+ Class :character     1st Qu.:49.23   1st Qu.:-123.2   FALSE:1275     
+ Mode  :character     Median :49.25   Median :-123.1   TRUE :1650     
+                      Mean   :49.24   Mean   :-123.1                  
+                      3rd Qu.:49.26   3rd Qu.:-123.1                  
+                      Max.   :49.29   Max.   :-123.0                  
+                                                                      
+ neighbourhood        elasticity       medianPPSF          year     
+ Length:2925        Min.   :0.3119   Min.   : 452.3   Min.   :2017  
+ Class :character   1st Qu.:0.5002   1st Qu.: 493.9   1st Qu.:2018  
+ Mode  :character   Median :0.5055   Median : 555.6   Median :2021  
+                    Mean   :0.5761   Mean   : 656.1   Mean   :2021  
+                    3rd Qu.:0.7274   3rd Qu.: 810.8   3rd Qu.:2023  
+                    Max.   :0.8733   Max.   :1045.2   Max.   :2025  
+                    NA's   :49                                      
+  latDowntown     lonDowntown      distDowntown     landArea    
+ Min.   :49.28   Min.   :-123.1   Min.   :2927   Min.   : 2013  
+ 1st Qu.:49.28   1st Qu.:-123.1   1st Qu.:5295   1st Qu.: 4022  
+ Median :49.28   Median :-123.1   Median :6179   Median : 4160  
+ Mean   :49.28   Mean   :-123.1   Mean   :6166   Mean   : 4821  
+ 3rd Qu.:49.28   3rd Qu.:-123.1   3rd Qu.:7084   3rd Qu.: 5600  
+ Max.   :49.28   Max.   :-123.1   Max.   :9857   Max.   :13805  
                                                                 
-  lonDowntown      distDowntown     landArea     duplexRatio      single       
- Min.   :-123.1   Min.   :2927   Min.   :3000   Min.   :2.385   Mode :logical  
- 1st Qu.:-123.1   1st Qu.:5178   1st Qu.:3792   1st Qu.:2.642   FALSE:528      
- Median :-123.1   Median :6008   Median :4026   Median :2.757   TRUE :1120     
- Mean   :-123.1   Mean   :5987   Mean   :3949   Mean   :2.763                  
- 3rd Qu.:-123.1   3rd Qu.:6920   3rd Qu.:4034   3rd Qu.:2.796                  
- Max.   :-123.1   Max.   :9304   Max.   :4775   Max.   :3.149                  
-                                                NA's   :5                      
-   duplex          multi        
- Mode :logical   Mode :logical  
- FALSE:1179      FALSE:1589     
- TRUE :469       TRUE :59       
-                                
-                                
-                                
-                                
+  duplexRatio      single          duplex          multi        
+ Min.   :2.337   Mode :logical   Mode :logical   Mode :logical  
+ 1st Qu.:2.568   FALSE:806       FALSE:2263      FALSE:2781     
+ Median :2.575   TRUE :2119      TRUE :662       TRUE :144      
+ Mean   :2.674                                                  
+ 3rd Qu.:2.877                                                  
+ Max.   :3.095                                                  
+ NA's   :49                                                     
+> dtWide <- dtChoice[landWidth>MAXWIDTH]
+> dtChoice <- dtChoice[landWidth %between% c(MINWIDTH,MAXWIDTH)]
 > 
 > # laneway
 > dtChoice[use=="single",laneway:=distToLaneway<CUTDISTANCE]
@@ -254,17 +258,23 @@ Saving 7 x 7 in image
 > ggsave("text/multiMap.png")
 Saving 7 x 7 in image
 > 
+> ggplot(dtWide,aes(x=longitude,y=latitude,color=multi)) + geom_point()
+> ggsave("text/multiMapWide.png")
+Saving 7 x 7 in image
 > 
 > 
 > 
 > 
 > 
-> print(cor(dtChoice[year>=2018 & use=="single",.(laneway,elasticity,medianPPSF,longitude)],use="complete.obs"))
-               laneway  elasticity medianPPSF   longitude
-laneway     1.00000000 -0.01999374 -0.0606855  0.05077039
-elasticity -0.01999374  1.00000000  0.5885870 -0.69207910
-medianPPSF -0.06068550  0.58858697  1.0000000 -0.93428105
-longitude   0.05077039 -0.69207910 -0.9342811  1.00000000
+> 
+> 
+> print(cor(dtChoice[year>=2019 & use=="single",.(laneway,elasticity,medianPPSF,longitude,east)],use="complete.obs"))
+               laneway elasticity  medianPPSF   longitude        east
+laneway     1.00000000 -0.1484528 -0.08568701  0.07272915  0.05828077
+elasticity -0.14845282  1.0000000  0.76778696 -0.78811229 -0.57805349
+medianPPSF -0.08568701  0.7677870  1.00000000 -0.93589916 -0.90889900
+longitude   0.07272915 -0.7881123 -0.93589916  1.00000000  0.85088027
+east        0.05828077 -0.5780535 -0.90889900  0.85088027  1.00000000
 > print(summary(feols(laneway ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
 NOTE: 1 observation removed because of NA values (LHS: 1).
 OLS estimation, Dep. Var.: laneway
@@ -296,50 +306,65 @@ OLS estimation, Dep. Var.: laneway
 Observations: 407
 Standard-errors: Clustered (neighbourhoodDescription) 
              Estimate Std. Error   t value Pr(>|t|)    
-(Intercept)  0.932729   1.000876  0.931912 0.363714    
-elasticity   0.276318   0.214079  1.290728 0.213131    
-medianPPSF  -0.000419   0.000161 -2.598181 0.018169 *  
-landWidth   -0.017904   0.030301 -0.590868 0.561955    
+(Intercept)  1.022442   0.971139  1.052827 0.306349    
+elasticity   0.265820   0.300485  0.884636 0.388017    
+medianPPSF  -0.000455   0.000199 -2.292991 0.034108 *  
+landWidth   -0.019019   0.029660 -0.641227 0.529456    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.436498   Adj. R2: 0.009464
+RMSE: 0.43683   Adj. R2: 0.00796
 > print(summary(feols(laneway ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
 NOTE: 1 observation removed because of NA values (LHS: 1).
 OLS estimation, Dep. Var.: laneway
 Observations: 407
 Standard-errors: Clustered (neighbourhoodDescription) 
-              Estimate Std. Error   t value Pr(>|t|)    
-(Intercept) 165.111849 206.956603  0.797809 0.435381    
-elasticity    0.419931   0.227240  1.847958 0.081108 .  
-medianPPSF   -0.000078   0.000500 -0.155658 0.878035    
-landWidth    -0.022744   0.033063 -0.687891 0.500291    
-longitude     1.334859   1.678525  0.795257 0.436826    
+             Estimate Std. Error   t value Pr(>|t|) 
+(Intercept) 84.896327 199.372611  0.425817  0.67529 
+elasticity   0.329598   0.306656  1.074814  0.29665 
+medianPPSF  -0.000287   0.000479 -0.599877  0.55607 
+landWidth   -0.021772   0.032666 -0.666500  0.51354 
+longitude    0.681737   1.616974  0.421613  0.67830 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.435978   Adj. R2: 0.009365
+RMSE: 0.436665   Adj. R2: 0.006243
 > print(summary(feols(laneway ~ elasticity +  landWidth + longitude, data=dtChoice[year %between% c(2017,2018)], cluster="neighbourhoodDescription")))
 NOTE: 1 observation removed because of NA values (LHS: 1).
 OLS estimation, Dep. Var.: laneway
 Observations: 407
 Standard-errors: Clustered (neighbourhoodDescription) 
-              Estimate Std. Error   t value  Pr(>|t|)    
-(Intercept) 195.751043  62.655325  3.124252 0.0058599 ** 
-elasticity    0.435384   0.213320  2.040985 0.0561948 .  
-landWidth    -0.023694   0.029241 -0.810319 0.4283409    
-longitude     1.583970   0.508502  3.114974 0.0059801 ** 
+              Estimate Std. Error   t value Pr(>|t|)    
+(Intercept) 181.570388  82.638830  2.197156 0.041342 *  
+elasticity    0.307045   0.315091  0.974464 0.342741    
+landWidth    -0.024838   0.028898 -0.859505 0.401365    
+longitude     1.467579   0.669827  2.190982 0.041853 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.436   Adj. R2: 0.011723
+RMSE: 0.436989   Adj. R2: 0.007235
 > 
 > 
 > # Duplex
-> print(cor(dtChoice[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown)],use="complete.obs"))
-                  duplex  elasticity medianPPSF  longitude distDowntown
-duplex        1.00000000 -0.14373418 -0.2034171  0.2212335   0.01424803
-elasticity   -0.14373418  1.00000000  0.6134770 -0.7032268   0.06816134
-medianPPSF   -0.20341706  0.61347699  1.0000000 -0.9325190  -0.21071894
-longitude     0.22123352 -0.70322678 -0.9325190  1.0000000   0.15940931
-distDowntown  0.01424803  0.06816134 -0.2107189  0.1594093   1.00000000
+> print(cor(dtChoice[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown,east)],use="complete.obs"))
+                  duplex elasticity medianPPSF  longitude distDowntown
+duplex        1.00000000 -0.1194221 -0.2034171  0.2212335   0.01424803
+elasticity   -0.11942212  1.0000000  0.7686530 -0.7762072  -0.28240895
+medianPPSF   -0.20341706  0.7686530  1.0000000 -0.9325190  -0.21071894
+longitude     0.22123352 -0.7762072 -0.9325190  1.0000000   0.15940931
+distDowntown  0.01424803 -0.2824090 -0.2107189  0.1594093   1.00000000
+east          0.18342852 -0.5889257 -0.9086395  0.8569085   0.22376415
+                   east
+duplex        0.1834285
+elasticity   -0.5889257
+medianPPSF   -0.9086395
+longitude     0.8569085
+distDowntown  0.2237641
+east          1.0000000
+> print(cor(dtWide[year>=2019 & year<=2023,.(duplex,elasticity,medianPPSF,longitude,distDowntown)],use="complete.obs"))
+                  duplex elasticity medianPPSF  longitude distDowntown
+duplex        1.00000000 -0.2376507 -0.2998782  0.2675152   0.09743229
+elasticity   -0.23765070  1.0000000  0.8356259 -0.7986797  -0.31853021
+medianPPSF   -0.29987822  0.8356259  1.0000000 -0.8820414  -0.29942805
+longitude     0.26751524 -0.7986797 -0.8820414  1.0000000   0.37336275
+distDowntown  0.09743229 -0.3185302 -0.2994280  0.3733627   1.00000000
 > print(summary(feols(duplex ~  medianPPSF + landWidth, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
 OLS estimation, Dep. Var.: duplex
 Observations: 949
@@ -368,29 +393,401 @@ NOTE: 4 observations removed because of NA values (RHS: 4).
 OLS estimation, Dep. Var.: duplex
 Observations: 945
 Standard-errors: Clustered (neighbourhoodDescription) 
-             Estimate Std. Error   t value Pr(>|t|)    
-(Intercept) -1.043937   0.745139 -1.400995 0.177337    
-elasticity  -0.091385   0.264735 -0.345195 0.733740    
-medianPPSF  -0.000560   0.000208 -2.699319 0.014210 *  
-landWidth    0.053746   0.022349  2.404813 0.026538 *  
+             Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept) -1.353027   0.732233 -1.84781 0.0802591 .  
+elasticity   0.390398   0.277274  1.40799 0.1752872    
+medianPPSF  -0.000838   0.000241 -3.47272 0.0025483 ** 
+landWidth    0.059888   0.023083  2.59443 0.0177953 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.459617   Adj. R2: 0.044835
+RMSE: 0.458616   Adj. R2: 0.04899
 > print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2019,2023)], cluster="neighbourhoodDescription")))
 NOTE: 4 observations removed because of NA values (RHS: 4).
 OLS estimation, Dep. Var.: duplex
 Observations: 945
 Standard-errors: Clustered (neighbourhoodDescription) 
-              Estimate Std. Error  t value Pr(>|t|)    
-(Intercept) 278.974744 174.389921 1.599718 0.126158    
-elasticity    0.122661   0.268051 0.457604 0.652426    
-medianPPSF    0.000043   0.000470 0.092372 0.927369    
-landWidth     0.050769   0.022229 2.283891 0.034057 *  
-longitude     2.278079   1.417278 1.607361 0.124466    
+              Estimate Std. Error   t value Pr(>|t|)    
+(Intercept) 316.085537 151.103322  2.091850 0.050116 .  
+elasticity    0.543460   0.411754  1.319865 0.202563    
+medianPPSF   -0.000138   0.000422 -0.327025 0.747225    
+landWidth     0.055967   0.022767  2.458296 0.023733 *  
+longitude     2.581859   1.226763  2.104610 0.048866 *  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.457988   Adj. R2: 0.050583
+RMSE: 0.456132   Adj. R2: 0.058264
+> 
+> # Wide Lot multi
+> print(cor(dtWide[year>=2024 ,.(multi,landWidth,longitude,distDowntown,east)],use="complete.obs"))
+                    multi   landWidth  longitude distDowntown       east
+multi         1.000000000 -0.11126802  0.1809072 -0.002050853  0.1836266
+landWidth    -0.111268020  1.00000000 -0.3814608  0.069758420 -0.4362197
+longitude     0.180907167 -0.38146079  1.0000000  0.334555476  0.8955524
+distDowntown -0.002050853  0.06975842  0.3345555  1.000000000  0.3129600
+east          0.183626608 -0.43621971  0.8955524  0.312959961  1.0000000
+> print(summary(feols(multi ~  longitude + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+OLS estimation, Dep. Var.: multi
+Observations: 291
+Standard-errors: Clustered (neighbourhoodDescription) 
+              Estimate Std. Error t value  Pr(>|t|)    
+(Intercept) 138.306194  39.353953 3.51442 0.0024762 ** 
+longitude     1.145778   0.318939 3.59246 0.0020818 ** 
+landWidth     0.089399   0.030114 2.96870 0.0082261 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.391641   Adj. R2: 0.044505
+> print(summary(feols(multi ~  medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+OLS estimation, Dep. Var.: multi
+Observations: 291
+Standard-errors: Clustered (neighbourhoodDescription) 
+              Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept) 149.313617 116.177736 1.285217 0.2150079    
+medianPPSF    0.000031   0.000325 0.096815 0.9239430    
+landWidth     0.089301   0.030498 2.928054 0.0089837 ** 
+longitude     1.235328   0.942881 1.310163 0.2066146    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.391638   Adj. R2: 0.041194
+> print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+NOTE: 1 observation removed because of NA values (RHS: 1).
+OLS estimation, Dep. Var.: duplex
+Observations: 290
+Standard-errors: Clustered (neighbourhoodDescription) 
+             Estimate Std. Error  t value Pr(>|t|)    
+(Intercept)  2.489921   1.416080  1.75832 0.096681 .  
+elasticity   0.846252   0.298853  2.83166 0.011511 *  
+medianPPSF  -0.000362   0.000230 -1.57656 0.133323    
+landWidth   -0.067468   0.043243 -1.56020 0.137134    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.489607   Adj. R2: 0.028124
+> print(summary(feols(duplex ~ elasticity + medianPPSF + landWidth + longitude, data=dtChoice[year %between% c(2024,2026)], cluster="neighbourhoodDescription")))
+NOTE: 1 observation removed because of NA values (RHS: 1).
+OLS estimation, Dep. Var.: duplex
+Observations: 290
+Standard-errors: Clustered (neighbourhoodDescription) 
+               Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept) -101.557205 325.079926 -0.312407 0.7585308    
+elasticity     0.815258   0.278566  2.926624 0.0094156 ** 
+medianPPSF    -0.000610   0.000854 -0.713773 0.4850523    
+landWidth     -0.066880   0.043607 -1.533695 0.1435042    
+longitude     -0.846448   2.642689 -0.320298 0.7526457    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.489372   Adj. R2: 0.025651
+> 
+> print(dtChoice[use=="single",mean(east),by="year"])
+    year        V1
+   <int>     <num>
+1:  2020 0.6321839
+2:  2023 0.6132075
+3:  2022 0.6818182
+4:  2017 0.6488889
+5:  2021 0.6086957
+6:  2019 0.6290323
+7:  2018 0.6868132
+8:  2025 0.3870968
+9:  2024 0.6875000
+> print(table(dtChoice[,use]))
+
+duplex  multi single 
+   469     59   1120 
+> print(table(dtChoice[,east]))
+
+FALSE  TRUE 
+  539  1109 
+> print(summary(feols(laneway~ east | year,data=dtChoice[use =="single" & year>=2019])))
+OLS estimation, Dep. Var.: laneway
+Observations: 713
+Fixed-effects: year: 7
+Standard-errors: IID 
+         Estimate Std. Error t value Pr(>|t|)    
+eastTRUE 0.068329   0.036908 1.85133  0.06454 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.47163     Adj. R2: 0.097506
+                Within R2: 0.004838
+> print(summary(feols(duplex~ east | year,data=dtChoice[year>=2019])))
+OLS estimation, Dep. Var.: duplex
+Observations: 1,240
+Fixed-effects: year: 7
+Standard-errors: IID 
+         Estimate Std. Error t value   Pr(>|t|)    
+eastTRUE 0.114743    0.02799 4.09942 4.4132e-05 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.456844     Adj. R2: 0.106744
+                 Within R2: 0.013457
+> print(summary(feols(duplex~ east | year,data=dtChoice[year>=2019 & year<2024])))
+OLS estimation, Dep. Var.: duplex
+Observations: 949
+Fixed-effects: year: 5
+Standard-errors: IID 
+         Estimate Std. Error t value   Pr(>|t|)    
+eastTRUE 0.171812   0.031057 5.53217 4.0973e-08 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.440425     Adj. R2: 0.120629
+                 Within R2: 0.031435
+> print(summary(feols(multi~ east | year,data=dtChoice[year>=2024])))
+OLS estimation, Dep. Var.: multi
+Observations: 291
+Fixed-effects: year: 2
+Standard-errors: IID 
+         Estimate Std. Error t value  Pr(>|t|)    
+eastTRUE 0.132752   0.049059   2.706 0.0072161 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.395698     Adj. R2: 0.024607
+                 Within R2: 0.024795
+> print(summary(feols(multi~ east | year,data=dtWide[year>=2024])))
+OLS estimation, Dep. Var.: multi
+Observations: 228
+Fixed-effects: year: 2
+Standard-errors: IID 
+         Estimate Std. Error t value  Pr(>|t|)    
+eastTRUE  0.17702   0.063671 2.78022 0.0058922 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.463784     Adj. R2: 0.029765
+                 Within R2: 0.033213
+> 
+> print(summary(feols(laneway~ longitude | year,data=dtChoice[use =="single" & year>=2019])))
+OLS estimation, Dep. Var.: laneway
+Observations: 713
+Fixed-effects: year: 7
+Standard-errors: IID 
+          Estimate Std. Error t value Pr(>|t|)    
+longitude 0.653541   0.330632 1.97664 0.048471 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.47147     Adj. R2: 0.098116
+                Within R2: 0.005511
+> print(summary(feols(duplex~ longitude | year,data=dtChoice[year>=2019])))
+OLS estimation, Dep. Var.: duplex
+Observations: 1,240
+Fixed-effects: year: 7
+Standard-errors: IID 
+          Estimate Std. Error t value   Pr(>|t|)    
+longitude  1.17605   0.242628 4.84713 1.4122e-06 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.455625     Adj. R2: 0.111503
+                 Within R2: 0.018713
+> print(summary(feols(duplex~ longitude | year,data=dtChoice[year>=2019 & year<2024])))
+OLS estimation, Dep. Var.: duplex
+Observations: 949
+Fixed-effects: year: 5
+Standard-errors: IID 
+          Estimate Std. Error t value   Pr(>|t|)    
+longitude  1.80343   0.269068 6.70249 3.5219e-11 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.437221     Adj. R2: 0.133374
+                 Within R2: 0.045473
+> print(summary(feols(multi~ longitude | year,data=dtChoice[year>=2024])))
+OLS estimation, Dep. Var.: multi
+Observations: 291
+Fixed-effects: year: 2
+Standard-errors: IID 
+          Estimate Std. Error t value  Pr(>|t|)    
+longitude  1.33286   0.419155 3.17986 0.0016341 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.393843     Adj. R2: 0.033733
+                 Within R2: 0.033919
+> print(summary(feols(multi~ longitude | year,data=dtWide[year>=2024])))
+OLS estimation, Dep. Var.: multi
+Observations: 228
+Fixed-effects: year: 2
+Standard-errors: IID 
+          Estimate Std. Error t value  Pr(>|t|)    
+longitude  1.49052    0.54739 2.72296 0.0069773 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.464098     Adj. R2: 0.028449
+                 Within R2: 0.031902
+> 
+> 
+> for (u in c("single","duplex","multi")) {
++ 	print(u)
++ 	print(dtChoice[order(year),mean(use==u),by=c("year","east")])
++ 	print(dtWide[order(year),mean(use==u),by=c("year","east")])
++ }
+[1] "single"
+     year   east        V1
+    <int> <lgcl>     <num>
+ 1:  2017  FALSE 1.0000000
+ 2:  2017   TRUE 1.0000000
+ 3:  2018  FALSE 1.0000000
+ 4:  2018   TRUE 0.9920635
+ 5:  2019  FALSE 1.0000000
+ 6:  2019   TRUE 0.9629630
+ 7:  2020  FALSE 0.9411765
+ 8:  2020   TRUE 0.8088235
+ 9:  2021  FALSE 0.7641509
+10:  2021   TRUE 0.5294118
+11:  2022  FALSE 0.7142857
+12:  2022   TRUE 0.5357143
+13:  2023  FALSE 0.6833333
+14:  2023   TRUE 0.5118110
+15:  2024  FALSE 0.2830189
+16:  2024   TRUE 0.2682927
+17:  2025  FALSE 0.3454545
+18:  2025   TRUE 0.2000000
+     year   east        V1
+    <int> <lgcl>     <num>
+ 1:  2017  FALSE 1.0000000
+ 2:  2017   TRUE 1.0000000
+ 3:  2018  FALSE 1.0000000
+ 4:  2018   TRUE 1.0000000
+ 5:  2019  FALSE 0.9342105
+ 6:  2019   TRUE 0.9574468
+ 7:  2020  FALSE 0.8906250
+ 8:  2020   TRUE 0.8409091
+ 9:  2021  FALSE 0.8134328
+10:  2021   TRUE 0.4344262
+11:  2022  FALSE 0.9285714
+12:  2022   TRUE 0.7297297
+13:  2023  FALSE 0.8750000
+14:  2023   TRUE 0.6000000
+15:  2024  FALSE 0.6250000
+16:  2024   TRUE 0.3829787
+17:  2025  FALSE 0.4590164
+18:  2025   TRUE 0.1750000
+[1] "duplex"
+     year   east          V1
+    <int> <lgcl>       <num>
+ 1:  2017  FALSE 0.000000000
+ 2:  2017   TRUE 0.000000000
+ 3:  2018  FALSE 0.000000000
+ 4:  2018   TRUE 0.007936508
+ 5:  2019  FALSE 0.000000000
+ 6:  2019   TRUE 0.037037037
+ 7:  2020  FALSE 0.058823529
+ 8:  2020   TRUE 0.191176471
+ 9:  2021  FALSE 0.235849057
+10:  2021   TRUE 0.470588235
+11:  2022  FALSE 0.285714286
+12:  2022   TRUE 0.464285714
+13:  2023  FALSE 0.316666667
+14:  2023   TRUE 0.488188976
+15:  2024  FALSE 0.641509434
+16:  2024   TRUE 0.512195122
+17:  2025  FALSE 0.472727273
+18:  2025   TRUE 0.500000000
+     year   east         V1
+    <int> <lgcl>      <num>
+ 1:  2017  FALSE 0.00000000
+ 2:  2017   TRUE 0.00000000
+ 3:  2018  FALSE 0.00000000
+ 4:  2018   TRUE 0.00000000
+ 5:  2019  FALSE 0.06578947
+ 6:  2019   TRUE 0.04255319
+ 7:  2020  FALSE 0.09375000
+ 8:  2020   TRUE 0.15909091
+ 9:  2021  FALSE 0.17164179
+10:  2021   TRUE 0.56557377
+11:  2022  FALSE 0.05357143
+12:  2022   TRUE 0.27027027
+13:  2023  FALSE 0.10714286
+14:  2023   TRUE 0.31428571
+15:  2024  FALSE 0.13750000
+16:  2024   TRUE 0.19148936
+17:  2025  FALSE 0.22950820
+18:  2025   TRUE 0.35000000
+[1] "multi"
+     year   east        V1
+    <int> <lgcl>     <num>
+ 1:  2017  FALSE 0.0000000
+ 2:  2017   TRUE 0.0000000
+ 3:  2018  FALSE 0.0000000
+ 4:  2018   TRUE 0.0000000
+ 5:  2019  FALSE 0.0000000
+ 6:  2019   TRUE 0.0000000
+ 7:  2020  FALSE 0.0000000
+ 8:  2020   TRUE 0.0000000
+ 9:  2021  FALSE 0.0000000
+10:  2021   TRUE 0.0000000
+11:  2022  FALSE 0.0000000
+12:  2022   TRUE 0.0000000
+13:  2023  FALSE 0.0000000
+14:  2023   TRUE 0.0000000
+15:  2024  FALSE 0.0754717
+16:  2024   TRUE 0.2195122
+17:  2025  FALSE 0.1818182
+18:  2025   TRUE 0.3000000
+     year   east         V1
+    <int> <lgcl>      <num>
+ 1:  2017  FALSE 0.00000000
+ 2:  2017   TRUE 0.00000000
+ 3:  2018  FALSE 0.00000000
+ 4:  2018   TRUE 0.00000000
+ 5:  2019  FALSE 0.00000000
+ 6:  2019   TRUE 0.00000000
+ 7:  2020  FALSE 0.01562500
+ 8:  2020   TRUE 0.00000000
+ 9:  2021  FALSE 0.01492537
+10:  2021   TRUE 0.00000000
+11:  2022  FALSE 0.01785714
+12:  2022   TRUE 0.00000000
+13:  2023  FALSE 0.01785714
+14:  2023   TRUE 0.08571429
+15:  2024  FALSE 0.23750000
+16:  2024   TRUE 0.42553191
+17:  2025  FALSE 0.31147541
+18:  2025   TRUE 0.47500000
+> dtSingle <- dtChoice[use=="single"]
+> dtSingle[distToLaneway<CUTDISTANCE & use=="single",use:="singleLaneway"]
+> dtSingle[distToLaneway>=CUTDISTANCE & use=="single",use:="singleOnly"]
+> 
+> for (u in c("singleLaneway","singleOnly")) {
++ 	print(u)
++ 	print(dtSingle[order(year),mean(use==u),by=c("year","east")])
++ }
+[1] "singleLaneway"
+     year   east        V1
+    <int> <lgcl>     <num>
+ 1:  2017  FALSE 0.2658228
+ 2:  2017   TRUE 0.3835616
+ 3:  2018  FALSE 0.0877193
+ 4:  2018   TRUE 0.2000000
+ 5:  2019  FALSE 0.1956522
+ 6:  2019   TRUE 0.2051282
+ 7:  2020  FALSE 0.5000000
+ 8:  2020   TRUE 0.7454545
+ 9:  2021  FALSE 0.5308642
+10:  2021   TRUE 0.6587302
+11:  2022  FALSE 0.6000000
+12:  2022   TRUE 0.5866667
+13:  2023  FALSE 0.4878049
+14:  2023   TRUE 0.5230769
+15:  2024  FALSE 0.6666667
+16:  2024   TRUE 0.6363636
+17:  2025  FALSE 0.7368421
+18:  2025   TRUE 0.6666667
+[1] "singleOnly"
+     year   east        V1
+    <int> <lgcl>     <num>
+ 1:  2017  FALSE 0.7341772
+ 2:  2017   TRUE 0.6164384
+ 3:  2018  FALSE 0.9122807
+ 4:  2018   TRUE 0.8000000
+ 5:  2019  FALSE 0.8043478
+ 6:  2019   TRUE 0.7948718
+ 7:  2020  FALSE 0.5000000
+ 8:  2020   TRUE 0.2545455
+ 9:  2021  FALSE 0.4691358
+10:  2021   TRUE 0.3412698
+11:  2022  FALSE 0.4000000
+12:  2022   TRUE 0.4133333
+13:  2023  FALSE 0.5121951
+14:  2023   TRUE 0.4769231
+15:  2024  FALSE 0.3333333
+16:  2024   TRUE 0.3636364
+17:  2025  FALSE 0.2631579
+18:  2025   TRUE 0.3333333
+> 
 > q("no")
 > proc.time()
    user  system elapsed 
-  1.649   0.345   1.080 
+  1.762   0.117   1.873 
