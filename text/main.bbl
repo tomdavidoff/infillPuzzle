@@ -300,12 +300,12 @@
            given={Jyh-Bang},
            giveni={J\bibinithyphendelim B\bibinitperiod},
            givenun=0}}%
-        {{un=0,uniquepart=base,hash=8156d64297f013fe8b3a4d0620c40544}{%
+        {{un=1,uniquepart=given,hash=8156d64297f013fe8b3a4d0620c40544}{%
            family={Lee},
            familyi={L\bibinitperiod},
            given={Tan\bibnamedelima (Charlene)},
            giveni={T\bibinitperiod\bibinitdelim (\bibinitperiod},
-           givenun=0}}%
+           givenun=1}}%
       }
       \strng{namehash}{2c8281e22954efba0b043c5a8a5c9fd2}
       \strng{fullhash}{2c8281e22954efba0b043c5a8a5c9fd2}
@@ -864,6 +864,42 @@
       \verb{url}
       \verb https://dx.doi.org/10.2139/ssrn.4578637
       \endverb
+    \endentry
+    \entry{SanghoonDaryl}{report}{}{}
+      \name{author}{2}{}{%
+        {{un=1,uniquepart=given,hash=c5e1e20034e4dee2e05c4ea21880e901}{%
+           family={Lee},
+           familyi={L\bibinitperiod},
+           given={Sanghoon},
+           giveni={S\bibinitperiod},
+           givenun=1}}%
+        {{un=0,uniquepart=base,hash=e66d05f525b816b67ad3945a151ecb25}{%
+           family={Larsen},
+           familyi={L\bibinitperiod},
+           given={Daryl},
+           giveni={D\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {UBC}%
+      }
+      \strng{namehash}{11464fddfe07e69dab140468cfdedb4c}
+      \strng{fullhash}{11464fddfe07e69dab140468cfdedb4c}
+      \strng{fullhashraw}{11464fddfe07e69dab140468cfdedb4c}
+      \strng{bibnamehash}{11464fddfe07e69dab140468cfdedb4c}
+      \strng{authorbibnamehash}{11464fddfe07e69dab140468cfdedb4c}
+      \strng{authornamehash}{11464fddfe07e69dab140468cfdedb4c}
+      \strng{authorfullhash}{11464fddfe07e69dab140468cfdedb4c}
+      \strng{authorfullhashraw}{11464fddfe07e69dab140468cfdedb4c}
+      \field{sortinit}{L}
+      \field{sortinithash}{7c47d417cecb1f4bd38d1825c427a61a}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{The Value of W}
+      \field{type}{Working Paper}
+      \field{year}{2025}
     \endentry
     \entry{Liao2023}{unpublished}{}{}
       \name{author}{1}{}{%
