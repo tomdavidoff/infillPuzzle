@@ -84,6 +84,16 @@ df <- df[Land_Width_Width %between% c(MINWIDTH,MAXWIDTH)]
 df[,east:=lon>ONTARIOLON]
 df[,single:=propertyType=="single"]
 
+# is there a trend in high end quantiles?
+dtIQR <- data.table(year=numeric(),iqr=numeric())
+for (y in seq(2010,2024)) {
+	z <- quantile(df[saleYear==y & age<MAXAGE & propertyType=="single",CONVEYANCE_PRICE],.75)/quantile(df[saleYear==y & age<MAXAGE & propertyType=="single",CONVEYANCE_PRICE],.25)
+	dtIQR <- rbind(dtIQR,data.table(year=y,iqr=z))
+	print(c("Year: ",y,z))
+}
+ggplot(dtIQR,aes(x=year,y=iqr)) + geom_line() + geom_point() + theme_minimal() + labs(x="Year",y="IQR (75th/25th Quantile)",title="IQR of Newer Single Family Home Prices Over Time") + scale_x_continuous(breaks=seq(2009,2024,5))
+ggsave("text/vancouverSingleIQR.png")
+
 ancientYears <- c(2002,2004)
 oldYears <- c(2012,2014)
 modYears <- c(2017,2018)

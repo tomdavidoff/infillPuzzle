@@ -111,70 +111,66 @@ with respect to home square footage.
 \section{A model of infill housing}
 
 To see the offsetting addition and division effects formally, consider a
-developer choosing the intensity of development on a parcel of land with area
-normalized to one unit. Profits are equal to square feet $f$ built times
-revenue per square foot minus cost per square foot. Zoning regulations impose
-caps on $f$ on the number of square feet built, and $n$ the number of units
-built. Price per square foot is a function of two numbers: $\frac{f}{n}$, the
-number of square feet per unit, and $\theta$ an increasing index of location
-quality. We assume the following:
+developer who owns a lot of size 1 unit of land area. Profits $\pi$ are equal
+to square feet $f$ built\footnote{equivalently floor-area-ratio or
+floor-space-ratio because of the lot size assumption.} times revenue per square
+foot minus cost per square foot. Zoning regulations impose caps on $f$ on the
+number of square feet built, and $n$ the number of units built. Price per
+square foot is a function of two numbers: $s\equiv \frac{f}{n}$, the number of
+square feet per unit, and $\theta$ an increasing index of location quality. We
+assume the following:
 
 \begin{itemize}
 	\item $f$ and $n$ are continuous and subject to sufficiently small changes to enable calculus.
-	\item Price is a function only of $\frac{f}{n}$ and $\theta$. 
-	\item $\frac{\partial^{2} p}{\partial \frac{f}{n} \partial \theta}$ is
+	\item Price is a function only of $s$ and $\theta$. 
+	\item $\frac{\partial^{2} p}{\partial s \partial \theta}$ is
 		a meaningful quantity. A fuller model would explicitly
 		approximate sorting of heterogeneous households into locations,
 		so that price would be a function of the distribution of
 		households bidding on homes, itself dependent on the
-		distribution of housing characteristics across locations. A
-		parsimonious version of such a model is in \textcite{TervioMaattanen}.
-	\item Cost per square foot is constant. Allowing variation in $f$ and
-		$n$ would not change key results, but recognizing that part of
-		the relationship between price and income and hence the key
-		cross-partial comes from superior finishes in high-end homes
-		would might affect predicted sorting effects.
+		distribution of housing characteristics across
+		locations.\footnote{A relatively parsimonious version of such a
+		model is in \textcite{TervioMaattanen}.} Given positive sorting
+		and demand for space, we assume $\frac{\partial^{2} p}{\partial
+		s \partial \theta} > 0$.
+	\item Cost per square foot is constant in $\theta$. In fact, finishes are likely to be more expensive and higher-end in high-quality locations conditional on the product defined by $f$ and $n$. In empirical application, $p-c$ should be adjusted for this factor. 
 \end{itemize}
 
 \begin{equation}
-  \pi(f,n) = f\left[p\left(f/n,\theta\right) - c(f,n,\theta)\right]
+  \pi(f,n) = f\left[p\left(f/n,\theta\right) - c(f,n)\right]
 \end{equation}
 
 The benefit from incrementing floor area $f$ is the ``addition effect'':
 \begin{equation}
   \label{eq:mb}
-  \frac{\partial \pi}{\partial f} = \left[p\left(n,\theta\right) - c\right] + f\left[\frac{\partial p}{\partial \frac{f}{n}
+  \frac{\partial \pi}{\partial f} = \left[p\left(n,\theta\right) - c\right] + f\left[\frac{\partial p}{\partial s}\frac{1}{n} - \frac{\partial c}{\partial f}\right]
 \end{equation}
 
 The derivative of this benefit with respect to the quality index $\theta$ is:
 \begin{equation}
 	\label{eq:mbtheta}
-	\frac{d\frac{\partial \pi}{\partial f}}{d\theta} = \underbrace{\frac{\partial p}{\partial \theta}}_{\text{addition effect, positive}} + \underbrace{\frac{f}{n}\frac{\partial^2 p}{\partial \frac{f}{n} \partial \theta}.}_{\text{inverse division effect, likely positive}}
+	\frac{d\frac{\partial \pi}{\partial f}}{d\theta} = \underbrace{\frac{\partial p}{\partial \theta}}_{\text{addition effect, positive}} + \underbrace{\frac{1}{n}\frac{\partial^2 p}{\partial s \partial \theta}.}_{\text{inverse division effect, likely positive}}
 \end{equation}
 
-The benefit of increasing $n$ is:
+The benefit of increasing $n$ (and hence reducing $s=\frac{f}{n}$) is:
 \begin{equation}
 	\label{eq:mbn}
-	\frac{\partial \pi}{\partial n} =  - \frac{f^{2}}{n^{2}}\frac{\partial p}{\partial n}.
+	\frac{\partial \pi}{\partial n} =  - \left[s^{2}\frac{\partial p}{\partial s} + \frac{\partial c}{\partial n}\right].
 \end{equation}
 
-The effect of $\theta$ on this marginal benefit is:
-
+The effect of $\theta$ on this marginal benefit is given by the negative of the (likely positive) cross partial of price with respect to space and quality.:
+ 
 \begin{equation}
 	\label{eq:mbntheta}
-	\frac{d\frac{\partial \pi}{\partial n}}{d\theta} = \underbrace{-\frac{f^{2}}{n^{2}}\frac{\partial^2 p}{\partial n \partial \theta}}_{\text{division effect, -likley negative}}.
+	\frac{d\frac{\partial \pi}{\partial n}}{d\theta} = \underbrace{-s^{2}\frac{\partial^2 p}{\partial n \partial \theta}}_{\text{division effect: likley negative}}.
 \end{equation}
+
 
 \subsection{Main theoretical contribution}
 \begin{itemize}
-  \item \emph{Addition effect:} Infill (increasing $f$ and $n$) is more attractive where $\theta$ and (hence the price per square foot $p$) is greater when $f'$ is larger (i.e., where infill is rewarded with bonus density). In a regression of infill propensity on price, permitted density, and their interaction, a positive coefficient on the interaction would be expected, all else equal.
-  \item \emph{Division effect:} Infill is more attractive where price is declining more rapidly in density ($\frac{\partial p}{\partial n }$ is more positive). Assuming sorting is such that $\frac{\partial^2 p}{\partial n \partial \theta} < 0$, this effect implies that infill is less attractive where $\theta$ (and price) is greater.
+  \item \emph{Addition effect:} Infill will be more attractive in high-priced neighborhoods when policies are focussed purely on allowing additional square footage. 
+  \item \emph{Division effect:} Where infill policies emphasize splitting the same square footage into more units, if sorting is such that $\frac{\partial^2 p}{\partial s \partial \theta} > 0$, infill will be less attractive where $\theta$ (and price) is greater.
 \end{itemize}
-
-The division effect will yield a negative correlation between neighbourhood quality and price when households with a greater elasticity of willingness to pay for space sort into higher-quality neighbourhoods. This is likely when single-family zoning is a tightly binding constraint. In a standard monocentric city sorting model, there is a tradeoff between willingness to pay for neighbourhood quality (e.g. greater time costs of travel) against normal lot size demand. Fixing lot size removes this second effect, leaving only willingness to pay for neighbourhood quality, presumably correlated with a greater elasticity of willingness to pay for space.
-
-The elasticity of willingness to pay for space may have two components. First, a demand for living space itself. Second, a demand for privacy: dividing space into smaller units on the same lot implies a reduction in privacy.
-
 
 \section{Related Literature}
 
@@ -207,7 +203,7 @@ Here we study the most modest of increases in unit density, the bottom end of th
 
 Critics of upzoning have argued that it either does not lead to new construction or that the new construction that occurs does not approve affordability.\footnote{See \textcite{Been_etal2019} for a summary of increased housing supply as the central policy to address worsening with housing affordability and responses to the critics of increased density.} This literature focuses on much more significant changes than those we study. An example is the work by \textcite{Freemark2020} in Chicago of the effects of upzonings in 2013 and 2015  that increased FARs, heights, and allowed units close to rail transit stations. He finds increases in values (up to 23 percent) and permits in the treated areas when compared with controls, though the latter effects is only statistically different than zero at a 10 percent test).
 
-With undeveloped lots, an alternative to allowing duplexes would be halving lot sizes. Using data from Atlanta to calibrate a model, \textcite{Ma_2025} estimates the effect of this type of forced upzoning. She finds that given that new homes are large units built for higher income users, that forcing  upzoning results in improvements in affordability as when a single large unit cannot be built, more smaller units are constructed instead.
+With undeveloped lots, an alternative to allowing duplexes would be halving lot sizes. Using data from Atlanta to calibrate a model, \textcite{Ma_2025} estimates the effect of this type of forced upzoning. She finds that given that new homes are large units built for higher income users, that forcing  upzoning results in improvements in affordability as when a single large unit cannot be built, more smaller units are constructed instead. \textcite{vonBergmannLauster} find large empirical gains in rare cases of lot-splitting in Vancouver.
 
 \section{Institutional setting}
 
@@ -247,7 +243,7 @@ With the 2023 changes, maximum allowed FSR depended on several factors. Single-f
 
 \begin{table}
 \caption{\label{tab:dataSources} Data Sources}
-\begin{small}
+\begin{footnotesize}
 \begin{tabular}{llll}
 \hline
 City & Subject & Data Source & Coverage/Use \\
@@ -255,7 +251,7 @@ City & Subject & Data Source & Coverage/Use \\
 Vancouver & Building Permits by  & City of Vancouver & 2019-2025 (laneway and duplex era)\\
 & &  & 2024-2025 (laneway, duplex, and multiplex era)\\
 Vancouver & Zoning & City of Vancouver & Current R1-1 zones  \\
-Vancouver & Transactions & B.C. Assessment & 2012-2018 for baseline price and elasticities \\
+Vancouver & Transactions & B.C. Assessment & 2017-2019 for baseline price and elasticities \\
 Vancouver & Home and lot Characteristics & B.C. Assessment & All \\
 \hline
 Portland & Building permit  & City of Portland & 2022-2025 (RIP-2 era)\\
@@ -269,7 +265,7 @@ Minneapolis & Transactions & Attom & 2016-2020 \\
 Minneapolis & Home and lot Characteristics & Attom\\
 \hline
 \end{tabular}
-\end{small}
+\end{footnotesize}
 \end{table}
 
 \subsection{Vancouver}
@@ -288,10 +284,10 @@ A dominant feature of the Vancouver housing market is the role of location. In p
 \includegraphics[width=\textwidth]{residualsMap2022to2024.png}
 \end{figure}
 
-Table \ref{tab:regSummariesVancouver} considers different spatial explanations for price per square and elasticity of price with respect to square foot for different levels of spatial aggregation. The unit of observation is a housing transaction between the intermediate years 2016-2020. The top panel of Table \ref{tab:regSummariesVancouver} shows that the East/West divide explains over two-thirds of residual price variation conditional on square footage. A continuous longitude variable subtracts from adjusted $R^{2}$, and dummies for census tract or broader neighbourhood add little further explanatory power. Thus the East/West divide explains the ``addition'' effect well. The bottom panel of Table \ref{tab:regSummariesVancouver} shows that the same is true for the ``division'' effect. There adjusted $R^{2}$s are presented for regressions with interactions between log square footage and the geography in question. Again, the East/West divide does most of the geographic work.
+Table \ref{tab:regSummariesVancouver} considers different spatial explanations for price per square and elasticity of price with respect to square foot for different levels of spatial aggregation. The unit of observation is a housing transaction between the intermediate years 2017-2019, sales are confined to homes less than 25 years old to abstract from tear-down value. The top panel of Table \ref{tab:regSummariesVancouver} shows that the East/West divide explains over half of residual price variation conditional on square footage. A continuous longitude variable increments adjusted $R^{2}$ only a small amount, and dummies for census tract or broader neighbourhood add little further explanatory power. Thus the East/West divide explains the ``addition'' effect well. The bottom panel of Table \ref{tab:regSummariesVancouver} shows that the same is true for the ``division'' effect. There adjusted $R^{2}$s are presented for regressions with interactions between log square footage and the geography in question. Again, the East/West divide does most of the geographic work.
 
 \begin{table}
-	\caption{\label{tab:regSummariesVancouver} Adjusted $R^{2}$ for regressions of log price per square foot (top panel) and location additively (top panel) and interactively (capturing geographic heterogeneity in the elasticity of price with respect to square feet, bottom panel). Single and duplex sales in R1-1 zones 2017-2019. Sales confined to properties 25 years old or less. In the top panel, Longitude x Distance includes longitude, distance to downtown, and their interaction. \textbf{Takeaway: East almost sufficient for $\theta$ } \textbf{Takeaway: clear support for division effect sign prediction. For sufficiently small units (100 sqft $\approx e^{5}$, quantitatively!), predicted East Price higher}}
+	\caption{\label{tab:regSummariesVancouver} Adjusted $R^{2}$ for regressions of log price per square foot (top panel) and location additively (top panel) and interactively (capturing geographic heterogeneity in the elasticity of price with respect to square feet, bottom panel). Single and duplex sales in R1-1 zones 2017-2019. Sales confined to properties 25 years old or less. In the top panel, Longitude x Distance includes longitude, distance to downtown, and their interaction. }
 	\include{vancouverRegressionComparisonTable.tex}
 
 	\par\bigskip\par
@@ -315,7 +311,7 @@ Table \ref{tab:vancouverFittedValues} presents out-of-sample fitted values for d
 
 \subsubsection{Laneway homes}
 
-Table \ref{tab:vancouverFittedValues} shows that laneway homes if they were freehold structures would have fitted prices of \$820,000 on the West Side and \$702,000 on the East Side. Given the West Side's greater willingness to pay for larger and single-family homes than the East Side's however, we might expect an offsetting effect of a greater willingness to pay to avoid the congestion of a laneway home on the West Side. These offsetting effects are consistent with a statistically significant but economically modest correlation of .06 (across census tract means) between an East dummy and the presence of a laneway among new or substantially improved single family homes in R1-1 zones between 2019 and 2025. Figure \ref{fig:lanewayMap} plots the location of these permits. The mean laneway share is 39\% on the West Side and 46\% on the East Side. Illustrating the trend, the shares are 71\% West and 64\% East in 2024-2025.
+Table \ref{tab:vancouverFittedValues} shows that laneway homes if they were freehold structures would have fitted prices of \$820,000 on the West Side and \$702,000 on the East Side. Given the West Side's greater willingness to pay for larger and single-family homes than the East Side's however, we might expect an offsetting effect of a greater willingness to pay to avoid the congestion of a laneway home on the West Side. These offsetting effects are consistent with a statistically significant but economically modest correlation of .06 (across census tract means) between an East dummy and the presence of a laneway among new or substantially improved single family homes in R1-1 zones between 2019 and 2025. Figure \ref{fig:lanewayMap} plots the location of these permits. The mean laneway share is 39\% on the West Side and 46\% on the East Side. Illustrating the trend, the shares are 71\% West and 64\% East in 2024-2025. The convergence in laneway shares matches general convergence in single family prices, with the interquartile range falling from 1.93 in 2016 to roughly 1.6 in 2022-2024. 
 
 \begin{figure}
 	\caption{\label{fig:lanewayMap} Latitude and longitude of single family home permits that were significant additions or alterations or new construction between 2017 and 2025. Colors of points determined by the presence or absence of a laneway home within 20 meters of the permitted single family home.}
