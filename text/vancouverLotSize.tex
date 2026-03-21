@@ -1,0 +1,43 @@
+
+\begingroup
+\centering
+\begin{tabular}{lccc}
+   \tabularnewline \midrule \midrule
+   Dependent Variable: & \multicolumn{3}{c}{log(CONVEYANCE\_PRICE)}\\
+   Model:                                                                        & (1)           & (2)             & (3)\\  
+   \midrule
+   \emph{Variables}\\
+   lsqft                                                                         & 1.025$^{***}$ & -4.557$^{***}$  & -0.3103$^{**}$\\   
+                                                                                 & (0.0037)      & (1.762)         & (0.1369)\\   
+   log(Land\_Width\_Width)                                                       &               & -15.35$^{***}$  &   \\   
+                                                                                 &               & (3.728)         &   \\   
+   log(Land\_Depth\_Depth)                                                       &               & -8.794$^{***}$  &   \\   
+                                                                                 &               & (3.006)         &   \\   
+   lsqft $\times$ log(Land\_Width\_Width)                                        &               & 1.713$^{***}$   &   \\   
+                                                                                 &               & (0.4427)        &   \\   
+   lsqft $\times$ log(Land\_Depth\_Depth)                                        &               & 0.9363$^{***}$  &   \\   
+                                                                                 &               & (0.3617)        &   \\   
+   log(Land\_Width\_Width) $\times$ log(Land\_Depth\_Depth)                      &               & 2.795$^{***}$   &   \\   
+                                                                                 &               & (0.7624)        &   \\   
+   lsqft $\times$ log(Land\_Width\_Width) $\times$ log(Land\_Depth\_Depth)       &               & -0.3018$^{***}$ &   \\   
+                                                                                 &               & (0.0904)        &   \\   
+   log(landArea)                                                                 &               &                 & -0.9589$^{***}$\\   
+                                                                                 &               &                 & (0.1360)\\   
+   lsqft $\times$ log(landArea)                                                  &               &                 & 0.1425$^{***}$\\   
+                                                                                 &               &                 & (0.0163)\\   
+   \midrule
+   \emph{Fixed-effects}\\
+   saleYear                                                                      & Yes           & Yes             & Yes\\  
+   age                                                                           & Yes           & Yes             & Yes\\  
+   \midrule
+   \emph{Fit statistics}\\
+   Observations                                                                  & 63,288        & 7,808           & 7,808\\  
+   R$^2$                                                                         & 0.91694       & 0.76887         & 0.76703\\  
+   Within R$^2$                                                                  & 0.54707       & 0.73736         & 0.73527\\  
+   \midrule \midrule
+   \multicolumn{4}{l}{\emph{IID standard-errors in parentheses}}\\
+   \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+\end{tabular}
+\par\endgroup
+
+

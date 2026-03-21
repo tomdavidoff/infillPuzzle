@@ -11,7 +11,7 @@ library(data.table)
 # ============================================================================
 # Configuration
 # ============================================================================
-bcaFile<- "/Volumes/T7Office/bigFiles/bca_folios_spatial_file_20251103/bca_folios.gpkg.gpkg"
+bcaFile<- "/Volumes/T7Office/bigFiles/latestSpatialBCA/2026-01-09_bca_folios.gpkg"
 outFile   <- "~/OneDrive - UBC/dataProcessed/bca25Centroids.rds"
 
 # ============================================================================
@@ -25,7 +25,7 @@ sBCA<- st_read(
   bcaFile,
   layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
   query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
-           WHERE JURISDICTION_CODE='200'",
+           WHERE REGIONAL_DISTRICT_CODE='15'",
   quiet = TRUE
 )
            #AND (ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling')

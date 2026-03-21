@@ -1,0 +1,225 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # ppsfElasticity.R
+> # For each neighbourhood in Vancouver regional district, each year, compute ppsf and elasticity wrt sqft for single, duplex, both
+> # Then look at correlations
+> # Tom Davidoff 
+> # 03/20/26
+> 
+> library(data.table)
+> library(ggplot2)
+> 
+> # get lat/lon in case want to do census tracts
+> dG <- readRDS("~/OneDrive - UBC/dataProcessed/bca25Centroids.rds")
+> print(head(dG))
+       ROLL_NUMBER       lon      lat
+            <char>     <num>    <num>
+1: 001640020020000 -123.2147 49.26881
+2: 001686032390000 -123.1926 49.26020
+3: 001670037240009 -123.1874 49.26323
+4: 001686026110000 -123.2056 49.26039
+5: 001688022610000 -123.2102 49.25956
+6: 001670037380019 -123.1871 49.26322
+> 
+> # merge sales and square footage
+> dS <- fread("~/OneDrive - UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_sales_20250331_REVD25.csv",select=c("ROLL_NUMBER","FOLIO_ID","CONVEYANCE_TYPE_DESCRIPTION","CONVEYANCE_DATE","CONVEYANCE_PRICE"))
+> print(head(dS))
+       ROLL_NUMBER   FOLIO_ID              CONVEYANCE_TYPE_DESCRIPTION
+            <char>     <char>                                   <char>
+1: 001029650840000 A000000045     Improved Single Property Transaction
+2: 001029650840000 A000000045     Improved Single Property Transaction
+3: 001029650840000 A000000045     Improved Single Property Transaction
+4: 001029650870000 A000000046     Improved Single Property Transaction
+5: 001029650950000 A000000047     Improved Single Property Transaction
+6: 001030670080000 A00000004B Reject - Not Suitable for Sales Analysis
+   CONVEYANCE_DATE CONVEYANCE_PRICE
+             <i64>            <int>
+1:  20080415000000          2775000
+2:  19880830000000           570000
+3:  19830127000000           266000
+4:  20121031000000          2698000
+5:  19771115000000           111500
+6:  20040315000000           170000
+> dS[,year:=as.numeric(substr(CONVEYANCE_DATE,1,4))]
+> MINYEAR <- 2016
+> dS <- dS[year>=MINYEAR & CONVEYANCE_TYPE_DESCRIPTION=="Improved Single Property Transaction"]
+> 
+> dD <- fread("~/OneDrive - UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_descriptions_20250331_REVD25.csv",select=c("ROLL_NUMBER","FOLIO_ID","JURISDICTION","JURISDICTION_CODE","NEIGHBOURHOOD","ACTUAL_USE_DESCRIPTION"))
+> print(summary(dD))
+ ROLL_NUMBER          FOLIO_ID         JURISDICTION       JURISDICTION_CODE
+ Length:2207711     Length:2207711     Length:2207711     Min.   :200.0    
+ Class :character   Class :character   Class :character   1st Qu.:228.0    
+ Mode  :character   Mode  :character   Mode  :character   Median :314.0    
+                                                          Mean   :383.4    
+                                                          3rd Qu.:426.0    
+                                                          Max.   :792.0    
+ NEIGHBOURHOOD      ACTUAL_USE_DESCRIPTION
+ Length:2207711     Length:2207711        
+ Class :character   Class :character      
+ Mode  :character   Mode  :character      
+                                          
+                                          
+                                          
+> # sort by number of cases
+> dD[,nUse:=.N,by=ACTUAL_USE_DESCRIPTION]
+> dD <- dD[ACTUAL_USE_DESCRIPTION %in% c("Single Family Dwelling","Residential Dwelling with Suite") | grepl("Duplex",ACTUAL_USE_DESCRIPTION)]
+> 
+> # inventories to get
+> dtMapper <- fread("~/OneDrive - UBC/dataProcessed/regional_district_assessment_area.csv")
+> #Regional District,Assessment Area
+> # Vancouver is 9
+> print(dtMapper[`Assessment Area`==9])
+   Regional District Assessment Area
+               <int>           <int>
+1:                15               9
+> gV <- as.numeric(dtMapper[`Assessment Area`==9, .(`Regional District`)][1])
+> print(gV)
+[1] 15
+> needInventory <- unique(dtMapper[`Regional District`==gV, .(`Assessment Area`)])
+> print(needInventory)
+   Assessment Area
+             <int>
+1:               8
+2:               9
+3:              10
+4:              11
+5:              14
+6:              15
+> 
+> # loop through like this with needed inventories, then rbind them together
+> for (i in 1:length(needInventory)) {
++ 	print(paste0("Reading inventory for assessment area ",needInventory[i]))
++ 	if (needInventory[i]<10) {
++ 		filename <- paste0("~/OneDrive - UBC/Documents/data/bca/Residential_inventory_202501/20250101_A0",needInventory[i],"_Residential_Inventory_Extract.txt")
++ 	} else {
++ 		filename <- paste0("~/OneDrive - UBC/Documents/data/bca/Residential_inventory_202501/20250101_A",needInventory[i],"_Residential_Inventory_Extract.txt")
++ 	}
++ 	dtTemp <- fread(filename,select=c("Roll_Number","MB_Total_Finished_Area","Zoning","Land_Width_Width","Land_Depth_Depth","MB_Effective_Year","Jurisdiction"),colClasses=c(Roll_Number="character",MB_Total_Finished_Area="numeric",Zoning="character",Land_Width_Width="numeric",Land_Depth_Depth="numeric"))
++ 	if (i==1) {
++ 		dtInventory <- dtTemp
++ 	} else {
++ 		dtInventory <- rbind(dtInventory,dtTemp)
++ 	}
++ }
+[1] "Reading inventory for assessment area 8"
+> print(head(dtInventory))
+   Roll_Number MB_Total_Finished_Area Zoning Land_Width_Width Land_Depth_Depth
+        <char>                  <num> <char>            <num>            <num>
+1:   001110001                   2522     RS               46              159
+2:   001110002                   2072     RS               33              159
+3:   001112000                   1624     RS               66              160
+4:   001114100                   2846                      33              161
+5:   001114200                   2846                      33              161
+6:   001116000                   2218     RS               34              162
+   MB_Effective_Year Jurisdiction
+               <int>        <int>
+1:              1982          221
+2:              1987          221
+3:              1952          221
+4:              2014          221
+5:              2014          221
+6:              1985          221
+> 
+> # merge on as.numeric(roll_number) and Jurisdiction/JURISDICTION_CODE inventory, description
+> dD[, ROLL_NUMBER := as.numeric(ROLL_NUMBER)]
+Warning message:
+In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+> dtInventory[,ROLL_NUMBER := as.numeric(Roll_Number)]
+Warning message:
+In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+> dD[,id:=paste(ROLL_NUMBER,JURISDICTION_CODE)]
+> dtInventory <- dtInventory[!is.na(ROLL_NUMBER)]
+> dD <- dD[!is.na(ROLL_NUMBER)]
+> dtInventory[,id:=paste(ROLL_NUMBER,Jurisdiction)]
+> print(length(unique(dD$id)))
+[1] 957742
+> print(length(unique(dtInventory$id)))
+[1] 112704
+> dtMerge <- merge(dtInventory, dD, by="id")
+> print(head(dtMerge))
+Key: <id>
+                 id   Roll_Number MB_Total_Finished_Area Zoning
+             <char>        <char>                  <num> <char>
+1: 1.000059e+12 338 1000059000000                   1172    RL2
+2:   1.0002e+10 328  010002000000                   2309    RS4
+3:   1.0003e+10 328  010003000000                   3888    RS4
+4:   1.0004e+10 328  010004000000                   3862    RS4
+5:   1.0005e+10 328  010005000000                   1360    RS4
+6:   1.0006e+10 328  010006000000                   3464    RS4
+   Land_Width_Width Land_Depth_Depth MB_Effective_Year Jurisdiction
+              <num>            <num>             <int>        <int>
+1:               NA                0              1990          338
+2:              354               72              1975          328
+3:              111              100              2005          328
+4:              184               70              2020          328
+5:               82               88              1955          328
+6:               68              106              1971          328
+   ROLL_NUMBER.x ROLL_NUMBER.y   FOLIO_ID               JURISDICTION
+           <num>         <num>     <char>                     <char>
+1:  1.000059e+12  1.000059e+12 A000029EN7       District of Squamish
+2:  1.000200e+10  1.000200e+10 A000028ZD9 District of West Vancouver
+3:  1.000300e+10  1.000300e+10 A000028ZDA District of West Vancouver
+4:  1.000400e+10  1.000400e+10 A000028ZDB District of West Vancouver
+5:  1.000500e+10  1.000500e+10 A000028ZDD District of West Vancouver
+6:  1.000600e+10  1.000600e+10 A000028ZDE District of West Vancouver
+   JURISDICTION_CODE               NEIGHBOURHOOD
+               <int>                      <char>
+1:               338              Northern Rural
+2:               328 West Vancouver - Waterfront
+3:               328 West Vancouver - Waterfront
+4:               328 West Vancouver - Waterfront
+5:               328               Horseshoe Bay
+6:               328               Horseshoe Bay
+                             ACTUAL_USE_DESCRIPTION   nUse
+                                             <char>  <int>
+1: 2 Acres Or More (Single Family Dwelling, Duplex)  82436
+2:                           Single Family Dwelling 690027
+3:                           Single Family Dwelling 690027
+4:                           Single Family Dwelling 690027
+5:                           Single Family Dwelling 690027
+6:                           Single Family Dwelling 690027
+> 
+> dtMerge <- merge(dtMerge, dS, by=c("FOLIO_ID"), all.x=TRUE)
+> # start with subset
+> dtMerge <- dtMerge[ACTUAL_USE_DESCRIPTION %in% c("Single Family Dwelling","Residential Dwelling with Suite") ]
+> 
+> dtMerge[,ppsf:=CONVEYANCE_PRICE/MB_Total_Finished_Area]
+> dtMerge[,group:=paste(NEIGHBOURHOOD,year,JURISDICTION)]
+> dtMerge[,nGroup:=.N, by=group]
+> # computer within group elasticity of ppsf wrt sqft
+> dtMerge[,logppsf:=log(ppsf)]
+> dtMerge[,logsqft:=log(MB_Total_Finished_Area)]
+> dtMerge <- dtMerge[!is.na(logppsf) & !is.na(logsqft)]
+> # compute elasticity by group with cov/var
+> dtMerge[,cov:=cov(logppsf,logsqft), by=group]
+> dtMerge[,var:=var(logsqft), by=group]
+> dtMerge[,elasticity:=cov/var]
+> dtMerge[,mppsf:=median(ppsf), by=group]
+> ggplot(dtMerge[nGroup>quantile(nGroup,.25) & abs(elasticity)<1.5], aes(x=elasticity, y=mppsf)) + geom_point() 
+> ggsave("text/ppsfElasticityMetro.png", width=10, height=6)
+> 
+> #elasticityResults <- dtMerge[ACTUAL_USE_DESCRIPTION %in% c("Single Family Dwelling","Residential Dwelling with Suite"), .(mppsf:=median(ppsf),elasticity=cov(logppsf,logsqft)/var(logsqft)), by=group]
+> #print(elasticityResults)
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 22.854   0.371  10.002 

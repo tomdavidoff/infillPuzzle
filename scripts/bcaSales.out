@@ -190,12 +190,61 @@ In log(age + 1) : NaNs produced
 > MINSQFT <- 400
 > df[,propertyType:=ifelse(ACTUAL_USE_DESCRIPTION %chin% c("Single Family Dwelling","Residential Dwelling with Suite"),"single",ifelse(grepl("Duplex,",ACTUAL_USE_DESCRIPTION),"duplex",ifelse(ACTUAL_USE_DESCRIPTION=="Row Housing (Single Unit Ownership)","TH","condo")))]
 > df[,lsqft := log(MB_Total_Finished_Area)]
+> df[,landArea:=Land_Width_Width*Land_Depth_Depth]
 > df <- df[!is.na(lsqft) & !is.na(CONVEYANCE_PRICE) & !is.na(age) & !is.na(lon) & !is.na(lat) & !is.na(saleYear) & !is.na(CTNAME) & CONVEYANCE_PRICE>0 & age>=0 & MB_Total_Finished_Area>MINSQFT]
+> # is it possible that lot size is just additive
+> 
+> r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE & Land_Depth_Depth>100])
+> r1 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*log(Land_Width_Width)*log(Land_Depth_Depth) |saleYear+age,data=df[age<MAXAGE & saleYear>2016 & Land_Depth_Depth>100])
+> r2 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*log(landArea) |saleYear+age,data=df[age<MAXAGE & saleYear>2016 & Land_Depth_Depth>100])
+> print(etable(r0,r1,r2,tex=TRUE,file="text/vancouverLotSize.tex"),append=FALSE)
+\begingroup
+\centering
+\begin{tabular}{lccc}
+   \tabularnewline \midrule \midrule
+   Dependent Variable: & \multicolumn{3}{c}{log(CONVEYANCE\_PRICE)}\\
+   Model:                                                                        & (1)           & (2)             & (3)\\  
+   \midrule
+   \emph{Variables}\\
+   lsqft                                                                         & 1.025$^{***}$ & -4.557$^{***}$  & -0.3103$^{**}$\\   
+                                                                                 & (0.0037)      & (1.762)         & (0.1369)\\   
+   log(Land\_Width\_Width)                                                       &               & -15.35$^{***}$  &   \\   
+                                                                                 &               & (3.728)         &   \\   
+   log(Land\_Depth\_Depth)                                                       &               & -8.794$^{***}$  &   \\   
+                                                                                 &               & (3.006)         &   \\   
+   lsqft $\times$ log(Land\_Width\_Width)                                        &               & 1.713$^{***}$   &   \\   
+                                                                                 &               & (0.4427)        &   \\   
+   lsqft $\times$ log(Land\_Depth\_Depth)                                        &               & 0.9363$^{***}$  &   \\   
+                                                                                 &               & (0.3617)        &   \\   
+   log(Land\_Width\_Width) $\times$ log(Land\_Depth\_Depth)                      &               & 2.795$^{***}$   &   \\   
+                                                                                 &               & (0.7624)        &   \\   
+   lsqft $\times$ log(Land\_Width\_Width) $\times$ log(Land\_Depth\_Depth)       &               & -0.3018$^{***}$ &   \\   
+                                                                                 &               & (0.0904)        &   \\   
+   log(landArea)                                                                 &               &                 & -0.9589$^{***}$\\   
+                                                                                 &               &                 & (0.1360)\\   
+   lsqft $\times$ log(landArea)                                                  &               &                 & 0.1425$^{***}$\\   
+                                                                                 &               &                 & (0.0163)\\   
+   \midrule
+   \emph{Fixed-effects}\\
+   saleYear                                                                      & Yes           & Yes             & Yes\\  
+   age                                                                           & Yes           & Yes             & Yes\\  
+   \midrule
+   \emph{Fit statistics}\\
+   Observations                                                                  & 63,288        & 7,808           & 7,808\\  
+   R$^2$                                                                         & 0.91694       & 0.76887         & 0.76703\\  
+   Within R$^2$                                                                  & 0.54707       & 0.73736         & 0.73527\\  
+   \midrule \midrule
+   \multicolumn{4}{l}{\emph{IID standard-errors in parentheses}}\\
+   \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+\end{tabular}
+\par\endgroup
+> 
 > MINWIDTH <- 30
 > MAXWIDTH <- 35 # over half of properties
 > df <- df[Land_Width_Width %between% c(MINWIDTH,MAXWIDTH)]
 > df[,east:=lon>ONTARIOLON]
 > df[,single:=propertyType=="single"]
+> 
 > 
 > # is there a trend in high end quantiles?
 > dtIQR <- data.table(year=numeric(),iqr=numeric())
@@ -292,17 +341,17 @@ Within R2                                       0.48955
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
-> df <- df[saleYear>2016 & saleYear<2020,]
+> dfT <- df[saleYear>2016 & saleYear<2020,]
 > 
-> r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE])
-> rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft + east|saleYear+age+east,data=df[age<MAXAGE])
+> r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=dfT[age<MAXAGE])
+> rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft + east|saleYear+age+east,data=dfT[age<MAXAGE])
 The variable 'eastTRUE' has been removed because of collinearity (see
 $collin.var).
 > rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon|saleYear+age,data=df[age<MAXAGE])
-> rG <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon*distDowntown|saleYear+age,data=df[age<MAXAGE])
-> rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+NEIGHBOURHOOD,data=df[age<MAXAGE])
+> rG <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon*distDowntown|saleYear+age,data=dfT[age<MAXAGE])
+> rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+NEIGHBOURHOOD,data=dfT[age<MAXAGE])
 NOTE: 0/0/1 fixed-effect singleton was removed (1 observation).
-> rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+CTNAME,data=df[age<MAXAGE])
+> rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+CTNAME,data=dfT[age<MAXAGE])
 NOTE: 0/0/4 fixed-effect singletons were removed (4 observations).
 > # create a latex table of adjusted r2 for these regressions with brief descriptive names
 > baseRegTable <- data.table(
@@ -311,13 +360,13 @@ NOTE: 0/0/4 fixed-effect singletons were removed (4 observations).
 + )
 > print(xtable(baseRegTable),file="text/vancouverRegressionComparisonTable.tex",include.rownames=FALSE, floating=FALSE)
 > 
-> r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE])
-> rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east|saleYear+age ,data=df[age<MAXAGE])
-> rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft*lon|saleYear+age ,data=df[age<MAXAGE])
-> rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*NEIGHBOURHOOD |saleYear+age,data=df[age<MAXAGE])
+> r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=dfT[age<MAXAGE])
+> rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east|saleYear+age ,data=dfT[age<MAXAGE])
+> rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft*lon|saleYear+age ,data=dfT[age<MAXAGE])
+> rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*NEIGHBOURHOOD |saleYear+age,data=dfT[age<MAXAGE])
 The variable 'lsqft:NEIGHBOURHOODFairview' has been removed because of
 collinearity (see $collin.var).
-> rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft*CTNAME |saleYear+age,data=df[age<MAXAGE])
+> rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft*CTNAME |saleYear+age,data=dfT[age<MAXAGE])
 The variables 'lsqft:CTNAME0039.02', 'lsqft:CTNAME0041.02',
 'lsqft:CTNAME0047.02' and 'lsqft:CTNAME0050.04' have been removed because of
 collinearity (see $collin.var).
@@ -326,6 +375,72 @@ collinearity (see $collin.var).
 +   Adjusted_R2 = sapply(list(r0,rD, rL, rLN, rLT), function(reg) round(as.numeric(fitstat(reg, "ar2")),2))
 + )
 > print(xtable(interRegTable),file="text/vancouverInteractionRegressionComparisonTable.tex",include.rownames=FALSE, floating=FALSE)
+> 
+> # trend??
+> r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*saleYear+east*saleYear+east*lsqft |age,data=df[age<MAXAGE & saleYear>2016])
+> r1 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east*saleYear|age,data=df[age<MAXAGE & saleYear>2016])
+> r2 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east+lsqft*saleYear|saleYear+age,data=df[age<MAXAGE & saleYear>2016])
+The variable 'saleYear' has been removed because of collinearity (see
+$collin.var).
+> r3 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east+i(saleYear)*lsqft|saleYear+age,data=df[age<MAXAGE & saleYear>2016])
+The variables 'saleYear::2018', 'saleYear::2019', 'saleYear::2020',
+'saleYear::2021', 'saleYear::2022', 'saleYear::2023' and 3 others have been
+removed because of collinearity (see $collin.var).
+> print(etable(r0,r1,r2,r3,tex=TRUE))
+\begingroup
+\centering
+\begin{tabular}{lcccc}
+   \tabularnewline \midrule \midrule
+   Dependent Variable: & \multicolumn{4}{c}{log(CONVEYANCE\_PRICE)}\\
+   Model:                                      & (1)             & (2)             & (3)             & (4)\\  
+   \midrule
+   \emph{Variables}\\
+   lsqft                                       & -32.76$^{***}$  & 12.00           & -25.02$^{***}$  & 0.9677$^{***}$\\   
+                                               & (7.988)         & (13.76)         & (7.550)         & (0.0608)\\   
+   saleYear                                    & -0.1006$^{***}$ & 0.0709          &                 &   \\   
+                                               & (0.0307)        & (0.0527)        &                 &   \\   
+   eastTRUE                                    & -31.18$^{***}$  & 475.7$^{***}$   & 0.7997$^{***}$  & 0.7378$^{***}$\\   
+                                               & (5.045)         & (127.0)         & (0.1449)        & (0.1447)\\   
+   lsqft $\times$ saleYear                     & 0.0166$^{***}$  & -0.0055         & 0.0128$^{***}$  &   \\   
+                                               & (0.0040)        & (0.0068)        & (0.0037)        &   \\   
+   eastTRUE $\times$ saleYear                  & 0.0158$^{***}$  & -0.2350$^{***}$ &                 &   \\   
+                                               & (0.0025)        & (0.0629)        &                 &   \\   
+   eastTRUE $\times$ lsqft                     & -0.1483$^{***}$ & -66.19$^{***}$  & -0.1527$^{***}$ & -0.1448$^{***}$\\   
+                                               & (0.0194)        & (16.54)         & (0.0188)        & (0.0188)\\   
+   eastTRUE $\times$ lsqft $\times$ saleYear   &                 & 0.0327$^{***}$  &                 &   \\   
+                                               &                 & (0.0082)        &                 &   \\   
+   lsqft $\times$ saleYear $=$ 2017            &                 &                 &                 & -0.0432\\   
+                                               &                 &                 &                 & (0.0649)\\   
+   lsqft $\times$ saleYear $=$ 2018            &                 &                 &                 & -0.1733$^{***}$\\   
+                                               &                 &                 &                 & (0.0644)\\   
+   lsqft $\times$ saleYear $=$ 2019            &                 &                 &                 & -0.1803$^{***}$\\   
+                                               &                 &                 &                 & (0.0640)\\   
+   lsqft $\times$ saleYear $=$ 2020            &                 &                 &                 & -0.2192$^{***}$\\   
+                                               &                 &                 &                 & (0.0632)\\   
+   lsqft $\times$ saleYear $=$ 2021            &                 &                 &                 & -0.1092$^{*}$\\   
+                                               &                 &                 &                 & (0.0620)\\   
+   lsqft $\times$ saleYear $=$ 2022            &                 &                 &                 & -0.1475$^{**}$\\   
+                                               &                 &                 &                 & (0.0629)\\   
+   lsqft $\times$ saleYear $=$ 2023            &                 &                 &                 & -0.1103$^{*}$\\   
+                                               &                 &                 &                 & (0.0636)\\   
+   lsqft $\times$ saleYear $=$ 2024            &                 &                 &                 & -0.0094\\   
+                                               &                 &                 &                 & (0.0629)\\   
+   \midrule
+   \emph{Fixed-effects}\\
+   age                                         & Yes             & Yes             & Yes             & Yes\\  
+   saleYear                                    &                 &                 & Yes             & Yes\\  
+   \midrule
+   \emph{Fit statistics}\\
+   Observations                                & 4,908           & 4,908           & 4,908           & 4,908\\  
+   R$^2$                                       & 0.78705         & 0.78774         & 0.79972         & 0.80202\\  
+   Within R$^2$                                & 0.77149         & 0.77223         & 0.77745         & 0.78002\\  
+   \midrule \midrule
+   \multicolumn{5}{l}{\emph{IID standard-errors in parentheses}}\\
+   \multicolumn{5}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+\end{tabular}
+\par\endgroup
+Warning message:
+The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
 > 
 > rD0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft + east|saleYear+age,data=df[age<MAXAGE])
 > rL0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon|saleYear+age,data=df[age<MAXAGE])
@@ -341,29 +456,29 @@ collinearity (see $collin.var).
    Model:                        & (1)             & (2)            & (3)             & (4)            & (5)\\  
    \midrule
    \emph{Variables}\\
-   lsqft                         & 0.7202$^{***}$  & 0.7311$^{***}$ & 0.8504$^{***}$  & -101.1$^{**}$  & 0.6278$^{***}$\\   
-                                 & (0.0166)        & (0.0160)       & (0.0282)        & (42.71)        & (0.0293)\\   
-   eastTRUE                      & -0.4198$^{***}$ &                & 1.097$^{***}$   &                & -0.3278$^{***}$\\   
-                                 & (0.0100)        &                & (0.2673)        &                & (0.0235)\\   
-   lon                           &                 & -3.903$^{***}$ &                 & 2.510          &   \\   
-                                 &                 & (0.0881)       &                 & (2.692)        &   \\   
-   lsqft $\times$ eastTRUE       &                 &                & -0.1966$^{***}$ &                &   \\   
-                                 &                 &                & (0.0346)        &                &   \\   
+   lsqft                         & 0.6469$^{***}$  & 0.6590$^{***}$ & 0.7372$^{***}$  & -101.1$^{**}$  & 0.5508$^{***}$\\   
+                                 & (0.0055)        & (0.0056)       & (0.0089)        & (42.71)        & (0.0082)\\   
+   eastTRUE                      & -0.4021$^{***}$ &                & 0.7153$^{***}$  &                & -0.3927$^{***}$\\   
+                                 & (0.0030)        &                & (0.0875)        &                & (0.0080)\\   
+   lon                           &                 & -3.462$^{***}$ &                 & 2.510          &   \\   
+                                 &                 & (0.0270)       &                 & (2.692)        &   \\   
+   lsqft $\times$ eastTRUE       &                 &                & -0.1457$^{***}$ &                &   \\   
+                                 &                 &                & (0.0114)        &                &   \\   
    lsqft $\times$ lon            &                 &                &                 & -0.8269$^{**}$ &   \\   
                                  &                 &                &                 & (0.3470)       &   \\   
-   singleTRUE                    &                 &                &                 &                & 0.1613$^{***}$\\   
-                                 &                 &                &                 &                & (0.0286)\\   
-   singleTRUE $\times$ eastTRUE  &                 &                &                 &                & -0.1201$^{***}$\\   
-                                 &                 &                &                 &                & (0.0259)\\   
+   singleTRUE                    &                 &                &                 &                & 0.1133$^{***}$\\   
+                                 &                 &                &                 &                & (0.0086)\\   
+   singleTRUE $\times$ eastTRUE  &                 &                &                 &                & -0.0216$^{**}$\\   
+                                 &                 &                &                 &                & (0.0086)\\   
    \midrule
    \emph{Fixed-effects}\\
    saleYear                      & Yes             & Yes            & Yes             & Yes            & Yes\\  
    age                           & Yes             & Yes            & Yes             & Yes            & Yes\\  
    \midrule
    \emph{Fit statistics}\\
-   Observations                  & 1,592           & 1,592          & 1,592           & 1,592          & 1,592\\  
-   R$^2$                         & 0.77255         & 0.78560        & 0.77715         & 0.78638        & 0.77723\\  
-   Within R$^2$                  & 0.75673         & 0.77069        & 0.76165         & 0.77152        & 0.76174\\  
+   Observations                  & 39,435          & 39,435         & 39,435          & 1,592          & 39,435\\  
+   R$^2$                         & 0.94065         & 0.93857        & 0.94090         & 0.78638        & 0.94102\\  
+   Within R$^2$                  & 0.48634         & 0.46831        & 0.48847         & 0.77152        & 0.48953\\  
    \midrule \midrule
    \multicolumn{6}{l}{\emph{IID standard-errors in parentheses}}\\
    \multicolumn{6}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
@@ -382,21 +497,21 @@ collinearity (see $collin.var).
    Model:                   & (1)             & (2)\\  
    \midrule
    \emph{Variables}\\
-   lsqft                    & -0.2798$^{***}$ & -0.1496$^{***}$\\   
-                            & (0.0166)        & (0.0282)\\   
-   eastTRUE                 & -0.4198$^{***}$ & 1.097$^{***}$\\   
-                            & (0.0100)        & (0.2673)\\   
-   lsqft $\times$ eastTRUE  &                 & -0.1966$^{***}$\\   
-                            &                 & (0.0346)\\   
+   lsqft                    & -0.3531$^{***}$ & -0.2628$^{***}$\\   
+                            & (0.0055)        & (0.0089)\\   
+   eastTRUE                 & -0.4021$^{***}$ & 0.7153$^{***}$\\   
+                            & (0.0030)        & (0.0875)\\   
+   lsqft $\times$ eastTRUE  &                 & -0.1457$^{***}$\\   
+                            &                 & (0.0114)\\   
    \midrule
    \emph{Fixed-effects}\\
    saleYear                 & Yes             & Yes\\  
    age                      & Yes             & Yes\\  
    \midrule
    \emph{Fit statistics}\\
-   Observations             & 1,592           & 1,592\\  
-   R$^2$                    & 0.57012         & 0.57881\\  
-   Within R$^2$             & 0.53592         & 0.54530\\  
+   Observations             & 39,435          & 39,435\\  
+   R$^2$                    & 0.94002         & 0.94027\\  
+   Within R$^2$             & 0.34256         & 0.34527\\  
    \midrule \midrule
    \multicolumn{3}{l}{\emph{IID standard-errors in parentheses}}\\
    \multicolumn{3}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
@@ -411,17 +526,17 @@ collinearity (see $collin.var).
 > plex4 <- WIDTH*DEPTH*1/4
 > sqft <- c(Laneway,Single,Duplex,plex4)
 > print(summary(df[,.(lsqft,CONVEYANCE_PRICE,age,saleYear,east)]))
-     lsqft       CONVEYANCE_PRICE        age           saleYear   
- Min.   :6.458   Min.   :  490000   Min.   : 0.00   Min.   :2017  
- 1st Qu.:7.485   1st Qu.: 1350000   1st Qu.: 9.00   1st Qu.:2017  
- Median :7.688   Median : 1620000   Median :22.00   Median :2018  
- Mean   :7.633   Mean   : 1874711   Mean   :24.56   Mean   :2018  
- 3rd Qu.:7.819   3rd Qu.: 2218000   3rd Qu.:38.00   3rd Qu.:2019  
- Max.   :8.281   Max.   :10500000   Max.   :94.00   Max.   :2019  
+     lsqft       CONVEYANCE_PRICE        age            saleYear   
+ Min.   :6.339   Min.   :       1   Min.   :  0.00   Min.   :1974  
+ 1st Qu.:7.493   1st Qu.:  250000   1st Qu.:  4.00   1st Qu.:1992  
+ Median :7.673   Median :  465000   Median : 16.00   Median :2003  
+ Mean   :7.623   Mean   :  786172   Mean   : 18.57   Mean   :2002  
+ 3rd Qu.:7.789   3rd Qu.: 1115000   3rd Qu.: 29.00   3rd Qu.:2013  
+ Max.   :8.559   Max.   :41656588   Max.   :111.00   Max.   :2025  
     east        
  Mode :logical  
- FALSE:908      
- TRUE :1989     
+ FALSE:16950    
+ TRUE :41806    
                 
                 
                 
@@ -440,4 +555,4 @@ collinearity (see $collin.var).
 > q("no")
 > proc.time()
    user  system elapsed 
- 28.747   0.791  16.521 
+ 27.027   1.269  17.381 

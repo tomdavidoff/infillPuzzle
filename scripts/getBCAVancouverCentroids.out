@@ -31,7 +31,7 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > # ============================================================================
 > # Configuration
 > # ============================================================================
-> bcaFile<- "/Volumes/T7Office/bigFiles/bca_folios_spatial_file_20251103/bca_folios.gpkg.gpkg"
+> bcaFile<- "/Volumes/T7Office/bigFiles/latestSpatialBCA/2026-01-09_bca_folios.gpkg"
 > outFile   <- "~/OneDrive - UBC/dataProcessed/bca25Centroids.rds"
 > 
 > # ============================================================================
@@ -41,13 +41,13 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > cat("Loading Vancouver residential parcels from BCA \n")
 Loading Vancouver residential parcels from BCA 
 > cat("Source:", bcaFile, "\n")
-Source: /Volumes/T7Office/bigFiles/bca_folios_spatial_file_20251103/bca_folios.gpkg.gpkg 
+Source: /Volumes/T7Office/bigFiles/latestSpatialBCA/2026-01-09_bca_folios.gpkg 
 > 
 > sBCA<- st_read(
 +   bcaFile,
 +   layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
 +   query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
-+            WHERE JURISDICTION_CODE='200'",
++            WHERE REGIONAL_DISTRICT_CODE='15'",
 +   quiet = TRUE
 + )
 Warning message:
@@ -56,7 +56,7 @@ In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
 >            #AND (ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling')
 > 
 > cat("Parcels loaded:", nrow(sBCA), "\n")
-Parcels loaded: 223292 
+Parcels loaded: 966802 
 > cat("CRS:", st_crs(sBCA)$epsg, "\n")
 CRS: 3005 
 > # 1) keep only the ID + polygon geometry
@@ -87,17 +87,17 @@ CRS: 3005
 > print(dt_out)
             ROLL_NUMBER       lon      lat
                  <char>     <num>    <num>
-     1: 001025638140000 -123.2079 49.27005
-     2: 001025638280000 -123.2076 49.27000
-     3: 001025638480000 -123.2076 49.26974
-     4: 001025638660000 -123.2076 49.26949
-     5: 001025638920000 -123.2076 49.26926
+     1: 001640020020000 -123.2147 49.26881
+     2: 001686032390000 -123.1926 49.26020
+     3: 001670037240009 -123.1874 49.26323
+     4: 001686026110000 -123.2056 49.26039
+     5: 001688022610000 -123.2102 49.25956
     ---                                   
-223288: 013645198400016 -123.0943 49.26502
-223289: 011790156570014 -123.1227 49.22663
-223290: 023718301400009 -123.0359 49.23964
-223291: 008730135160000 -123.1364 49.24147
-223292: 002640087630000 -123.1536 49.26841
+966798:        01020082 -123.2317 49.25596
+966799:        01020061 -123.2317 49.25596
+966800:        01020014 -123.2317 49.25596
+966801:        01020104 -123.2317 49.25596
+966802:        04557000 -122.6293 49.35263
 > 
 > saveRDS(dt_out,outFile)
 > print("foo")
@@ -106,4 +106,4 @@ CRS: 3005
 > q("no")
 > proc.time()
    user  system elapsed 
-  3.795   0.594   4.381 
+ 16.613   1.543  20.776 

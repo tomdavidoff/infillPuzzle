@@ -1,0 +1,48 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> t <- Sys.time()
+> N <- 10000000
+> x <- runif(N)
+> y <- rnorm(N)
+> print(summary(lm(y ~ x)))
+
+Call:
+lm(formula = y ~ x)
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-5.3284 -0.6750 -0.0001  0.6750  5.1089 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)
+(Intercept) -0.0001034  0.0006325  -0.163     0.87
+x           -0.0002912  0.0010954  -0.266     0.79
+
+Residual standard error: 1 on 9999998 degrees of freedom
+Multiple R-squared:  7.068e-09,	Adjusted R-squared:  -9.293e-08 
+F-statistic: 0.07068 on 1 and 9999998 DF,  p-value: 0.7904
+
+> T <- Sys.time()
+> print(T - t)
+Time difference of 3.572272 secs
+> 
+> proc.time()
+   user  system elapsed 
+  3.366   0.269   3.658 

@@ -1,0 +1,2 @@
+getBCAVancouverCentroids.R: gets centroids for properties
+ppsfElasticity.R: metroWide -- look at year-geography (tract? Neighbourhood probably) ppsf mean, median, and elasticity of ppsf with respect to square feet for Single only and then single and duplex, see how strong the relationship.

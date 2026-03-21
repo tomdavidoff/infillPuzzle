@@ -77,12 +77,21 @@ df <- as.data.table(sMerge)
 MINSQFT <- 400
 df[,propertyType:=ifelse(ACTUAL_USE_DESCRIPTION %chin% c("Single Family Dwelling","Residential Dwelling with Suite"),"single",ifelse(grepl("Duplex,",ACTUAL_USE_DESCRIPTION),"duplex",ifelse(ACTUAL_USE_DESCRIPTION=="Row Housing (Single Unit Ownership)","TH","condo")))]
 df[,lsqft := log(MB_Total_Finished_Area)]
+df[,landArea:=Land_Width_Width*Land_Depth_Depth]
 df <- df[!is.na(lsqft) & !is.na(CONVEYANCE_PRICE) & !is.na(age) & !is.na(lon) & !is.na(lat) & !is.na(saleYear) & !is.na(CTNAME) & CONVEYANCE_PRICE>0 & age>=0 & MB_Total_Finished_Area>MINSQFT]
+# is it possible that lot size is just additive
+
+r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE & Land_Depth_Depth>100])
+r1 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*log(Land_Width_Width)*log(Land_Depth_Depth) |saleYear+age,data=df[age<MAXAGE & saleYear>2016 & Land_Depth_Depth>100])
+r2 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*log(landArea) |saleYear+age,data=df[age<MAXAGE & saleYear>2016 & Land_Depth_Depth>100])
+print(etable(r0,r1,r2,tex=TRUE,file="text/vancouverLotSize.tex"),append=FALSE)
+
 MINWIDTH <- 30
 MAXWIDTH <- 35 # over half of properties
 df <- df[Land_Width_Width %between% c(MINWIDTH,MAXWIDTH)]
 df[,east:=lon>ONTARIOLON]
 df[,single:=propertyType=="single"]
+
 
 # is there a trend in high end quantiles?
 dtIQR <- data.table(year=numeric(),iqr=numeric())
@@ -110,14 +119,14 @@ lapply(list(ancientYears,oldYears,modYears,newYears), residPlot)
 
 print(etable(feols(log(CONVEYANCE_PRICE) ~ lsqft + i(propertyType)*east | saleYear + age,data=df[age<MAXAGE])))
 
-df <- df[saleYear>2016 & saleYear<2020,]
+dfT <- df[saleYear>2016 & saleYear<2020,]
 
-r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE])
-rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft + east|saleYear+age+east,data=df[age<MAXAGE])
+r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=dfT[age<MAXAGE])
+rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft + east|saleYear+age+east,data=dfT[age<MAXAGE])
 rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon|saleYear+age,data=df[age<MAXAGE])
-rG <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon*distDowntown|saleYear+age,data=df[age<MAXAGE])
-rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+NEIGHBOURHOOD,data=df[age<MAXAGE])
-rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+CTNAME,data=df[age<MAXAGE])
+rG <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon*distDowntown|saleYear+age,data=dfT[age<MAXAGE])
+rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+NEIGHBOURHOOD,data=dfT[age<MAXAGE])
+rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age+CTNAME,data=dfT[age<MAXAGE])
 # create a latex table of adjusted r2 for these regressions with brief descriptive names
 baseRegTable <- data.table(
   Specification = c("Baseline", "East Dummy", "Longitude ", "Longitude x Distance","Neighbourhood FE", "Census Tract FE"),
@@ -125,16 +134,23 @@ baseRegTable <- data.table(
 )
 print(xtable(baseRegTable),file="text/vancouverRegressionComparisonTable.tex",include.rownames=FALSE, floating=FALSE)
 
-r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=df[age<MAXAGE])
-rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east|saleYear+age ,data=df[age<MAXAGE])
-rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft*lon|saleYear+age ,data=df[age<MAXAGE])
-rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*NEIGHBOURHOOD |saleYear+age,data=df[age<MAXAGE])
-rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft*CTNAME |saleYear+age,data=df[age<MAXAGE])
+r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft |saleYear+age,data=dfT[age<MAXAGE])
+rD <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east|saleYear+age ,data=dfT[age<MAXAGE])
+rL <- feols(log(CONVEYANCE_PRICE) ~ lsqft*lon|saleYear+age ,data=dfT[age<MAXAGE])
+rLN <- feols(log(CONVEYANCE_PRICE) ~ lsqft*NEIGHBOURHOOD |saleYear+age,data=dfT[age<MAXAGE])
+rLT <- feols(log(CONVEYANCE_PRICE) ~ lsqft*CTNAME |saleYear+age,data=dfT[age<MAXAGE])
 interRegTable <- data.table(
   Specification = c("Baseline", "East Dummy Interaction", "Longitude Interaction", "Neighbourhood Interaction", "Census Tract Interaction"),
   Adjusted_R2 = sapply(list(r0,rD, rL, rLN, rLT), function(reg) round(as.numeric(fitstat(reg, "ar2")),2))
 )
 print(xtable(interRegTable),file="text/vancouverInteractionRegressionComparisonTable.tex",include.rownames=FALSE, floating=FALSE)
+
+# trend??
+r0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*saleYear+east*saleYear+east*lsqft |age,data=df[age<MAXAGE & saleYear>2016])
+r1 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east*saleYear|age,data=df[age<MAXAGE & saleYear>2016])
+r2 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east+lsqft*saleYear|saleYear+age,data=df[age<MAXAGE & saleYear>2016])
+r3 <- feols(log(CONVEYANCE_PRICE) ~ lsqft*east+i(saleYear)*lsqft|saleYear+age,data=df[age<MAXAGE & saleYear>2016])
+print(etable(r0,r1,r2,r3,tex=TRUE))
 
 rD0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft + east|saleYear+age,data=df[age<MAXAGE])
 rL0 <- feols(log(CONVEYANCE_PRICE) ~ lsqft + lon|saleYear+age,data=df[age<MAXAGE])
