@@ -1,0 +1,454 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # specCustom.R
+> # R to determine spec/custom nature of permits
+> # Tom Davidoff
+> # 03/22/26
+> 
+> library(data.table)
+> 
+> dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
+> print(summary(dtChoice))
+    CTUID           ROLL_NUMBER        zoning_classification zoning_category   
+ Length:5708        Length:5708        Length:5708           Length:5708       
+ Class :character   Class :character   Class :character      Class :character  
+ Mode  :character   Mode  :character   Mode  :character      Mode  :character  
+                                                                               
+                                                                               
+                                                                               
+                                                                               
+ zoning_district      folioID          permitnumber      
+ Length:5708        Length:5708        Length:5708       
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+                                                         
+ permitnumbercreateddate     use            MB_effective_year 
+ Min.   :2017-01-03      Length:5708        Length:5708       
+ 1st Qu.:2019-06-19      Class :character   Class :character  
+ Median :2021-08-25      Mode  :character   Mode  :character  
+ Mean   :2021-06-25                                           
+ 3rd Qu.:2023-08-25                                           
+ Max.   :2025-11-20                                           
+                                                              
+ MB_total_finished_area neighbourhoodDescription   address         
+ Length:5708            Length:5708              Length:5708       
+ Class :character       Class :character         Class :character  
+ Mode  :character       Mode  :character         Mode  :character  
+                                                                   
+                                                                   
+                                                                   
+                                                                   
+    LANDAREA       landWidth          landDepth         geo_point_2d      
+ Min.   :0.3178   Length:5708        Length:5708        Length:5708       
+ 1st Qu.:0.8070   Class :character   Class :character   Class :character  
+ Median :1.2002   Mode  :character   Mode  :character   Mode  :character  
+ Mean   :1.3036                                                           
+ 3rd Qu.:1.5340                                                           
+ Max.   :3.5378                                                           
+                                                                          
+  typeofwork         applicant          distToSingle     distToLaneway     
+ Length:5708        Length:5708        Min.   :  0.000   Min.   :   0.000  
+ Class :character   Class :character   1st Qu.:  1.408   1st Qu.:   2.236  
+ Mode  :character   Mode  :character   Median : 19.811   Median :  27.202  
+                                       Mean   : 36.698   Mean   :  49.214  
+                                       3rd Qu.: 61.955   3rd Qu.:  66.432  
+                                       Max.   :272.671   Max.   :1298.678  
+                                       NA's   :3792      NA's   :2903      
+ nearestSinglePermit nearestLanewayPermit
+ Length:5708         Length:5708         
+ Class :character    Class :character    
+ Mode  :character    Mode  :character    
+                                         
+                                         
+                                         
+                                         
+> dtChoice[,year:=year(permitnumbercreateddate)]
+> dtChoice <- dtChoice[year >= 2018 ] # so finished
+> 
+> dtSales <- fread("~/OneDrive - UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_sales_20250331_REVD25.csv",select=c("FOLIO_ID","CONVEYANCE_DATE"))
+> print(head(dtSales))
+     FOLIO_ID CONVEYANCE_DATE
+       <char>           <i64>
+1: A000000045  20080415000000
+2: A000000045  19880830000000
+3: A000000045  19830127000000
+4: A000000046  20121031000000
+5: A000000047  19771115000000
+6: A00000004B  20040315000000
+> 
+> dtDesc<- fread("~/OneDrive - UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_descriptions_20250331_REVD25.csv",select=c("FOLIO_ID","ROLL_NUMBER","NEIGHBOURHOOD"))
+> 
+> dtSales <- merge(dtSales,dtDesc,by="FOLIO_ID",all.x=TRUE)
+> dtSales[,roundRoll:=floor(as.numeric(ROLL_NUMBER)/1000)]
+Warning message:
+In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+> 
+> dtChoice[,roundRoll:=floor(as.numeric(ROLL_NUMBER)/1000)]
+> 
+> dtMerge <- merge(dtChoice,dtSales,by="roundRoll",all.x=TRUE)
+> dtMerge[,saleDate:=as.Date(substring(CONVEYANCE_DATE,1,8),format="%Y%m%d")]
+> dtMerge[,lastSale:=max(saleDate,na.rm=TRUE),by="roundRoll"]
+> print(summary(dtMerge))
+   roundRoll            CTUID           ROLL_NUMBER.x     
+ Min.   :1.020e+09   Length:12666       Length:12666      
+ 1st Qu.:5.757e+09   Class :character   Class :character  
+ Median :1.673e+10   Mode  :character   Mode  :character  
+ Mean   :1.439e+10                                        
+ 3rd Qu.:2.061e+10                                        
+ Max.   :2.584e+10                                        
+                                                          
+ zoning_classification zoning_category    zoning_district      folioID         
+ Length:12666          Length:12666       Length:12666       Length:12666      
+ Class :character      Class :character   Class :character   Class :character  
+ Mode  :character      Mode  :character   Mode  :character   Mode  :character  
+                                                                               
+                                                                               
+                                                                               
+                                                                               
+ permitnumber       permitnumbercreateddate     use           
+ Length:12666       Min.   :2018-01-02      Length:12666      
+ Class :character   1st Qu.:2020-09-21      Class :character  
+ Mode  :character   Median :2021-12-11      Mode  :character  
+                    Mean   :2022-02-14                        
+                    3rd Qu.:2024-01-29                        
+                    Max.   :2025-11-20                        
+                                                              
+ MB_effective_year  MB_total_finished_area neighbourhoodDescription
+ Length:12666       Length:12666           Length:12666            
+ Class :character   Class :character       Class :character        
+ Mode  :character   Mode  :character       Mode  :character        
+                                                                   
+                                                                   
+                                                                   
+                                                                   
+   address             LANDAREA       landWidth          landDepth        
+ Length:12666       Min.   :0.3178   Length:12666       Length:12666      
+ Class :character   1st Qu.:0.8885   Class :character   Class :character  
+ Mode  :character   Median :1.2002   Mode  :character   Mode  :character  
+                    Mean   :1.3116                                        
+                    3rd Qu.:1.5554                                        
+                    Max.   :3.5378                                        
+                                                                          
+ geo_point_2d        typeofwork         applicant          distToSingle    
+ Length:12666       Length:12666       Length:12666       Min.   :  0.000  
+ Class :character   Class :character   Class :character   1st Qu.:  1.002  
+ Mode  :character   Mode  :character   Mode  :character   Median : 20.225  
+                                                          Mean   : 37.347  
+                                                          3rd Qu.: 62.351  
+                                                          Max.   :272.671  
+                                                          NA's   :8156     
+ distToLaneway      nearestSinglePermit nearestLanewayPermit      year     
+ Min.   :   0.000   Length:12666        Length:12666         Min.   :2018  
+ 1st Qu.:   1.997   Class :character    Class :character     1st Qu.:2020  
+ Median :  26.931   Mode  :character    Mode  :character     Median :2021  
+ Mean   :  50.025                                            Mean   :2022  
+ 3rd Qu.:  69.150                                            3rd Qu.:2024  
+ Max.   :1298.678                                            Max.   :2025  
+ NA's   :6752                                                              
+   FOLIO_ID         CONVEYANCE_DATE          ROLL_NUMBER.y     
+ Length:12666       Min.   :19740115000000   Length:12666      
+ Class :character   1st Qu.:20011031000000   Class :character  
+ Mode  :character   Median :20131008000000   Mode  :character  
+                    Mean   :20093595611792                     
+                    3rd Qu.:20201001000000                     
+                    Max.   :20250312000000                     
+                    NA's   :           116                     
+ NEIGHBOURHOOD         saleDate             lastSale         
+ Length:12666       Min.   :1974-01-15   Min.   :1974-10-15  
+ Class :character   1st Qu.:2001-10-31   1st Qu.:2015-07-03  
+ Mode  :character   Median :2013-10-08   Median :2020-07-03  
+                    Mean   :2009-10-18   Mean   :2017-08-10  
+                    3rd Qu.:2020-09-30   3rd Qu.:2022-11-04  
+                    Max.   :2025-03-12   Max.   :2025-03-12  
+                    NA's   :116          NA's   :116         
+> print(table(dtMerge[,use]))
+
+ duplex laneway   multi  single 
+   1714    4510     528    5914 
+> dtMerge[is.na(lastSale),lastSale:=as.Date("1900-01-01")]
+> dtMerge[,hasPost:= lastSale > permitnumbercreateddate]
+> print(summary(dtMerge[,lastSale]))
+        Min.      1st Qu.       Median         Mean      3rd Qu.         Max. 
+"1900-01-01" "2015-04-08" "2020-06-17" "2016-07-12" "2022-10-27" "2025-03-12" 
+> print(dtMerge[,table(use,hasPost)])
+         hasPost
+use       FALSE TRUE
+  duplex    977  737
+  laneway  4059  451
+  multi     507   21
+  single   4838 1076
+> print(dtMerge[year < 2022,table(use,hasPost)])
+         hasPost
+use       FALSE TRUE
+  duplex    205  477
+  laneway  1647  335
+  multi       7    0
+  single   3021  913
+> print(dtMerge[year < 2021,table(use,hasPost)])
+         hasPost
+use       FALSE TRUE
+  duplex     41   77
+  laneway   644  192
+  multi       3    0
+  single   1884  706
+> print(dtMerge[,table(NEIGHBOURHOOD)])
+NEIGHBOURHOOD
+Arbutus Ridge - Mackenzie Heights                            Cambie 
+                              550                               438 
+                    Cedar Cottage                       Collingwood 
+                              301                               436 
+                           Dunbar                        Fraserview 
+                             1015                               487 
+                        Grandview                     Hastings East 
+                              219                               744 
+                       Kerrisdale                         Killarney 
+                              485                               922 
+                        Kitsilano                            Knight 
+                              388                               695 
+                    Main & Fraser                      Marine Drive 
+                              942                                 4 
+                          Marpole                          Oakridge 
+                              341                               195 
+                       Point Grey                           Renfrew 
+                              760                               481 
+                  Renfrew Heights                       Shaughnessy 
+                              798                               265 
+                  South Granville                   South Vancouver 
+                              461                              1316 
+                       Southlands 
+                              307 
+> print(dtMerge[year < 2022 & NEIGHBOURHOOD=="Dunbar",table(use,hasPost)])
+         hasPost
+use       FALSE TRUE
+  duplex      8   16
+  laneway    95   20
+  single    266   57
+> print(dtMerge[year < 2022 & NEIGHBOURHOOD=="Kitsilano",table(use,hasPost)])
+         hasPost
+use       FALSE TRUE
+  duplex      9   12
+  laneway    30    9
+  single    117   30
+> print(dtMerge[year < 2022 & NEIGHBOURHOOD=="Killarney",table(use,hasPost)])
+         hasPost
+use       FALSE TRUE
+  duplex     17   36
+  laneway   160   50
+  single    168   77
+> print(head(dtMerge[,geo_point_2d]))
+[1] "49.2748703, -123.2230214" "49.2748703, -123.2230214"
+[3] "49.2748703, -123.2230214" "49.2745104, -123.2205835"
+[5] "49.2745104, -123.2205835" "49.2745104, -123.2205835"
+> dtMerge[,c("lat","lon") := tstrsplit(geo_point_2d, ",", fixed=TRUE)]
+> dtMerge[,lon:=as.numeric(lon)]
+> dtMerge[,east:=lon > median(lon,na.rm=TRUE)]
+> print(dtMerge[year < 2022 & east==TRUE,table(use,hasPost)])
+         hasPost
+use       FALSE TRUE
+  duplex    124  358
+  laneway   928  207
+  single   1217  460
+> print(dtMerge[year < 2022 & east==FALSE,table(use,hasPost)])
+         hasPost
+use       FALSE TRUE
+  duplex     81  119
+  laneway   719  128
+  multi       7    0
+  single   1804  453
+> print(dtMerge[use=="single",quantile(distToLaneway,na.rm=TRUE),by=east])
+      east          V1
+    <lgcl>       <num>
+ 1:  FALSE    0.000000
+ 2:  FALSE    2.237831
+ 3:  FALSE   36.799490
+ 4:  FALSE   82.905142
+ 5:  FALSE 1298.678413
+ 6:   TRUE    0.000000
+ 7:   TRUE    1.406326
+ 8:   TRUE   22.114024
+ 9:   TRUE   44.875558
+10:   TRUE  269.151540
+> print(dtMerge[use=="single",mean(distToLaneway<20,na.rm=TRUE),by=east])
+     east        V1
+   <lgcl>     <num>
+1:  FALSE 0.3382142
+2:   TRUE 0.4751131
+> print(summary(dtMerge[,lon]))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+ -123.2  -123.2  -123.1  -123.1  -123.1  -123.0 
+> print(dtMerge[use=="single",mean(distToLaneway<20,na.rm=TRUE),by=c("east","year")])
+      east  year        V1
+    <lgcl> <int>     <num>
+ 1:  FALSE  2021 0.4358974
+ 2:  FALSE  2023 0.3870130
+ 3:  FALSE  2025 0.5812500
+ 4:  FALSE  2020 0.4139785
+ 5:  FALSE  2018 0.1229236
+ 6:  FALSE  2024 0.5052265
+ 7:  FALSE  2019 0.1431412
+ 8:  FALSE  2022 0.3832487
+ 9:   TRUE  2024 0.5945946
+10:   TRUE  2019 0.2609971
+11:   TRUE  2021 0.6560284
+12:   TRUE  2023 0.5739130
+13:   TRUE  2020 0.6572581
+14:   TRUE  2025 0.3472222
+15:   TRUE  2022 0.6447368
+16:   TRUE  2018 0.1755725
+> print(dtMerge[use!="laneway",mean(use=="duplex"),by=c("east","year")])
+      east  year          V1
+    <lgcl> <int>       <num>
+ 1:  FALSE  2021 0.172995781
+ 2:  FALSE  2023 0.169851380
+ 3:  FALSE  2025 0.292500000
+ 4:  FALSE  2020 0.055555556
+ 5:  FALSE  2018 0.000000000
+ 6:  FALSE  2024 0.287744227
+ 7:  FALSE  2019 0.027027027
+ 8:  FALSE  2022 0.112334802
+ 9:   TRUE  2019 0.060606061
+10:   TRUE  2022 0.356540084
+11:   TRUE  2024 0.381048387
+12:   TRUE  2021 0.414937759
+13:   TRUE  2023 0.393782383
+14:   TRUE  2020 0.189542484
+15:   TRUE  2025 0.387543253
+16:   TRUE  2018 0.003802281
+> print(dtMerge[use!="laneway" & landWidth>30 & landWidth<36,mean(use=="duplex"),by=c("east","year")])
+      east  year          V1
+    <lgcl> <int>       <num>
+ 1:  FALSE  2021 0.207977208
+ 2:  FALSE  2022 0.214285714
+ 3:  FALSE  2023 0.303738318
+ 4:  FALSE  2025 0.443750000
+ 5:  FALSE  2018 0.000000000
+ 6:  FALSE  2020 0.033613445
+ 7:  FALSE  2019 0.000000000
+ 8:  FALSE  2024 0.620320856
+ 9:   TRUE  2022 0.391447368
+10:   TRUE  2024 0.455737705
+11:   TRUE  2019 0.047120419
+12:   TRUE  2021 0.403314917
+13:   TRUE  2023 0.455252918
+14:   TRUE  2020 0.203821656
+15:   TRUE  2025 0.474452555
+16:   TRUE  2018 0.006514658
+> print(dtMerge[use!="laneway" & landWidth>40 ,mean(use=="duplex"),by=c("east","year")])
+      east  year         V1
+    <lgcl> <int>      <num>
+ 1:  FALSE  2018 0.00000000
+ 2:  FALSE  2024 0.10810811
+ 3:  FALSE  2023 0.02840909
+ 4:  FALSE  2020 0.08450704
+ 5:  FALSE  2021 0.14831461
+ 6:  FALSE  2022 0.04188482
+ 7:  FALSE  2025 0.20212766
+ 8:  FALSE  2019 0.05017921
+ 9:   TRUE  2021 0.46268657
+10:   TRUE  2023 0.13888889
+11:   TRUE  2025 0.30000000
+12:   TRUE  2022 0.26881720
+13:   TRUE  2024 0.17355372
+14:   TRUE  2020 0.18181818
+15:   TRUE  2018 0.00000000
+16:   TRUE  2019 0.05932203
+> print(dtMerge[use!="laneway",mean(use=="multi"),by=c("east","year")])
+      east  year          V1
+    <lgcl> <int>       <num>
+ 1:  FALSE  2021 0.004219409
+ 2:  FALSE  2023 0.012738854
+ 3:  FALSE  2025 0.307500000
+ 4:  FALSE  2020 0.005050505
+ 5:  FALSE  2018 0.000000000
+ 6:  FALSE  2024 0.202486679
+ 7:  FALSE  2019 0.001930502
+ 8:  FALSE  2022 0.019823789
+ 9:   TRUE  2019 0.000000000
+10:   TRUE  2022 0.002109705
+11:   TRUE  2024 0.320564516
+12:   TRUE  2021 0.000000000
+13:   TRUE  2023 0.010362694
+14:   TRUE  2020 0.000000000
+15:   TRUE  2025 0.363321799
+16:   TRUE  2018 0.000000000
+> print(dtMerge[use!="laneway" & landWidth>=40,mean(use=="multi"),by=c("east","year")])
+      east  year          V1
+    <lgcl> <int>       <num>
+ 1:  FALSE  2018 0.000000000
+ 2:  FALSE  2024 0.262458472
+ 3:  FALSE  2023 0.021739130
+ 4:  FALSE  2020 0.004566210
+ 5:  FALSE  2021 0.008752735
+ 6:  FALSE  2022 0.046632124
+ 7:  FALSE  2025 0.335051546
+ 8:  FALSE  2019 0.000000000
+ 9:   TRUE  2021 0.000000000
+10:   TRUE  2023 0.045977011
+11:   TRUE  2025 0.515151515
+12:   TRUE  2022 0.000000000
+13:   TRUE  2024 0.473282443
+14:   TRUE  2020 0.000000000
+15:   TRUE  2018 0.000000000
+16:   TRUE  2019 0.000000000
+> print(dtMerge[use=="single" & landWidth>=40,mean(distToLaneway<20,na.rm=TRUE),by=c("east","year")])
+      east  year        V1
+    <lgcl> <int>     <num>
+ 1:  FALSE  2018 0.1250000
+ 2:  FALSE  2024 0.5508021
+ 3:  FALSE  2023 0.3390805
+ 4:  FALSE  2020 0.4000000
+ 5:  FALSE  2021 0.4470284
+ 6:  FALSE  2022 0.3409091
+ 7:  FALSE  2025 0.5681818
+ 8:  FALSE  2019 0.1455224
+ 9:   TRUE  2021 0.7302632
+10:   TRUE  2023 0.7285714
+11:   TRUE  2025 0.0000000
+12:   TRUE  2020 0.6336634
+13:   TRUE  2024 0.6458333
+14:   TRUE  2018 0.1075949
+15:   TRUE  2022 0.7375000
+16:   TRUE  2019 0.2743363
+> print(dtMerge[use=="single" & landWidth>=30 & landWidth<=35,mean(distToLaneway<20,na.rm=TRUE),by=c("east","year")])
+      east  year        V1
+    <lgcl> <int>     <num>
+ 1:  FALSE  2022 0.5890411
+ 2:  FALSE  2023 0.4836601
+ 3:  FALSE  2021 0.4982206
+ 4:  FALSE  2018 0.1322314
+ 5:  FALSE  2025 0.7222222
+ 6:  FALSE  2020 0.5130435
+ 7:  FALSE  2019 0.1783784
+ 8:  FALSE  2024 0.5593220
+ 9:   TRUE  2024 0.6500000
+10:   TRUE  2019 0.2122905
+11:   TRUE  2023 0.4859155
+12:   TRUE  2020 0.7007874
+13:   TRUE  2021 0.5987654
+14:   TRUE  2022 0.5777778
+15:   TRUE  2018 0.1920530
+16:   TRUE  2025 0.5714286
+> 
+> proc.time()
+   user  system elapsed 
+ 33.769  11.162  11.531 

@@ -399,4 +399,4 @@ mean_ppsf 0.670184  1.000000
 > 
 > proc.time()
    user  system elapsed 
- 19.973   3.182  13.516 
+ 36.917   3.422 275.743 

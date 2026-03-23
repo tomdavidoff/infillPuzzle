@@ -6,6 +6,7 @@
 
 library(data.table)
 library(ggplot2)
+library(fixest)
 
 # get lat/lon in case want to do census tracts
 dG <- readRDS("~/OneDrive - UBC/dataProcessed/bca25Centroids.rds")
@@ -16,13 +17,19 @@ dS <- fread("~/OneDrive - UBC/Documents/data/bca/data_advice_REVD25_20250331/bca
 print(head(dS))
 dS[,year:=as.numeric(substr(CONVEYANCE_DATE,1,4))]
 MINYEAR <- 2016
-dS <- dS[year>=MINYEAR & CONVEYANCE_TYPE_DESCRIPTION=="Improved Single Property Transaction"]
+MAXYEAR <- 2024
+dS <- dS[year>=MINYEAR & year<=MAXYEAR & CONVEYANCE_TYPE_DESCRIPTION=="Improved Single Property Transaction"]
 
 dD <- fread("~/OneDrive - UBC/Documents/data/bca/data_advice_REVD25_20250331/bca_folio_descriptions_20250331_REVD25.csv",select=c("ROLL_NUMBER","FOLIO_ID","JURISDICTION","JURISDICTION_CODE","NEIGHBOURHOOD","ACTUAL_USE_DESCRIPTION"))
 print(summary(dD))
 # sort by number of cases
 dD[,nUse:=.N,by=ACTUAL_USE_DESCRIPTION]
 dD <- dD[ACTUAL_USE_DESCRIPTION %in% c("Single Family Dwelling","Residential Dwelling with Suite") | grepl("Duplex",ACTUAL_USE_DESCRIPTION)]
+VANONLY <- 0
+if (VANONLY==1) {
+	dD <- dD[JURISDICTION_CODE==200]
+	print(paste0("Keeping only Vancouver, ",nrow(dD)," records"))
+}
 
 # inventories to get
 dtMapper <- fread("~/OneDrive - UBC/dataProcessed/regional_district_assessment_area.csv")
@@ -31,8 +38,7 @@ dtMapper <- fread("~/OneDrive - UBC/dataProcessed/regional_district_assessment_a
 print(dtMapper[`Assessment Area`==9])
 gV <- as.numeric(dtMapper[`Assessment Area`==9, .(`Regional District`)][1])
 print(gV)
-needInventory <- unique(dtMapper[`Regional District`==gV, .(`Assessment Area`)])
-print(needInventory)
+needInventory <- unique(dtMapper[`Regional District`==gV, .(AA=`Assessment Area`)]$AA)
 
 # loop through like this with needed inventories, then rbind them together
 for (i in 1:length(needInventory)) {
@@ -50,10 +56,17 @@ for (i in 1:length(needInventory)) {
 	}
 }
 print(head(dtInventory))
+print(dtInventory[Jurisdiction=="200",Roll_Number])
+print(dD[JURISDICTION_CODE==200,ROLL_NUMBER])
+print(table(dtInventory[,Jurisdiction]))
 
 # merge on as.numeric(roll_number) and Jurisdiction/JURISDICTION_CODE inventory, description
+
+
+print(head(dD[,.(ROLL_NUMBER,JURISDICTION_CODE,JURISDICTION)]))
 dD[, ROLL_NUMBER := as.numeric(ROLL_NUMBER)]
 dtInventory[,ROLL_NUMBER := as.numeric(Roll_Number)]
+print(head(dtInventory[,.(ROLL_NUMBER,Roll_Number,Jurisdiction)]))
 dD[,id:=paste(ROLL_NUMBER,JURISDICTION_CODE)]
 dtInventory <- dtInventory[!is.na(ROLL_NUMBER)]
 dD <- dD[!is.na(ROLL_NUMBER)]
@@ -75,12 +88,28 @@ dtMerge[,logppsf:=log(ppsf)]
 dtMerge[,logsqft:=log(MB_Total_Finished_Area)]
 dtMerge <- dtMerge[!is.na(logppsf) & !is.na(logsqft)]
 # compute elasticity by group with cov/var
-dtMerge[,cov:=cov(logppsf,logsqft), by=group]
-dtMerge[,var:=var(logsqft), by=group]
-dtMerge[,elasticity:=cov/var]
-dtMerge[,mppsf:=median(ppsf), by=group]
-ggplot(dtMerge[nGroup>quantile(nGroup,.25) & abs(elasticity)<1.5], aes(x=elasticity, y=mppsf)) + geom_point() 
-ggsave("text/ppsfElasticityMetro.png", width=10, height=6)
+MINAGE <- 5
+MAXAGE <- 50
+MAXWIDTH <- 90
+dtMerge[,age:=year-MB_Effective_Year]
+print(head(dtMerge))
+dtGroup <- dtMerge[age<=MAXAGE & age>=MINAGE & Land_Width_Width<MAXWIDTH, .(cov= cov(logppsf,logsqft), var=var(logsqft), mppsf=median(log(ppsf)),nGroup=.N), by=c("year","NEIGHBOURHOOD","JURISDICTION")]
+print(head(dtGroup))
+dtGroup[,elasticity:=cov/var]
+dtGroupVanLot <- dtMerge[age<=MAXAGE & age>=MINAGE & Land_Width_Width<35 & Land_Width_Width>31 & JURISDICTION=="City of Vancouver", .(cov= cov(logppsf,logsqft), var=var(logsqft), mppsf=median(log(ppsf)),nGroup=.N), by=c("year","NEIGHBOURHOOD","JURISDICTION")]
+dtGroupVanLot[,elasticity:=cov/var]
+MINOBS <- 20
+dtGroup <- dtGroup[nGroup>=MINOBS]
+print(summary(dtGroup))
+print(summary(feols(elasticity ~ mppsf|year,data=dtGroup)))
+print(summary(feols(elasticity ~ mppsf*i(year),data=dtGroup)))
+print(summary(feols(elasticity ~ mppsf|year,data=dtGroup[JURISDICTION=="City of Vancouver"])))
+print(summary(feols(elasticity ~ mppsf*i(year),data=dtGroup[JURISDICTION=="City of Vancouver"])))
+# One plot per year, bubbles proportionate to obs, xlim -1 to 0
+ggplot(dtGroup, aes(x=elasticity, y=mppsf, size=nGroup)) + geom_point() + facet_wrap(~year) + theme_bw() + labs(x="Elasticity of ppsf wrt sqft", y="Median ppsf", size="Number of observations") + xlim(-1.5,.25)
+ggsave("text/ppsfElasticityMetro.png", width=10, height=6) 
+ggplot(dtGroupVanLot, aes(x=elasticity, y=mppsf, size=nGroup)) + geom_point() + facet_wrap(~year) + theme_bw() + labs(x="Elasticity of ppsf wrt sqft", y="Median ppsf", size="Number of observations")+ xlim(-1.5,.25)
+ggsave("text/ppsfElasticityVanLot.png", width=10, height=6) 
 
 #elasticityResults <- dtMerge[ACTUAL_USE_DESCRIPTION %in% c("Single Family Dwelling","Residential Dwelling with Suite"), .(mppsf:=median(ppsf),elasticity=cov(logppsf,logsqft)/var(logsqft)), by=group]
 #print(elasticityResults)
