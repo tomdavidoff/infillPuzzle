@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -127,6 +127,7 @@ In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
 > dtMerge[, logsqft := log(MB_Total_Finished_Area)]
 > dtMerge[, age     := year - MB_Effective_Year]
 > dtMerge <- dtMerge[!is.na(logppsf) & !is.na(logsqft)]
+> dtMerge[,east:=lon>=LON_ONTARIO]
 > 
 > # ── Lot geometry subset for estimation and prediction: 31-35' wide, >100' deep ──
 > LOT_WIDTH_LO <- 31; LOT_WIDTH_HI <- 35; LOT_DEPTH_MIN <- 100
@@ -134,7 +135,7 @@ In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
 +                  Land_Depth_Depth > LOT_DEPTH_MIN]
 > 
 > # ── Neighbourhood x year stats: single family on lot subset ──
-> MINAGE <- 0; MAXAGE <- 30; MINOBS <- 20
+> MINAGE <- 0; MAXAGE <- 30; MINOBS <- 30
 > dtGroup <- dtLot[use == "single" & age >= MINAGE & age <= MAXAGE,
 +                  .(cov      = cov(logppsf, logsqft),
 +                    var      = var(logsqft),
@@ -147,60 +148,101 @@ In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
 > dtGroup <- dtGroup[nGroup >= MINOBS]
 > print(summary(dtGroup))
       year      NEIGHBOURHOOD      JURISDICTION            cov           
- Min.   :2016   Length:108         Length:108         Min.   :-0.064761  
- 1st Qu.:2017   Class :character   Class :character   1st Qu.:-0.011500  
- Median :2020   Mode  :character   Mode  :character   Median :-0.006542  
- Mean   :2019                                         Mean   :-0.007997  
- 3rd Qu.:2021                                         3rd Qu.:-0.002883  
+ Min.   :2016   Length:60          Length:60          Min.   :-0.025615  
+ 1st Qu.:2017   Class :character   Class :character   1st Qu.:-0.012690  
+ Median :2020   Mode  :character   Mode  :character   Median :-0.006891  
+ Mean   :2019                                         Mean   :-0.007871  
+ 3rd Qu.:2021                                         3rd Qu.:-0.002830  
  Max.   :2024                                         Max.   : 0.015910  
       var               mppsf          mlogsqft         nGroup     
- Min.   :0.001768   Min.   :5.863   Min.   :7.684   Min.   :20.00  
- 1st Qu.:0.014874   1st Qu.:6.599   1st Qu.:7.742   1st Qu.:23.75  
- Median :0.020862   Median :6.791   Median :7.790   Median :31.00  
- Mean   :0.024621   Mean   :6.805   Mean   :7.802   Mean   :33.93  
- 3rd Qu.:0.028831   3rd Qu.:7.039   3rd Qu.:7.859   3rd Qu.:40.00  
- Max.   :0.099578   Max.   :7.289   Max.   :8.068   Max.   :77.00  
+ Min.   :0.005499   Min.   :5.863   Min.   :7.684   Min.   :30.00  
+ 1st Qu.:0.015855   1st Qu.:6.599   1st Qu.:7.741   1st Qu.:33.00  
+ Median :0.021434   Median :6.743   Median :7.785   Median :38.50  
+ Mean   :0.024725   Mean   :6.818   Mean   :7.801   Mean   :42.40  
+ 3rd Qu.:0.030501   3rd Qu.:7.057   3rd Qu.:7.862   3rd Qu.:46.25  
+ Max.   :0.061202   Max.   :7.267   Max.   :8.068   Max.   :77.00  
    EastWest           elasticity     
- Length:108         Min.   :-0.9518  
- Class :character   1st Qu.:-0.4399  
- Mode  :character   Median :-0.3018  
-                    Mean   :-0.2858  
-                    3rd Qu.:-0.1600  
+ Length:60          Min.   :-0.8354  
+ Class :character   1st Qu.:-0.4463  
+ Mode  :character   Median :-0.3085  
+                    Mean   :-0.2836  
+                    3rd Qu.:-0.1561  
                     Max.   : 0.9370  
 > 
 > # ── Elasticity regressions (metro and City of Vancouver) ──
 > print(summary(feols(elasticity ~ mppsf | year, data = dtGroup)))
 OLS estimation, Dep. Var.: elasticity
-Observations: 108
+Observations: 60
 Fixed-effects: year: 9
-Standard-errors: IID 
-      Estimate Std. Error t value   Pr(>|t|)    
-mppsf 0.469782   0.108631 4.32459 3.6784e-05 ***
+Standard-errors: Clustered (year) 
+      Estimate Std. Error t value  Pr(>|t|)    
+mppsf 0.618254    0.16374 3.77582 0.0054204 ** 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.265171     Adj. R2: 0.126347
-                 Within R2: 0.160255
+RMSE: 0.229384     Adj. R2: 0.238735
+                 Within R2: 0.305801
 > print(summary(feols(elasticity ~ mppsf | year, data = dtGroup[JURISDICTION == "City of Vancouver"])))
 OLS estimation, Dep. Var.: elasticity
-Observations: 98
+Observations: 53
 Fixed-effects: year: 9
-Standard-errors: IID 
+Standard-errors: Clustered (year) 
       Estimate Std. Error t value  Pr(>|t|)    
-mppsf 0.388605   0.131588  2.9532 0.0040326 ** 
+mppsf 0.609624   0.128983  4.7264 0.0014898 ** 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.260863     Adj. R2: 0.062194
-                 Within R2: 0.09017 
+RMSE: 0.208848     Adj. R2: 0.212576
+                 Within R2: 0.276003
+> print(summary(feols(logppsf ~ logsqft | year , data = dtMerge[JURISDICTION== "City of Vancouver" & use == "single" & east==1 & Land_Width_Width>=50])))
+OLS estimation, Dep. Var.: logppsf
+Observations: 674
+Fixed-effects: year: 9
+Standard-errors: Clustered (year) 
+         Estimate Std. Error  t value   Pr(>|t|)    
+logsqft -0.648262   0.041472 -15.6314 2.7981e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.18447     Adj. R2: 0.674896
+                Within R2: 0.553065
+> print(summary(feols(logppsf ~ logsqft | year , data = dtMerge[JURISDICTION== "City of Vancouver" & use == "single" & east==1 & Land_Width_Width<=36])))
+OLS estimation, Dep. Var.: logppsf
+Observations: 6,799
+Fixed-effects: year: 9
+Standard-errors: Clustered (year) 
+        Estimate Std. Error  t value   Pr(>|t|)    
+logsqft -0.55144   0.025627 -21.5176 2.2913e-08 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.196764     Adj. R2: 0.45878 
+                 Within R2: 0.287718
+> print(summary(feols(logppsf ~ logsqft | year , data = dtMerge[JURISDICTION== "City of Vancouver" & use == "single" & east==0 & Land_Width_Width>=50])))
+OLS estimation, Dep. Var.: logppsf
+Observations: 3,820
+Fixed-effects: year: 9
+Standard-errors: Clustered (year) 
+         Estimate Std. Error  t value   Pr(>|t|)    
+logsqft -0.361383     0.0249 -14.5132 4.9752e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.264365     Adj. R2: 0.209607
+                 Within R2: 0.146223
+> print(summary(feols(logppsf ~ logsqft | year , data = dtMerge[JURISDICTION== "City of Vancouver" & use == "single" & east==0 & Land_Width_Width<=36])))
+OLS estimation, Dep. Var.: logppsf
+Observations: 3,478
+Fixed-effects: year: 9
+Standard-errors: Clustered (year) 
+         Estimate Std. Error t value   Pr(>|t|)    
+logsqft -0.331971   0.026712 -12.428 1.6407e-06 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.23976     Adj. R2: 0.166008
+                Within R2: 0.073099
 > 
 > # ── feols by use type for etable (full dtMerge, not lot subset) ──
 > rs <- feols(logppsf ~ logsqft | year + NEIGHBOURHOOD, data = dtMerge[use == "single"])
-NOTES: 1 observation removed because of infinite values (LHS: 1, RHS: 1).
-       0/8 fixed-effect singletons were removed (8 observations).
+NOTE: 1 observation removed because of infinite values (LHS: 1, RHS: 1).
 > rd <- feols(logppsf ~ logsqft | year + NEIGHBOURHOOD, data = dtMerge[use == "duplex"])
-NOTE: 0/11 fixed-effect singletons were removed (11 observations).
 > rc <- feols(logppsf ~ logsqft | year + NEIGHBOURHOOD, data = dtMerge[use == "condo"])
-NOTES: 2 observations removed because of infinite values (LHS: 2).
-       0/1 fixed-effect singleton was removed (1 observation).
+NOTE: 2 observations removed because of infinite values (LHS: 2).
 > etable(rs, rd, rc, tex = TRUE,
 +        title = "Elasticity of ppsf wrt sqft by type",
 +        fitstat = c("n","r2","ar2"), digits = 3,
@@ -212,11 +254,11 @@ NOTES: 2 observations removed because of infinite values (LHS: 2).
 +   labs(y = "Elasticity of ppsf wrt sqft", x = "Mean log ppsf", size = "N obs") +
 +   ylim(-1.25, .25)
 Warning message:
-Removed 6 rows containing missing values or values outside the scale range
+Removed 2 rows containing missing values or values outside the scale range
 (`geom_point()`). 
 > ggsave("text/ppsfElasticitySingleMetro.png", width = 10, height = 6)
 Warning message:
-Removed 6 rows containing missing values or values outside the scale range
+Removed 2 rows containing missing values or values outside the scale range
 (`geom_point()`). 
 > 
 > # ── Distribution plot: mean log ppsf by neighbourhood x year, City of Vancouver (single, all lots) ──
@@ -246,47 +288,208 @@ In grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x, x$y,  :
 > #   logppsf_hat = mppsf + elasticity * (log(target_sqft) - mlogsqft)
 > # Do this for period of 2017-2018 because of endogeneity of prices to supply by neighbourhood.
 > # Do a regression per neighbourhood and compare regression among single family homes to duplex actuals
-> dtPred <- data.table(NEIGHBOURHOOD=character(),intercept=numeric(),elasticity=numeric(),fittedSingle=numeric(),meanSingle=numeric(),fittedDuplex=numeric(),meanDuplex=numeric())
+> dtPred <- data.table(NEIGHBOURHOOD=character(),year=numeric(),intercept=numeric(),elasticity=numeric(),fittedSingle=numeric(),meanSingle=numeric(),fittedDuplex=numeric(),meanDuplex=numeric(),nobs=numeric())
+> MINOBS <- 20
 > for (n in unique(dtMerge[JURISDICTION=="City of Vancouver", NEIGHBOURHOOD])) {
-+ 	dtTemp <- dtMerge[JURISDICTION=="City of Vancouver" & NEIGHBOURHOOD==n & year %in% 2017:2018 & ((Land_Width_Width >= LOT_WIDTH_LO & Land_Width_Width <= LOT_WIDTH_HI & Land_Depth_Depth >= LOT_DEPTH_MIN )| is.na(Land_Width_Width)) & age >= MINAGE & age <= MAXAGE]
-+ 	if (nrow(dtTemp[use=="single"]) > 20) {
-+ 		m <- feols(logppsf ~ logsqft + log(age), data = dtTemp[use == "single"])
-+ 		intercept <- coef(m)["(Intercept)"]
-+ 		elasticity <- coef(m)["logsqft"]
-+ 		meanSingle <- mean(dtTemp[use == "single", exp(logppsf)], na.rm = TRUE)
-+ 		meanDuplex <- mean(dtTemp[use == "duplex", exp(logppsf)], na.rm = TRUE)
-+ 		dtPred <- rbind(dtPred, data.table(NEIGHBOURHOOD=n, intercept=intercept, elasticity=elasticity, fittedSingle = exp(intercept+elasticity*log(SQFT_SINGLE)),meanSingle=meanSingle, fittedDuplex=exp(intercept+elasticity*log(SQFT_DUPLEX)), meanDuplex=meanDuplex))
-+ 	} else {print(paste("Skipping", n, "due to insufficient observations"))}
++ 	for (y in 2019:2025) {
++ 		dtTemp <- dtMerge[JURISDICTION=="City of Vancouver" & NEIGHBOURHOOD==n & year==y & ((Land_Width_Width >= LOT_WIDTH_LO & Land_Width_Width <= LOT_WIDTH_HI & Land_Depth_Depth >= LOT_DEPTH_MIN )| is.na(Land_Width_Width)) & age >= MINAGE & age <= MAXAGE]
++ 		if (nrow(dtTemp[use=="single"]) >MINOBS) {
++ 			m <- feols(logppsf ~ logsqft + log(age), data = dtTemp[use == "single"])
++ 			nobs <- nrow(dtTemp[use == "single"])
++ 			intercept <- coef(m)["(Intercept)"]
++ 			elasticity <- coef(m)["logsqft"]
++ 			meanSingle <- mean(dtTemp[use == "single", exp(logppsf)], na.rm = TRUE)
++ 			meanDuplex <- mean(dtTemp[use == "duplex", exp(logppsf)], na.rm = TRUE)
++ 			dtPred <- rbind(dtPred, data.table(NEIGHBOURHOOD=n, year=y,intercept=intercept, elasticity=elasticity, fittedSingle = exp(intercept+elasticity*log(SQFT_SINGLE)),meanSingle=meanSingle, fittedDuplex=exp(intercept+elasticity*log(SQFT_DUPLEX)), meanDuplex=meanDuplex,nobs=nobs))
++ 		} else {print(paste("Skipping", n, y,"due to insufficient observations"))}
++ 	}
 + }
-NOTE: 4 observations removed because of infinite values (RHS: 4).
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+NOTE: 2 observations removed because of infinite values (RHS: 2).
+NOTE: 2 observations removed because of infinite values (RHS: 2).
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+[1] "Skipping Point Grey 2025 due to insufficient observations"
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+[1] "Skipping Kitsilano 2023 due to insufficient observations"
+[1] "Skipping Kitsilano 2024 due to insufficient observations"
+[1] "Skipping Kitsilano 2025 due to insufficient observations"
 NOTE: 1 observation removed because of infinite values (RHS: 1).
 NOTE: 2 observations removed because of infinite values (RHS: 2).
 NOTE: 1 observation removed because of infinite values (RHS: 1).
-[1] "Skipping Southlands due to insufficient observations"
-[1] "Skipping Fairview due to insufficient observations"
-[1] "Skipping Shaughnessy due to insufficient observations"
-[1] "Skipping South Granville due to insufficient observations"
-[1] "Skipping Oakridge due to insufficient observations"
+NOTE: 2 observations removed because of infinite values (RHS: 2).
+[1] "Skipping Dunbar 2025 due to insufficient observations"
+[1] "Skipping Arbutus Ridge - Mackenzie Heights 2019 due to insufficient observations"
+[1] "Skipping Arbutus Ridge - Mackenzie Heights 2020 due to insufficient observations"
+[1] "Skipping Arbutus Ridge - Mackenzie Heights 2022 due to insufficient observations"
+[1] "Skipping Arbutus Ridge - Mackenzie Heights 2023 due to insufficient observations"
+[1] "Skipping Arbutus Ridge - Mackenzie Heights 2024 due to insufficient observations"
+[1] "Skipping Arbutus Ridge - Mackenzie Heights 2025 due to insufficient observations"
+[1] "Skipping Kerrisdale 2019 due to insufficient observations"
+[1] "Skipping Kerrisdale 2020 due to insufficient observations"
+[1] "Skipping Kerrisdale 2022 due to insufficient observations"
+[1] "Skipping Kerrisdale 2023 due to insufficient observations"
+[1] "Skipping Kerrisdale 2024 due to insufficient observations"
+[1] "Skipping Kerrisdale 2025 due to insufficient observations"
+[1] "Skipping Southlands 2019 due to insufficient observations"
+[1] "Skipping Southlands 2020 due to insufficient observations"
+[1] "Skipping Southlands 2021 due to insufficient observations"
+[1] "Skipping Southlands 2022 due to insufficient observations"
+[1] "Skipping Southlands 2023 due to insufficient observations"
+[1] "Skipping Southlands 2024 due to insufficient observations"
+[1] "Skipping Southlands 2025 due to insufficient observations"
+[1] "Skipping Fairview 2019 due to insufficient observations"
+[1] "Skipping Fairview 2020 due to insufficient observations"
+[1] "Skipping Fairview 2021 due to insufficient observations"
+[1] "Skipping Fairview 2022 due to insufficient observations"
+[1] "Skipping Fairview 2023 due to insufficient observations"
+[1] "Skipping Fairview 2024 due to insufficient observations"
+[1] "Skipping Fairview 2025 due to insufficient observations"
+[1] "Skipping Shaughnessy 2019 due to insufficient observations"
+[1] "Skipping Shaughnessy 2020 due to insufficient observations"
+[1] "Skipping Shaughnessy 2021 due to insufficient observations"
+[1] "Skipping Shaughnessy 2022 due to insufficient observations"
+[1] "Skipping Shaughnessy 2023 due to insufficient observations"
+[1] "Skipping Shaughnessy 2024 due to insufficient observations"
+[1] "Skipping Shaughnessy 2025 due to insufficient observations"
+[1] "Skipping Cambie 2019 due to insufficient observations"
 NOTE: 1 observation removed because of infinite values (RHS: 1).
-[1] "Skipping Mount Pleasant due to insufficient observations"
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+[1] "Skipping Cambie 2022 due to insufficient observations"
+[1] "Skipping Cambie 2023 due to insufficient observations"
+[1] "Skipping Cambie 2024 due to insufficient observations"
+[1] "Skipping Cambie 2025 due to insufficient observations"
+[1] "Skipping South Granville 2019 due to insufficient observations"
+[1] "Skipping South Granville 2020 due to insufficient observations"
+[1] "Skipping South Granville 2021 due to insufficient observations"
+[1] "Skipping South Granville 2022 due to insufficient observations"
+[1] "Skipping South Granville 2023 due to insufficient observations"
+[1] "Skipping South Granville 2024 due to insufficient observations"
+[1] "Skipping South Granville 2025 due to insufficient observations"
+[1] "Skipping Oakridge 2019 due to insufficient observations"
+[1] "Skipping Oakridge 2020 due to insufficient observations"
+[1] "Skipping Oakridge 2021 due to insufficient observations"
+[1] "Skipping Oakridge 2022 due to insufficient observations"
+[1] "Skipping Oakridge 2023 due to insufficient observations"
+[1] "Skipping Oakridge 2024 due to insufficient observations"
+[1] "Skipping Oakridge 2025 due to insufficient observations"
+[1] "Skipping Marpole 2019 due to insufficient observations"
+[1] "Skipping Marpole 2020 due to insufficient observations"
+[1] "Skipping Marpole 2022 due to insufficient observations"
+[1] "Skipping Marpole 2023 due to insufficient observations"
+[1] "Skipping Marpole 2024 due to insufficient observations"
+[1] "Skipping Marpole 2025 due to insufficient observations"
+[1] "Skipping Mount Pleasant 2019 due to insufficient observations"
+[1] "Skipping Mount Pleasant 2020 due to insufficient observations"
+[1] "Skipping Mount Pleasant 2021 due to insufficient observations"
+[1] "Skipping Mount Pleasant 2022 due to insufficient observations"
+[1] "Skipping Mount Pleasant 2023 due to insufficient observations"
+[1] "Skipping Mount Pleasant 2024 due to insufficient observations"
+[1] "Skipping Mount Pleasant 2025 due to insufficient observations"
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+[1] "Skipping Grandview 2022 due to insufficient observations"
+[1] "Skipping Grandview 2023 due to insufficient observations"
+[1] "Skipping Grandview 2024 due to insufficient observations"
+[1] "Skipping Grandview 2025 due to insufficient observations"
+[1] "Skipping Cedar Cottage 2019 due to insufficient observations"
+[1] "Skipping Cedar Cottage 2020 due to insufficient observations"
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+[1] "Skipping Cedar Cottage 2022 due to insufficient observations"
+[1] "Skipping Cedar Cottage 2023 due to insufficient observations"
+[1] "Skipping Cedar Cottage 2024 due to insufficient observations"
+[1] "Skipping Cedar Cottage 2025 due to insufficient observations"
+NOTE: 1 observation removed because of infinite values (RHS: 1).
 NOTE: 2 observations removed because of infinite values (RHS: 2).
-[1] "Skipping Marine Drive due to insufficient observations"
 NOTE: 2 observations removed because of infinite values (RHS: 2).
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+[1] "Skipping Main & Fraser 2025 due to insufficient observations"
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+NOTE: 2 observations removed because of infinite values (RHS: 2).
+[1] "Skipping South Vancouver 2024 due to insufficient observations"
+[1] "Skipping South Vancouver 2025 due to insufficient observations"
+[1] "Skipping Marine Drive 2019 due to insufficient observations"
+[1] "Skipping Marine Drive 2020 due to insufficient observations"
+[1] "Skipping Marine Drive 2021 due to insufficient observations"
+[1] "Skipping Marine Drive 2022 due to insufficient observations"
+[1] "Skipping Marine Drive 2023 due to insufficient observations"
+[1] "Skipping Marine Drive 2024 due to insufficient observations"
+[1] "Skipping Marine Drive 2025 due to insufficient observations"
+NOTE: 2 observations removed because of infinite values (RHS: 2).
+[1] "Skipping Knight 2023 due to insufficient observations"
+[1] "Skipping Knight 2024 due to insufficient observations"
+[1] "Skipping Knight 2025 due to insufficient observations"
 NOTE: 4 observations removed because of infinite values (RHS: 4).
-NOTE: 5 observations removed because of infinite values (RHS: 5).
-NOTE: 4 observations removed because of infinite values (RHS: 4).
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+[1] "Skipping Hastings East 2025 due to insufficient observations"
 NOTE: 2 observations removed because of infinite values (RHS: 2).
 NOTE: 2 observations removed because of infinite values (RHS: 2).
-[1] "Skipping Fraserview due to insufficient observations"
-[1] "Skipping Downtown due to insufficient observations"
-[1] "Skipping West End due to insufficient observations"
-[1] "Skipping Coal Harbour due to insufficient observations"
-[1] "Skipping Downtown South due to insufficient observations"
-[1] "Skipping False Creek North due to insufficient observations"
+[1] "Skipping Renfrew 2023 due to insufficient observations"
+[1] "Skipping Renfrew 2024 due to insufficient observations"
+[1] "Skipping Renfrew 2025 due to insufficient observations"
+[1] "Skipping Renfrew Heights 2019 due to insufficient observations"
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+[1] "Skipping Renfrew Heights 2023 due to insufficient observations"
+[1] "Skipping Renfrew Heights 2024 due to insufficient observations"
+[1] "Skipping Renfrew Heights 2025 due to insufficient observations"
+[1] "Skipping Collingwood 2019 due to insufficient observations"
+NOTE: 1 observation removed because of infinite values (RHS: 1).
+[1] "Skipping Collingwood 2023 due to insufficient observations"
+[1] "Skipping Collingwood 2024 due to insufficient observations"
+[1] "Skipping Collingwood 2025 due to insufficient observations"
+[1] "Skipping Killarney 2019 due to insufficient observations"
+[1] "Skipping Killarney 2020 due to insufficient observations"
+[1] "Skipping Killarney 2022 due to insufficient observations"
+[1] "Skipping Killarney 2023 due to insufficient observations"
+[1] "Skipping Killarney 2024 due to insufficient observations"
+[1] "Skipping Killarney 2025 due to insufficient observations"
+[1] "Skipping Fraserview 2019 due to insufficient observations"
+[1] "Skipping Fraserview 2020 due to insufficient observations"
+[1] "Skipping Fraserview 2021 due to insufficient observations"
+[1] "Skipping Fraserview 2022 due to insufficient observations"
+[1] "Skipping Fraserview 2023 due to insufficient observations"
+[1] "Skipping Fraserview 2024 due to insufficient observations"
+[1] "Skipping Fraserview 2025 due to insufficient observations"
+[1] "Skipping Downtown 2019 due to insufficient observations"
+[1] "Skipping Downtown 2020 due to insufficient observations"
+[1] "Skipping Downtown 2021 due to insufficient observations"
+[1] "Skipping Downtown 2022 due to insufficient observations"
+[1] "Skipping Downtown 2023 due to insufficient observations"
+[1] "Skipping Downtown 2024 due to insufficient observations"
+[1] "Skipping Downtown 2025 due to insufficient observations"
+[1] "Skipping West End 2019 due to insufficient observations"
+[1] "Skipping West End 2020 due to insufficient observations"
+[1] "Skipping West End 2021 due to insufficient observations"
+[1] "Skipping West End 2022 due to insufficient observations"
+[1] "Skipping West End 2023 due to insufficient observations"
+[1] "Skipping West End 2024 due to insufficient observations"
+[1] "Skipping West End 2025 due to insufficient observations"
+[1] "Skipping Coal Harbour 2019 due to insufficient observations"
+[1] "Skipping Coal Harbour 2020 due to insufficient observations"
+[1] "Skipping Coal Harbour 2021 due to insufficient observations"
+[1] "Skipping Coal Harbour 2022 due to insufficient observations"
+[1] "Skipping Coal Harbour 2023 due to insufficient observations"
+[1] "Skipping Coal Harbour 2024 due to insufficient observations"
+[1] "Skipping Coal Harbour 2025 due to insufficient observations"
+[1] "Skipping Downtown South 2019 due to insufficient observations"
+[1] "Skipping Downtown South 2020 due to insufficient observations"
+[1] "Skipping Downtown South 2021 due to insufficient observations"
+[1] "Skipping Downtown South 2022 due to insufficient observations"
+[1] "Skipping Downtown South 2023 due to insufficient observations"
+[1] "Skipping Downtown South 2024 due to insufficient observations"
+[1] "Skipping Downtown South 2025 due to insufficient observations"
+[1] "Skipping False Creek North 2019 due to insufficient observations"
+[1] "Skipping False Creek North 2020 due to insufficient observations"
+[1] "Skipping False Creek North 2021 due to insufficient observations"
+[1] "Skipping False Creek North 2022 due to insufficient observations"
+[1] "Skipping False Creek North 2023 due to insufficient observations"
+[1] "Skipping False Creek North 2024 due to insufficient observations"
+[1] "Skipping False Creek North 2025 due to insufficient observations"
 > 
 > fwrite(dtPred, "~/OneDrive - UBC/dataProcessed/ppsfElasticityPredictionsByNeighbourhood.csv")
 > 
 > 
 > proc.time()
    user  system elapsed 
- 33.482   1.111  18.304 
+ 72.606  19.613  39.876 

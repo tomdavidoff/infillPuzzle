@@ -80,6 +80,7 @@ dtMerge[, logppsf := log(ppsf)]
 dtMerge[, logsqft := log(MB_Total_Finished_Area)]
 dtMerge[, age     := year - MB_Effective_Year]
 dtMerge <- dtMerge[!is.na(logppsf) & !is.na(logsqft)]
+dtMerge[,east:=lon>=LON_ONTARIO]
 
 # ── Lot geometry subset for estimation and prediction: 31-35' wide, >100' deep ──
 LOT_WIDTH_LO <- 31; LOT_WIDTH_HI <- 35; LOT_DEPTH_MIN <- 100
@@ -87,7 +88,7 @@ dtLot <- dtMerge[Land_Width_Width >= LOT_WIDTH_LO & Land_Width_Width <= LOT_WIDT
                  Land_Depth_Depth > LOT_DEPTH_MIN]
 
 # ── Neighbourhood x year stats: single family on lot subset ──
-MINAGE <- 0; MAXAGE <- 30; MINOBS <- 20
+MINAGE <- 0; MAXAGE <- 30; MINOBS <- 30
 dtGroup <- dtLot[use == "single" & age >= MINAGE & age <= MAXAGE,
                  .(cov      = cov(logppsf, logsqft),
                    var      = var(logsqft),
@@ -103,6 +104,10 @@ print(summary(dtGroup))
 # ── Elasticity regressions (metro and City of Vancouver) ──
 print(summary(feols(elasticity ~ mppsf | year, data = dtGroup)))
 print(summary(feols(elasticity ~ mppsf | year, data = dtGroup[JURISDICTION == "City of Vancouver"])))
+print(summary(feols(logppsf ~ logsqft | year , data = dtMerge[JURISDICTION== "City of Vancouver" & use == "single" & east==1 & Land_Width_Width>=50])))
+print(summary(feols(logppsf ~ logsqft | year , data = dtMerge[JURISDICTION== "City of Vancouver" & use == "single" & east==1 & Land_Width_Width<=36])))
+print(summary(feols(logppsf ~ logsqft | year , data = dtMerge[JURISDICTION== "City of Vancouver" & use == "single" & east==0 & Land_Width_Width>=50])))
+print(summary(feols(logppsf ~ logsqft | year , data = dtMerge[JURISDICTION== "City of Vancouver" & use == "single" & east==0 & Land_Width_Width<=36])))
 
 # ── feols by use type for etable (full dtMerge, not lot subset) ──
 rs <- feols(logppsf ~ logsqft | year + NEIGHBOURHOOD, data = dtMerge[use == "single"])
@@ -144,17 +149,21 @@ SQFT_DUPLEX <- 0.35 * LOT_W * LOT_D   # 1,402 sqft per unit
 #   logppsf_hat = mppsf + elasticity * (log(target_sqft) - mlogsqft)
 # Do this for period of 2017-2018 because of endogeneity of prices to supply by neighbourhood.
 # Do a regression per neighbourhood and compare regression among single family homes to duplex actuals
-dtPred <- data.table(NEIGHBOURHOOD=character(),intercept=numeric(),elasticity=numeric(),fittedSingle=numeric(),meanSingle=numeric(),fittedDuplex=numeric(),meanDuplex=numeric())
+dtPred <- data.table(NEIGHBOURHOOD=character(),year=numeric(),intercept=numeric(),elasticity=numeric(),fittedSingle=numeric(),meanSingle=numeric(),fittedDuplex=numeric(),meanDuplex=numeric(),nobs=numeric())
+MINOBS <- 20
 for (n in unique(dtMerge[JURISDICTION=="City of Vancouver", NEIGHBOURHOOD])) {
-	dtTemp <- dtMerge[JURISDICTION=="City of Vancouver" & NEIGHBOURHOOD==n & year %in% 2017:2018 & ((Land_Width_Width >= LOT_WIDTH_LO & Land_Width_Width <= LOT_WIDTH_HI & Land_Depth_Depth >= LOT_DEPTH_MIN )| is.na(Land_Width_Width)) & age >= MINAGE & age <= MAXAGE]
-	if (nrow(dtTemp[use=="single"]) > 20) {
-		m <- feols(logppsf ~ logsqft + log(age), data = dtTemp[use == "single"])
-		intercept <- coef(m)["(Intercept)"]
-		elasticity <- coef(m)["logsqft"]
-		meanSingle <- mean(dtTemp[use == "single", exp(logppsf)], na.rm = TRUE)
-		meanDuplex <- mean(dtTemp[use == "duplex", exp(logppsf)], na.rm = TRUE)
-		dtPred <- rbind(dtPred, data.table(NEIGHBOURHOOD=n, intercept=intercept, elasticity=elasticity, fittedSingle = exp(intercept+elasticity*log(SQFT_SINGLE)),meanSingle=meanSingle, fittedDuplex=exp(intercept+elasticity*log(SQFT_DUPLEX)), meanDuplex=meanDuplex))
-	} else {print(paste("Skipping", n, "due to insufficient observations"))}
+	for (y in 2019:2025) {
+		dtTemp <- dtMerge[JURISDICTION=="City of Vancouver" & NEIGHBOURHOOD==n & year==y & ((Land_Width_Width >= LOT_WIDTH_LO & Land_Width_Width <= LOT_WIDTH_HI & Land_Depth_Depth >= LOT_DEPTH_MIN )| is.na(Land_Width_Width)) & age >= MINAGE & age <= MAXAGE]
+		if (nrow(dtTemp[use=="single"]) >MINOBS) {
+			m <- feols(logppsf ~ logsqft + log(age), data = dtTemp[use == "single"])
+			nobs <- nrow(dtTemp[use == "single"])
+			intercept <- coef(m)["(Intercept)"]
+			elasticity <- coef(m)["logsqft"]
+			meanSingle <- mean(dtTemp[use == "single", exp(logppsf)], na.rm = TRUE)
+			meanDuplex <- mean(dtTemp[use == "duplex", exp(logppsf)], na.rm = TRUE)
+			dtPred <- rbind(dtPred, data.table(NEIGHBOURHOOD=n, year=y,intercept=intercept, elasticity=elasticity, fittedSingle = exp(intercept+elasticity*log(SQFT_SINGLE)),meanSingle=meanSingle, fittedDuplex=exp(intercept+elasticity*log(SQFT_DUPLEX)), meanDuplex=meanDuplex,nobs=nobs))
+		} else {print(paste("Skipping", n, y,"due to insufficient observations"))}
+	}
 }
 
 fwrite(dtPred, "~/OneDrive - UBC/dataProcessed/ppsfElasticityPredictionsByNeighbourhood.csv")

@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -396,6 +396,63 @@ use       FALSE TRUE
 2:  FALSE  2024 0.1295547
 3:   TRUE  2024 0.2589286
 4:   TRUE  2025 0.3068182
+> print(dtMerge[use!="laneway" ,mean(use=="single"),by=c("east","year")])
+      east  year        V1
+    <lgcl> <int>     <num>
+ 1:  FALSE  2021 0.8227848
+ 2:  FALSE  2023 0.8174098
+ 3:  FALSE  2025 0.4000000
+ 4:  FALSE  2020 0.9393939
+ 5:  FALSE  2018 1.0000000
+ 6:  FALSE  2024 0.5097691
+ 7:  FALSE  2019 0.9710425
+ 8:  FALSE  2022 0.8678414
+ 9:   TRUE  2019 0.9393939
+10:   TRUE  2022 0.6413502
+11:   TRUE  2024 0.2983871
+12:   TRUE  2021 0.5850622
+13:   TRUE  2023 0.5958549
+14:   TRUE  2020 0.8104575
+15:   TRUE  2025 0.2491349
+16:   TRUE  2018 0.9961977
+> print(dtMerge[use!="laneway"   ,mean(use=="single"),by=c("east","year")])
+      east  year        V1
+    <lgcl> <int>     <num>
+ 1:  FALSE  2021 0.8227848
+ 2:  FALSE  2023 0.8174098
+ 3:  FALSE  2025 0.4000000
+ 4:  FALSE  2020 0.9393939
+ 5:  FALSE  2018 1.0000000
+ 6:  FALSE  2024 0.5097691
+ 7:  FALSE  2019 0.9710425
+ 8:  FALSE  2022 0.8678414
+ 9:   TRUE  2019 0.9393939
+10:   TRUE  2022 0.6413502
+11:   TRUE  2024 0.2983871
+12:   TRUE  2021 0.5850622
+13:   TRUE  2023 0.5958549
+14:   TRUE  2020 0.8104575
+15:   TRUE  2025 0.2491349
+16:   TRUE  2018 0.9961977
+> print(dtMerge[use!="laneway"   ,mean(use=="single"),by=c("east","year")])
+      east  year        V1
+    <lgcl> <int>     <num>
+ 1:  FALSE  2021 0.8227848
+ 2:  FALSE  2023 0.8174098
+ 3:  FALSE  2025 0.4000000
+ 4:  FALSE  2020 0.9393939
+ 5:  FALSE  2018 1.0000000
+ 6:  FALSE  2024 0.5097691
+ 7:  FALSE  2019 0.9710425
+ 8:  FALSE  2022 0.8678414
+ 9:   TRUE  2019 0.9393939
+10:   TRUE  2022 0.6413502
+11:   TRUE  2024 0.2983871
+12:   TRUE  2021 0.5850622
+13:   TRUE  2023 0.5958549
+14:   TRUE  2020 0.8104575
+15:   TRUE  2025 0.2491349
+16:   TRUE  2018 0.9961977
 > print(dtMerge[use=="single" & landWidth>=50,mean(distToLaneway<20,na.rm=TRUE),by=c("east","year")])
       east  year        V1
     <lgcl> <int>     <num>
@@ -434,55 +491,232 @@ use       FALSE TRUE
 14:   TRUE  2022 0.5777778
 15:   TRUE  2018 0.1920530
 16:   TRUE  2025 0.5714286
+> # do the above with a stacked bar chart -- 2019-2025 on horizontal, each year two bars with share of single/duplex/multi, and then split by east/west
+> # but stacked: 31-35 width, and then 50+ width
+> dtMerge[,lotBin:=ifelse(landWidth>=50,"50+",ifelse(landWidth>=30 & landWidth<=35,"30-35","other"))]
+> p3 <- ggplot(dtMerge[lotBin=="30-35" & use!="laneway" & year>2017 ],aes(x=as.factor(year),fill=use)) + geom_bar(position="fill") + facet_wrap(~east) + theme_bw() + labs(x="Year",y="Share of Permits",fill="Use")
+> ggsave("text/permitSharesByYearAndLotWidth33.png",width=10,height=6)
+> p4 <- ggplot(dtMerge[lotBin=="50+" & use!="laneway" & year>2017 ],aes(x=as.factor(year),fill=use)) + geom_bar(position="fill") + facet_wrap(~east) + theme_bw() + labs(x="Year",y="Share of Permits",fill="Use")
+> ggsave("text/permitSharesByYearAndLotWidth50.png",width=10,height=6)
 > # predictions of what gets built
-> dtNeighbourhood33 <- dtMerge[use!="laneway" & landWidth>30 & landWidth<36 & year>2018 & year<2024,.(shareDuplex=mean(use=="duplex"),shareMulti=mean(use=="multi")),by=c("NEIGHBOURHOOD")]
+> dtNeighbourhood33 <- dtMerge[use!="laneway" & landWidth>30 & landWidth<36 & year>2018 & year<2024,.(shareDuplex=mean(use=="duplex"),shareMulti=mean(use=="multi")),by=c("NEIGHBOURHOOD","year")]
 > dtPred <- fread("~/OneDrive - UBC/dataProcessed/ppsfElasticityPredictionsByNeighbourhood.csv")
-> dtNeighbourhood33 <- merge(dtNeighbourhood33,dtPred,by=c("NEIGHBOURHOOD"))
-> dtNeighbourhood33[,duplex_premium:=fittedDuplex - fittedSingle]
+> dtNeighbourhood33 <- merge(dtNeighbourhood33,dtPred,by=c("NEIGHBOURHOOD","year"))
+> dtNeighbourhood33[,duplex_premium:=fittedDuplex-fittedSingle]
 > print(dtNeighbourhood33)
-Key: <NEIGHBOURHOOD>
-                        NEIGHBOURHOOD shareDuplex shareMulti intercept
-                               <char>       <num>      <num>     <num>
- 1: Arbutus Ridge - Mackenzie Heights  0.11538462          0  9.583772
- 2:                            Cambie  0.09271523          0 12.181953
- 3:                     Cedar Cottage  0.25274725          0  7.771956
- 4:                       Collingwood  0.50505051          0 11.413333
- 5:                            Dunbar  0.22155689          0  7.433701
- 6:                         Grandview  0.66250000          0  9.512364
- 7:                     Hastings East  0.43956044          0  7.735252
- 8:                        Kerrisdale  0.08108108          0  9.857661
- 9:                         Killarney  0.21538462          0  9.139375
-10:                         Kitsilano  0.22000000          0  9.680364
-11:                            Knight  0.21925134          0 10.168408
-12:                     Main & Fraser  0.15050167          0  9.754120
-13:                           Marpole  0.23188406          0 10.159649
-14:                        Point Grey  0.08275862          0  5.980601
-15:                           Renfrew  0.52671756          0  8.915319
-16:                   Renfrew Heights  0.32716049          0 10.199554
-17:                   South Vancouver  0.17472119          0  8.714458
-     elasticity fittedSingle meanSingle fittedDuplex meanDuplex duplex_premium
-          <num>        <num>      <num>        <num>      <num>          <num>
- 1: -0.31647595    1175.8348  1203.2888    1464.2495         NA      288.41463
- 2: -0.65629367    1062.5769  1154.8365    1674.6515  3103.4483      612.07463
- 3: -0.13675254     800.8019   835.8064     880.4236  1105.9786       79.62177
- 4: -0.62701975     621.6516   756.6286     960.0610   828.5722      338.40935
- 5: -0.04068188    1224.7961  1241.5915    1259.8252         NA       35.02901
- 6: -0.36233225     760.5556   821.2299     977.6960   914.5762      217.14040
- 7: -0.15161498     685.9772   716.8171     761.9918         NA       76.01467
- 8: -0.35793322    1112.4187  1153.5998    1425.6631         NA      313.24441
- 9: -0.32935217     680.6509   724.6527     855.2032   847.8982      174.55228
-10: -0.32824063    1179.5261  1279.6562    1480.8730  1319.2631      301.34695
-11: -0.45947912     677.4755   760.1952     931.5595   886.4665      254.08399
-12: -0.39026381     775.8209   854.4478    1016.8164   916.0860      240.99559
-13: -0.41670215     943.3412  1020.0919    1259.2404  1169.8690      315.89919
-14:  0.15343973    1338.7666  1339.8141    1203.6907         NA     -135.07590
-15: -0.30078961     682.5872   717.2499     840.8235   819.5512      158.23629
-16: -0.46983148     643.7313   731.8361     891.5342         NA      247.80287
-17: -0.27127304     705.9221   749.6765     851.9579   868.7518      146.03574
-> print(cor(dtNeighbourhood33[,.(duplex_premium,shareDuplex)]))
-               duplex_premium shareDuplex
-duplex_premium     1.00000000 -0.07874222
-shareDuplex       -0.07874222  1.00000000
+Key: <NEIGHBOURHOOD, year>
+                        NEIGHBOURHOOD  year shareDuplex shareMulti intercept
+                               <char> <int>       <num>      <num>     <num>
+ 1: Arbutus Ridge - Mackenzie Heights  2021  0.00000000          0 18.781586
+ 2:                            Cambie  2020  0.00000000          0 12.478896
+ 3:                            Cambie  2021  0.23728814          0  9.238095
+ 4:                     Cedar Cottage  2021  0.06666667          0 10.355589
+ 5:                       Collingwood  2020  0.47619048          0 11.622914
+ 6:                       Collingwood  2021  0.60526316          0 11.191218
+ 7:                       Collingwood  2022  0.47826087          0  8.619181
+ 8:                            Dunbar  2019  0.00000000          0  9.644549
+ 9:                            Dunbar  2020  0.00000000          0 10.531184
+10:                            Dunbar  2021  0.22222222          0 10.579170
+11:                            Dunbar  2022  0.18518519          0 11.182497
+12:                            Dunbar  2023  0.41509434          0  9.060351
+13:                         Grandview  2019  0.00000000          0 13.594099
+14:                         Grandview  2020  0.55555556          0 11.738530
+15:                         Grandview  2021  0.89285714          0  8.637935
+16:                     Hastings East  2019  0.05128205          0 10.657729
+17:                     Hastings East  2020  0.17391304          0 11.137376
+18:                     Hastings East  2021  0.52500000          0 11.583101
+19:                     Hastings East  2022  0.56666667          0 11.419331
+20:                     Hastings East  2023  0.53521127          0 11.729157
+21:                        Kerrisdale  2021  0.00000000          0 10.670597
+22:                         Killarney  2021  0.26785714          0 10.577001
+23:                         Kitsilano  2019  0.00000000          0  8.701845
+24:                         Kitsilano  2020  0.25000000          0  8.052412
+25:                         Kitsilano  2021  0.28571429          0  8.885730
+26:                         Kitsilano  2022  0.42857143          0 -4.277151
+27:                            Knight  2019  0.03333333          0 10.400569
+28:                            Knight  2020  0.06666667          0 11.813842
+29:                            Knight  2021  0.34210526          0 10.193368
+30:                            Knight  2022  0.20000000          0 12.247215
+31:                     Main & Fraser  2019  0.00000000          0 11.579535
+32:                     Main & Fraser  2020  0.00000000          0 11.219262
+33:                     Main & Fraser  2021  0.24000000          0 12.454647
+34:                     Main & Fraser  2022  0.12000000          0 12.842286
+35:                     Main & Fraser  2023  0.24590164          0  9.918857
+36:                           Marpole  2021  0.17647059          0  7.801565
+37:                        Point Grey  2019  0.00000000          0  4.260360
+38:                        Point Grey  2020  0.00000000          0 10.270154
+39:                        Point Grey  2021  0.07936508          0  6.144729
+40:                        Point Grey  2022  0.31250000          0  8.745605
+41:                        Point Grey  2023  0.09090909          0  9.997903
+42:                           Renfrew  2019  0.15000000          0  9.281986
+43:                           Renfrew  2020  0.40000000          0 11.598853
+44:                           Renfrew  2021  0.57142857          0 11.600090
+45:                           Renfrew  2022  0.56097561          0 10.230749
+46:                   Renfrew Heights  2020  0.26666667          0 12.201887
+47:                   Renfrew Heights  2021  0.47457627          0 12.461702
+48:                   Renfrew Heights  2022  0.23333333          0 10.997797
+49:                   South Vancouver  2019  0.00000000          0 10.855348
+50:                   South Vancouver  2020  0.17647059          0 11.026575
+51:                   South Vancouver  2021  0.18000000          0 11.286382
+52:                   South Vancouver  2022  0.17391304          0 10.572639
+53:                   South Vancouver  2023  0.33333333          0 11.381404
+                        NEIGHBOURHOOD  year shareDuplex shareMulti intercept
+     elasticity fittedSingle meanSingle fittedDuplex meanDuplex  nobs
+          <num>        <num>      <num>        <num>      <num> <int>
+ 1: -1.42322682    1764.6024  1263.4458    4732.3932         NA    21
+ 2: -0.65501674    1444.5293  1132.2123    2274.6052         NA    28
+ 3: -0.24706796    1444.3625  1223.2148    1714.1589         NA    23
+ 4: -0.40406189    1268.7415   974.5720    1678.8345  1095.2095    27
+ 5: -0.61791532     824.0947   681.2018    1264.7019   823.3540    31
+ 6: -0.54421939     961.0430   809.7764    1401.4228   933.0749    33
+ 7: -0.23044910     887.6056   883.8228    1041.3390  1041.9867    21
+ 8: -0.31698262    1244.4951  1108.6331    1550.2954         NA    35
+ 9: -0.41282885    1410.5458  1101.9047    1877.8507         NA    46
+10: -0.40498308    1575.0521  1277.2560    2085.4845         NA    47
+11: -0.47399295    1664.3113  1341.8174    2311.6424         NA    40
+12: -0.23942655    1284.8304  1243.9588    1516.7722  1415.1488    31
+13: -0.87233009     784.0218   763.1705    1435.2438   892.5221    22
+14: -0.61385285     955.4405   810.1889    1462.1495   972.9515    27
+15: -0.25605676     737.9362   924.0984     881.2509  1026.9146    21
+16: -0.50101553     794.5177   691.3005    1124.4090   842.2649    40
+17: -0.56099050     797.0754   743.8517    1175.9108   801.2217    62
+18: -0.59380775     959.0841   853.5922    1447.4736   984.0673    77
+19: -0.56227380    1045.9810   943.2681    1544.4899  1063.0469    37
+20: -0.57964310    1242.0973   923.6753    1856.2889   997.6725    26
+21: -0.40835366    1680.2463  1168.2047    2229.9732         NA    24
+22: -0.46056886    1010.6096   842.4616    1390.6840   973.7950    33
+23: -0.20986191    1135.3909  1225.7591    1313.1676  1205.2932    21
+24: -0.10109439    1407.1665  1131.4953    1509.3082  1354.4568    30
+25: -0.23115074    1152.2849  1410.9780    1352.5184  1487.4346    30
+26:  1.41015861    1017.3361  1565.7464     382.7934  1516.7794    33
+27: -0.46692402     805.4430   712.6024    1113.2507   889.3584    21
+28: -0.63400766     877.7642   813.0885    1362.1759  1021.3282    35
+29: -0.43960382     813.3970   822.1888    1103.1549   994.7888    45
+30: -0.63913413    1299.8791   962.5484    2024.4242  1131.5330    22
+31: -0.59910865     916.2634   805.9611    1387.9378   777.3512    54
+32: -0.55049141     940.3374   845.3935    1377.2036  1076.2659    51
+33: -0.68012666    1154.9587   995.8973    1850.5678  1037.8169    65
+34: -0.70978609    1344.5963  1088.8463    2199.1701  1223.3143    38
+35: -0.36795223    1092.1448  1076.0639    1409.4345  1202.0301    39
+36: -0.09275387    1169.9804  1064.0022    1247.6716  1231.5830    28
+37:  0.35531482    1191.4525  1142.4164     931.3573         NA    22
+38: -0.38386524    1367.5622  1244.3669    1784.4404         NA    26
+39:  0.13954725    1412.7200  1326.6572    1282.4728  1527.2244    70
+40: -0.17577156    1555.1091  1455.9527    1756.6020  1526.2055    49
+41: -0.33589086    1524.8257  1414.5131    1924.5687  1612.7085    42
+42: -0.33224625     767.1410   665.5819     965.8091         NA    24
+43: -0.62253177     775.5342   707.9131    1193.9928         NA    32
+44: -0.58698721    1029.8306   813.3785    1546.9154   929.1773    42
+45: -0.41555773    1022.1042   935.9913    1363.2971  1124.4159    25
+46: -0.69490011     797.6757   776.6742    1291.2554         NA    22
+47: -0.70229501     975.3276   794.3442    1586.9469  1013.9725    33
+48: -0.50800656    1056.0249   922.4789    1501.7560  1041.9609    21
+49: -0.52473287     801.8704   689.3105    1153.6246   805.2628    39
+50: -0.53592339     870.6827   738.7364    1262.3765   850.5174    37
+51: -0.55415608     976.7660   846.6749    1434.1948   885.9301    71
+52: -0.45763828    1029.9105   976.1553    1414.3677  1080.9627    33
+53: -0.54359030    1168.1798   977.8911    1702.7335  1091.7840    21
+     elasticity fittedSingle meanSingle fittedDuplex meanDuplex  nobs
+    duplex_premium
+             <num>
+ 1:     2967.79085
+ 2:      830.07595
+ 3:      269.79638
+ 4:      410.09304
+ 5:      440.60720
+ 6:      440.37980
+ 7:      153.73339
+ 8:      305.80034
+ 9:      467.30489
+10:      510.43245
+11:      647.33113
+12:      231.94186
+13:      651.22196
+14:      506.70896
+15:      143.31471
+16:      329.89123
+17:      378.83538
+18:      488.38946
+19:      498.50892
+20:      614.19164
+21:      549.72692
+22:      380.07441
+23:      177.77665
+24:      102.14170
+25:      200.23349
+26:     -634.54270
+27:      307.80763
+28:      484.41170
+29:      289.75792
+30:      724.54504
+31:      471.67442
+32:      436.86618
+33:      695.60902
+34:      854.57376
+35:      317.28966
+36:       77.69118
+37:     -260.09521
+38:      416.87818
+39:     -130.24714
+40:      201.49291
+41:      399.74302
+42:      198.66808
+43:      418.45856
+44:      517.08477
+45:      341.19291
+46:      493.57969
+47:      611.61927
+48:      445.73108
+49:      351.75421
+50:      391.69387
+51:      457.42877
+52:      384.45721
+53:      534.55370
+    duplex_premium
+> dtNeighbourhood33 <- dtNeighbourhood33[abs(elasticity)<1]
+> print(summary(dtNeighbourhood33))
+ NEIGHBOURHOOD           year       shareDuplex        shareMulti
+ Length:51          Min.   :2019   Min.   :0.00000   Min.   :0   
+ Class :character   1st Qu.:2020   1st Qu.:0.05897   1st Qu.:0   
+ Mode  :character   Median :2021   Median :0.20000   Median :0   
+                    Mean   :2021   Mean   :0.23957   Mean   :0   
+                    3rd Qu.:2022   3rd Qu.:0.37105   3rd Qu.:0   
+                    Max.   :2023   Max.   :0.89286   Max.   :0   
+                                                                 
+   intercept        elasticity       fittedSingle      meanSingle    
+ Min.   : 4.260   Min.   :-0.8723   Min.   : 737.9   Min.   : 665.6  
+ 1st Qu.: 9.782   1st Qu.:-0.5904   1st Qu.: 882.7   1st Qu.: 810.0  
+ Median :10.671   Median :-0.4740   Median :1046.0   Median : 936.0  
+ Mean   :10.496   Mean   :-0.4423   Mean   :1106.8   Mean   : 977.0  
+ 3rd Qu.:11.591   3rd Qu.:-0.3341   3rd Qu.:1292.4   3rd Qu.:1131.9  
+ Max.   :13.594   Max.   : 0.3553   Max.   :1680.2   Max.   :1456.0  
+                                                                     
+  fittedDuplex      meanDuplex          nobs       duplex_premium  
+ Min.   : 881.3   Min.   : 777.4   Min.   :21.00   Min.   :-260.1  
+ 1st Qu.:1273.6   1st Qu.: 931.1   1st Qu.:24.50   1st Qu.: 297.8  
+ Median :1434.2   Median :1037.8   Median :33.00   Median : 416.9  
+ Mean   :1502.2   Mean   :1076.6   Mean   :35.67   Mean   : 395.3  
+ 3rd Qu.:1708.4   3rd Qu.:1166.8   3rd Qu.:41.00   3rd Qu.: 502.6  
+ Max.   :2311.6   Max.   :1612.7   Max.   :77.00   Max.   : 854.6  
+                  NA's   :12                                       
+> print(cor(dtNeighbourhood33[,.(elasticity,intercept,duplex_premium,shareDuplex)]))
+               elasticity  intercept duplex_premium shareDuplex
+elasticity      1.0000000 -0.9914875    -0.88839999 -0.11312861
+intercept      -0.9914875  1.0000000     0.93563553  0.08254300
+duplex_premium -0.8884000  0.9356355     1.00000000  0.01248886
+shareDuplex    -0.1131286  0.0825430     0.01248886  1.00000000
+> print(cor(dtNeighbourhood33[nobs>33,.(elasticity,intercept,duplex_premium,shareDuplex)]))
+               elasticity  intercept duplex_premium shareDuplex
+elasticity      1.0000000 -0.9872740     -0.8377375  -0.1536138
+intercept      -0.9872740  1.0000000      0.9116555   0.1612049
+duplex_premium -0.8377375  0.9116555      1.0000000   0.1428319
+shareDuplex    -0.1536138  0.1612049      0.1428319   1.0000000
+> print(cor(dtNeighbourhood33[nobs>40,.(elasticity,intercept,duplex_premium,shareDuplex)]))
+               elasticity  intercept duplex_premium shareDuplex
+elasticity      1.0000000 -0.9922809     -0.9068989  -0.2216285
+intercept      -0.9922809  1.0000000      0.9509180   0.2127919
+duplex_premium -0.9068989  0.9509180      1.0000000   0.1723786
+shareDuplex    -0.2216285  0.2127919      0.1723786   1.0000000
 > ggplot(dtNeighbourhood33,aes(x=duplex_premium,y=shareDuplex)) + geom_point() 
 > ggsave("text/duplexPrediction.png",width=6,height=4)
 > 
@@ -490,4 +724,4 @@ shareDuplex       -0.07874222  1.00000000
 > 
 > proc.time()
    user  system elapsed 
- 22.648   0.489   7.297 
+ 31.871   8.745  10.600 
