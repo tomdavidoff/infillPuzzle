@@ -7,6 +7,7 @@
 library(data.table)
 library(ggplot2)
 library(fixest)
+library(xtable)
 
 # Centroids: used for East/West classification by longitude
 dG <- readRDS("~/OneDrive - UBC/dataProcessed/bca25Centroids.rds")
@@ -168,3 +169,12 @@ for (n in unique(dtMerge[JURISDICTION=="City of Vancouver", NEIGHBOURHOOD])) {
 
 fwrite(dtPred, "~/OneDrive - UBC/dataProcessed/ppsfElasticityPredictionsByNeighbourhood.csv")
 
+# Make this a single table for use==single vs use==Duplex/ pre-post 2022 vs 2018-2020 and 30-35' wide vs 50+ wide, for City of Vancouver only
+dtMerge[,prePost:=ifelse(year > 2022, "post", ifelse(year > 2017 & year < 2021, "pre", "other"))]
+dtMerge[,widthCat := ifelse(Land_Width_Width >= 50, "wide", ifelse(Land_Width_Width >= LOT_WIDTH_LO & Land_Width_Width <= LOT_WIDTH_HI, "standard", "other"))]
+dtSubset <- dtMerge[age<MAXAGE & prePost %in% c("post","pre") & widthCat %in% c("wide","standard")]
+print(summary(dtSubset))
+x <- dtSubset[,mean(CONVEYANCE_PRICE,na.rm=TRUE),by=c("east","widthCat","prePost","use")]
+print(x)
+print(xtable(x))
+q("no")

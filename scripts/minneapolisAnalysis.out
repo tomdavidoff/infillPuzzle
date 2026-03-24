@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -152,8 +152,8 @@ UN1 UN2 UN3
   9  14  11 
 > 
 > print(xtable(cor(dt[, .(slope, price_level, propensity,medianIncome)])))
-% latex table generated in R 4.5.0 by xtable 1.8-4 package
-% Wed Feb 11 20:12:09 2026
+% latex table generated in R 4.5.2 by xtable 1.8-4 package
+% Tue Mar 24 11:49:08 2026
 \begin{table}[ht]
 \centering
 \begin{tabular}{rrrrr}
@@ -168,8 +168,8 @@ slope & 1.00 & 0.59 & 0.28 & 0.30 \\
 \end{tabular}
 \end{table}
 > print(xtable(cor(dt[land_use_c=="UN3", .(slope, price_level, propensity,medianIncome)])))
-% latex table generated in R 4.5.0 by xtable 1.8-4 package
-% Wed Feb 11 20:12:09 2026
+% latex table generated in R 4.5.2 by xtable 1.8-4 package
+% Tue Mar 24 11:49:08 2026
 \begin{table}[ht]
 \centering
 \begin{tabular}{rrrrr}
@@ -184,8 +184,8 @@ slope & 1.00 & 0.61 & 0.32 & 0.31 \\
 \end{tabular}
 \end{table}
 > print(xtable(cor(dt[land_use_c!="UN3", .(slope, price_level, propensity,medianIncome)])))
-% latex table generated in R 4.5.0 by xtable 1.8-4 package
-% Wed Feb 11 20:12:09 2026
+% latex table generated in R 4.5.2 by xtable 1.8-4 package
+% Tue Mar 24 11:49:08 2026
 \begin{table}[ht]
 \centering
 \begin{tabular}{rrrrr}
@@ -199,63 +199,10 @@ slope & 1.00 & 0.58 & 0.36 & 0.29 \\
    \hline
 \end{tabular}
 \end{table}
-> 
-> 
-> # 4. Model -----------------------------------------------------------------
-> # Does the price-size gradient predict development propensity?
-> # we use robust standard errors (hc1)
-> m1 <- feols(propensity ~ slope, dt, vcov = "hc1")
-> m2 <- feols(propensity ~ slope + price_level, dt, vcov = "hc1")
-> m3 <- feols(propensity ~ price_level, dt, vcov = "hc1")
-> m4 <- feols(propensity ~ price_level + medianIncome, dt, vcov = "hc1")
-> 
-> # Zen summary: No complex tables, just the facts
-> print(etable(m1, m2, m3,m4))
-                                m1               m2               m3
-Dependent Var.:         propensity       propensity       propensity
-                                                                    
-Constant        0.7264*** (0.1301) 1.095** (0.3793) 0.4831. (0.2700)
-slope              0.4812 (0.2928) 0.6878. (0.3424)                 
-price_level                        -0.0012 (0.0012)  0.0002 (0.0011)
-medianIncome                                                        
-_______________ __________________ ________________ ________________
-S.E. type       Heteroskedas.-rob. Heterosked.-rob. Heterosked.-rob.
-Observations                    34               34               34
-R2                         0.08065          0.10846          0.00109
-Adj. R2                    0.05192          0.05094         -0.03013
-
-                              m4
-Dependent Var.:       propensity
-                                
-Constant           3.585 (2.350)
-slope                           
-price_level      0.0014 (0.0014)
-medianIncome    -0.2982 (0.2224)
-_______________ ________________
-S.E. type       Heterosked.-rob.
-Observations                  34
-R2                       0.05105
-Adj. R2                 -0.01017
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-> 
-> # 5. Plot ------------------------------------------------------------------
-> ggplot(dt, aes(slope, propensity)) +
-+   geom_point(alpha = 0.5) +
-+   geom_smooth(method = "lm", color = "black", fill = "gray80") +
-+   theme_minimal() +
-+   labs(x = "Price-Size Gradient (Absolute)", 
-+        y = "Permit Propensity",
-+        title = "Minneapolis Supply Response")
-`geom_smooth()` using formula = 'y ~ x'
-> 
-> ggsave("~/OneDrive - UBC/dataProcessed/minneapolis_supply_response.png", 
-+        width = 8, height = 6)
-`geom_smooth()` using formula = 'y ~ x'
-> 
-> # 6. Export ----------------------------------------------------------------
-> saveRDS(dt, "~/OneDrive - UBC/dataProcessed/minneapolis_analysis_final.rds")
-> 
-> proc.time()
-   user  system elapsed 
-  1.420   0.315   0.888 
+> print(nrow(dt[land_use_c=="UN3"]))
+[1] 11
+> print(nrow(dt[land_use_c="UN1"]))
+Error in `[.data.table`(dt, land_use_c = "UN1") : 
+  unused argument (land_use_c = "UN1")
+Calls: print -> nrow -> [
+Execution halted

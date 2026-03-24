@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -26,6 +26,7 @@ Type 'q()' to quit R.
 > library(data.table)
 > library(ggplot2)
 > library(fixest)
+> library(xtable)
 > 
 > # Centroids: used for East/West classification by longitude
 > dG <- readRDS("~/OneDrive - UBC/dataProcessed/bca25Centroids.rds")
@@ -171,34 +172,36 @@ In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
 > 
 > # ── Elasticity regressions (metro and City of Vancouver) ──
 > print(summary(feols(elasticity ~ mppsf | year, data = dtGroup)))
+NOTE: 1 fixed-effect singleton was removed (1 observation).
 OLS estimation, Dep. Var.: elasticity
-Observations: 60
-Fixed-effects: year: 9
-Standard-errors: Clustered (year) 
+Observations: 59
+Fixed-effects: year: 8
+Standard-errors: IID 
       Estimate Std. Error t value  Pr(>|t|)    
-mppsf 0.618254    0.16374 3.77582 0.0054204 ** 
+mppsf 0.618254   0.131736 4.69313 2.125e-05 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.229384     Adj. R2: 0.238735
-                 Within R2: 0.305801
+RMSE: 0.23132     Adj. R2: 0.251638
+                Within R2: 0.305801
 > print(summary(feols(elasticity ~ mppsf | year, data = dtGroup[JURISDICTION == "City of Vancouver"])))
+NOTE: 1 fixed-effect singleton was removed (1 observation).
 OLS estimation, Dep. Var.: elasticity
-Observations: 53
-Fixed-effects: year: 9
-Standard-errors: Clustered (year) 
+Observations: 52
+Fixed-effects: year: 8
+Standard-errors: IID 
       Estimate Std. Error t value  Pr(>|t|)    
-mppsf 0.609624   0.128983  4.7264 0.0014898 ** 
+mppsf 0.609624    0.15057 4.04877 0.0002109 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.208848     Adj. R2: 0.212576
+RMSE: 0.210847     Adj. R2: 0.227103
                  Within R2: 0.276003
 > print(summary(feols(logppsf ~ logsqft | year , data = dtMerge[JURISDICTION== "City of Vancouver" & use == "single" & east==1 & Land_Width_Width>=50])))
 OLS estimation, Dep. Var.: logppsf
 Observations: 674
 Fixed-effects: year: 9
-Standard-errors: Clustered (year) 
-         Estimate Std. Error  t value   Pr(>|t|)    
-logsqft -0.648262   0.041472 -15.6314 2.7981e-07 ***
+Standard-errors: IID 
+         Estimate Std. Error  t value  Pr(>|t|)    
+logsqft -0.648262   0.022615 -28.6648 < 2.2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.18447     Adj. R2: 0.674896
@@ -207,9 +210,9 @@ RMSE: 0.18447     Adj. R2: 0.674896
 OLS estimation, Dep. Var.: logppsf
 Observations: 6,799
 Fixed-effects: year: 9
-Standard-errors: Clustered (year) 
-        Estimate Std. Error  t value   Pr(>|t|)    
-logsqft -0.55144   0.025627 -21.5176 2.2913e-08 ***
+Standard-errors: IID 
+        Estimate Std. Error  t value  Pr(>|t|)    
+logsqft -0.55144    0.01053 -52.3673 < 2.2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.196764     Adj. R2: 0.45878 
@@ -218,9 +221,9 @@ RMSE: 0.196764     Adj. R2: 0.45878
 OLS estimation, Dep. Var.: logppsf
 Observations: 3,820
 Fixed-effects: year: 9
-Standard-errors: Clustered (year) 
-         Estimate Std. Error  t value   Pr(>|t|)    
-logsqft -0.361383     0.0249 -14.5132 4.9752e-07 ***
+Standard-errors: IID 
+         Estimate Std. Error  t value  Pr(>|t|)    
+logsqft -0.361383   0.014147 -25.5445 < 2.2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.264365     Adj. R2: 0.209607
@@ -229,9 +232,9 @@ RMSE: 0.264365     Adj. R2: 0.209607
 OLS estimation, Dep. Var.: logppsf
 Observations: 3,478
 Fixed-effects: year: 9
-Standard-errors: Clustered (year) 
-         Estimate Std. Error t value   Pr(>|t|)    
-logsqft -0.331971   0.026712 -12.428 1.6407e-06 ***
+Standard-errors: IID 
+         Estimate Std. Error  t value  Pr(>|t|)    
+logsqft -0.331971   0.020073 -16.5378 < 2.2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.23976     Adj. R2: 0.166008
@@ -239,10 +242,13 @@ RMSE: 0.23976     Adj. R2: 0.166008
 > 
 > # ── feols by use type for etable (full dtMerge, not lot subset) ──
 > rs <- feols(logppsf ~ logsqft | year + NEIGHBOURHOOD, data = dtMerge[use == "single"])
-NOTE: 1 observation removed because of infinite values (LHS: 1, RHS: 1).
+NOTES: 1 observation removed because of infinite values (LHS: 1, RHS: 1).
+       0/8 fixed-effect singletons were removed (8 observations).
 > rd <- feols(logppsf ~ logsqft | year + NEIGHBOURHOOD, data = dtMerge[use == "duplex"])
+NOTE: 0/11 fixed-effect singletons were removed (11 observations).
 > rc <- feols(logppsf ~ logsqft | year + NEIGHBOURHOOD, data = dtMerge[use == "condo"])
-NOTE: 2 observations removed because of infinite values (LHS: 2).
+NOTES: 2 observations removed because of infinite values (LHS: 2).
+       0/1 fixed-effect singleton was removed (1 observation).
 > etable(rs, rd, rc, tex = TRUE,
 +        title = "Elasticity of ppsf wrt sqft by type",
 +        fitstat = c("n","r2","ar2"), digits = 3,
@@ -489,7 +495,130 @@ NOTE: 1 observation removed because of infinite values (RHS: 1).
 > 
 > fwrite(dtPred, "~/OneDrive - UBC/dataProcessed/ppsfElasticityPredictionsByNeighbourhood.csv")
 > 
-> 
+> # Make this a single table for use==single vs use==Duplex/ pre-post 2022 vs 2018-2020 and 30-35' wide vs 50+ wide, for City of Vancouver only
+> dtMerge[,prePost:=ifelse(year > 2022, "post", ifelse(year > 2017 & year < 2021, "pre", "other"))]
+> dtMerge[,widthCat := ifelse(Land_Width_Width >= 50, "wide", ifelse(Land_Width_Width >= LOT_WIDTH_LO & Land_Width_Width <= LOT_WIDTH_HI, "standard", "other"))]
+> dtSubset <- dtMerge[age<MAXAGE & prePost %in% c("post","pre") & widthCat %in% c("wide","standard")]
+> print(summary(dtSubset))
+   FOLIO_ID              id            Roll_Number       
+ Length:13643       Length:13643       Length:13643      
+ Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character  
+                                                         
+                                                         
+                                                         
+ MB_Total_Finished_Area    Zoning          Land_Width_Width Land_Depth_Depth
+ Min.   :  530          Length:13643       Min.   :31.0     Min.   : 33.0   
+ 1st Qu.: 2088          Class :character   1st Qu.:33.0     1st Qu.:114.0   
+ Median : 2695          Mode  :character   Median :56.0     Median :122.0   
+ Mean   : 2971                             Mean   :52.9     Mean   :124.1   
+ 3rd Qu.: 3734                             3rd Qu.:63.0     3rd Qu.:130.0   
+ Max.   :10880                             Max.   :90.0     Max.   :830.0   
+ MB_Effective_Year  Jurisdiction   ROLL_NUMBER.x       ROLL_NUMBER.y      
+ Min.   :1989      Min.   :200.0   Min.   :2.934e+04   Min.   :2.934e+04  
+ 1st Qu.:1996      1st Qu.:200.0   1st Qu.:5.140e+09   1st Qu.:5.140e+09  
+ Median :2005      Median :305.0   Median :2.002e+10   Median :2.002e+10  
+ Mean   :2006      Mean   :269.9   Mean   :4.536e+12   Mean   :4.536e+12  
+ 3rd Qu.:2017      3rd Qu.:326.0   3rd Qu.:6.038e+12   3rd Qu.:6.038e+12  
+ Max.   :2024      Max.   :745.0   Max.   :2.584e+13   Max.   :2.584e+13  
+ JURISDICTION       JURISDICTION_CODE NEIGHBOURHOOD      ACTUAL_USE_DESCRIPTION
+ Length:13643       Min.   :200.0     Length:13643       Length:13643          
+ Class :character   1st Qu.:200.0     Class :character   Class :character      
+ Mode  :character   Median :305.0     Mode  :character   Mode  :character      
+                    Mean   :269.9                                              
+                    3rd Qu.:326.0                                              
+                    Max.   :745.0                                              
+     use                 lon         ROLL_NUMBER       
+ Length:13643       Min.   :-123.4   Length:13643      
+ Class :character   1st Qu.:-123.1   Class :character  
+ Mode  :character   Median :-123.0   Mode  :character  
+                    Mean   :-123.0                     
+                    3rd Qu.:-122.8                     
+                    Max.   :-122.5                     
+ CONVEYANCE_TYPE_DESCRIPTION CONVEYANCE_DATE          CONVEYANCE_PRICE  
+ Length:13643                Min.   :20180102000000   Min.   :  218750  
+ Class :character            1st Qu.:20190321000000   1st Qu.: 1173400  
+ Mode  :character            Median :20200427000000   Median : 1590000  
+                             Mean   :20204428649563   Mean   : 1975600  
+                             3rd Qu.:20230531000000   3rd Qu.: 2346000  
+                             Max.   :20241231000000   Max.   :32300000  
+      year           ppsf            logppsf         logsqft           age    
+ Min.   :2018   Min.   :  87.98   Min.   :4.477   Min.   :6.273   Min.   :-6  
+ 1st Qu.:2019   1st Qu.: 429.61   1st Qu.:6.063   1st Qu.:7.644   1st Qu.: 3  
+ Median :2020   Median : 636.64   Median :6.456   Median :7.899   Median :15  
+ Mean   :2020   Mean   : 703.98   Mean   :6.435   Mean   :7.913   Mean   :14  
+ 3rd Qu.:2023   3rd Qu.: 925.51   3rd Qu.:6.830   3rd Qu.:8.225   3rd Qu.:24  
+ Max.   :2024   Max.   :7031.08   Max.   :8.858   Max.   :9.295   Max.   :29  
+    east           prePost            widthCat        
+ Mode :logical   Length:13643       Length:13643      
+ FALSE:3133      Class :character   Class :character  
+ TRUE :10510     Mode  :character   Mode  :character  
+                                                      
+                                                      
+                                                      
+> x <- dtSubset[,mean(CONVEYANCE_PRICE,na.rm=TRUE),by=c("east","widthCat","prePost","use")]
+> print(x)
+      east widthCat prePost    use      V1
+    <lgcl>   <char>  <char> <char>   <num>
+ 1:  FALSE     wide    post single 4766581
+ 2:  FALSE     wide     pre single 3746969
+ 3:  FALSE standard     pre single 2684546
+ 4:  FALSE standard    post single 3357193
+ 5:  FALSE     wide     pre duplex 2330139
+ 6:  FALSE standard    post duplex 2159572
+ 7:  FALSE standard     pre duplex 1752427
+ 8:  FALSE     wide    post duplex 2786996
+ 9:  FALSE     wide     pre  Other 2728452
+10:  FALSE     wide    post  Other 2669444
+11:   TRUE standard    post single 2125509
+12:   TRUE     wide     pre duplex 1347563
+13:   TRUE standard     pre single 1558813
+14:   TRUE standard    post duplex 1562854
+15:   TRUE     wide    post single 2018257
+16:   TRUE standard     pre duplex 1264739
+17:   TRUE     wide     pre single 1303431
+18:   TRUE     wide    post duplex 1884056
+19:   TRUE     wide     pre  Other 1211667
+20:   TRUE     wide    post  Other 1684217
+21:   TRUE standard     pre  Other  876792
+22:  FALSE standard    post  Other 1450000
+      east widthCat prePost    use      V1
+    <lgcl>   <char>  <char> <char>   <num>
+> print(xtable(x))
+% latex table generated in R 4.5.2 by xtable 1.8-4 package
+% Tue Mar 24 11:21:15 2026
+\begin{table}[ht]
+\centering
+\begin{tabular}{rllllr}
+  \hline
+ & east & widthCat & prePost & use & V1 \\ 
+  \hline
+1 & FALSE & wide & post & single & 4766580.72 \\ 
+  2 & FALSE & wide & pre & single & 3746968.54 \\ 
+  3 & FALSE & standard & pre & single & 2684545.86 \\ 
+  4 & FALSE & standard & post & single & 3357192.98 \\ 
+  5 & FALSE & wide & pre & duplex & 2330138.76 \\ 
+  6 & FALSE & standard & post & duplex & 2159571.82 \\ 
+  7 & FALSE & standard & pre & duplex & 1752426.75 \\ 
+  8 & FALSE & wide & post & duplex & 2786995.62 \\ 
+  9 & FALSE & wide & pre & Other & 2728452.25 \\ 
+  10 & FALSE & wide & post & Other & 2669444.00 \\ 
+  11 & TRUE & standard & post & single & 2125509.22 \\ 
+  12 & TRUE & wide & pre & duplex & 1347562.60 \\ 
+  13 & TRUE & standard & pre & single & 1558812.59 \\ 
+  14 & TRUE & standard & post & duplex & 1562854.13 \\ 
+  15 & TRUE & wide & post & single & 2018256.53 \\ 
+  16 & TRUE & standard & pre & duplex & 1264738.68 \\ 
+  17 & TRUE & wide & pre & single & 1303430.99 \\ 
+  18 & TRUE & wide & post & duplex & 1884056.27 \\ 
+  19 & TRUE & wide & pre & Other & 1211666.67 \\ 
+  20 & TRUE & wide & post & Other & 1684216.89 \\ 
+  21 & TRUE & standard & pre & Other & 876792.00 \\ 
+  22 & FALSE & standard & post & Other & 1450000.00 \\ 
+   \hline
+\end{tabular}
+\end{table}
+> q("no")
 > proc.time()
    user  system elapsed 
- 72.606  19.613  39.876 
+ 34.792   1.485  21.404 

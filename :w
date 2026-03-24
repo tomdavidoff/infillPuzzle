@@ -1,7 +1,6 @@
 \documentclass{beamer}
 
 \usepackage{amsmath}
-\usepackage{cancel}
 \usepackage{booktabs}
 \usetheme{metropolis}
 % Define Sauder green
@@ -14,7 +13,7 @@
 
 \begin{document}
 
-\title{Where does the infill housing go? \\Addition versus division}
+\title{Where does the infill housing go? Addition versus division}
 \author{Thomas Davidoff and Tsur Somerville\\Sauder, UBC}
 \frame{\titlepage}
 
@@ -28,11 +27,11 @@
 			\end{itemize}
 		\item Resolve the puzzle with a model
 			\begin{itemize}
-				\item ``addition'' (more square feet) vs ``division'' (more units)
+				\item Distinguish ``addition'' (more square feet) from ``division'' (more units)
 				\item Land quality $\Rightarrow$ wealth $\Rightarrow$ less gain to division
 				\item A lot of infill upzoning is division vs addition
 			\end{itemize}
-		\item Data: upzonings in Vancouver, Minneapolis, \cancel{Portland}
+		\item Data: upzonings in Vancouver, Minneapolis, (and Portland not today)
 		\item Empirical contributions:
 			\begin{itemize}
 				\item Model assumption is true of single family zones:
@@ -43,14 +42,6 @@
 				\item Some evidence of more positive sorting in mixed addition/division upzonings
 			\end{itemize}
 	\end{itemize}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Single vs multifamily zoning a very old question\\Brooks (1981) imagining Roman Senate}
-	\begin{quote}
-		Leader of Senate: All fellow members of the Roman senate hear me. Shall we continue to build palace after palace for the rich? Or shall we aspire to a more noble purpose and build decent housing for the poor? How does the senate vote?\\
-		Entire Senate: F--- THE POOR!
-	\end{quote}
 \end{frame}
 
 \begin{frame}
@@ -78,7 +69,7 @@ for higher density redevelopment if it were enabled.\end{tiny}
 \end{frame}
 
 \begin{frame}
-	\frametitle{Not just Vancouver duplex where infill goes to \emph{low} $\theta$}
+	\frametitle{Not just Vancouver duplex where infill goes to \emph{less expensive} land}
 	\begin{itemize}
 		\item Vancouver laneway (Davidoff, Pavlov, Somerville, 2022)
 		\item ADUs in California (Marantz-Elmendorf and Kim, 2023; Brueckner and Thomaz, 2024)
@@ -100,7 +91,7 @@ for higher density redevelopment if it were enabled.\end{tiny}
 						\item $n$: number of units
 						\item Location $\theta$
 						\item Lot size fixed at 1 unit of land
-						\item Assume: $p_{\theta}>0$.
+						\item Assume: $p_{s}>0$, $p_{\theta}>0$.
 						\item Reduced form sorting (single family!): $p_{s\theta}>0$ 
 					\end{itemize}
 				\item Profit from raw land development $\pi = f\left[p(s,\theta) - c\right]$
@@ -111,18 +102,6 @@ for higher density redevelopment if it were enabled.\end{tiny}
 			\end{itemize}
 	\end{itemize}
 \end{frame}
-
-\begin{frame}
-	\frametitle{Positive sorting in theory?}
-	\begin{itemize}
-		\item Standard urban model, for each type, $$p_{\theta} \approx \frac{\text{Willingness to pay for }\theta}{\text{sqft}}$$
-		\item Tradeoff: rich guys with more numerator also want denominator
-		\item Can have poor people downtown apartments and rich people suburban detached homes
-		\item But strict zoning deletes the denominator effect
-		\item So only numerator $\Rightarrow$ expect + sorting
-	\end{itemize}
-\end{frame}
-
 
 \begin{frame}
 	\frametitle{Upzoning comparative statics addition versus division}
@@ -166,33 +145,9 @@ for higher density redevelopment if it were enabled.\end{tiny}
 					\end{itemize}
 				\item FSR goes from .7 to 1.0
 				\item Hence more division, more addition than duplex
-				\item Also: single family down to .6 FSR, .7 for duplex
 			\end{itemize}
 	\end{itemize}
 \end{frame}
-
-\begin{frame}
-	\frametitle{Data Sources}
-	\begin{footnotesize}
-	\begin{tabular}{llll}
-	\hline
-	City & Subject & Data Source & Coverage/Use \\
-	\hline \hline
-	Vancouver & Building Permits by  & City of Vancouver & 2019-2025 (laneway and duplex era)\\
-	& &  & 2024-2025 (laneway, duplex, and multiplex era)\\
-	Vancouver & Zoning & City of Vancouver & Current R1-1 zones  \\
-	Vancouver & Transactions & B.C. Assessment & 2017-2019 for baseline price and elasticities \\
-	Vancouver & Home and lot Characteristics & B.C. Assessment & All \\
-	\hline
-	Minneapolis & Building permit  & City of Minneapolis & 2020-2025 (post-policy)\\
-	Minneapolis & Zoning & City of Minneapolis & Interior 1,2, and 3 zones\\
-	Minneapolis & Transactions & Attom & 2016-2020 \\
-	Minneapolis & Home and lot Characteristics & Attom\\
-	\hline
-	\end{tabular}
-	\end{footnotesize}
-\end{frame}
-
 
 \begin{frame}
 \frametitle{Is it true that $p_{s\theta}>0$ ?}
@@ -204,17 +159,17 @@ for higher density redevelopment if it were enabled.\end{tiny}
 				\item Both implausible
 			\end{itemize}
 	\end{itemize}
-	\pgfimage[width=.8\textwidth]{ppsfElasticitysingleMetroRecent}
+	\pgfimage[width=.7\textwidth]{ppsfElasticitysingleMetroRecent}
 \end{frame}
 
 \begin{frame}
 	\frametitle{Price per square foot and elasticity: duplexs}
-	\pgfimage[width=.8\textwidth]{ppsfElasticityduplexMetroRecent}
+	\pgfimage[width=.7\textwidth]{ppsfElasticityduplexMetroRecent}
 \end{frame}
 
 \begin{frame}
-\frametitle{Price per square foot and elasticity: condos\\Constant elasticity in size not a good fit\\Supply matters, too (competition should make close to 0)}
-	\pgfimage[width=.8\textwidth]{ppsfElasticitycondoMetroRecent}
+\frametitle{Price per square foot and elasticity: condos\\Constant elasticity not a good fit}
+	\pgfimage[width=.7\textwidth]{ppsfElasticitycondoMetroRecent}
 \end{frame}
 
 \begin{frame}
@@ -246,6 +201,32 @@ for higher density redevelopment if it were enabled.\end{tiny}
 			\end{itemize}
 	\end{itemize}
 \end{frame}
+}
+\caption{\label{tab:dataSources} Data Sources}
+\begin{footnotesize}
+\begin{tabular}{llll}
+\hline
+City & Subject & Data Source & Coverage/Use \\
+\hline \hline
+Vancouver & Building Permits by  & City of Vancouver & 2019-2025 (laneway and duplex era)\\
+& &  & 2024-2025 (laneway, duplex, and multiplex era)\\
+Vancouver & Zoning & City of Vancouver & Current R1-1 zones  \\
+Vancouver & Transactions & B.C. Assessment & 2017-2019 for baseline price and elasticities \\
+Vancouver & Home and lot Characteristics & B.C. Assessment & All \\
+\hline
+Portland & Building permit  & City of Portland & 2022-2025 (RIP-2 era)\\
+Portland & Zoning & City of Portland & RIP-impacted zones\\
+Portland & Transactions & Attom & 2018-2021 \\
+Portland & Home and lot Characteristics & Attom\\
+\hline
+Minneapolis & Building permit  & City of Minneapolis & 2020-2025 (post-policy)\\
+Minneapolis & Zoning & City of Minneapolis & Interior 1,2, and 3 zones\\
+Minneapolis & Transactions & Attom & 2016-2020 \\
+Minneapolis & Home and lot Characteristics & Attom\\
+\hline
+\end{tabular}
+\end{footnotesize}
+\end{table}
 
 
 \begin{frame}
@@ -259,18 +240,19 @@ for higher density redevelopment if it were enabled.\end{tiny}
 \end{frame}
 
 \begin{frame}
-	\frametitle{East/West Side and infill takeup over time: $\approx$ 33' lots}
-	\pgfimage[width=.85\textwidth]{permitSharesByYearAndLotWidth33.png}
+	\frametitle{Duplex analysis for Vancouver, 2019-2023 (post-duplex, pre-multiplex)}
+	\begin{itemize}
+		\item Focus on 33' lots (majority of Vancouver)
+		\item Choice: duplex - single family alone premium
+			\begin{itemize}
+				\item Laneway complicated (discussion)
+			\end{itemize}
+		\item Comes from neighbourhood single family price per sqft and elasticity
+	\end{itemize}
 \end{frame}
 
 \begin{frame}
-	\frametitle{East/West Side and infill takeup over time: 50'+ lots}
-	\pgfimage[width=.85\textwidth]{permitSharesByYearAndLotWidth50.png}
-\end{frame}
-
-
-\begin{frame}
-	\frametitle{Neighbouhood x year Correlations: 20+, 33+ 40+ obs}
+	\frametitle{Correlations: minimum 20 single family sales observations}
 	\begin{footnotesize}
 	\begin{tabular}{rrrrr}
   \hline
@@ -301,126 +283,28 @@ elasticity & 1.00 & -0.99 & -0.91 & -0.22 \\
 \end{footnotesize}
 \end{frame}
 
-\begin{frame}
-	\frametitle{Duplex vs single prices by East/Lot Width/Pre Post\\Percentage vs dollar difference, 2Duplex vs 1 single}
-	\begin{footnotesize}
-	\begin{tabular}{llllr}
-	  \hline
-	  east & widthCat & prePost & use & V1 \\ 
-	  \hline
-	    FALSE & wide & pre & single & 3746968.54 \\ 
-	    FALSE & wide & pre & duplex & 2330138.76 \\ 
-	   TRUE & wide & pre & single & 1303430.99 \\ 
-	    TRUE & wide & pre & duplex & 1347562.60 \\ 
-	  FALSE & wide & post & single & 4766580.72 \\ 
-	    FALSE & wide & post & duplex & 2786995.62 \\ 
-	    TRUE & wide & post & single & 2018256.53 \\ 
-	    TRUE & wide & post & duplex & 1884056.27 \\ 
-	    FALSE & standard & pre & single & 2684545.86 \\ 
-	    FALSE & standard & pre & duplex & 1752426.75 \\ 
-	    TRUE & standard & pre & single & 1558812.59 \\ 
-	    TRUE & standard & pre & duplex & 1264738.68 \\ 
-	    FALSE & standard & post & single & 3357192.98 \\ 
-	    FALSE & standard & post & duplex & 2159571.82 \\ 
-	    TRUE & standard & post & single & 2125509.22 \\ 
-	    TRUE & standard & post & duplex & 1562854.13 \\ 
-	   \hline
-	\end{tabular}
-  \end{footnotesize}
-\end{frame}
 
 \begin{frame}
 	\frametitle{Minneapolis, MN}
 	\begin{itemize}
-		\item 2018 Council vote, effective 2020
-		\item 3 regions: Interior-1, Interior-2, Interior-3
-		\item All newly permit duplex and triplex vs SF only
-		\item Interior-1: FSR (unch) 0.5 , max height 2.5 storeys (28 ft)
-		\item Interior-2: FSR (unch) 0.5 , max height 2.5 storeys (28 ft)
-		\item Interior-3: FSR up: 0.6 for duplexes, 0.7 for triplexes, max height 3 storeys (42 ft)
-	\end{itemize}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Minneapolis Attom and permit data analysis\\Post-reform period only}
-	\begin{itemize}
-		\item For each zip code compute a mean price
-		\item And an elasticity\\
-		$\ln \frac{P_{izt}}{\text{sqft}_{izt}} = \beta_{0z} + \beta_{1z} \ln \text{sqft}_{izt} + \gamma X_{izt} + \delta_t + \epsilon_{izt}$
-		\item These statistics computed 2 years pre-refom
-		\item With permit data, compute fraction by zip code of permits
+		\item Oregon Bill 2001 2019:
 			\begin{itemize}
-				\item Duplex or triplex vs single family
-				\item In post-reform period only
+				\item Bans single family zoning in cities over 25,000 residents
+				\item Requires allownace of up to 4 units per lot
 			\end{itemize}
-		\item Study correlations
-		\item Expect: Interior-1 and -2: division only - sorting
-		\item Interior-3: addition and division - more positive sorting
-		\item Only 31 zips total (11 in UN-3)
-	\end{itemize}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Sorting of infill in Minneapolis}
-	\begin{footnotesize}
-	\textbf{All affected Zips}
-	\begin{tabular}{rrrrr}
-	  \hline
-	 & elasticity & price\_level & propensity & medianIncome \\ 
-	  \hline
-	elasticity & 1.00 & 0.59 & 0.28 & 0.30 \\ 
-	  price\_level & 0.59 & 1.00 & 0.03 & 0.69 \\ 
-	  propensity & 0.28 & 0.03 & 1.00 & -0.14 \\ 
-	  medianIncome & 0.30 & 0.69 & -0.14 & 1.00 \\ 
-	   \hline
-	\end{tabular}
-\textbf{Interior-3 zone}
-\begin{tabular}{rrrrr}
-  \hline
- & elasticity & price\_level & propensity & medianIncome \\ 
-  \hline
-elasticity & 1.00 & 0.61 & 0.32 & 0.31 \\ 
-  price\_level & 0.61 & 1.00 & 0.24 & 0.82 \\ 
-  propensity & 0.32 & 0.24 & 1.00 & 0.01 \\ 
-  medianIncome & 0.31 & 0.82 & 0.01 & 1.00 \\ 
-   \hline
-\end{tabular}
-\textbf{Interior-1 and 2 zones}
-\begin{tabular}{rrrrr}
-  \hline
- & elasticity & price\_level & propensity & medianIncome \\ 
-  \hline
-elasticity & 1.00 & 0.58 & 0.36 & 0.29 \\ 
-  price\_level & 0.58 & 1.00 & -0.05 & 0.64 \\ 
-  propensity & 0.36 & -0.05 & 1.00 & -0.30 \\ 
-  medianIncome & 0.29 & 0.64 & -0.30 & 1.00 \\ 
-   \hline
-\end{tabular}
-\end{footnotesize}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Conclusions}
-	\begin{itemize}
-		\item Infill zoning often more ``division'' than ``addition''
-		\item Fact + model + assumption $\Rightarrow$ negative sorting
-		\item The assumption is true: 
+		\item Portland's Residential Infill Project (RIP):
 			\begin{itemize}
-				\item More expensive \$psqft more $\frac{\partial \log p}{\partial \log s}$
+				\item RIP-1: Aug 2021, zones R2.5, R5, R7 (smaller lots)
+				\item RIP-2: June 2022, zones R10, R20 (larger lots)
+				\item Allows lot subdivision
+				\item Smaller lots near center city are allowed more bonus density for extra units
 			\end{itemize}
-		\item Empirics: repeat usual negative sorting in:
-			\begin{itemize}
-				\item Vancouver duplex in division-only era
-				\item Minneapolis division-only zones
-			\end{itemize}
-		\item Some evidence with small samples of more + sorting with addition
-			\begin{itemize}
-				\item Latter-day duplex if no laneway
-				\item Multiplex 2025
-				\item Interior-3 in Minneapolis
-			\end{itemize}
-		\item Our wish: figure a way to get more power in analysis of small N areas
-	\end{itemize}
-\end{frame}
 
+Broad upzoning in Portland was triggered by the Oregon legislature’s passage of House Bill 2001 in July 2019. This bill effectively banned exclusive single-family zoning and required jurisdictions with over 25,000 residents, among other changes, to allow up to four units per lot. Cities were given until June 2022 to update their zoning codes to meet the bill’s requirements.
+
+The City of Portland enacted its first round of reforms, the Residential Infill Project (RIP-1), effective in August 2021. This first of two rounds applied to zones nearer the city centre with smaller lots (land use zones R2.5, R5, and R7).\footnote{These zones reflect allowed lot sizes: R2.5 allows 1 lot per 2,500 sq ft; R5 allows 1 lot per 5,000 sq ft; and R7 allows 1 lot per 7,000 sq ft.} Allowed FSR varied by zone and by the number of units built per lot, with an additional 0.1 FSR for each added unit above the single-family maximum of 0.7, 0.5, and 0.4 in zones R2.5, R5, and R7, respectively.\footnote{For a 2-, 3-, or 4-unit development, the maximum FAR would be 0.8, 0.9, and 1.0 in the R2.5 zone, respectively; 0.6, 0.7, and 0.8 in the R5 zone; and 0.5, 0.6, and 0.7 in the R7 zone.}
+
+The City enacted a second round of reforms (RIP-2) in June 2022. This second round extended the RIP-1 changes to the lower-density, larger-lot zones (R10 and R20, for 10,000 and 20,000 sq ft lots, respectively), which tended to be further from the city’s urban core.\footnote{The shares of single-dwelling land by zone are roughly R2.5 – 7\%, R5 – 41\%, R7 – 18\%, R10 – 18\%, and R20 – 5\%; see \textcite{DongHansz_2019}.} Additional changes under RIP-2 included the ability to subdivide lots and create townhouse-style, side-by-side, fee-simple units across all zones, as well as the extension of accessory dwelling unit (ADU) permissions into the R10 and R20 zones. Overall, RIP-2 extended RIP-1 to the remaining single-family zones, while permitting more flexibility in structure types and options for fee-simple, rather than condominium or strata, ownership.
+
+ 
 \end{document}

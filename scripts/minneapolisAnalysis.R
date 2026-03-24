@@ -52,6 +52,9 @@ print(table(dt[,land_use_c]))
 print(xtable(cor(dt[, .(slope, price_level, propensity,medianIncome)])))
 print(xtable(cor(dt[land_use_c=="UN3", .(slope, price_level, propensity,medianIncome)])))
 print(xtable(cor(dt[land_use_c!="UN3", .(slope, price_level, propensity,medianIncome)])))
+print(nrow(dt[land_use_c=="UN3"]))
+print(nrow(dt[land_use_c="UN1"]))
+print(nrow(dt[land_use_c="UN2"]))
 
 
 # 4. Model -----------------------------------------------------------------
