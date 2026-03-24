@@ -24,6 +24,7 @@ Type 'q()' to quit R.
 > 
 > library(data.table)
 > library(ggplot2)
+> library(xtable)
 > 
 > dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
 > print(summary(dtChoice))
@@ -699,24 +700,66 @@ Key: <NEIGHBOURHOOD, year>
  3rd Qu.:1708.4   3rd Qu.:1166.8   3rd Qu.:41.00   3rd Qu.: 502.6  
  Max.   :2311.6   Max.   :1612.7   Max.   :77.00   Max.   : 854.6  
                   NA's   :12                                       
-> print(cor(dtNeighbourhood33[,.(elasticity,intercept,duplex_premium,shareDuplex)]))
-               elasticity  intercept duplex_premium shareDuplex
-elasticity      1.0000000 -0.9914875    -0.88839999 -0.11312861
-intercept      -0.9914875  1.0000000     0.93563553  0.08254300
-duplex_premium -0.8884000  0.9356355     1.00000000  0.01248886
-shareDuplex    -0.1131286  0.0825430     0.01248886  1.00000000
-> print(cor(dtNeighbourhood33[nobs>33,.(elasticity,intercept,duplex_premium,shareDuplex)]))
-               elasticity  intercept duplex_premium shareDuplex
-elasticity      1.0000000 -0.9872740     -0.8377375  -0.1536138
-intercept      -0.9872740  1.0000000      0.9116555   0.1612049
-duplex_premium -0.8377375  0.9116555      1.0000000   0.1428319
-shareDuplex    -0.1536138  0.1612049      0.1428319   1.0000000
-> print(cor(dtNeighbourhood33[nobs>40,.(elasticity,intercept,duplex_premium,shareDuplex)]))
-               elasticity  intercept duplex_premium shareDuplex
-elasticity      1.0000000 -0.9922809     -0.9068989  -0.2216285
-intercept      -0.9922809  1.0000000      0.9509180   0.2127919
-duplex_premium -0.9068989  0.9509180      1.0000000   0.1723786
-shareDuplex    -0.2216285  0.2127919      0.1723786   1.0000000
+> # for the following 3 tables, make xtables for latex, can just print them
+> c1 <- cor(dtNeighbourhood33[,.(elasticity,intercept,duplex_premium,shareDuplex)])
+> 
+> c2 <- cor(dtNeighbourhood33[nobs>33,.(elasticity,intercept,duplex_premium,shareDuplex)])
+> c3 <- cor(dtNeighbourhood33[nobs>40,.(elasticity,intercept,duplex_premium,shareDuplex)])
+> dtNeighbourhood33[,duplexActual:=meanDuplex-meanSingle]
+> print(cor(dtNeighbourhood33[nobs>33 & !is.na(duplexActual),.(elasticity,duplex_premium,shareDuplex,duplexActual)]))
+               elasticity duplex_premium shareDuplex duplexActual
+elasticity      1.0000000     -0.8945508  -0.1005924    0.2924123
+duplex_premium -0.8945508      1.0000000   0.1406477   -0.2597047
+shareDuplex    -0.1005924      0.1406477   1.0000000   -0.1078600
+duplexActual    0.2924123     -0.2597047  -0.1078600    1.0000000
+> xtable(c1,digits=2)
+% latex table generated in R 4.5.0 by xtable 1.8-4 package
+% Tue Mar 24 09:17:27 2026
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & elasticity & intercept & duplex\_premium & shareDuplex \\ 
+  \hline
+elasticity & 1.00 & -0.99 & -0.89 & -0.11 \\ 
+  intercept & -0.99 & 1.00 & 0.94 & 0.08 \\ 
+  duplex\_premium & -0.89 & 0.94 & 1.00 & 0.01 \\ 
+  shareDuplex & -0.11 & 0.08 & 0.01 & 1.00 \\ 
+   \hline
+\end{tabular}
+\end{table}
+> xtable(c2,digits=2)
+% latex table generated in R 4.5.0 by xtable 1.8-4 package
+% Tue Mar 24 09:17:27 2026
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & elasticity & intercept & duplex\_premium & shareDuplex \\ 
+  \hline
+elasticity & 1.00 & -0.99 & -0.84 & -0.15 \\ 
+  intercept & -0.99 & 1.00 & 0.91 & 0.16 \\ 
+  duplex\_premium & -0.84 & 0.91 & 1.00 & 0.14 \\ 
+  shareDuplex & -0.15 & 0.16 & 0.14 & 1.00 \\ 
+   \hline
+\end{tabular}
+\end{table}
+> xtable(c3,digits=2)
+% latex table generated in R 4.5.0 by xtable 1.8-4 package
+% Tue Mar 24 09:17:27 2026
+\begin{table}[ht]
+\centering
+\begin{tabular}{rrrrr}
+  \hline
+ & elasticity & intercept & duplex\_premium & shareDuplex \\ 
+  \hline
+elasticity & 1.00 & -0.99 & -0.91 & -0.22 \\ 
+  intercept & -0.99 & 1.00 & 0.95 & 0.21 \\ 
+  duplex\_premium & -0.91 & 0.95 & 1.00 & 0.17 \\ 
+  shareDuplex & -0.22 & 0.21 & 0.17 & 1.00 \\ 
+   \hline
+\end{tabular}
+\end{table}
 > ggplot(dtNeighbourhood33,aes(x=duplex_premium,y=shareDuplex)) + geom_point() 
 > ggsave("text/duplexPrediction.png",width=6,height=4)
 > 
@@ -724,4 +767,4 @@ shareDuplex    -0.2216285  0.2127919      0.1723786   1.0000000
 > 
 > proc.time()
    user  system elapsed 
- 31.871   8.745  10.600 
+ 31.008   8.380  10.350 

@@ -5,6 +5,7 @@
 
 library(data.table)
 library(ggplot2)
+library(xtable)
 
 dtChoice <- readRDS("~/OneDrive - UBC/dataProcessed/vancouverPermitLotsTracts.rds")
 print(summary(dtChoice))
@@ -74,9 +75,16 @@ dtNeighbourhood33[,duplex_premium:=fittedDuplex-fittedSingle]
 print(dtNeighbourhood33)
 dtNeighbourhood33 <- dtNeighbourhood33[abs(elasticity)<1]
 print(summary(dtNeighbourhood33))
-print(cor(dtNeighbourhood33[,.(elasticity,intercept,duplex_premium,shareDuplex)]))
-print(cor(dtNeighbourhood33[nobs>33,.(elasticity,intercept,duplex_premium,shareDuplex)]))
-print(cor(dtNeighbourhood33[nobs>40,.(elasticity,intercept,duplex_premium,shareDuplex)]))
+# for the following 3 tables, make xtables for latex, can just print them
+c1 <- cor(dtNeighbourhood33[,.(elasticity,intercept,duplex_premium,shareDuplex)])
+
+c2 <- cor(dtNeighbourhood33[nobs>33,.(elasticity,intercept,duplex_premium,shareDuplex)])
+c3 <- cor(dtNeighbourhood33[nobs>40,.(elasticity,intercept,duplex_premium,shareDuplex)])
+dtNeighbourhood33[,duplexActual:=meanDuplex-meanSingle]
+print(cor(dtNeighbourhood33[nobs>33 & !is.na(duplexActual),.(elasticity,duplex_premium,shareDuplex,duplexActual)]))
+xtable(c1,digits=2)
+xtable(c2,digits=2)
+xtable(c3,digits=2)
 ggplot(dtNeighbourhood33,aes(x=duplex_premium,y=shareDuplex)) + geom_point() 
 ggsave("text/duplexPrediction.png",width=6,height=4)
 

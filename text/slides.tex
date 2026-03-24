@@ -163,11 +163,26 @@ for higher density redevelopment if it were enabled.\end{tiny}
 \end{frame}
 
 \begin{frame}
-	\frametitle{Price per square foot and elasticity: condos}
+\frametitle{Price per square foot and elasticity: condos\\Constant elasticity not a good fit}
 	\pgfimage[width=.7\textwidth]{ppsfElasticitycondoMetroRecent}
 \end{frame}
 
-
+\begin{frame}
+	\frametitle{Spec vs custom: single vs not}
+	\begin{itemize}
+		\item Spec(ulative): developer buys, builds, sells to market
+		\item Custom: rich guy buys, hires builder, holds property
+		\item Hard to do custom other than single family
+		\item Exercise: match CoV new build permit to subsequent sale, 2017-2021:
+			\begin{itemize}
+				\item Duplex 41 no, 77 yes
+				\item Single 1884 no,706 yes
+			\end{itemize}
+		\item Custom likely fancier and not observed in sales data
+		\item Elasticity hence likely biased down, more so West Side
+		\item Note: can't do recent time slope of custom share: mechanical
+	\end{itemize}
+\end{frame}
 
 \begin{frame}
 	\frametitle{Not surprisingly, $p^{condo}_{s\theta}<p^{duplex}_{s/theta}<p^{sf}_{s\theta}$}
@@ -193,9 +208,6 @@ for higher density redevelopment if it were enabled.\end{tiny}
 \end{frame}
 
 \begin{frame}
-	\frametitle{30-35' lots: :
-
-\begin{frame}
 	\frametitle{Duplex analysis for Vancouver, 2019-2023 (post-duplex, pre-multiplex)}
 	\begin{itemize}
 		\item Focus on 33' lots (majority of Vancouver)
@@ -205,7 +217,39 @@ for higher density redevelopment if it were enabled.\end{tiny}
 			\end{itemize}
 		\item Comes from neighbourhood single family price per sqft and elasticity
 	\end{itemize}
-\end{fram}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Correlations: minimum 20 single family sales observations}
+	\begin{footnotesize}
+	\begin{tabular}{rrrrr}
+  \hline
+ & elasticity & intercept & duplex\_premium & shareDuplex \\
+  \hline
+elasticity & 1.00 & -0.99 & -0.89 & -0.11 \\
+  intercept & -0.99 & 1.00 & 0.94 & 0.08 \\
+  duplex\_premium & -0.89 & 0.94 & 1.00 & 0.01 \\
+  shareDuplex & -0.11 & 0.08 & 0.01 & 1.00 \\
+   \hline
+   \hline
+ & elasticity & intercept & duplex\_premium & shareDuplex \\
+  \hline
+elasticity & 1.00 & -0.99 & -0.84 & -0.15 \\
+  intercept & -0.99 & 1.00 & 0.91 & 0.16 \\
+  duplex\_premium & -0.84 & 0.91 & 1.00 & 0.14 \\
+  shareDuplex & -0.15 & 0.16 & 0.14 & 1.00 \\
+   \hline
+  \hline
+ & elasticity & intercept & duplex\_premium & shareDuplex \\
+  \hline
+elasticity & 1.00 & -0.99 & -0.91 & -0.22 \\
+  intercept & -0.99 & 1.00 & 0.95 & 0.21 \\
+  duplex\_premium & -0.91 & 0.95 & 1.00 & 0.17 \\
+  shareDuplex & -0.22 & 0.21 & 0.17 & 1.00 \\
+   \hline
+\end{tabular}
+\end{footnotesize}
+\end{frame}
 
  
 \end{document}
