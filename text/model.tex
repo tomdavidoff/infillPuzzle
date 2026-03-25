@@ -1,0 +1,84 @@
+\documentclass[12pt]{article}
+
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{setspace}
+
+\begin{document}
+
+\title{An urban model of elasticity of price with respect to unit size}
+\author{Tom Davidoff and Tsur Somerville}
+
+Households have a utility function given by $U\left(c,s,\theta\right)$, where
+$c$ is numeraire consumption, $\theta$ is a single index of neighbourhood
+quality (e.g. distance from downtown), and $s$ is the square feet of housing
+consumed. 
+
+To keep matters simple, suppose utility is additively separable with concavity
+over housing and the numeraire: 
+
+\begin{equation}
+	U = u(c) + h(s) + \theta,
+\end{equation}
+
+Due to zoning, $s$ is not freely chosen, but fixed in a small range
+$\left[s+\epsilon, s-\epsilon\right]$ at each location.
+
+Numeraire consumption is:
+
+\begin{equation}
+	c = y - sp(s,\theta)+m\theta.
+\end{equation}
+
+The term $m\theta$ in consumption recognizes the possibility that there is a direct monetary benefit to living in a better location (e.g. less commuting or more networking opportunities). Price per square foot of housing $p$ is a function of both the location quality $\theta$ and the size of the unit $s$. There is no housing supply choice over $s$ to enforce equalization of price per square foot within locations.
+
+For any household indifferent in some continuous range of $\theta$, the slope of $p$ in $\theta$ given by the ratio of the marginal utility of numeraire consumption to the net marginal benefit of increasing location quality:
+
+\begin{equation}
+	\label{eq:bidRent}
+	\frac{d p}{d \theta} = \frac{mu'+1}{s u'}.
+\end{equation}
+
+The derivative of the ``bid-rent'' \eqref{eq:bidRent} slope with respect to income will be given by:
+
+\begin{equation}
+	%\frac{d^{2} p}{d \theta dy} = \frac{mU_{cc} + U_{c\theta} + \frac{ds}{dy}\left[mU_{cc} + U_{c\theta}\right] - \frac{sU_{cc}+\frac{ds}{dy}U_{c}}{sU_{c}}}{sU_{c}}.
+\end{equation}
+\end{document}
+
+With negligible variation in housing consumption due to the $s$ mandate, the $\frac{ds}{dy}$ terms will be small. Then, if monetary benefits of better location are small and other amenity features are not less valued at high levels of consumption, the dominant effect will be the relative importance of money for low income households $\frac{-U_{cc}}{U_{c}}>0$.
+
+In the small range of housing variation, the price per square foot of housing $s$ will vary within locations will come from indifference between moving to a slightly larger unit:
+
+\begin{equation}
+	\frac{dU}{ds} &= -U_{c}\left[p(s,\theta)+\frac{dp}{ds}\right] + U_s = 0\\
+\end{equation}
+
+Totally differentiating with respect to $\theta$ gives:
+
+\begin{equation}
+	0 = -U_{c\theta}\left[p(s,\theta)+\frac{dp}{ds}\right]-U_{cc}\left[
+\end{equation}
+
+\end{document}
+
+
+The bid-rent function at $\theta$ has slope given by the ration $\frac\frac{{dV}{d\theta}}{\frac{dV}{dp}}$:
+
+\begin{equation}
+	\frac{d p}{d \theta} = \frac{1}{s w'(y-sp(s,\theta))}
+\end{equation}
+
+The derivative of $w'$ with respect to $y$ is negative, and hence:
+
+\begin{equation}
+	\frac{d^2 p}{d \theta d y} = -\frac{w''(y-sp(s,\theta))}{s w'(y-sp(s,\theta))^2} >0
+\end{equation}
+
+Thus higher-wealth households have steeper bid-rent curves and outbid lower
+wealth households and locate in the higher-$\theta$ neighborhoods.
+
+Within a neighborhood, the price
+
+\end{document}
