@@ -13,36 +13,63 @@
 Households have a utility function given by $U\left(c,s,\theta\right)$, where
 $c$ is numeraire consumption, $\theta$ is a single index of neighbourhood
 quality (e.g. distance from downtown), and $s$ is the square feet of housing
-consumed. 
+consumed at a lot at their chosen location $\theta$. There are multiple lots at
+each level $\theta$.
 
-To keep matters simple, suppose utility is additively separable with concavity
-over housing and the numeraire: 
+Due to zoning, landowner developers are constrained to build $\bar{s}$ square
+feet on each lot. The government auctions a small number of permits to build
+homes at size $k\bar{s}$, with $k<1$. The owners of land at the locations where
+the profit from building at $k\bar{s}$ minus the profit from building at
+$\bar{s}$ (or not building at all, which we rule out \dots) are greatest are
+allocated the permits.
 
-\begin{equation}
-	U = u(c) + h(s) + \theta,
-\end{equation}
-
-Due to zoning, $s$ is not freely chosen, but fixed in a small range
-$\left[s+\epsilon, s-\epsilon\right]$ at each location.
-
-Numeraire consumption is:
+Households vary only by income $y$ and have a utility function over $s$, other
+consumption, and location quality $\theta$ given by $U(c,s,\theta)$. Numeraire
+consumption is given by:
 
 \begin{equation}
 	c = y - sp(s,\theta)+m\theta.
 \end{equation}
 
-The term $m\theta$ in consumption recognizes the possibility that there is a direct monetary benefit to living in a better location (e.g. less commuting or more networking opportunities). Price per square foot of housing $p$ is a function of both the location quality $\theta$ and the size of the unit $s$. There is no housing supply choice over $s$ to enforce equalization of price per square foot within locations.
+The term $m\theta$ in consumption recognizes the possibility that there is a
+direct monetary benefit to living in a better location (e.g. less commuting or
+more networking opportunities). Price per square foot of housing $p$ is a
+function of both the location quality $\theta$ and the size of the unit $s$. 
+
+For small changes in size, $k\approx 1$, we can approximate the difference in
+price per square foot $p(\theta,\bar{s})$ and $p(\theta,k\bar{s})$ by the slope
+of the price function with respect to size.
+
+For homes of size $s$, indifference among locations requires
+
+
+$\left[\bar{s}+\epsilon, \bar{s}-\epsilon\right]$ at each location. Housing
+units at location quality $\theta$ must be built to size $\bar{s}$, but there
+will be some accidental variation (e.g. through depreciation or improvements
+and additions, which we do not explicitly model. Realistically, due to
+grandfathering and heterogeneous zoning within neighbourhoods, the housing
+stock may be fairly diverse even in the presence of currently restrictive
+zoning in most locations). 
+
+\begin{align}
+	\label{eq:sFOC}
+	\frac{dU}{ds} &= -U_{c}\left[p(s,\theta)+s\frac{dp}{ds}\right] + U_s \\
+	\frac{dp}{ds} = \frac{U_s}{s U_c} - \frac{p(s,\theta)}{s}
+\end{align}
+
+There is no housing supply choice over $s$ to enforce equalization of price per square foot within locations.
 
 For any household indifferent in some continuous range of $\theta$, the slope of $p$ in $\theta$ given by the ratio of the marginal utility of numeraire consumption to the net marginal benefit of increasing location quality:
 
 \begin{equation}
 	\label{eq:bidRent}
-	\frac{d p}{d \theta} = \frac{mu'+1}{s u'}.
+	\frac{d p}{d \theta} = \frac{mu'+U_{\theta}}{s u'}.
 \end{equation}
 
 The derivative of the ``bid-rent'' \eqref{eq:bidRent} slope with respect to income will be given by:
 
 \begin{equation}
+	\frac{d^{2}p}{d\theta dy} = \frac{mU_{cc} + U_{c\theta} + \frac{ds}{dy}p\left[mU_{cc} + U_{c\theta}\right] - \frac{sU_{cc}\left[1+\frac{ds}{dy}p\right]c{ds}{dy}U_{c}}{sU_{c}}}{sU_{c}}.
 	%\frac{d^{2} p}{d \theta dy} = \frac{mU_{cc} + U_{c\theta} + \frac{ds}{dy}\left[mU_{cc} + U_{c\theta}\right] - \frac{sU_{cc}+\frac{ds}{dy}U_{c}}{sU_{c}}}{sU_{c}}.
 \end{equation}
 \end{document}
