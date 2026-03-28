@@ -1,0 +1,167 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage[style=authoryear, backend=biber]{biblatex}
+\bibliography{infillPuzzle.bib}
+
+\begin{document}
+
+\title{LOI: ``Measurement and Evaluation of State and Local Housing Supply Reforms''}
+\author{Thomas Davidoff and Tsur Somerville, Sauder School of Business, UBC}
+\maketitle
+
+\section{Introduction and Contribution}
+
+Jurisdictions across Canada and the U.S. have recently allowed
+``missing middle'' infill housing, such as accessory dwelling units and
+multiplexes, in residential zones formerly restricted to single-family
+use. Some studies have documented that infill housing is less prevalent
+in more expensive neighbourhoods. This is puzzling in that the right to
+add density should be more valuable in neighbourhoods where prices are
+higher. To resolve this seeming contradiction, we develop a
+parsimonious model emphasizing that different implementations of
+missing middle zoning feature different mixes of ``addition'' (adding
+to allowable square footage) and ``division'' (subdividing a fixed
+amount of square footage into multiple units). Addition is more
+valuable where price per square foot of built space is greatest.
+Division is more valuable where the elasticity of price in square
+footage is less positive, that is, where buyers do not pay much more for larger
+units, so that splitting a house into smaller units sacrifices little per-unit
+value.  
+
+Infill housing will thus be less prevalent in pricier neighbourhoods when the
+upzoning features relatively little addition and more division if (wealthier)
+households with greater willingness to pay for space  are concentrated in
+expensive price-per-square-foot neighbourhoods. Preliminary analysis of housing
+transactions and permitting data in upzoned neighbourhoods of Vancouver,
+Portland, and Minneapolis provide mixed evidence to date on these theoretical
+contributions.  Division-only policies generally have take-up spatially
+negatively correlated with price per square foot. Mixed addition-and-division
+reforms have mixed uptake. 
+
+The contribution of a fuller study will be to document whether our model
+accurately captures an important reason why uptake of infill projects has
+(seemingly inefficiently) been centered in less valued locations in which
+displacement may be a more salient concern. One inference that might follow
+from our results is that for infill zoning to succeed in inducing more
+affordable housing forms in high-value locations, more ``addition'' of density
+will be required.
+
+
+\section{Description of the policy being evaluated}
+
+Below, we describe the evolution of the relevant policies and their details in
+each of three cities that have been our focus to date for academic research
+purposes. We expect the breadth of the study area to grow for the proposed
+funded research.
+
+\textit{Minneapolis, MN USA}
+
+Minneapolis was moved away from single-family zoning, with the City Council
+voting in December 2018 to allow more than one unit on all single-family lots.
+The changes came into effect in January 2020 following approval by the region’s
+Metropolitan Council in 2019. The rezoning divides the city into three major
+regions, with additional distinct policies for transit corridors. These
+corridors were rezoned to allow 3–6 storey buildings, with 10–30 storeys
+permitted close to transit stations. Additionally, in May 2021, off-street
+parking minimums were eliminated. The key variation for our projects comes from
+the fact that the rezoning of Interior areas 1 and 2 were division only
+reforms, whereas Interior-3 was a mixed addition and division reform. Our model
+predicts likelier positive sorting in Interior-3, where there is more addition,
+versus others only division
+
+\textit{Portland, OR USA}
+
+Broad upzoning in Portland was triggered by the Oregon legislature’s passage of
+House Bill 2001 in July 2019. This bill effectively banned exclusive
+single-family zoning and required jurisdictions with over 25,000 residents,
+among other changes, to allow up to four units per lot. Cities were given until
+June 2022 to update their zoning codes to meet the bill’s requirements.
+Portland's upzoning proceeded in two rounds, with the first round applying to
+zones nearer the city centre and the second round extending the changes to the
+remaining single-family zones. The first round of reforms (RIP-1) was effective
+in August 2021 and applied to zones R2.5, R5, and R7, which reflect allowed lot
+sizes of 2,500, 5,000, and 7,000 sq ft, respectively. Allowed FSR varied by
+zone and by the number of units built per lot, with an additional 0.1 FSR for
+each added unit above the single-family maximum of 0.7, 0.5, and 0.4 in zones
+R2.5, R5, and R7, respectively.
+
+This upzoning provides variation in the mix of addition and division benefits
+along multiple dimensions. The density allowances were more valuable near the
+downtown core, where existing size limits were more tightly binding. Also,
+different zones were affected with different timing.
+
+\textit{Vancouver, BC Canada}
+
+In Vancouver, increases in allowed densities that we will study on
+single-family lots occurred in two rounds. The first was the September 2018
+approval of duplexes, with up to two additional rental basement suites (one per
+unit) permitted on nearly all single-family lots. Because duplexes under this
+reform could not include laneway homes (ADUs), the reform was essentially a
+division-only reform, in some cases with \emph{subtraction} of square footage.
+
+Following the Province of British Columbia’s elimination of exclusive
+single-family zoning in November 2023, the City of Vancouver extended multiplex
+permissions to all residential zones. At the same time, the maximum allowed
+size for ADU units was increased from 0.16 to 0.25 FSR. The number of permitted
+units varies between three and six (and up to eight for purpose-built rental),
+depending on lot area and frontage. A standard 33’ × 122’ lot would allow three
+units. To allow four units, lot area would have to exceed 4,984 sq ft or
+frontage would have to exceed 43.6’.
+
+With the 2023 changes, maximum allowed FSR depended on several factors.
+Single-family homes and duplexes were permitted maximum FSRs of 0.6 and 0.70,
+respectively, with an additional 0.25 FSR allowed for an ADU on single-family
+lots. For multiplexes (three or more units), the default maximum was 0.7, with
+1.0 FSR attainable if one of the following applied: (i) all units are
+secured-rental housing; (ii) one unit is designated as ``below-market''
+homeownership; or (iii) the developer pays a density bonus, which can vary from
+\$3.00 to \$140.00 per square foot of additional density depending on lot size
+and location. For lots of sufficient size, 7–8 rental units are also possible
+at an FSR of 1.0.
+
+For Vancouver, a natural prediction is that duplex rezoning, which until late
+2023 was division-only should have negative sorting. Multiplex zoning features
+both addition and division effects, so the prediction is more ambiguous.
+Laneway units, which cannot be sold, represent a particular form of addition. 
+
+\section{Methodology}
+
+Our approach will be to estimate at the lot level a multinomial or binomial model of the choice of which type of home to build on lots in upzoned areas. We can evaluate both the causal effect of upzoning on the choice to redevelop or not, and the relationship between the conditional choice of which type of product to build (e.g. single family with no ADU, single family with ADU, duplex, multiplex, etc.) and the expected profit of the redevelopment choice. We propose to model the profitability of different sized units based on pricing just before upzoning, both by studying relative price per square foot of single family versus grandfathered multifamily homes in affected neighbourhoods, and by studying the elasticity of price per square foot in unit size. We have shown already for the three study cities that this elasticity is highly positively correlated with neighbourhood prices and amenity levels. That is, willingness to pay for incremental square footage is highly correlated with average price levels.
+
+Our estimation will proceed in three steps:
+
+\begin{enumerate}
+	\item Estimate (with Attom data in the US and BC Assessment data in Vancouver) average price per square foot and the elasticity of that price with respect to unit size in the period before upzoning that allows infill housing. 
+	\item Use the elasticities and construction cost data to estimate the expected profitability of different types of infill housing (e.g. duplexes, triplexes, etc.) in different neighbourhoods in each city. This profitability will be explicitly linked to the extent to which a rezoning is division-only or mixed addition and division.
+	\item Estimate the relationship between expected profitability both based on the second step above, and on broad characterization of a neighbourhood's upzoning as division-only or inclusive of both, and (a) the discrete choice of whether to redevelop an existing single family home and (b) the observed choice of infill housing type conditional on redevelopment, using multinomial or binomial models at the lot level, or block-or neighbourhood OLS regressions. Here we are asking the critical question of whether the correlation between price level and infill choice type \emph{within} reform boundaries depends on the addition-division mix of reforms.
+\end{enumerate}
+
+\subsection{Threats to validity and robustness}
+
+Naturally upzoning boundaries might follow demand. Vancouver is a particularly useful laboratory because of the citywide nature of reform. However, we mostly study the correlation between infill choices and the addition-division mix of reforms within zones. Another concern is out-of-sample performance of elasticity estimates. That is, the elasticity of price per square foot and size among single family homes between 2,500 and 3,500 square feet may not provide reliable estimates of 1,250 square foot multiplex units. For that reason, we will consider sale prices of grandfathered multifamily units in the pre-reform period to guide functional form choices for extrapolation.
+
+\subsection{Feasibility}
+
+Numerous jurisdictions, including those enumerated above as well as Seattle and now all of California have been upzoned and permits have been issued allowing infill housing for several years. With price and permitting data and estimates of construction costs by type (e.g. available from RS Means in the US and Butterfield Property Advisers in Vancouver), as well as neighbourhood demographic and standard geographic amenity measures, we have the necessary data to implement the above estimation strategy. We have preliminary results already at a coarse neighbourhood level for the three focal cities, each of which provides publicly available (if messy) data on permits.
+
+\subsection{Study Timeline}
+
+\begin{itemize}
+	\item Months 1-4: Refine the economic model and estimation strategy and clean construction cost, price, and permitting data for additional US cities
+	\item Months 5-8: Estimate the model as described above.
+	\item Months 9-12: Document results and write both an academic paper and a policy brief per Arnold's preferences.
+\end{itemize}
+
+\section{Budget}
+
+Our initial request is for \$150,000. The primary cost drivers are data acquisition and personnel. We will use funding to support data acquisition and a graduate research assistant. We have already acquired Attom data, but expanding the time covered would be a natural and large use of funds. We also would like to acquire detailed RS Means data. We will also fund a graduate research assistant as a cost of roughly \$30,000 for one year.
+
+\section{Team}
+
+The team is the two authors plus an RA, likely but not necessarily our doctoral student Daryl Larsen. Both Davidoff and Somerville have both extensive publication records and have participated in public discussions and worked with government on zoning reform. We were part of the team that the BC government tapped to model multiplex reform (\textcite{vonBergmann_etal_2023})
+
+\printbibliography
+
+\end{document}

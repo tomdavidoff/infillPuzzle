@@ -1,0 +1,17 @@
+[0] Config.pm:308> INFO - This is Biber 2.20
+[0] Config.pm:311> INFO - Logfile is 'text/arnoldInfillLOI.blg'
+[35] biber-darwin:340> INFO - === Fri Mar 27, 2026, 18:01:21
+[44] Biber.pm:420> INFO - Reading 'text/arnoldInfillLOI.bcf'
+[78] Biber.pm:994> INFO - Found 1 citekeys in bib section 0
+[86] Biber.pm:4463> INFO - Processing section 0
+[92] Biber.pm:4654> INFO - Looking for bibtex file 'infillPuzzle.bib' for section 0
+[97] bibtex.pm:1713> INFO - LaTeX decoding ...
+[203] bibtex.pm:1519> INFO - Found BibTeX data source 'text/infillPuzzle.bib'
+[230] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[230] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[231] Biber.pm:4283> INFO - Sorting list 'nyt/global//global/global/global' of type 'entry' with template 'nyt' and locale 'en-US'
+[231] Biber.pm:4289> INFO - No sort tailoring available for locale 'en-US'
+[235] bbl.pm:676> INFO - Writing 'text/arnoldInfillLOI.bbl' with encoding 'UTF-8'
+[236] bbl.pm:779> INFO - Output to text/arnoldInfillLOI.bbl
+[236] Biber.pm:131> WARN - legacy month field 'December' in entry 'vonBergmann_etal_2023' is not an integer - this will probably not sort properly.
+[236] Biber.pm:133> INFO - WARNINGS: 1
