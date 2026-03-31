@@ -1,31 +1,16 @@
 \documentclass[12pt]{article}
 
-
-\usepackage[margin=1in]{geometry}
-\usepackage{amsmath}
-\usepackage{setspace}
-
-\begin{document}
-
 \title{An urban model of elasticity of price with respect to unit size}
 \author{Tom Davidoff and Tsur Somerville}
 
-Households have a utility function given by $U\left(c,s,\theta\right)$, where
+
+Households have utility $U\left(c,s,\theta\right)$, where
 $c$ is numeraire consumption, $\theta$ is a single index of neighbourhood
 quality (e.g. distance from downtown), and $s$ is the square feet of housing
-consumed at a lot at their chosen location $\theta$. There are multiple lots at
-each level $\theta$.
+consumed at a lot at their chosen location $\theta$. $U_{c}>0$, $U_{s}>0$,
+$U_{\theta}>0$, and $U_{cc}<0$.
 
-Due to zoning, landowner developers are constrained to build $\bar{s}$ square
-feet on each lot. The government auctions a small number of permits to build
-homes at size $k\bar{s}$, with $k<1$. The owners of land at the locations where
-the profit from building at $k\bar{s}$ minus the profit from building at
-$\bar{s}$ (or not building at all, which we rule out \dots) are greatest are
-allocated the permits.
-
-Households vary only by income $y$ and have a utility function over $s$, other
-consumption, and location quality $\theta$ given by $U(c,s,\theta)$. Numeraire
-consumption is given by:
+Households vary only by income $y$. Numeraire consumption is given by:
 
 \begin{equation}
 	c = y - sp(s,\theta)+m\theta.
@@ -33,8 +18,70 @@ consumption is given by:
 
 The term $m\theta$ in consumption recognizes the possibility that there is a
 direct monetary benefit to living in a better location (e.g. less commuting or
-more networking opportunities). Price per square foot of housing $p$ is a
-function of both the location quality $\theta$ and the size of the unit $s$. 
+more networking opportunities). $\theta$ also enters utility directly, e.g.
+through amenity or the time value of commuting shorter distances. Price per
+square foot of housing $p$ is a function of both the location quality $\theta$,
+and the size of the unit $s$. 
+
+
+Developers can build up to density $\bar{s}$ at each location, and government
+rations a small number of permits to build at $k\bar{s}$, with $k<1$. 
+
+For households of a given income $y$, the derivative of the price per square
+foot with respect to location quality $\theta$ is given by noting that utility
+must not change with distance along a bid rent curve.
+
+\section{Sorting on income}
+\begin{align}
+	\frac{dU}{d\theta}|_{s=\bar{s}} &= -U_{c}\left[-\bar{s}\frac{dp}{d\theta}+m\right]+U_{\theta} = 0 \\
+	\frac{dp}{d\theta}|_{s=\bar{s}} &= \frac{mU_{c}+U_{\theta}}{\bar{s} U_c}\\
+\frac{d^{2}p}{d\theta dy} & = \frac{mU_{cc} + U_{c\theta} -\bar{s}\frac{U_{cc}{U_c}}}{\bar{s}U_{c}}
+\end{align}
+
+Because $U_{cc}<0$, the second derivative of interest is positive (so that higher income households have steeper bid rent curves and outbid lower income households for better locations) if $m$ is suffciently small and $U_{c\theta}\geq 0$. That is, if amenity and time features of location are more important than monetary commuting costs, there will be positive sorting into location quality by income.
+
+\section{Effect of size on price per square foot}
+
+Suppose $k\approx 1$, so that the government zoning reform is very small. In
+that case, introduction of a smaller unit size will not affect spatial sorting
+by income even in the predictable case that there is sorting by income into
+house size (assuming the sorting by income into location quality is strict).
+
+The slope of price per square foot around $\bar{s}$ when there is free choice
+of unit size is:
+
+\begin{align}
+	\frac{dU}{ds}|_{s=\bar{s}} & = -U_{c}\left[p(\bar{s},\theta)+\bar{s}\frac{dp}{ds}\right] + U_s = 0 \\
+	\frac{dp}{ds}|_{s=\bar{s}} & = \frac{U_{s}-U_{c}p(\bar{s},\theta)}{\bar{s} U_c}.\\
+	\frac{d^2 p}{d s d y} & = \frac{U_{cs} - U_{cc}\left[p(\bar{s},\theta) +\frac{1}{U_{c}}\right]}{\bar{s} U_c}.
+\end{align}
+
+As long as $U_{cs}$ is not too negative, the second derivative of price per
+square foot with respect to size and income will be positive by concavity of
+utility over consumption. 
+
+Combining results, we know that for fixed housing consumption, under reasonable
+conditions, there is positive sorting by income into locaiton quality, and that
+the slope of willingness to pay per square foot falls with income. We thus
+expect steeper declines in price per square foot with size in lower income
+(worse) locations.
+
+When the change in allowe square footage is large, as with multiplex zoning,
+there could be a reshuffling of population, as small-unit low-income bid rent
+curves could be steeper than large-unit high-income bid rent curves, while
+large untis might dominate small units for high-income households. For this
+reason, it is an empirical question whether price per square foot is, in fact,
+falling more steeply in low-income locations.
+
+\end{document}
+
+
+Due to zoning, landowner developers are constrained to build $\bar{s}$ square
+feet on each lot. The government auctions a small number of permits to build
+homes at size $k\bar{s}$, with $k<1$. The owners of land at the locations where
+the profit from building at $k\bar{s}$ minus the profit from building at
+$\bar{s}$ (or not building at all, which we rule out \dots) are greatest are
+allocated the permits.
 
 For small changes in size, $k\approx 1$, we can approximate the difference in
 price per square foot $p(\theta,\bar{s})$ and $p(\theta,k\bar{s})$ by the slope
@@ -109,3 +156,111 @@ wealth households and locate in the higher-$\theta$ neighborhoods.
 Within a neighborhood, the price
 
 \end{document}
+
+
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{setspace}
+
+\begin{document}
+
+\documentclass[12pt]{article}
+\usepackage{amsmath,amssymb}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\onehalfspacing
+
+\title{An Urban Model of the Elasticity of Price per Square Foot with Respect to Unit Size}
+\author{Tom Davidoff and Tsur Somerville}
+
+\begin{document}
+\maketitle
+
+\section{Setup}
+
+Households differ only by income $y$ and have utility $U(c,s,\theta)$, where
+$c$ is numeraire consumption, $s$ is housing consumption (square feet), and
+$\theta$ indexes neighbourhood quality. Natural assumptions are $U_c>0$,
+$U_s>0$, $U_\theta>0$, and $U_{cc}<0$. $\theta$ might capture distance from
+downtown or other locational amenities. Locations need to be rankable on this
+single index but need not be ordered geographically.
+
+Housing is priced at $p(s,\theta)$ per square foot, allowing for nonlinear pricing in unit size. The budget constraint is:
+\begin{equation}
+c = y - s,p(s,\theta) + m\theta,
+\end{equation}
+where $m\theta$ captures monetary benefits of location (e.g.\ commuting savings). Location also enters utility directly, e.g. through amenity or time saved commuting.
+
+Developers are  build up to a zoning limit $\bar{s}$ at each location. We analyze local behavior around $\bar{s}$, where zoning binds.
+
+\section{Sorting by Income into Location Quality}
+
+Along a bid-rent curve for households consuming $s=\bar{s}$, utility is constant in $\theta$:
+\begin{equation}
+\frac{dU}{d\theta}\bigg|{s=\bar{s}} 
+= U_c\left(m - \bar{s}\frac{dp}{d\theta}\right) + U\theta = 0.
+\end{equation}
+Solving,
+\begin{equation}
+\frac{dp}{d\theta}\bigg|{s=\bar{s}} 
+= \frac{U\theta + mU_c}{\bar{s}U_c} > 0.
+\end{equation}
+
+To determine sorting, differentiate with respect to income $y$, noting that $y$ enters through $c$. Applying the quotient rule:
+\begin{equation}
+\frac{d^2 p}{d\theta, dy}\bigg|{s=\bar{s}} 
+= \frac{U{c\theta} U_c - U_\theta U_{cc}}{\bar{s} U_c^2}.
+\end{equation}
+
+Since $U_c>0$, $U_\theta>0$, and $U_{cc}<0$, the second term in the numerator is positive. Thus, the cross-partial is positive provided $U_{c\theta}$ is not too negative. In particular, if $U_{c\theta} \ge 0$, higher-income households have steeper bid-rent curves and sort into higher-quality locations. Notably, the commuting-cost parameter $m$ does not affect this sorting result.
+
+\section{Unit Size and Price per Square Foot}
+
+When households choose unit size freely, the first-order condition is:
+\begin{equation}
+U_s = U_c\left[p(s,\theta) + s\frac{dp}{ds}\right].
+\end{equation}
+This equates the marginal utility of space to the marginal expenditure required to acquire it. If price per square foot were constant in $s$, this reduces to the familiar condition $U_s = U_c p$. Nonlinear pricing ($dp/ds \neq 0$) reflects supply-side factors such as fixed costs or zoning constraints.
+
+Evaluating around $s=\bar{s}$, the slope of price per square foot with respect to unit size is:
+\begin{equation}
+\frac{dp}{ds}\bigg|{s=\bar{s}} 
+= \frac{U_s - U_c p}{\bar{s}U_c}.
+\end{equation}
+
+\subsection{Income and the Size Gradient}
+
+Differentiating with respect to income yields:
+\begin{equation}
+\frac{d^2 p}{ds, dy}\bigg|{s=\bar{s}} 
+= \frac{(U_{cs} - U_{cc}p)U_c - (U_s - U_c p)U_{cc}}{\bar{s} U_c^2}.
+\end{equation}
+
+At an interior optimum, $U_s = U_c p$, so this simplifies to:
+\begin{equation}
+\frac{d^2 p}{ds, dy}\bigg|{s=\bar{s}} 
+= \frac{U{cs} - U_{cc}p}{\bar{s} U_c}.
+\end{equation}
+
+Because $U_{cc}<0$ and $p>0$, the term $-U_{cc}p$ is positive. Thus, the cross-partial is positive provided $U_{cs}$ is not too negative. Intuitively, higher-income households have lower marginal utility of consumption and are therefore less sensitive to marginal price changes, flattening the relationship between price per square foot and unit size.
+
+\section{Implications}
+
+Two results follow:
+
+\begin{enumerate}
+\item Higher-income households sort into higher-quality locations.
+\item The decline of price per square foot with unit size is less steep for higher-income households.
+\end{enumerate}
+
+Since higher-income households occupy better locations, these results imply:
+
+\begin{quote}
+\textbf{Price per square foot declines more steeply with unit size in lower-income neighbourhoods.}
+\end{quote}
+
+This result is local, applying near the zoning-constrained size $\bar{s}$. Large changes in allowable density may alter sorting patterns and therefore the spatial gradient of price per square foot, making the empirical relationship ambiguous in such cases.
+
+\end{document}
+
+
