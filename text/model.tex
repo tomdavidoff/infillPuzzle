@@ -1,10 +1,46 @@
 \documentclass[12pt]{article}
 
+\usepackage{amsmath}
+\usepackage[margin=1in]{geometry}
+\usepackage{setspace}
+\usepackage{graphicx}
+
+\begin{document}
+
 \title{An urban model of elasticity of price with respect to unit size}
-\author{Tom Davidoff and Tsur Somerville}
+\author{Tom Davidoff}
+\maketitle
 
+\onehalfspacing
 
-Households have utility $U\left(c,s,\theta\right)$, where
+\section{Purpose of the model}
+
+The model's purpose is to establish the plausibility that it will be more
+profitable to subdivide a fixed quantity of square feet into more, smaller
+units in worse locations than in better locations. This can arise through the
+channels of differences by income in valuation of prime locations and
+willingness to pay for incremental square footage.
+
+In the context of standard urban models, what is needed is that bid-rent
+curves (with price per square foot of built space on the vertical axis and
+distance from downtown on the horizontal axis) are steeper for higher-income
+households than lower-income households for a given unit size, and that the
+vertical distance between bid-rent curves for small units and large units is
+larger further from downtown.
+
+With free choice by both households and homebuilders over square footage and
+with constant construction cost per square foot, we might expect to observe
+price per square foot to be invariant to unit size in newly built homes if
+changing unit size changed price per square foot, builders would strictly
+prefer the unit size with higher price per square foot. However, with zoning
+constraints setting minimum unit size, smaller units might command higher
+prices per square foot. And the constraint on unit size intuitively should be
+costlier for homes where the buyer is forced further from their optimal unit
+size.
+
+\section{Utility and bid rent curves by income}
+
+Households have utility $U\left(ct,s,\theta\right)$, where
 $c$ is numeraire consumption, $\theta$ is a single index of neighbourhood
 quality (e.g. distance from downtown), and $s$ is the square feet of housing
 consumed at a lot at their chosen location $\theta$. $U_{c}>0$, $U_{s}>0$,
@@ -23,9 +59,19 @@ through amenity or the time value of commuting shorter distances. Price per
 square foot of housing $p$ is a function of both the location quality $\theta$,
 and the size of the unit $s$. 
 
+Developers must build homes of size $\bar{s}$ on lots of fixed size at each
+location indexed by $\theta$, and government rations a small number of permits
+to build at $k\bar{s}$, with $k<1$. We want to know whether builders will build
+the smaller units in better (higher $\theta$) locations or worse locations. The
+rationing process allocates the permits to lots where the difference in profit
+between building at $s=k\bar{s}$  the max of profits of building nothing or
+$s=\bar{k}$ is greatest. 
 
-Developers can build up to density $\bar{s}$ at each location, and government
-rations a small number of permits to build at $k\bar{s}$, with $k<1$. 
+The city is open and we consider a static world, so utility is fixed by income
+level. Given the small amount of rationing, assuming no outside use of land,
+the lowest value of $\theta$ developed, $\tilde{\theta}$ solves
+$\bar{s}\left[p(\tilde{\theta},\bar{s})-c\right]=0$, where $c$ is the cost per
+square foot of construction.  
 
 For households of a given income $y$, the derivative of the price per square
 foot with respect to location quality $\theta$ is given by noting that utility
@@ -35,10 +81,15 @@ must not change with distance along a bid rent curve.
 \begin{align}
 	\frac{dU}{d\theta}|_{s=\bar{s}} &= -U_{c}\left[-\bar{s}\frac{dp}{d\theta}+m\right]+U_{\theta} = 0 \\
 	\frac{dp}{d\theta}|_{s=\bar{s}} &= \frac{mU_{c}+U_{\theta}}{\bar{s} U_c}\\
-\frac{d^{2}p}{d\theta dy} & = \frac{mU_{cc} + U_{c\theta} -\bar{s}\frac{U_{cc}{U_c}}}{\bar{s}U_{c}}
+\frac{d^{2}p}{d\theta dy}|_{s=\bar{s}} & = \frac{mU_{cc} + U_{c\theta} -\frac{U_{cc}}{\bar{s}U_c}}{\bar{s}U_{c}}
 \end{align}
 
-Because $U_{cc}<0$, the second derivative of interest is positive (so that higher income households have steeper bid rent curves and outbid lower income households for better locations) if $m$ is suffciently small and $U_{c\theta}\geq 0$. That is, if amenity and time features of location are more important than monetary commuting costs, there will be positive sorting into location quality by income.
+Because $U_{cc}<0$, the second derivative of interest is positive (so that
+higher income households have steeper bid rent curves and outbid lower income
+households for better locations) if $m$ is sufficiently small and
+$U_{c\theta}\geq 0$. That is, if amenity and time features of location are more
+important than monetary commuting costs, there will be positive sorting into
+location quality by income.
 
 \section{Effect of size on price per square foot}
 
@@ -53,7 +104,7 @@ of unit size is:
 \begin{align}
 	\frac{dU}{ds}|_{s=\bar{s}} & = -U_{c}\left[p(\bar{s},\theta)+\bar{s}\frac{dp}{ds}\right] + U_s = 0 \\
 	\frac{dp}{ds}|_{s=\bar{s}} & = \frac{U_{s}-U_{c}p(\bar{s},\theta)}{\bar{s} U_c}.\\
-	\frac{d^2 p}{d s d y} & = \frac{U_{cs} - U_{cc}\left[p(\bar{s},\theta) +\frac{1}{U_{c}}\right]}{\bar{s} U_c}.
+	\frac{d^2 p}{d s d y}|_{s=\bar{s}} & = \frac{U_{cs} - U_{cc}\left[p(\bar{s},\theta) +\frac{1}{\bar{s}U_{c}}\right]}{\bar{s} U_c}.
 \end{align}
 
 As long as $U_{cs}$ is not too negative, the second derivative of price per
@@ -61,17 +112,26 @@ square foot with respect to size and income will be positive by concavity of
 utility over consumption. 
 
 Combining results, we know that for fixed housing consumption, under reasonable
-conditions, there is positive sorting by income into locaiton quality, and that
+conditions, there is positive sorting by income into location quality, and that
 the slope of willingness to pay per square foot falls with income. We thus
 expect steeper declines in price per square foot with size in lower income
 (worse) locations.
 
-When the change in allowe square footage is large, as with multiplex zoning,
+When the change in allowed square footage is large, as with multiplex zoning,
 there could be a reshuffling of population, as small-unit low-income bid rent
 curves could be steeper than large-unit high-income bid rent curves, while
-large untis might dominate small units for high-income households. For this
+large units might dominate small units for high-income households. For this
 reason, it is an empirical question whether price per square foot is, in fact,
 falling more steeply in low-income locations.
+
+Figure \ref{fig:bidRent} illustrates in the top panel the case in which income
+is sorted by income regardless of housing type, but the gap in willingness to
+pay is largest in the worse locations where the low-income dominate. The bottom panel
+illustrates the case where high-income households outbid low-income households
+for better locations conditional on unit size, but low-income households outbid
+high-income households due to a preference for smaller units. 
+
+\includegraphics[width=\textwidth]{bidRentModel.png}
 
 \end{document}
 
