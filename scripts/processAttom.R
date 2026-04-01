@@ -18,19 +18,19 @@ options(timeout = 600)
 
 # City-specific parameters
 if (CITY == "portland") {
-  SALES_FILE <- "~/OneDrive - UBC/dataProcessed/41051.txt"
-  PARQUET_FILE <- "~/OneDrive - UBC/dataProcessed/AH_state_OR.parquet"
+  SALES_FILE <- "~/DropboxExternal/dataProcessed/41051.txt"
+  PARQUET_FILE <- "~/DropboxExternal/dataProcessed/AH_state_OR.parquet"
   FIPS_MUNI <- "051"
-  OUTPUT_FILE <- "~/OneDrive - UBC/dataProcessed/portland_attom_slopes_by_zip.rds"
+  OUTPUT_FILE <- "~/DropboxExternal/dataProcessed/portland_attom_slopes_by_zip.rds"
   YEAR_MIN <- 2018
   YEAR_MAX <- 2021
   MIN_SQFT <- 1200
   MIN_OBS <- 20
 } else if (CITY == "minneapolis") {
-  SALES_FILE <- "~/OneDrive - UBC/dataProcessed/27053.txt"
-  PARQUET_FILE <- "~/OneDrive - UBC/dataProcessed/AH_state_MN.parquet"
+  SALES_FILE <- "~/DropboxExternal/dataProcessed/27053.txt"
+  PARQUET_FILE <- "~/DropboxExternal/dataProcessed/AH_state_MN.parquet"
   FIPS_MUNI <- "053"
-  OUTPUT_FILE <- "~/OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds"
+  OUTPUT_FILE <- "~/DropboxExternal/dataProcessed/minneapolis_attom_slopes_by_zip.rds"
   YEAR_MIN <- 2016
   YEAR_MAX <- 2020
   MIN_SQFT <- 400
@@ -64,6 +64,8 @@ setnames(dtSales, "transactiondate", "date", skip_absent = TRUE)
 
 # normalize names
 setnames(dtSales, tolower(make.names(names(dtSales))))
+print(head(dtSales))
+q("no")
 
 # types
 dtSales[, attom_id := as.character(attom_id)]
