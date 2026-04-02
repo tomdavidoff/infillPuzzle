@@ -1,0 +1,53 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # makeTractsSQL.R
+> # R to make tracts list an SQL for fast query
+> # Tom Davidoff 
+> # 04/01/26
+> 
+> library(duckdb)
+Loading required package: DBI
+> library(data.table)
+> 
+> library(duckdb)
+> library(data.table)
+> 
+> # Setup a connection to a temporary DuckDB
+> dt <- fread("~/DropboxExternal/dataProcessed/attomTract.tsv")
+> con <- dbConnect(duckdb())
+> 
+> # Assume your data is 'my_data'
+> # We 'register' it so DuckDB can see it without copying it first
+> duckdb_register(con, "my_df_view", dt)
+> 
+> # Export to Parquet with maximum compression (ZSTD)
+> # We set row_group_size to 100,000 for a good balance of size and speed
+> dbExecute(con, "
++   COPY my_df_view TO 'foo.parquet'
++   (FORMAT PARQUET, COMPRESSION 'ZSTD', ROW_GROUP_SIZE 100000)
++ ")
+[1] 141081938
+> 
+> dbDisconnect(con)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 29.356   8.452  32.921 

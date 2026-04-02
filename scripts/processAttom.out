@@ -23,182 +23,256 @@ Type 'q()' to quit R.
 > # Unified script with city toggle
 > 
 > library(data.table)
-> library(arrow)
-
-Attaching package: ‘arrow’
-
-The following object is masked from ‘package:utils’:
-
-    timestamp
-
+> library(duckdb)
+Loading required package: DBI
 > library(fixest)
+> library(ggplot2)
 > 
-> options(timeout = 600)
+> CITIES <- list(
++ 	portland = list(
++ 		SALES_FILE = "~/DropboxExternal/dataProcessed/41051.txt",
++ 		ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_OR.parquet",
++ 		TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
++ 		FIPS_MUNI = "051",
++ 		LON_RANGE = c(-124.0, -121.0),
++ 		LAT_RANGE = c(44.0, 47.0),
++ 		YEARS = 2018:2021,
++ 		ZIP_START = "97",
++ 		MIN_SQFT = 1200),
++ 	minneapolis = list(
++ 		SALES_FILE = "~/DropboxExternal/dataProcessed/27053.txt",
++ 		ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_MN.parquet",
++ 		TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
++ 		FIPS_MUNI = "053",
++ 		LON_RANGE = c(-95.5, -91.0),
++ 		LAT_RANGE = c(43.0, 47.0),
++ 		YEARS = 2016:2020,
++ 		ZIP_START = "55",
++ 		MIN_SQFT = 400
++   )
++ )
 > 
-> # ==========================================
-> # CONFIGURATION - SET CITY HERE
-> # ==========================================
-> # CITY <- "portland"
->  CITY <- "minneapolis"
-> # ==========================================
+> MIN_OBS <- 20
+> con <- dbConnect(duckdb())
 > 
-> # City-specific parameters
-> if (CITY == "portland") {
-+   SALES_FILE <- "~/DropboxExternal/dataProcessed/41051.txt"
-+   PARQUET_FILE <- "~/DropboxExternal/dataProcessed/AH_state_OR.parquet"
-+   FIPS_MUNI <- "051"
-+   OUTPUT_FILE <- "~/DropboxExternal/dataProcessed/portland_attom_slopes_by_zip.rds"
-+   YEAR_MIN <- 2018
-+   YEAR_MAX <- 2021
-+   MIN_SQFT <- 1200
-+   MIN_OBS <- 20
-+ } else if (CITY == "minneapolis") {
-+   SALES_FILE <- "~/DropboxExternal/dataProcessed/27053.txt"
-+   PARQUET_FILE <- "~/DropboxExternal/dataProcessed/AH_state_MN.parquet"
-+   FIPS_MUNI <- "053"
-+   OUTPUT_FILE <- "~/DropboxExternal/dataProcessed/minneapolis_attom_slopes_by_zip.rds"
-+   YEAR_MIN <- 2016
-+   YEAR_MAX <- 2020
-+   MIN_SQFT <- 400
-+   MIN_OBS <- 20
-+ } else {
-+   stop("CITY must be 'portland' or 'minneapolis'")
+> for (CITY_NAME in names(CITIES)) {
++ 	cf <- CITIES[[CITY_NAME]]
++ 	message("\n=== ", toupper(CITY_NAME), " ===")
++ 
++ 	# --- Sales: pipe-delimited text ---
++ 	raw <- readLines(cf$SALES_FILE, warn = FALSE, encoding = "latin1")
++ 	hdr <- make.names(tolower(unlist(strsplit(raw[1], "|", fixed = TRUE))))
++ 	dtS <- data.table(raw = raw[-1])[, tstrsplit(raw, "|", fixed = TRUE, fill = NA)]
++ 	setnames(dtS, seq_along(hdr), hdr)
++ 	dtS[, attom_id  := as.character(X.attom.id.)]
++ 	dtS[, price     := as.numeric(transferamount)]
++ 	dtS[, sale_date := as.IDate(transactiondate)]
++ 	dtS[, zip       := substr(gsub("[^0-9]", "", as.character(propertyaddresszip)), 1, 5)]
++ 	dtS <- dtS[price > 1e5 & year(sale_date) %in% cf$YEARS,
++ 	.(attom_id, price, sale_date, zip)]
++ 
++ 	# --- Assessor: filtered parquet read via DuckDB ---
++ 	dtA <- as.data.table(dbGetQuery(con, sprintf(
++ 		"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
++ 		CAST(SA_FIN_SQFT_TOT AS DOUBLE) AS sqft, SA_LOTSIZE  AS lotSize,
++ 		ASSR_YEAR
++ 		FROM read_parquet('%s')
++ 		WHERE MM_FIPS_MUNI_CODE = '%s'
++ 		AND USE_CODE_STD = 'RSFR'
++ 		AND sqft > %d",
++ 		cf$ASSESSOR_PARQUET, cf$FIPS_MUNI, cf$MIN_SQFT
++ 	)))
++ 
++ 	# --- Tracts: filtered parquet read via DuckDB ---
++ 	dtT <- as.data.table(dbGetQuery(con, sprintf(
++ 		"SELECT CAST(ATTOM_ID AS VARCHAR) AS attom_id,
++ 		Latitude AS lat, Longitude AS lon, CensusTract
++ 		FROM read_parquet('%s')
++ 		WHERE Longitude BETWEEN %f AND %f
++ 		AND Latitude  BETWEEN %f AND %f",
++ 		cf$TRACT_PARQUET,
++ 		cf$LON_RANGE[1], cf$LON_RANGE[2],
++ 		cf$LAT_RANGE[1], cf$LAT_RANGE[2]
++ 	)))
++ 
++ 	# --- Join in data.table ---
++ 	dtA[,year:=as.numeric(substr(ASSR_YEAR,1,4))]
++ 	dtA[,maxYear:=max(year,na.rm=TRUE),by=attom_id]
++ 	dtA <- dtA[year==maxYear]
++ 	dt <- dtS[dtA, on = "attom_id", nomatch = 0L ][dtT, on = "attom_id", nomatch = 0L]
++ 
++ 	if (nrow(dt) == 0L) { message("No records for ", CITY_NAME); next }
++ 
++ 	dt[, lppsf     := log(price / sqft)]
++ 	dt[,ppsf     := price / sqft]
++ 	dt[, lsqft     := log(sqft)]
++ 	dt[, llotSize  := log(pmax(as.numeric(lotSize), 1))]
++ 	dt[, yearMonth := format(sale_date, "%Y-%m")]
++ 	dt[, zip_n     := .N, by = zip]
++ 	dt <- dt[zip_n >= MIN_OBS]
++ 
++ 	# --- Regression ---
++ 	print(summary(dt))
++ 	print(nrow(dt))
++ 	#mz <- feols(lppsf ~ 0 + i(zip) + i(zip):lsqft + llotSize | yearMonth, data = dt[substring(zip, 1, 2) == cf$ZIP_START], cluster = "zip")
++ 	mt <- feols(lppsf ~ 0 + i(CensusTract)+ i(CensusTract):lsqft + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
++ 	#ml <- feols(ppsf ~ 0 + i(CensusTract) + i(CensusTract):sqft + llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
++ 
++ 	#print(summary(mt))
++ 	#print(summary(ml))
++ 	# bigger Adj R2 at tract level and way bigger in logs
++ 
++ 	b <- coef(mt)
++ 	keep <- grepl(":lsqft$", names(b))
++ 	dtSlopes <- data.table(
++ 	tract   = sub(":lsqft$", "", sub("^CensusTract", "", names(b)[keep])),
++ 	slope = unname(b[keep])
++ 	)
++ 	dtSlopes[,tract:=gsub("::","",tract)]
++ 	meanLPPSF <- dt[,.(lppsf=mean(lppsf,na.rm=TRUE),count=.N,medianSqft=median(sqft)),by=CensusTract]
++ 	meanLPPSF[,tract := as.character(CensusTract)]
++ 	print(head(dtSlopes))
++ 	print(head(meanLPPSF))
++ 	dtSlopes <- merge(dtSlopes, meanLPPSF[, .(tract, lppsf, count,medianSqft)], by = "tract")
++ 
++ 	saveRDS(dtSlopes, sprintf("~/DropboxExternal/dataProcessed/%s_slopes.rds", CITY_NAME))
++ 	# do a loess fit of price per square foot against square feet
++ 	q99sf <- quantile(dt$sqft, 0.95, na.rm = TRUE)
++ 	q01sf <- quantile(dt$sqft, 0.05, na.rm = TRUE)
++ 	q99p <- quantile(dt$ppsf, 0.95, na.rm = TRUE)
++ 	q01p <- quantile(dt$ppsf, 0.05, na.rm = TRUE)
++ 	dt[,nZip:=.N,by=zip] # have to watch cross-zip big homes, big prices
++ 	ggplot(dt[nZip==max(nZip) & sqft %between% c(q01sf,q99sf) & ppsf %between% c(q01p,q99p)], aes(x = sqft, y = price/sqft)) +
++ 		geom_point(alpha = 0.1, size=.5,color="gray") +
++ 		geom_smooth(method = "loess",color="blue",se=FALSE) +
++ 		labs(title = paste("Price per Square Foot vs. Square Footage in", toupper(CITY_NAME)),
++ 			 x = "Square Footage ",
++ 			 y = "Price per Square Foot ") +
++ 		theme_minimal()
++ 	ggsave(sprintf("text/%sPriceSqftLoess.png", CITY_NAME), width = 8, height = 6)
 + }
+
+=== PORTLAND ===
+   attom_id             price            sale_date              zip           
+ Length:27472       Min.   :  101000   Min.   :2018-01-02   Length:27472      
+ Class :character   1st Qu.:  395000   1st Qu.:2019-04-19   Class :character  
+ Mode  :character   Median :  500000   Median :2020-06-18   Mode  :character  
+                    Mean   :  584336   Mean   :2020-03-28                     
+                    3rd Qu.:  685000   3rd Qu.:2021-04-12                     
+                    Max.   :11000000   Max.   :2021-12-31                     
+      sqft        lotSize           ASSR_YEAR              year     
+ Min.   :1201   Length:27472       Length:27472       Min.   :2018  
+ 1st Qu.:1382   Class :character   Class :character   1st Qu.:2021  
+ Median :1632   Mode  :character   Mode  :character   Median :2021  
+ Mean   :1845                                         Mean   :2021  
+ 3rd Qu.:2111                                         3rd Qu.:2022  
+ Max.   :8429                                         Max.   :2022  
+    maxYear          lat             lon          CensusTract   
+ Min.   :2018   Min.   :45.43   Min.   :-122.9   Min.   :    0  
+ 1st Qu.:2021   1st Qu.:45.48   1st Qu.:-122.7   1st Qu.: 3402  
+ Median :2021   Median :45.51   Median :-122.6   Median : 6701  
+ Mean   :2021   Mean   :45.51   Mean   :-122.6   Mean   : 6338  
+ 3rd Qu.:2022   3rd Qu.:45.54   3rd Qu.:-122.5   3rd Qu.: 9502  
+ Max.   :2022   Max.   :45.72   Max.   :-122.2   Max.   :30300  
+     lppsf            ppsf            lsqft          llotSize     
+ Min.   :3.515   Min.   :  33.6   Min.   :7.091   Min.   : 0.000  
+ 1st Qu.:5.473   1st Qu.: 238.1   1st Qu.:7.231   1st Qu.: 8.517  
+ Median :5.687   Median : 294.9   Median :7.398   Median : 8.854  
+ Mean   :5.709   Mean   : 322.0   Mean   :7.471   Mean   : 8.871  
+ 3rd Qu.:5.946   3rd Qu.: 382.2   3rd Qu.:7.655   3rd Qu.: 9.193  
+ Max.   :8.349   Max.   :4227.4   Max.   :9.039   Max.   :14.700  
+  yearMonth             zip_n      
+ Length:27472       Min.   :   20  
+ Class :character   1st Qu.:  506  
+ Mode  :character   Median :16387  
+                    Mean   :10334  
+                    3rd Qu.:16387  
+                    Max.   :16387  
+[1] 27472
+The variables 'CensusTract::2101:lsqft' and 'CensusTract::5202:lsqft' have been
+removed because of collinearity (see $collin.var).
+    tract       slope
+   <char>       <num>
+1:    101 -0.20229698
+2:    102 -0.02606194
+3:    201 -0.24532964
+4:    202 -0.04293784
+5:    301 -0.21508997
+6:    302 -0.48797444
+   CensusTract    lppsf count medianSqft  tract
+         <int>    <num> <int>      <num> <char>
+1:        9606 5.484544    58     1350.0   9606
+2:        5800 6.065319   459     2344.0   5800
+3:        9102 5.529030   276     1487.5   9102
+4:        4700 6.178669    96     2346.0   4700
+5:       10407 5.426393   310     1738.5  10407
+6:        6404 5.706697   311     2108.0   6404
+`geom_smooth()` using formula = 'y ~ x'
+
+=== MINNEAPOLIS ===
+   attom_id             price           sale_date              zip           
+ Length:77694       Min.   : 100179   Min.   :2016-01-04   Length:77694      
+ Class :character   1st Qu.: 225000   1st Qu.:2017-05-25   Class :character  
+ Mode  :character   Median : 287500   Median :2018-10-10   Mode  :character  
+                    Mean   : 354630   Mean   :2018-09-21                     
+                    3rd Qu.: 402000   3rd Qu.:2020-02-21                     
+                    Max.   :7330941   Max.   :2020-12-31                     
+      sqft         lotSize           ASSR_YEAR              year     
+ Min.   :  408   Length:77694       Length:77694       Min.   :   0  
+ 1st Qu.: 1040   Class :character   Class :character   1st Qu.:2021  
+ Median : 1236   Mode  :character   Mode  :character   Median :2022  
+ Mean   : 1471                                         Mean   :2021  
+ 3rd Qu.: 1652                                         3rd Qu.:2022  
+ Max.   :27216                                         Max.   :2022  
+    maxYear          lat             lon          CensusTract    
+ Min.   :   0   Min.   :44.79   Min.   :-93.77   Min.   :     0  
+ 1st Qu.:2021   1st Qu.:44.91   1st Qu.:-93.42   1st Qu.: 21601  
+ Median :2022   Median :44.96   Median :-93.34   Median : 26024  
+ Mean   :2021   Mean   :44.98   Mean   :-93.36   Mean   : 39866  
+ 3rd Qu.:2022   3rd Qu.:45.03   3rd Qu.:-93.29   3rd Qu.: 27205  
+ Max.   :2022   Max.   :45.25   Max.   :-93.20   Max.   :126300  
+     lppsf            ppsf             lsqft           llotSize     
+ Min.   :3.005   Min.   :  20.19   Min.   : 6.011   Min.   : 6.648  
+ 1st Qu.:5.229   1st Qu.: 186.65   1st Qu.: 6.947   1st Qu.: 8.642  
+ Median :5.436   Median : 229.46   Median : 7.120   Median : 9.168  
+ Mean   :5.434   Mean   : 244.49   Mean   : 7.205   Mean   : 9.213  
+ 3rd Qu.:5.637   3rd Qu.: 280.50   3rd Qu.: 7.410   3rd Qu.: 9.542  
+ Max.   :8.442   Max.   :4636.90   Max.   :10.212   Max.   :15.072  
+  yearMonth             zip_n      
+ Length:77694       Min.   :   20  
+ Class :character   1st Qu.:  386  
+ Mode  :character   Median : 1465  
+                    Mean   : 3655  
+                    3rd Qu.:10755  
+                    Max.   :10792  
+[1] 77694
+The variables 'CensusTract::5901:lsqft', 'CensusTract::7801:lsqft',
+'CensusTract::24004:lsqft' and 'CensusTract::24005:lsqft' have been removed
+because of collinearity (see $collin.var).
+    tract      slope
+   <char>      <num>
+1:    101 -0.6218624
+2:    102 -0.7738827
+3:    300 -0.3919771
+4:    601 -0.7655907
+5:    603 -0.3616320
+6:   1100 -0.5977119
+   CensusTract    lppsf count medianSqft  tract
+         <int>    <num> <int>      <num> <char>
+1:       24802 5.378460   208     1081.0  24802
+2:        9500 5.241144   223     1288.0   9500
+3:       26823 5.232899   163     1519.0  26823
+4:         601 5.394463   638     1053.5    601
+5:      105600 4.670193     2     5831.5 105600
+6:       26825 5.327285   128     1234.0  26825
+`geom_smooth()` using formula = 'y ~ x'
+Warning messages:
+1: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+2: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
 > 
-> message("=== Processing ", toupper(CITY), " ===")
-=== Processing MINNEAPOLIS ===
+> dbDisconnect(con)
 > 
-> # ==========================================
-> # 1) LOAD SALES
-> # ==========================================
-> message("Reading Sales data from: ", SALES_FILE)
-Reading Sales data from: ~/DropboxExternal/dataProcessed/27053.txt
-> 
-> raw_txt <- readLines(SALES_FILE, warn = FALSE, encoding = "latin1")
-> header_line <- raw_txt[1]
-> data_body <- raw_txt[-1]
-> 
-> header_names <- unlist(strsplit(header_line, "|", fixed = TRUE))
-> header_names <- make.names(tolower(header_names))
-> 
-> message("Splitting pipes...")
-Splitting pipes...
-> dtSales <- data.table(raw = data_body)
-> dtSales <- dtSales[, tstrsplit(raw, "|", fixed = TRUE, fill = NA)]
-> 
-> names(dtSales)[seq_along(header_names)] <- header_names
-> setnames(dtSales, "X.attom.id.", "attom_id", skip_absent = TRUE)
-> setnames(dtSales, "transferamount", "price", skip_absent = TRUE)
-> setnames(dtSales, "transactiondate", "date", skip_absent = TRUE)
-> 
-> # normalize names
-> setnames(dtSales, tolower(make.names(names(dtSales))))
-> print(head(dtSales))
-   transactionid  attom_id documentrecordingcountyfips documenttypecode
-          <char>    <char>                      <char>           <char>
-1:     299878390 100033996                       27053             DTGD
-2:     286869833 100050979                       27053             DTGD
-3:     279880446 100050985                       27053             DTWD
-4:     740414533 100099815                       27053             DTGD
-5:     278198199  10012180                       27053             DTWD
-6:     318927588  10013403                       27053             DTWD
-         date transferinfomultiparcelflag partialinterest    price
-       <char>                      <char>          <char>   <char>
-1: 2010-09-24                           0                 220000.0
-2: 2010-01-25                           0                 235000.0
-3: 2009-11-30                           0                 183500.0
-4: 1999-11-12                           0                 207000.0
-5: 2009-10-23                           0                 442900.0
-6: 2011-10-25                           0                 195000.0
-   transferamountinfoaccuracy                   sellername           buyername
-                       <char>                       <char>              <char>
-1:                            MORTGAGE INVS TRUST 2006-AR3       TIMOTHY ROTH%
-2:                                     PAYTECH SYSTEMS INC   SEAN I BROWN SR.%
-3:                                       ELVENDAHL,LARRY R   NICHOLAS W HOBART
-4:                                GOLDEN HOME BUILDERS INC MATTHEW J STAFFORD%
-5:                              TADDY,PETER J & KIMBERLY M        SARA LAZORIK
-6:                                HOWARD,TROY W & PAMELA L       GARY E STUCKY
-   sellerinfoentityclassification nonindseller grantor1infoownertype
-                           <char>       <char>                <char>
-1:                    KELSEY ROTH                                  0
-2:                    MICKO BROWN                                  0
-3:                                           0                      
-4:                 CARLA STAFFORD                                  0
-5:                                           0                      
-6:                                           0                      
-   grantor2infoownertype grantee1infoownertype granteeinfoentitycount
-                  <char>                <char>                 <char>
-1:                                                                   
-2:                                                                   
-3:                                                                   
-4:                                                                   
-5:                                                                   
-6:                                                                   
-   granteeinvestorflag  propertyaddressfull  propertyaddresszip
-                <char>               <char>              <char>
-1:                                        0 16304 ICE CIRCLE DR
-2:                                        0     5644 27TH AVE S
-3:                   0      5515 28TH AVE S               55417
-4:                                        0    147 CREEKVIEW LN
-5:                   0    4719 WEDGEWOOD DR               55345
-6:                   0 645 N 1ST ST APT 302               55401
-   propertyaddresscity propertyaddressstate mortgage1type mortgage1term
-                <char>               <char>        <char>        <char>
-1:               55391              WAYZATA            MN             8
-2:               55417          MINNEAPOLIS            MN             8
-3:         MINNEAPOLIS                   MN             8              
-4:               55357              LORETTO            MN            10
-5:          MINNETONKA                   MN            11              
-6:         MINNEAPOLIS                   MN            10              
-   mortgage1amount transferinfopurchaseloantovalue mortgage1lendercode
-            <char>                          <char>              <char>
-1:                                        217050.0             98.6591
-2:                                        191171.0             81.3494
-3:        180175.0                         98.1880               80144
-4:                                         93000.0             44.9275
-5:        417000.0                         94.1522               22252
-6:        146250.0                         75.0000              504476
-   mortgage1lendernamefullstandardized mortgage1lendernamefirst
-                                <char>                   <char>
-1:                               22661            BELL MORTGAGE
-2:                                3229        MORTGAGE WEST INC
-3:          RIVER CITY MTG & FINANCIAL                         
-4:                                6312                  NWA FCU
-5:               EDINA REALTY MORTGAGE                         
-6:                  PHH HOME LOANS LLC                         
-      mortgage1lendernamelast mortgage1lenderaddress mortgage1lenderaddresscity
-                       <char>                 <char>                     <char>
-1:                                     BELL MORTGAGE                           
-2:                                 MORTGAGE WEST INC                           
-3: RIVER CITY MTG & FINANCIAL                                             EAGAN
-4:                                           NWA FCU                           
-5:      EDINA REALTY MORTGAGE                                            NEWARK
-6:         PHH HOME LOANS LLC                                             EDINA
-   mortgage1lenderaddressstate mortgage1lenderaddresszip
-                        <char>                    <char>
-1:                 MINNEAPOLIS                        MN
-2:                  BURNSVILLE                        MN
-3:                          MN                     55122
-4:                                                      
-5:                          NJ                     07101
-6:                          MN                     55435
-   mortgage1lenderinfoentityclassification    v36    v37    v38    v39    v40
-                                    <char> <char> <char> <char> <char> <char>
-1:                                   55426      M   <NA>   <NA>   <NA>   <NA>
-2:                                   55306      M   <NA>   <NA>   <NA>   <NA>
-3:                                       M   <NA>   <NA>   <NA>   <NA>   <NA>
-4:                                              C   <NA>   <NA>   <NA>   <NA>
-5:                                       M   <NA>   <NA>   <NA>   <NA>   <NA>
-6:                                       M   <NA>   <NA>   <NA>   <NA>   <NA>
-      v41    v42    v43    v44
-   <char> <char> <char> <char>
-1:   <NA>   <NA>   <NA>   <NA>
-2:   <NA>   <NA>   <NA>   <NA>
-3:   <NA>   <NA>   <NA>   <NA>
-4:   <NA>   <NA>   <NA>   <NA>
-5:   <NA>   <NA>   <NA>   <NA>
-6:   <NA>   <NA>   <NA>   <NA>
 > q("no")
 > proc.time()
    user  system elapsed 
-  5.961   0.283   7.238 
+ 62.567   2.636  44.853 

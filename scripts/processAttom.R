@@ -4,190 +4,134 @@
 # Unified script with city toggle
 
 library(data.table)
-library(arrow)
+library(duckdb)
 library(fixest)
+library(ggplot2)
 
-options(timeout = 600)
-
-# ==========================================
-# CONFIGURATION - SET CITY HERE
-# ==========================================
-# CITY <- "portland"
- CITY <- "minneapolis"
-# ==========================================
-
-# City-specific parameters
-if (CITY == "portland") {
-  SALES_FILE <- "~/DropboxExternal/dataProcessed/41051.txt"
-  PARQUET_FILE <- "~/DropboxExternal/dataProcessed/AH_state_OR.parquet"
-  FIPS_MUNI <- "051"
-  OUTPUT_FILE <- "~/DropboxExternal/dataProcessed/portland_attom_slopes_by_zip.rds"
-  YEAR_MIN <- 2018
-  YEAR_MAX <- 2021
-  MIN_SQFT <- 1200
-  MIN_OBS <- 20
-} else if (CITY == "minneapolis") {
-  SALES_FILE <- "~/DropboxExternal/dataProcessed/27053.txt"
-  PARQUET_FILE <- "~/DropboxExternal/dataProcessed/AH_state_MN.parquet"
-  FIPS_MUNI <- "053"
-  OUTPUT_FILE <- "~/DropboxExternal/dataProcessed/minneapolis_attom_slopes_by_zip.rds"
-  YEAR_MIN <- 2016
-  YEAR_MAX <- 2020
-  MIN_SQFT <- 400
-  MIN_OBS <- 20
-} else {
-  stop("CITY must be 'portland' or 'minneapolis'")
-}
-
-message("=== Processing ", toupper(CITY), " ===")
-
-# ==========================================
-# 1) LOAD SALES
-# ==========================================
-message("Reading Sales data from: ", SALES_FILE)
-
-raw_txt <- readLines(SALES_FILE, warn = FALSE, encoding = "latin1")
-header_line <- raw_txt[1]
-data_body <- raw_txt[-1]
-
-header_names <- unlist(strsplit(header_line, "|", fixed = TRUE))
-header_names <- make.names(tolower(header_names))
-
-message("Splitting pipes...")
-dtSales <- data.table(raw = data_body)
-dtSales <- dtSales[, tstrsplit(raw, "|", fixed = TRUE, fill = NA)]
-
-names(dtSales)[seq_along(header_names)] <- header_names
-setnames(dtSales, "X.attom.id.", "attom_id", skip_absent = TRUE)
-setnames(dtSales, "transferamount", "price", skip_absent = TRUE)
-setnames(dtSales, "transactiondate", "date", skip_absent = TRUE)
-
-# normalize names
-setnames(dtSales, tolower(make.names(names(dtSales))))
-print(head(dtSales))
-q("no")
-
-# types
-dtSales[, attom_id := as.character(attom_id)]
-dtSales[, price := as.numeric(price)]
-dtSales[, date := as.IDate(date)]
-dtSales[, yearMonth := format(date, "%Y-%m")]
-
-# filter years
-dtSales <- dtSales[year(date) >= YEAR_MIN & year(date) <= YEAR_MAX]
-
-# ZIP from sales (clean)
-if (!"propertyaddresszip" %in% names(dtSales)) {
-  stop("propertyaddresszip not found in dtSales.")
-}
-dtSales[, zip := gsub("[^0-9]", "", as.character(propertyaddresszip))]
-dtSales[nchar(zip) == 9, zip := substr(zip, 1, 5)]
-dtSales[zip == "", zip := NA_character_]
-
-message("Sales rows after date filter: ", nrow(dtSales))
-
-# ==========================================
-# 2) LOAD ASSESSOR (sqft) from Parquet
-# ==========================================
-message("Opening Assessor Parquet: ", PARQUET_FILE)
-ds <- open_dataset(PARQUET_FILE)
-
-scanner <- ds$NewScan()$
-  Filter(Expression$field_ref("MM_FIPS_MUNI_CODE") == FIPS_MUNI)$
-  Project(c("[ATTOM ID]", "SA_FIN_SQFT_TOT", "SA_LOTSIZE", "SA_YR_BLT", "USE_CODE_STD"))$
-  Finish()
-
-dtAssessor <- as.data.table(scanner$ToTable())
-setnames(dtAssessor,
-         c("[ATTOM ID]", "SA_FIN_SQFT_TOT", "SA_LOTSIZE", "SA_YR_BLT", "USE_CODE_STD"),
-         c("attom_id", "sqft", "lotSize", "yearBuilt", "useCode"))
-
-dtAssessor[, attom_id := as.character(attom_id)]
-dtAssessor[, sqft := as.numeric(sqft)]
-dtAssessor[, lotSize := as.numeric(lotSize)]
-dtAssessor[, yearBuilt := as.integer(yearBuilt)]
-
-# Deduplicate: keep one record per attom_id
-# Use row index for deterministic selection (first occurrence with max sqft, ties broken by row order)
-dtAssessor[, sqft_safe := fifelse(is.na(sqft), -Inf, sqft)]
-dtAssessor[, row_id := .I]
-dtAssessor[, max_sqft := max(sqft_safe), by = attom_id]
-dtAssessor_Final <- dtAssessor[sqft_safe == max_sqft, .SD[1], by = attom_id]
-dtAssessor_Final[, c("sqft_safe", "row_id", "max_sqft") := NULL]
-
-dtAssessor_Final[is.infinite(sqft), sqft := NA_real_]
-
-message("Unique assessor ATTOM IDs: ", uniqueN(dtAssessor_Final$attom_id))
-
-# ==========================================
-# 3) MERGE + SLOPE ESTIMATION BY ZIP
-# ==========================================
-message("Merging sales + assessor...")
-dtFinal <- merge(dtSales, dtAssessor_Final, by = "attom_id", all = FALSE)
-
-message("Use codes in merged data:")
-print(table(dtFinal$useCode))
-
-# Filter to single-family residential
-dtFinal <- dtFinal[useCode == "RSFR"]
-
-# Clean: require price, sqft, zip; apply minimum thresholds
-dtFinal <- dtFinal[!is.na(price) & !is.na(sqft) & !is.na(zip)]
-dtFinal <- dtFinal[price > 100000 & sqft > MIN_SQFT]
-
-# Compute price per sqft (keep original for summary stats)
-dtFinal[, ppsf := price / sqft]
-
-# Keep plausible ZIPs (5 digits)
-dtFinal <- dtFinal[nchar(zip) == 5]
-
-# Filter to ZIPs with enough observations
-zip_counts <- dtFinal[, .N, by = zip]
-good_zips <- zip_counts[N >= MIN_OBS, zip]
-dtFinal <- dtFinal[zip %in% good_zips]
-
-message("Final rows for regression: ", nrow(dtFinal),
-        " | ZIPs: ", uniqueN(dtFinal$zip))
-
-# Log transforms for regression (new columns to preserve originals)
-dtFinal[, zip := as.factor(zip)]
-dtFinal[, lppsf := log(ppsf)]
-dtFinal[, lsqft := log(sqft)]
-dtFinal[, llotSize := log(lotSize)]
-
-# Regression: ZIP-specific intercept and ZIP-specific slope on log(sqft)
-m <- feols(lppsf ~ 0 + zip + zip:lsqft + llotSize | yearMonth, data = dtFinal)
-print(summary(m))
-
-# ==========================================
-# 4) EXTRACT SLOPES
-# ==========================================
-b <- coef(m)
-keep <- grepl(":lsqft$", names(b))
-
-dtSlopes <- data.table(
-  zip = sub(":lsqft$", "", sub("^zip", "", names(b)[keep])),
-  slope = unname(b[keep])
+CITIES <- list(
+	portland = list(
+		SALES_FILE = "~/DropboxExternal/dataProcessed/41051.txt",
+		ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_OR.parquet",
+		TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
+		FIPS_MUNI = "051",
+		LON_RANGE = c(-124.0, -121.0),
+		LAT_RANGE = c(44.0, 47.0),
+		YEARS = 2018:2021,
+		ZIP_START = "97",
+		MIN_SQFT = 1200),
+	minneapolis = list(
+		SALES_FILE = "~/DropboxExternal/dataProcessed/27053.txt",
+		ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_MN.parquet",
+		TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
+		FIPS_MUNI = "053",
+		LON_RANGE = c(-95.5, -91.0),
+		LAT_RANGE = c(43.0, 47.0),
+		YEARS = 2016:2020,
+		ZIP_START = "55",
+		MIN_SQFT = 400
+  )
 )
 
-zipStats <- dtFinal[, .(N = .N, mean_ppsf = mean(ppsf, na.rm = TRUE)), by = zip]
-dtSlopes <- merge(dtSlopes, zipStats, by = "zip", all.x = TRUE)
-setorder(dtSlopes, -N)
+MIN_OBS <- 20
+con <- dbConnect(duckdb())
 
-# ==========================================
-# 5) SAVE & SUMMARY
-# ==========================================
-saveRDS(dtSlopes, OUTPUT_FILE)
-message("Saved slopes to: ", OUTPUT_FILE)
+for (CITY_NAME in names(CITIES)) {
+	cf <- CITIES[[CITY_NAME]]
+	message("\n=== ", toupper(CITY_NAME), " ===")
 
-cat("\n=== RESULTS FOR", toupper(CITY), "===\n")
-print(head(dtSlopes, 15))
+	# --- Sales: pipe-delimited text ---
+	raw <- readLines(cf$SALES_FILE, warn = FALSE, encoding = "latin1")
+	hdr <- make.names(tolower(unlist(strsplit(raw[1], "|", fixed = TRUE))))
+	dtS <- data.table(raw = raw[-1])[, tstrsplit(raw, "|", fixed = TRUE, fill = NA)]
+	setnames(dtS, seq_along(hdr), hdr)
+	dtS[, attom_id  := as.character(X.attom.id.)]
+	dtS[, price     := as.numeric(transferamount)]
+	dtS[, sale_date := as.IDate(transactiondate)]
+	dtS[, zip       := substr(gsub("[^0-9]", "", as.character(propertyaddresszip)), 1, 5)]
+	dtS <- dtS[price > 1e5 & year(sale_date) %in% cf$YEARS,
+	.(attom_id, price, sale_date, zip)]
 
-cat("\nCorrelation between slope and mean PPSF:\n")
-print(cor(dtSlopes[, .(slope, mean_ppsf)], use = "complete.obs"))
+	# --- Assessor: filtered parquet read via DuckDB ---
+	dtA <- as.data.table(dbGetQuery(con, sprintf(
+		"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
+		CAST(SA_FIN_SQFT_TOT AS DOUBLE) AS sqft, SA_LOTSIZE  AS lotSize,
+		ASSR_YEAR
+		FROM read_parquet('%s')
+		WHERE MM_FIPS_MUNI_CODE = '%s'
+		AND USE_CODE_STD = 'RSFR'
+		AND sqft > %d",
+		cf$ASSESSOR_PARQUET, cf$FIPS_MUNI, cf$MIN_SQFT
+	)))
 
-cat("\nCorrelation (ZIPs above median N):\n")
-print(cor(dtSlopes[N > median(N), .(slope, mean_ppsf)], use = "complete.obs"))
+	# --- Tracts: filtered parquet read via DuckDB ---
+	dtT <- as.data.table(dbGetQuery(con, sprintf(
+		"SELECT CAST(ATTOM_ID AS VARCHAR) AS attom_id,
+		Latitude AS lat, Longitude AS lon, CensusTract
+		FROM read_parquet('%s')
+		WHERE Longitude BETWEEN %f AND %f
+		AND Latitude  BETWEEN %f AND %f",
+		cf$TRACT_PARQUET,
+		cf$LON_RANGE[1], cf$LON_RANGE[2],
+		cf$LAT_RANGE[1], cf$LAT_RANGE[2]
+	)))
 
-cat("\nCorrelation (ZIPs above 75th percentile N):\n")
-print(cor(dtSlopes[N > quantile(N, 0.75), .(slope, mean_ppsf)], use = "complete.obs"))
+	# --- Join in data.table ---
+	dtA[,year:=as.numeric(substr(ASSR_YEAR,1,4))]
+	dtA[,maxYear:=max(year,na.rm=TRUE),by=attom_id]
+	dtA <- dtA[year==maxYear]
+	dt <- dtS[dtA, on = "attom_id", nomatch = 0L ][dtT, on = "attom_id", nomatch = 0L]
+
+	if (nrow(dt) == 0L) { message("No records for ", CITY_NAME); next }
+
+	dt[, lppsf     := log(price / sqft)]
+	dt[,ppsf     := price / sqft]
+	dt[, lsqft     := log(sqft)]
+	dt[, llotSize  := log(pmax(as.numeric(lotSize), 1))]
+	dt[, yearMonth := format(sale_date, "%Y-%m")]
+	dt[, zip_n     := .N, by = zip]
+	dt <- dt[zip_n >= MIN_OBS]
+
+	# --- Regression ---
+	print(summary(dt))
+	print(nrow(dt))
+	#mz <- feols(lppsf ~ 0 + i(zip) + i(zip):lsqft + llotSize | yearMonth, data = dt[substring(zip, 1, 2) == cf$ZIP_START], cluster = "zip")
+	mt <- feols(lppsf ~ 0 + i(CensusTract)+ i(CensusTract):lsqft + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
+	#ml <- feols(ppsf ~ 0 + i(CensusTract) + i(CensusTract):sqft + llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
+
+	#print(summary(mt))
+	#print(summary(ml))
+	# bigger Adj R2 at tract level and way bigger in logs
+
+	b <- coef(mt)
+	keep <- grepl(":lsqft$", names(b))
+	dtSlopes <- data.table(
+	tract   = sub(":lsqft$", "", sub("^CensusTract", "", names(b)[keep])),
+	slope = unname(b[keep])
+	)
+	dtSlopes[,tract:=gsub("::","",tract)]
+	meanLPPSF <- dt[,.(lppsf=mean(lppsf,na.rm=TRUE),count=.N,medianSqft=median(sqft)),by=CensusTract]
+	meanLPPSF[,tract := as.character(CensusTract)]
+	print(head(dtSlopes))
+	print(head(meanLPPSF))
+	dtSlopes <- merge(dtSlopes, meanLPPSF[, .(tract, lppsf, count,medianSqft)], by = "tract")
+
+	saveRDS(dtSlopes, sprintf("~/DropboxExternal/dataProcessed/%s_slopes.rds", CITY_NAME))
+	# do a loess fit of price per square foot against square feet
+	q99sf <- quantile(dt$sqft, 0.95, na.rm = TRUE)
+	q01sf <- quantile(dt$sqft, 0.05, na.rm = TRUE)
+	q99p <- quantile(dt$ppsf, 0.95, na.rm = TRUE)
+	q01p <- quantile(dt$ppsf, 0.05, na.rm = TRUE)
+	dt[,nZip:=.N,by=zip] # have to watch cross-zip big homes, big prices
+	ggplot(dt[nZip==max(nZip) & sqft %between% c(q01sf,q99sf) & ppsf %between% c(q01p,q99p)], aes(x = sqft, y = price/sqft)) +
+		geom_point(alpha = 0.1, size=.5,color="gray") +
+		geom_smooth(method = "loess",color="blue",se=FALSE) +
+		labs(title = paste("Price per Square Foot vs. Square Footage in", toupper(CITY_NAME)),
+			 x = "Square Footage ",
+			 y = "Price per Square Foot ") +
+		theme_minimal()
+	ggsave(sprintf("text/%sPriceSqftLoess.png", CITY_NAME), width = 8, height = 6)
+}
+
+dbDisconnect(con)
+
+q("no")
