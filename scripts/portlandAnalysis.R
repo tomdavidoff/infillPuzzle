@@ -9,8 +9,8 @@ library(fixest)
 library(ggplot2)
 
 # 1. Load ------------------------------------------------------------------
-permits <- readRDS("~/OneDrive - UBC/dataProcessed/portland_zip_propensity.rds")
-slopes  <- readRDS("~/OneDrive - UBC/dataProcessed/portland_attom_slopes_by_zip.rds")
+permits <- readRDS("~/DropboxExternal/dataProcessed/portland_tract_propensity.rds")
+slopes  <- readRDS("~/DropboxExternal/dataProcessed/portland_slopes.rds")
 print(nrow(permits))
 print(nrow(slopes))
 
@@ -20,13 +20,30 @@ setDT(permits); setDT(slopes)
 # Ensure ZIPs are 5-character strings and types match
 print(head(permits))
 print(head(slopes))
-setnames(permits,"geo_id","zip")
-permits[, zip := sprintf("%05s", as.character(zip))]
-slopes[,  zip := sprintf("%05s", as.character(zip))]
+print(table(slopes$tract))
+# last 5 digits
+permits[,tractNumeric:=as.numeric(substring(geo_id, 7, 11))] # Extract numeric part of tract, last 5 digits
+slopes[,tractNumeric:=as.numeric(tract)]
+
+#permits[, zip := sprintf("%05s", as.character(zip))]
+#slopes[,  zip := sprintf("%05s", as.character(zip))]
 
 # Merge on Zip
-dt <- merge(permits, slopes, by = "zip")
+dt <- merge(permits, slopes, by = "tractNumeric")
 print(nrow(dt))
+print(head(dt))
+print(summary(lm(propensity ~ (lppsf)*zone, dt)))
+print(summary(lm(propensity ~ (slope)*zone, dt)))
+print(summary(lm(propensity ~ (slope)+lppsf+zone, dt)))
+print(dt[,.(mp=mean(propensity),mpl=mean(lppsf),msqft=mean(medianSqft)),by=zone])
+for (z in unique(dt[,zone])) {
+	print(z)
+	print(summary(dt[zone==z,.(propensity, slope, lppsf)]))
+	print(summary(lm(propensity ~lppsf, dt[zone==z])))
+	print(summary(lm(propensity ~slope+lppsf, dt[zone==z])))
+	print(summary(lm(propensity ~slope+lppsf, dt[zone==z & slope <0 & slope > -1])))
+}
+q("no")
 
 # 3. Clean -----------------------------------------------------------------
 # Convert slope to numeric (it was <char>) and take absolute value
@@ -37,7 +54,7 @@ dt[, price_level := as.numeric(mean_ppsf)]
 # Focus on Zips with enough data to be credible
 MINOBS <- 50
 dt <- dt[N >= MINOBS & total_lots_active>=MINOBS]
-dtCensus <- fread("~/OneDrive - UBC/dataRaw/ACSDT5Y2024/ACSDT5Y2024.B19013-Data.csv", skip=1,select = c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)","Geographic Area Name"),header=TRUE)
+dtCensus <- fread("~/DropboxExternal/dataRaw/ACSDT5Y2024/ACSDT5Y2024.B19013-Data.csv", skip=1,select = c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)","Geographic Area Name"),header=TRUE)
 print(head(dtCensus))
 setnames(dtCensus, old=c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)"), new=c("medianIncome"))
 dtCensus[, medianIncome := log(as.numeric(medianIncome))]

@@ -28,181 +28,416 @@ Type 'q()' to quit R.
 > library(xtable)
 > 
 > # 1. Load ------------------------------------------------------------------
-> permits <- readRDS("~/OneDrive - UBC/dataProcessed/minneapolis_zip_propensity.rds")
-> slopes  <- readRDS("~/OneDrive - UBC/dataProcessed/minneapolis_attom_slopes_by_zip.rds")
+> permits <- readRDS("~/DropboxExternal/dataProcessed/minneapolis_tract_propensity.rds")
+> slopes  <- readRDS("~/DropboxExternal/dataProcessed/minneapolis_slopes.rds")
 > 
 > setDT(permits); setDT(slopes)
-> 
-> 
 > 
 > # 2. Align -----------------------------------------------------------------
 > # Ensure ZIPs are 5-character strings and types match
 > print(head(permits))
-   geo_id land_use_c  geo_name infill_lot_count total_lots_active total_units
-   <char>     <char>    <char>            <int>             <int>       <num>
-1:  55411        UN2 ZIP 55411               14                94         227
-2:  55410        UN1 ZIP 55410               10                56          65
-3:  55414        UN2 ZIP 55414               39                41          98
-4:  55406        UN2 ZIP 55406                9                34          48
-5:  55405        UN2 ZIP 55405               23                32          72
-6:  55412        UN1 ZIP 55412                2                29          32
-   propensity
-        <num>
-1: 0.14893617
-2: 0.17857143
-3: 0.95121951
-4: 0.26470588
-5: 0.71875000
-6: 0.06896552
+        geo_id land_use_c          geo_name infill_lot_count total_lots_active
+        <char>     <char>            <char>            <int>             <int>
+1: 27053109800        UN1 Census Tract 1098                5                19
+2: 27053104100        UN2 Census Tract 1041               15                19
+3: 27053111200        UN1 Census Tract 1112                2                18
+4: 27053125700        UN2 Census Tract 1257                3                17
+5: 27053101600        UN2 Census Tract 1016                1                17
+6: 27053109100        UN1 Census Tract 1091                2                15
+   total_units propensity
+         <num>      <num>
+1:          23 0.26315789
+2:          24 0.78947368
+3:          22 0.11111111
+4:         103 0.17647059
+5:          18 0.05882353
+6:          16 0.13333333
 > print(head(slopes))
-      zip      slope     N mean_ppsf
-   <char>      <num> <int>     <num>
-1:  55412 -0.6169026  1245  157.8467
-2:  55422 -0.3313725  1125  203.3167
-3:  55406 -0.5471409   936  246.6931
-4:  55430 -0.6420519   900  178.3547
-5:  55418 -0.5045785   898  224.6673
-6:  55423 -0.6410559   884  226.4542
+Key: <tract>
+    tract      slope    lppsf count medianSqft
+   <char>      <num>    <num> <int>      <num>
+1: 100200 -0.6935173 5.120910   608     1127.0
+2: 100400 -0.7346916 4.940787   420     1146.5
+3: 100500 -0.4160082 5.312101   248     1014.0
+4: 100700 -0.3609915 5.115068   505     1106.0
+5: 100800 -0.6580626 4.920920   549     1166.0
+6: 100900 -0.6789129 4.947849   523     1132.0
+> print(table(slopes$tract))
+
+100200 100400 100500 100700 100800 100900    101 101200 101300 101600 101800 
+     1      1      1      1      1      1      1      1      1      1      1 
+101900    102 102000 102100 102500 102600 102800 103000 103100 103400 103600 
+     1      1      1      1      1      1      1      1      1      1      1 
+103700 104001 104002 104100 104902 105100 105500 105600  10600 106000 106200 
+     1      1      1      1      1      1      1      1      1      1      1 
+106400 106500 106600 106700 106900  10700 107000 107400 107500 107600 108000 
+     1      1      1      1      1      1      1      1      1      1      1 
+108600 108700 108800 108900 109000 109100 109200 109300 109400 109700 109800 
+     1      1      1      1      1      1      1      1      1      1      1 
+109900   1100  11000 110000 110100 110200 110400 110500 110800 110900 111100 
+     1      1      1      1      1      1      1      1      1      1      1 
+111200 111300 111400 111500 111600  11703  11704  11800  11998  12001  12003 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 12101  12102 122500 122600 125500 125600 125700 125800 125900 126000 126300 
+     1      1      1      1      1      1      1      1      1      1      1 
+  1700  20101  20102  20201  20202  20301  20302  20303  20304  20400  20500 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 20600  20700  20801  20804  20902  20903  21001  21002  21100  21200  21300 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 21400  21501  21502  21503  21504  21505  21601  21602  21700  21800  21900 
+     1      1      1      1      1      1      1      1      1      1      1 
+  2200  22000  22101  22102  22200  22301  22302  22400  22700  22801  22802 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 22901  22902  23000  23100  23201  23202  23300  23401  23402  23501  23502 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 23600  23700  23801  23802  23901  23902  23903   2400  24003  24006  24100 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 24200  24300  24400  24500  24600  24700  24801  24802  24903  24904  25100 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 25201  25205  25301  25302  25401  25403  25601  25603  25605  25702  25703 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 25704  25801  25802  25803  25805  25905  25906  25907  25908  25909  26005 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 26006  26007  26013  26014  26015  26020  26021  26023  26024  26025  26026 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 26027  26028  26101  26103  26104  26201  26202  26205  26206  26207  26208 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 26301  26302  26403  26404  26405  26406  26505  26507  26508  26509  26510 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 26511  26514  26515  26516  26605  26606  26609  26610  26611  26614  26615 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 26616  26617  26702  26706  26707  26708  26711  26712  26713  26717  26718 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 26719  26720  26721  26722  26723  26724  26725  26726  26807  26809  26811 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 26812  26814  26815  26816  26818  26819  26822  26823  26824  26825  26826 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 26827  26828  26903  26906  26907  26908  26910  26911  26912   2700  27001 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 27002  27101  27102  27202  27203  27204  27205  27300  27400  27501  27503 
+     1      1      1      1      1      1      1      1      1      1      1 
+ 27504  27601  27602  27701  27702  27703    300   3200   3300   3801   3802 
+     1      1      1      1      1      1      1      1      1      1      1 
+  5902    601    603   6800   7700   8100   8200   8300   8400   8500   9500 
+     1      1      1      1      1      1      1      1      1      1      1 
+  9600 
+     1 
+> # last 5 digits
+> permits[,tractNumeric:=as.numeric(substring(geo_id, 6, 11))] # Extract numeric part of tract, last 5 digits
+> slopes[,tractNumeric:=as.numeric(tract)]
 > 
-> 
-> setnames(permits, "geo_id", "zip")
-> permits[, zip := sprintf("%05s", as.character(zip))]
-> slopes[,  zip := sprintf("%05s", as.character(zip))]
+> #permits[, zip := sprintf("%05s", as.character(zip))]
+> #slopes[,  zip := sprintf("%05s", as.character(zip))]
 > 
 > # Merge on Zip
-> dt <- merge(permits, slopes, by = "zip")
-> print(head(dt))
-Key: <zip>
-      zip land_use_c  geo_name infill_lot_count total_lots_active total_units
-   <char>     <char>    <char>            <int>             <int>       <num>
-1:  55403        UN2 ZIP 55403                1                 2           4
-2:  55404        UN2 ZIP 55404                3                 7          18
-3:  55404        UN3 ZIP 55404                1                 1           4
-4:  55405        UN2 ZIP 55405               23                32          72
-5:  55405        UN1 ZIP 55405                0                 1           1
-6:  55405        UN3 ZIP 55405                1                 1         100
-   propensity        slope     N mean_ppsf
-        <num>        <num> <int>     <num>
-1:  0.5000000 -0.342384139    26  334.5986
-2:  0.4285714 -0.499871340    69  173.5262
-3:  1.0000000 -0.499871340    69  173.5262
-4:  0.7187500  0.006914055   156  248.4731
-5:  0.0000000  0.006914055   156  248.4731
-6:  1.0000000  0.006914055   156  248.4731
+> dt <- merge(permits, slopes, by = "tractNumeric")
+> dt[,zone:=land_use_c]
 > print(summary(dt))
-     zip             land_use_c          geo_name         infill_lot_count
- Length:41          Length:41          Length:41          Min.   : 0.00   
- Class :character   Class :character   Class :character   1st Qu.: 1.00   
- Mode  :character   Mode  :character   Mode  :character   Median : 3.00   
-                                                          Mean   : 4.78   
-                                                          3rd Qu.: 6.00   
-                                                          Max.   :39.00   
- total_lots_active  total_units       propensity         slope          
- Min.   : 1.00     Min.   :  1.00   Min.   :0.0000   Min.   :-0.724817  
- 1st Qu.: 3.00     1st Qu.: 11.00   1st Qu.:0.2000   1st Qu.:-0.547141  
- Median : 5.00     Median : 32.00   Median :0.5000   Median :-0.352628  
- Mean   :12.37     Mean   : 53.95   Mean   :0.5113   Mean   :-0.394526  
- 3rd Qu.:12.00     3rd Qu.: 85.00   3rd Qu.:0.7778   3rd Qu.:-0.256443  
- Max.   :94.00     Max.   :227.00   Max.   :1.0000   Max.   : 0.006914  
-       N            mean_ppsf    
- Min.   :  26.0   Min.   :138.5  
- 1st Qu.: 156.0   1st Qu.:221.4  
- Median : 600.0   Median :224.7  
- Mean   : 527.7   Mean   :237.3  
- 3rd Qu.: 847.0   3rd Qu.:249.5  
- Max.   :1245.0   Max.   :355.8  
-> 
-> # 3. Clean -----------------------------------------------------------------
-> # Convert slope to numeric (it was <char>) and take absolute value
-> # (A larger negative slope = a steeper 'size discount')
-> dt[, price_level := as.numeric(mean_ppsf)]
-> 
-> # Focus on Zips with enough data to be credible
-> MINOBS <- 2
-> dt <- dt[N >= MINOBS & total_lots_active >= MINOBS]
-> 
-> dtCensus <- fread("~/OneDrive - UBC/dataRaw/ACSDT5Y2024/ACSDT5Y2024.B19013-Data.csv", skip=1,select = c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)","Geographic Area Name"),header=TRUE)
-> print(head(dtCensus))
-   Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)
-                                                                                         <char>
-1:                                                                                        19454
-2:                                                                                        21420
-3:                                                                                        20933
-4:                                                                                        20992
-5:                                                                                        24496
-6:                                                                                        20360
-   Geographic Area Name
-                 <char>
-1:          ZCTA5 00601
-2:          ZCTA5 00602
-3:          ZCTA5 00603
-4:          ZCTA5 00606
-5:          ZCTA5 00610
-6:          ZCTA5 00611
-> setnames(dtCensus, old=c("Estimate!!Median household income in the past 12 months (in 2024 inflation-adjusted dollars)"), new=c("medianIncome"))
-> dtCensus[, medianIncome := log(as.numeric(medianIncome))]
-Warning message:
-In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
-> setnames(dtCensus,"Geographic Area Name","zip")
-> dtCensus[,zip:=substring(zip,7,11)]
-> dt <- merge(dt,dtCensus,by="zip")
-> print(table(dt[,land_use_c]))
+  tractNumeric       geo_id           land_use_c          geo_name        
+ Min.   :   102   Length:141         Length:141         Length:141        
+ 1st Qu.: 12001   Class :character   Class :character   Class :character  
+ Median :104001   Mode  :character   Mode  :character   Mode  :character  
+ Mean   : 78696                                                           
+ 3rd Qu.:109400                                                           
+ Max.   :126300                                                           
+ infill_lot_count total_lots_active  total_units       propensity    
+ Min.   : 0.000   Min.   : 1.000    Min.   :  1.00   Min.   :0.0000  
+ 1st Qu.: 0.000   1st Qu.: 1.000    1st Qu.:  2.00   1st Qu.:0.0000  
+ Median : 1.000   Median : 2.000    Median :  4.00   Median :0.5000  
+ Mean   : 1.326   Mean   : 3.525    Mean   : 15.48   Mean   :0.4922  
+ 3rd Qu.: 2.000   3rd Qu.: 5.000    3rd Qu.: 12.00   3rd Qu.:1.0000  
+ Max.   :15.000   Max.   :19.000    Max.   :169.00   Max.   :1.0000  
+    tract               slope             lppsf           count      
+ Length:141         Min.   :-1.0069   Min.   :4.694   Min.   :  2.0  
+ Class :character   1st Qu.:-0.7074   1st Qu.:5.121   1st Qu.: 95.0  
+ Mode  :character   Median :-0.5022   Median :5.439   Median :214.0  
+                    Mean   :-0.4680   Mean   :5.374   Mean   :270.3  
+                    3rd Qu.:-0.3920   3rd Qu.:5.545   3rd Qu.:428.0  
+                    Max.   : 2.6059   Max.   :6.016   Max.   :972.0  
+   medianSqft       zone          
+ Min.   : 936   Length:141        
+ 1st Qu.:1103   Class :character  
+ Median :1267   Mode  :character  
+ Mean   :1312                     
+ 3rd Qu.:1425                     
+ Max.   :2946                     
+> print(nrow(dt))
+[1] 141
+> print(head(dt))
+Key: <tractNumeric>
+   tractNumeric      geo_id land_use_c          geo_name infill_lot_count
+          <num>      <char>     <char>            <char>            <int>
+1:          102 27053000102        UN1 Census Tract 1.02                0
+2:          300 27053000300        UN1    Census Tract 3                0
+3:          601 27053000601        UN1 Census Tract 6.01                4
+4:         1700 27053001700        UN2   Census Tract 17                2
+5:         1700 27053001700        UN3   Census Tract 17                0
+6:         2200 27053002200        UN2   Census Tract 22                2
+   total_lots_active total_units propensity  tract      slope    lppsf count
+               <int>       <num>      <num> <char>      <num>    <num> <int>
+1:                 1           1        0.0    102 -0.7738827 5.103648   679
+2:                 1           1        0.0    300 -0.3919771 5.160068   493
+3:                 8          14        0.5    601 -0.7655907 5.394463   638
+4:                 2           4        1.0   1700 -0.2325840 5.361928   116
+5:                 1           1        0.0   1700 -0.2325840 5.361928   116
+6:                 4           6        0.5   2200 -0.8430045 4.754621   113
+   medianSqft   zone
+        <num> <char>
+1:     1020.0    UN1
+2:     1200.0    UN1
+3:     1053.5    UN1
+4:     1056.5    UN2
+5:     1056.5    UN3
+6:     1428.0    UN2
+> print(summary(lm(propensity ~ (lppsf)*zone, dt)))
 
-UN1 UN2 UN3 
-  9  14  11 
-> 
-> print(xtable(cor(dt[, .(slope, price_level, propensity,medianIncome)])))
-% latex table generated in R 4.5.2 by xtable 1.8-4 package
-% Tue Mar 24 11:49:08 2026
-\begin{table}[ht]
-\centering
-\begin{tabular}{rrrrr}
-  \hline
- & slope & price\_level & propensity & medianIncome \\ 
-  \hline
-slope & 1.00 & 0.59 & 0.28 & 0.30 \\ 
-  price\_level & 0.59 & 1.00 & 0.03 & 0.69 \\ 
-  propensity & 0.28 & 0.03 & 1.00 & -0.14 \\ 
-  medianIncome & 0.30 & 0.69 & -0.14 & 1.00 \\ 
-   \hline
-\end{tabular}
-\end{table}
-> print(xtable(cor(dt[land_use_c=="UN3", .(slope, price_level, propensity,medianIncome)])))
-% latex table generated in R 4.5.2 by xtable 1.8-4 package
-% Tue Mar 24 11:49:08 2026
-\begin{table}[ht]
-\centering
-\begin{tabular}{rrrrr}
-  \hline
- & slope & price\_level & propensity & medianIncome \\ 
-  \hline
-slope & 1.00 & 0.61 & 0.32 & 0.31 \\ 
-  price\_level & 0.61 & 1.00 & 0.24 & 0.82 \\ 
-  propensity & 0.32 & 0.24 & 1.00 & 0.01 \\ 
-  medianIncome & 0.31 & 0.82 & 0.01 & 1.00 \\ 
-   \hline
-\end{tabular}
-\end{table}
-> print(xtable(cor(dt[land_use_c!="UN3", .(slope, price_level, propensity,medianIncome)])))
-% latex table generated in R 4.5.2 by xtable 1.8-4 package
-% Tue Mar 24 11:49:08 2026
-\begin{table}[ht]
-\centering
-\begin{tabular}{rrrrr}
-  \hline
- & slope & price\_level & propensity & medianIncome \\ 
-  \hline
-slope & 1.00 & 0.58 & 0.36 & 0.29 \\ 
-  price\_level & 0.58 & 1.00 & -0.05 & 0.64 \\ 
-  propensity & 0.36 & -0.05 & 1.00 & -0.30 \\ 
-  medianIncome & 0.29 & 0.64 & -0.30 & 1.00 \\ 
-   \hline
-\end{tabular}
-\end{table}
-> print(nrow(dt[land_use_c=="UN3"]))
-[1] 11
-> print(nrow(dt[land_use_c="UN1"]))
-Error in `[.data.table`(dt, land_use_c = "UN1") : 
-  unused argument (land_use_c = "UN1")
-Calls: print -> nrow -> [
-Execution halted
+Call:
+lm(formula = propensity ~ (lppsf) * zone, data = dt)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.81300 -0.25848 -0.03218  0.28132  0.76250 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)
+(Intercept)   -0.26001    1.25534  -0.207    0.836
+lppsf          0.09126    0.22827   0.400    0.690
+zoneUN2        0.32425    1.47974   0.219    0.827
+zoneUN3        1.61565    1.76246   0.917    0.361
+lppsf:zoneUN2 -0.00605    0.27143  -0.022    0.982
+lppsf:zoneUN3 -0.20333    0.32521  -0.625    0.533
+
+Residual standard error: 0.3911 on 135 degrees of freedom
+Multiple R-squared:  0.1908,	Adjusted R-squared:  0.1608 
+F-statistic: 6.365 on 5 and 135 DF,  p-value: 2.443e-05
+
+> print(summary(lm(propensity ~ (slope)*zone, dt)))
+
+Call:
+lm(formula = propensity ~ (slope) * zone, data = dt)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.76730 -0.26002 -0.02727  0.25439  0.76507 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept)    0.20939    0.14075   1.488 0.139174    
+slope         -0.06542    0.26018  -0.251 0.801849    
+zoneUN2        0.38659    0.15549   2.486 0.014131 *  
+zoneUN3        0.56029    0.16398   3.417 0.000838 ***
+slope:zoneUN2  0.22812    0.27806   0.820 0.413448    
+slope:zoneUN3  0.09326    0.28364   0.329 0.742819    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.3881 on 135 degrees of freedom
+Multiple R-squared:  0.2033,	Adjusted R-squared:  0.1738 
+F-statistic: 6.892 on 5 and 135 DF,  p-value: 9.271e-06
+
+> print(summary(lm(propensity ~ (slope)+lppsf+zone, dt)))
+
+Call:
+lm(formula = propensity ~ (slope) + lppsf + zone, data = dt)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.78542 -0.27035 -0.02217  0.28741  0.76500 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  0.09500    0.60150   0.158 0.874740    
+slope        0.09058    0.07139   1.269 0.206667    
+lppsf        0.03465    0.10837   0.320 0.749639    
+zoneUN2      0.28187    0.07909   3.564 0.000504 ***
+zoneUN3      0.51608    0.09470   5.450  2.3e-07 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.3882 on 136 degrees of freedom
+Multiple R-squared:  0.1968,	Adjusted R-squared:  0.1732 
+F-statistic: 8.332 on 4 and 136 DF,  p-value: 4.844e-06
+
+> print(dt[,.(mp=mean(propensity),mpl=mean(lppsf),mslope=mean(slope),msqft=mean(medianSqft)),by=zone])
+     zone        mp      mpl     mslope    msqft
+   <char>     <num>    <num>      <num>    <num>
+1:    UN1 0.2412448 5.492746 -0.4868657 1283.912
+2:    UN2 0.5179306 5.324571 -0.4797372 1344.857
+3:    UN3 0.7580645 5.332136 -0.4172338 1272.903
+> for (z in unique(dt[,zone])) {
++ 	print(z)
++ 	print(summary(lm(propensity ~lppsf, dt[zone==z ])))
++ 	print(summary(lm(propensity ~slope+lppsf, dt[zone==z ])))
++ 	print(summary(lm(propensity ~slope+lppsf, dt[zone==z & slope %between% c(-1,0)])))
++ }
+[1] "UN1"
+
+Call:
+lm(formula = propensity ~ lppsf, data = dt[zone == z])
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-0.2710 -0.2293 -0.1245  0.1050  0.7625 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept) -0.26001    1.02568  -0.254    0.801
+lppsf        0.09126    0.18651   0.489    0.627
+
+Residual standard error: 0.3196 on 38 degrees of freedom
+Multiple R-squared:  0.006261,	Adjusted R-squared:  -0.01989 
+F-statistic: 0.2394 on 1 and 38 DF,  p-value: 0.6274
+
+
+Call:
+lm(formula = propensity ~ slope + lppsf, data = dt[zone == z])
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-0.2949 -0.2243 -0.1212  0.1061  0.7576 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  -0.5583     1.1755  -0.475    0.638
+slope        -0.1261     0.2352  -0.536    0.595
+lppsf         0.1344     0.2048   0.656    0.516
+
+Residual standard error: 0.3226 on 37 degrees of freedom
+Multiple R-squared:  0.01392,	Adjusted R-squared:  -0.03938 
+F-statistic: 0.2611 on 2 and 37 DF,  p-value: 0.7716
+
+
+Call:
+lm(formula = propensity ~ slope + lppsf, data = dt[zone == z & 
+    slope %between% c(-1, 0)])
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.27508 -0.23733 -0.09822  0.10776  0.75602 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  -0.3963     1.2144  -0.326    0.746
+slope        -0.0229     0.2904  -0.079    0.938
+lppsf         0.1152     0.2088   0.552    0.585
+
+Residual standard error: 0.3254 on 36 degrees of freedom
+Multiple R-squared:  0.009052,	Adjusted R-squared:  -0.046 
+F-statistic: 0.1644 on 2 and 36 DF,  p-value: 0.849
+
+[1] "UN2"
+
+Call:
+lm(formula = propensity ~ lppsf, data = dt[zone == z])
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.57411 -0.40375 -0.03251  0.46815  0.52422 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  0.06423    0.83691   0.077    0.939
+lppsf        0.08521    0.15690   0.543    0.589
+
+Residual standard error: 0.4178 on 68 degrees of freedom
+Multiple R-squared:  0.004319,	Adjusted R-squared:  -0.01032 
+F-statistic: 0.2949 on 1 and 68 DF,  p-value: 0.5889
+
+
+Call:
+lm(formula = propensity ~ slope + lppsf, data = dt[zone == z])
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.67316 -0.38684 -0.05876  0.44527  0.55614 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  0.25433    0.83861   0.303    0.763
+slope        0.15880    0.10507   1.511    0.135
+lppsf        0.06381    0.15608   0.409    0.684
+
+Residual standard error: 0.414 on 67 degrees of freedom
+Multiple R-squared:  0.03714,	Adjusted R-squared:  0.008402 
+F-statistic: 1.292 on 2 and 67 DF,  p-value: 0.2814
+
+
+Call:
+lm(formula = propensity ~ slope + lppsf, data = dt[zone == z & 
+    slope %between% c(-1, 0)])
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.75213 -0.36523 -0.06988  0.41575  0.63923 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)  
+(Intercept) 0.721789   1.039919   0.694   0.4902  
+slope       0.476774   0.269415   1.770   0.0817 .
+lppsf       0.009519   0.180458   0.053   0.9581  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.4085 on 62 degrees of freedom
+Multiple R-squared:  0.06183,	Adjusted R-squared:  0.03157 
+F-statistic: 2.043 on 2 and 62 DF,  p-value: 0.1383
+
+[1] "UN3"
+
+Call:
+lm(formula = propensity ~ lppsf, data = dt[zone == z])
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-0.8130 -0.2090  0.2147  0.2495  0.3097 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)   1.3556     1.3000   1.043    0.306
+lppsf        -0.1121     0.2434  -0.460    0.649
+
+Residual standard error: 0.411 on 29 degrees of freedom
+Multiple R-squared:  0.007256,	Adjusted R-squared:  -0.02698 
+F-statistic: 0.212 on 1 and 29 DF,  p-value: 0.6487
+
+
+Call:
+lm(formula = propensity ~ slope + lppsf, data = dt[zone == z])
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-0.8002 -0.2082  0.2259  0.2549  0.3033 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  1.33381    1.32867   1.004    0.324
+slope        0.02076    0.12280   0.169    0.867
+lppsf       -0.10635    0.24990  -0.426    0.674
+
+Residual standard error: 0.4181 on 28 degrees of freedom
+Multiple R-squared:  0.008269,	Adjusted R-squared:  -0.06257 
+F-statistic: 0.1167 on 2 and 28 DF,  p-value: 0.8903
+
+
+Call:
+lm(formula = propensity ~ slope + lppsf, data = dt[zone == z & 
+    slope %between% c(-1, 0)])
+
+Residuals:
+    Min      1Q  Median      3Q     Max 
+-0.8846 -0.1769  0.2048  0.2896  0.3726 
+
+Coefficients:
+            Estimate Std. Error t value Pr(>|t|)
+(Intercept)  0.69530    1.41532   0.491    0.627
+slope       -0.36231    0.32303  -1.122    0.272
+lppsf       -0.02831    0.25758  -0.110    0.913
+
+Residual standard error: 0.4195 on 26 degrees of freedom
+Multiple R-squared:  0.04864,	Adjusted R-squared:  -0.02454 
+F-statistic: 0.6646 on 2 and 26 DF,  p-value: 0.523
+
+> q("no")
+> proc.time()
+   user  system elapsed 
+  0.552   0.072   0.619 

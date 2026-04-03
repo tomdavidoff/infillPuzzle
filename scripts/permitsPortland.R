@@ -13,14 +13,14 @@ library(tigris)
 # ==========================================
 # TOGGLE: "zip" or "tract"
 # ==========================================
-GEOGRAPHY <- "zip"
+GEOGRAPHY <- "tract"
 # ==========================================
 
 options(timeout = 600)
 options(tigris_use_cache = TRUE)
 
 # --- PORTLAND PERMITS ---
-pdx_file <- "~/OneDrive - UBC/dataRaw/portlandPermit-Search-Results.csv"
+pdx_file <- "~/DropboxExternal/dataRaw/portlandPermit-Search-Results.csv"
 
 if (!file.exists(pdx_file)) {
   pdx_url <- "https://opendata.arcgis.com/api/v3/datasets/60341c09939e4407b4d135d55b0a3d6f_0/downloads/data?format=csv&spatialRefId=4326&where=1%3D1"
@@ -49,7 +49,7 @@ sfPermit <- st_as_sf(dtPdxMajor,
                      crs = 3857)
 
 # --- PORTLAND ZONING DISTRICTS ---
-zoning_dir <- "~/OneDrive - UBC/dataRaw/portlandZoning"
+zoning_dir <- "~/DropboxExternal/dataRaw/portlandZoning"
 shp_path <- list.files(zoning_dir, pattern = "\\.shp$", full.names = TRUE)
 sfZoning <- st_read(shp_path)
 names(sfZoning) <- tolower(names(sfZoning))
@@ -118,7 +118,7 @@ setorder(dtGeo, -total_lots_active)
 # ==========================================
 # SAVE & SUMMARY
 # ==========================================
-output_file <- sprintf("~/OneDrive - UBC/dataProcessed/portland_%s_propensity.rds", GEOGRAPHY)
+output_file <- sprintf("~/DropboxExternal/dataProcessed/portland_%s_propensity.rds", GEOGRAPHY)
 saveRDS(dtGeo, output_file)
 
 cat("\n=== LOT-LEVEL SUMMARY BY", toupper(GEOGRAPHY), "===\n")

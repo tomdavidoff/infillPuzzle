@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -34,7 +34,7 @@ in your R script or .Rprofile.
 > # ==========================================
 > # TOGGLE: "zip" or "tract"
 > # ==========================================
-> GEOGRAPHY <- "zip"
+> GEOGRAPHY <- "tract"
 > # ==========================================
 > 
 > options(timeout = 600)
@@ -43,13 +43,13 @@ in your R script or .Rprofile.
 > # --- MINNEAPOLIS PERMITS ---
 > # Based on header provided: data has HOUSING_TY, UNITS, YEAR, RES_PERMIT, ZIP_CODE, geometry
 > # CO_CODE 053 = Hennepin County
-> mpls_file <- "~/OneDrive - UBC/dataRaw/shp_econ_residential_building_permts/ResidentialPermits.shp"  # UPDATE THIS
+> mpls_file <- "~/DropboxExternal/dataRaw/shp_econ_residential_building_permts/ResidentialPermits.shp"  # UPDATE THIS
 > 
 > message("Reading Minneapolis permit data...")
 Reading Minneapolis permit data...
 > sfPermit <- st_read(mpls_file)
 Reading layer `ResidentialPermits' from data source 
-  `/Users/tdavidof/Library/CloudStorage/OneDrive-UBC/dataRaw/shp_econ_residential_building_permts/ResidentialPermits.shp' 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/shp_econ_residential_building_permts/ResidentialPermits.shp' 
   using driver `ESRI Shapefile'
 Simple feature collection with 107370 features and 28 fields
 Geometry type: POINT
@@ -105,13 +105,13 @@ Permits after filtering: 648
 > sfPermit <- st_transform(sfPermit, 26915)
 > 
 > # --- MINNEAPOLIS ZONING DISTRICTS ---
-> zoning_file <- "~/OneDrive - UBC/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp"  # UPDATE if different
+> zoning_file <- "~/DropboxExternal/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp"  # UPDATE if different
 > 
 > message("Reading Minneapolis zoning data...")
 Reading Minneapolis zoning data...
 > sfZoning <- st_read(zoning_file)
 Reading layer `Planning_Primary_Zoning' from data source 
-  `/Users/tdavidof/Library/CloudStorage/OneDrive-UBC/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp' 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp' 
   using driver `ESRI Shapefile'
 Simple feature collection with 1259 features and 6 fields
 Geometry type: POLYGON
@@ -152,7 +152,8 @@ Joining permits to zoning...
 +   setnames(dtFinal, "ZCTA5CE20", "geo_id", skip_absent = TRUE)
 +   dtFinal[, geo_name := paste("ZIP", geo_id)]
 + }
-Fetching ZCTAs...
+Fetching census tracts...
+  |                                                                              |                                                                      |   0%  |                                                                              |=                                                                     |   2%  |                                                                              |==                                                                    |   3%  |                                                                              |===                                                                   |   5%  |                                                                              |====                                                                  |   6%  |                                                                              |======                                                                |   8%  |                                                                              |======                                                                |   9%  |                                                                              |========                                                              |  11%  |                                                                              |=========                                                             |  13%  |                                                                              |==========                                                            |  14%  |                                                                              |===========                                                           |  15%  |                                                                              |============                                                          |  17%  |                                                                              |=============                                                         |  19%  |                                                                              |==============                                                        |  20%  |                                                                              |================                                                      |  23%  |                                                                              |=================                                                     |  24%  |                                                                              |==================                                                    |  26%  |                                                                              |===================                                                   |  28%  |                                                                              |====================                                                  |  29%  |                                                                              |======================                                                |  31%  |                                                                              |=======================                                               |  32%  |                                                                              |========================                                              |  34%  |                                                                              |=========================                                             |  36%  |                                                                              |==========================                                            |  37%  |                                                                              |===========================                                           |  39%  |                                                                              |============================                                          |  40%  |                                                                              |=============================                                         |  42%  |                                                                              |==============================                                        |  43%  |                                                                              |================================                                      |  45%  |                                                                              |=================================                                     |  47%  |                                                                              |==================================                                    |  48%  |                                                                              |===================================                                   |  50%  |                                                                              |====================================                                  |  51%  |                                                                              |=====================================                                 |  53%  |                                                                              |======================================                                |  55%  |                                                                              |=======================================                               |  56%  |                                                                              |========================================                              |  58%  |                                                                              |==========================================                            |  59%  |                                                                              |===========================================                           |  61%  |                                                                              |============================================                          |  63%  |                                                                              |=============================================                         |  64%  |                                                                              |==============================================                        |  66%  |                                                                              |===============================================                       |  67%  |                                                                              |================================================                      |  69%  |                                                                              |=================================================                     |  71%  |                                                                              |==================================================                    |  72%  |                                                                              |====================================================                  |  74%  |                                                                              |=====================================================                 |  75%  |                                                                              |======================================================                |  77%  |                                                                              |=======================================================               |  79%  |                                                                              |========================================================              |  80%  |                                                                              |=========================================================             |  82%  |                                                                              |==========================================================            |  83%  |                                                                              |===========================================================           |  85%  |                                                                              |=============================================================         |  86%  |                                                                              |==============================================================        |  88%  |                                                                              |===============================================================       |  90%  |                                                                              |================================================================      |  91%  |                                                                              |=================================================================     |  93%  |                                                                              |==================================================================    |  94%  |                                                                              |===================================================================   |  96%  |                                                                              |====================================================================  |  98%  |                                                                              |===================================================================== |  99%  |                                                                              |======================================================================| 100%
 > 
 > # ==========================================
 > # IDENTIFY R-ZONES (Single-Family Equivalent)
@@ -202,22 +203,22 @@ Checking zoning categories...
 4:       0     0   <NA>       <NA>     100000      Urban     \r   TRUE     1027
 5:       0     0   <NA>       <NA>     167000      Urban     \r   TRUE      339
 6:       0     0   <NA>       <NA>      78000      Urban     \r   TRUE      339
-                land_use land_use_c ruleid  shape__are shape__len geo_id
-                  <char>     <char>  <int>       <num>      <num> <char>
-1:  Urban Neighborhood 1        UN1     13 54195565.67 131543.078  55410
-2: Destination Mixed Use        CM4      4    32197.25   1392.368  55406
-3:  Urban Neighborhood 2        UN2     14  1426707.90   6101.081  55407
-4:  Urban Neighborhood 2        UN2     14   131148.37   3942.304  55406
-5:  Urban Neighborhood 1        UN1     13 54195565.67 131543.078  55409
-6:  Urban Neighborhood 1        UN1     13 54195565.67 131543.078  55419
-                   geometry  geo_name
-                <sfc_POINT>    <char>
-1: POINT (474406.5 4975006) ZIP 55410
-2: POINT (482576.8 4974036) ZIP 55406
-3: POINT (478913.9 4976713) ZIP 55407
-4: POINT (481753.2 4974425) ZIP 55406
-5:   POINT (476921 4974896) ZIP 55409
-6: POINT (478421.8 4972049) ZIP 55419
+                land_use land_use_c ruleid  shape__are shape__len      geo_id
+                  <char>     <char>  <int>       <num>      <num>      <char>
+1:  Urban Neighborhood 1        UN1     13 54195565.67 131543.078 27053109800
+2: Destination Mixed Use        CM4      4    32197.25   1392.368 27053111100
+3:  Urban Neighborhood 2        UN2     14  1426707.90   6101.081 27053008400
+4:  Urban Neighborhood 2        UN2     14   131148.37   3942.304 27053111100
+5:  Urban Neighborhood 1        UN1     13 54195565.67 131543.078 27053109900
+6:  Urban Neighborhood 1        UN1     13 54195565.67 131543.078 27053012003
+              geo_name                 geometry
+                <char>              <sfc_POINT>
+1:   Census Tract 1098 POINT (474406.5 4975006)
+2:   Census Tract 1111 POINT (482576.8 4974036)
+3:     Census Tract 84 POINT (478913.9 4976713)
+4:   Census Tract 1111 POINT (481753.2 4974425)
+5:   Census Tract 1099   POINT (476921 4974896)
+6: Census Tract 120.03 POINT (478421.8 4972049)
 > print(table(dtFinal[,land_use]))
 
          Community Mixed Use           Corridor Mixed Use 
@@ -290,12 +291,12 @@ Lots with plex permits: 198
 > # ==========================================
 > # SAVE & SUMMARY
 > # ==========================================
-> output_file <- sprintf("~/OneDrive - UBC/dataProcessed/minneapolis_%s_propensity.rds", GEOGRAPHY)
+> output_file <- sprintf("~/DropboxExternal/dataProcessed/minneapolis_%s_propensity.rds", GEOGRAPHY)
 > saveRDS(dtGeo, output_file)
 > 
 > cat("\n=== LOT-LEVEL SUMMARY BY", toupper(GEOGRAPHY), "===\n")
 
-=== LOT-LEVEL SUMMARY BY ZIP ===
+=== LOT-LEVEL SUMMARY BY TRACT ===
 > cat("Total Active Lots (R-Zones):", nrow(dtLots), "\n")
 Total Active Lots (R-Zones): 509 
 > cat("Total Infill Lots (Plexes):", sum(dtLots$isPlexLot), "\n")
@@ -305,40 +306,40 @@ Total Infill Lots (Plexes): 198
 Overall Infill Propensity (Lot-based): 0.389 
 > 
 > print(head(dtGeo, 15))
-    geo_id land_use_c  geo_name infill_lot_count total_lots_active total_units
-    <char>     <char>    <char>            <int>             <int>       <num>
- 1:  55411        UN2 ZIP 55411               14                94         227
- 2:  55410        UN1 ZIP 55410               10                56          65
- 3:  55414        UN2 ZIP 55414               39                41          98
- 4:  55406        UN2 ZIP 55406                9                34          48
- 5:  55405        UN2 ZIP 55405               23                32          72
- 6:  55412        UN1 ZIP 55412                2                29          32
- 7:  55406        UN1 ZIP 55406                8                28          34
- 8:  55417        UN1 ZIP 55417               10                25          36
- 9:  55410        UN2 ZIP 55410                3                15          18
-10:  55419        UN1 ZIP 55419                3                14          15
-11:  55407        UN2 ZIP 55407                7                12         164
-12:  55408        UN2 ZIP 55408                7                10         148
-13:  55418        UN1 ZIP 55418                4                 9          13
-14:  55412        UN2 ZIP 55412                1                 9          85
-15:  55413        UN2 ZIP 55413                6                 9          46
-    propensity
-         <num>
- 1: 0.14893617
- 2: 0.17857143
- 3: 0.95121951
- 4: 0.26470588
- 5: 0.71875000
- 6: 0.06896552
- 7: 0.28571429
- 8: 0.40000000
- 9: 0.20000000
-10: 0.21428571
-11: 0.58333333
-12: 0.70000000
-13: 0.44444444
-14: 0.11111111
-15: 0.66666667
+         geo_id land_use_c             geo_name infill_lot_count
+         <char>     <char>               <char>            <int>
+ 1: 27053109800        UN1    Census Tract 1098                5
+ 2: 27053104100        UN2    Census Tract 1041               15
+ 3: 27053111200        UN1    Census Tract 1112                2
+ 4: 27053125700        UN2    Census Tract 1257                3
+ 5: 27053101600        UN2    Census Tract 1016                1
+ 6: 27053109100        UN1    Census Tract 1091                2
+ 7: 27053102100        UN2    Census Tract 1021                3
+ 8: 27053110500        UN1    Census Tract 1105                5
+ 9: 27053102000        UN2    Census Tract 1020                1
+10: 27053100900        UN1    Census Tract 1009                1
+11: 27053003802        UN2   Census Tract 38.02               10
+12: 27053103900        UN2    Census Tract 1039               11
+13: 27053100800        UN1    Census Tract 1008                0
+14: 27053104001        UN2 Census Tract 1040.01                8
+15: 27053000601        UN1    Census Tract 6.01                4
+    total_lots_active total_units propensity
+                <int>       <num>      <num>
+ 1:                19          23 0.26315789
+ 2:                19          24 0.78947368
+ 3:                18          22 0.11111111
+ 4:                17         103 0.17647059
+ 5:                17          18 0.05882353
+ 6:                15          16 0.13333333
+ 7:                13          16 0.23076923
+ 8:                13          18 0.38461538
+ 9:                11          11 0.09090909
+10:                11          12 0.09090909
+11:                11          25 0.90909091
+12:                11          34 1.00000000
+13:                10          10 0.00000000
+14:                 9          19 0.88888889
+15:                 8          14 0.50000000
 > 
 > # ==========================================
 > # DIAGNOSTIC: Check zoning field names
@@ -360,4 +361,4 @@ Sample zone values (first 20 unique):
 > 
 > proc.time()
    user  system elapsed 
-  2.363   0.363   1.905 
+  2.088   0.231   2.621 

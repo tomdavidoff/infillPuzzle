@@ -54,7 +54,8 @@ for (CITY_NAME in names(CITIES)) {
 	# --- Assessor: filtered parquet read via DuckDB ---
 	dtA <- as.data.table(dbGetQuery(con, sprintf(
 		"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
-		CAST(SA_FIN_SQFT_TOT AS DOUBLE) AS sqft, SA_LOTSIZE  AS lotSize,
+		SA_FIN_SQFT_1, SA_FIN_SQFT_2, SA_FIN_SQFT_3,SA_FIN_SQFT_4,
+		CAST(SA_FIN_SQFT_TOT AS DOUBLE) AS sqft, CAST(SA_LOTSIZE AS DOUBLE) AS lotSize,
 		ASSR_YEAR
 		FROM read_parquet('%s')
 		WHERE MM_FIPS_MUNI_CODE = '%s'
@@ -90,6 +91,10 @@ for (CITY_NAME in names(CITIES)) {
 	dt[, yearMonth := format(sale_date, "%Y-%m")]
 	dt[, zip_n     := .N, by = zip]
 	dt <- dt[zip_n >= MIN_OBS]
+	# get quantiles of sqft#
+	print(quantile(dt[, sqft], probs = seq(0,1,.1)))
+	print("SQUARE FOOT WEIRD!")
+	print(dt[1:20,.(SA_FIN_SQFT_1, SA_FIN_SQFT_2, SA_FIN_SQFT_3,SA_FIN_SQFT_4, sqft)])
 
 	# --- Regression ---
 	print(summary(dt))

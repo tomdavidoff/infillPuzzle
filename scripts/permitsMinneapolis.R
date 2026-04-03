@@ -12,7 +12,7 @@ library(tigris)
 # ==========================================
 # TOGGLE: "zip" or "tract"
 # ==========================================
-GEOGRAPHY <- "zip"
+GEOGRAPHY <- "tract"
 # ==========================================
 
 options(timeout = 600)
@@ -21,7 +21,7 @@ options(tigris_use_cache = TRUE)
 # --- MINNEAPOLIS PERMITS ---
 # Based on header provided: data has HOUSING_TY, UNITS, YEAR, RES_PERMIT, ZIP_CODE, geometry
 # CO_CODE 053 = Hennepin County
-mpls_file <- "~/OneDrive - UBC/dataRaw/shp_econ_residential_building_permts/ResidentialPermits.shp"  # UPDATE THIS
+mpls_file <- "~/DropboxExternal/dataRaw/shp_econ_residential_building_permts/ResidentialPermits.shp"  # UPDATE THIS
 
 message("Reading Minneapolis permit data...")
 sfPermit <- st_read(mpls_file)
@@ -73,7 +73,7 @@ sfPermit <- st_as_sf(dtPermit)
 sfPermit <- st_transform(sfPermit, 26915)
 
 # --- MINNEAPOLIS ZONING DISTRICTS ---
-zoning_file <- "~/OneDrive - UBC/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp"  # UPDATE if different
+zoning_file <- "~/DropboxExternal/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp"  # UPDATE if different
 
 message("Reading Minneapolis zoning data...")
 sfZoning <- st_read(zoning_file)
@@ -176,7 +176,7 @@ setorder(dtGeo, -total_lots_active)
 # ==========================================
 # SAVE & SUMMARY
 # ==========================================
-output_file <- sprintf("~/OneDrive - UBC/dataProcessed/minneapolis_%s_propensity.rds", GEOGRAPHY)
+output_file <- sprintf("~/DropboxExternal/dataProcessed/minneapolis_%s_propensity.rds", GEOGRAPHY)
 saveRDS(dtGeo, output_file)
 
 cat("\n=== LOT-LEVEL SUMMARY BY", toupper(GEOGRAPHY), "===\n")

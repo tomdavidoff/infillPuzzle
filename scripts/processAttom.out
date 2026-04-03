@@ -74,7 +74,8 @@ Loading required package: DBI
 + 	# --- Assessor: filtered parquet read via DuckDB ---
 + 	dtA <- as.data.table(dbGetQuery(con, sprintf(
 + 		"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
-+ 		CAST(SA_FIN_SQFT_TOT AS DOUBLE) AS sqft, SA_LOTSIZE  AS lotSize,
++ 		SA_FIN_SQFT_1, SA_FIN_SQFT_2, SA_FIN_SQFT_3,SA_FIN_SQFT_4,
++ 		CAST(SA_FIN_SQFT_TOT AS DOUBLE) AS sqft, CAST(SA_LOTSIZE AS DOUBLE) AS lotSize,
 + 		ASSR_YEAR
 + 		FROM read_parquet('%s')
 + 		WHERE MM_FIPS_MUNI_CODE = '%s'
@@ -110,6 +111,10 @@ Loading required package: DBI
 + 	dt[, yearMonth := format(sale_date, "%Y-%m")]
 + 	dt[, zip_n     := .N, by = zip]
 + 	dt <- dt[zip_n >= MIN_OBS]
++ 	# get quantiles of sqft#
++ 	print(quantile(dt[, sqft], probs = seq(0,1,.1)))
++ 	print("SQUARE FOOT WEIRD!")
++ 	print(dt[1:20,.(SA_FIN_SQFT_1, SA_FIN_SQFT_2, SA_FIN_SQFT_3,SA_FIN_SQFT_4, sqft)])
 + 
 + 	# --- Regression ---
 + 	print(summary(dt))
@@ -153,6 +158,33 @@ Loading required package: DBI
 + }
 
 === PORTLAND ===
+  0%  10%  20%  30%  40%  50%  60%  70%  80%  90% 100% 
+1201 1267 1343 1425 1520 1632 1787 1980 2261 2692 8429 
+[1] "SQUARE FOOT WEIRD!"
+    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
+           <char>        <char>        <char>        <char> <num>
+ 1:          1613             0             0             0  1613
+ 2:          1388           913             0             0  2301
+ 3:          1672             0             0             0  1672
+ 4:           814           770             0             0  1584
+ 5:           651           698             0             0  1349
+ 6:          1688           694             0             0  2382
+ 7:          1209             0             0             0  1209
+ 8:          1172          1056             0             0  2228
+ 9:          1172          1056             0             0  2228
+10:          1227             0             0             0  1227
+11:          1400             0             0             0  1400
+12:           960          1406             0             0  2366
+13:           960          1406             0             0  2366
+14:           840           540             0             0  1380
+15:          1067          1296             0             0  2363
+16:           960           600             0             0  1560
+17:           618           660             0             0  1278
+18:          1344             0             0             0  1344
+19:          1344             0             0             0  1344
+20:          1357             0             0             0  1357
+    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
+           <char>        <char>        <char>        <char> <num>
    attom_id             price            sale_date              zip           
  Length:27472       Min.   :  101000   Min.   :2018-01-02   Length:27472      
  Class :character   1st Qu.:  395000   1st Qu.:2019-04-19   Class :character  
@@ -160,13 +192,20 @@ Loading required package: DBI
                     Mean   :  584336   Mean   :2020-03-28                     
                     3rd Qu.:  685000   3rd Qu.:2021-04-12                     
                     Max.   :11000000   Max.   :2021-12-31                     
-      sqft        lotSize           ASSR_YEAR              year     
- Min.   :1201   Length:27472       Length:27472       Min.   :2018  
- 1st Qu.:1382   Class :character   Class :character   1st Qu.:2021  
- Median :1632   Mode  :character   Mode  :character   Median :2021  
- Mean   :1845                                         Mean   :2021  
- 3rd Qu.:2111                                         3rd Qu.:2022  
- Max.   :8429                                         Max.   :2022  
+ SA_FIN_SQFT_1      SA_FIN_SQFT_2      SA_FIN_SQFT_3      SA_FIN_SQFT_4     
+ Length:27472       Length:27472       Length:27472       Length:27472      
+ Class :character   Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+                                                                            
+                                                                            
+                                                                            
+      sqft         lotSize         ASSR_YEAR              year     
+ Min.   :1201   Min.   :      0   Length:27472       Min.   :2018  
+ 1st Qu.:1382   1st Qu.:   5000   Class :character   1st Qu.:2021  
+ Median :1632   Median :   7003   Mode  :character   Median :2021  
+ Mean   :1845   Mean   :  11431                      Mean   :2021  
+ 3rd Qu.:2111   3rd Qu.:   9830                      3rd Qu.:2022  
+ Max.   :8429   Max.   :2422372                      Max.   :2022  
     maxYear          lat             lon          CensusTract   
  Min.   :2018   Min.   :45.43   Min.   :-122.9   Min.   :    0  
  1st Qu.:2021   1st Qu.:45.48   1st Qu.:-122.7   1st Qu.: 3402  
@@ -210,6 +249,33 @@ removed because of collinearity (see $collin.var).
 `geom_smooth()` using formula = 'y ~ x'
 
 === MINNEAPOLIS ===
+   0%   10%   20%   30%   40%   50%   60%   70%   80%   90%  100% 
+  408   888  1000  1070  1146  1236  1349  1534  1828  2420 27216 
+[1] "SQUARE FOOT WEIRD!"
+    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
+           <char>        <char>        <char>        <char> <num>
+ 1:           980             0             0             0   980
+ 2:          1192           596             0             0  1788
+ 3:             0             0             0             0  1188
+ 4:          1164             0             0             0  1164
+ 5:          1164             0             0             0  1164
+ 6:          2133          1964           841             0  4938
+ 7:             0             0             0             0  1139
+ 8:           871           300             0             0  1171
+ 9:             0             0             0             0  1190
+10:           740           552             0             0  1292
+11:           740           552             0             0  1292
+12:           740           552             0             0  1292
+13:           740           552             0             0  1292
+14:           740           552             0             0  1292
+15:           740           552             0             0  1292
+16:           740           552             0             0  1292
+17:           740           552             0             0  1292
+18:           740           552             0             0  1292
+19:           740           552             0             0  1292
+20:             0             0             0             0  1178
+    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
+           <char>        <char>        <char>        <char> <num>
    attom_id             price           sale_date              zip           
  Length:77694       Min.   : 100179   Min.   :2016-01-04   Length:77694      
  Class :character   1st Qu.: 225000   1st Qu.:2017-05-25   Class :character  
@@ -217,13 +283,20 @@ removed because of collinearity (see $collin.var).
                     Mean   : 354630   Mean   :2018-09-21                     
                     3rd Qu.: 402000   3rd Qu.:2020-02-21                     
                     Max.   :7330941   Max.   :2020-12-31                     
-      sqft         lotSize           ASSR_YEAR              year     
- Min.   :  408   Length:77694       Length:77694       Min.   :   0  
- 1st Qu.: 1040   Class :character   Class :character   1st Qu.:2021  
- Median : 1236   Mode  :character   Mode  :character   Median :2022  
- Mean   : 1471                                         Mean   :2021  
- 3rd Qu.: 1652                                         3rd Qu.:2022  
- Max.   :27216                                         Max.   :2022  
+ SA_FIN_SQFT_1      SA_FIN_SQFT_2      SA_FIN_SQFT_3      SA_FIN_SQFT_4     
+ Length:77694       Length:77694       Length:77694       Length:77694      
+ Class :character   Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+                                                                            
+                                                                            
+                                                                            
+      sqft          lotSize         ASSR_YEAR              year     
+ Min.   :  408   Min.   :    771   Length:77694       Min.   :   0  
+ 1st Qu.: 1040   1st Qu.:   5663   Class :character   1st Qu.:2021  
+ Median : 1236   Median :   9583   Mode  :character   Median :2022  
+ Mean   : 1471   Mean   :  15139                      Mean   :2021  
+ 3rd Qu.: 1652   3rd Qu.:  13939                      3rd Qu.:2022  
+ Max.   :27216   Max.   :3513114                      Max.   :2022  
     maxYear          lat             lon          CensusTract    
  Min.   :   0   Min.   :44.79   Min.   :-93.77   Min.   :     0  
  1st Qu.:2021   1st Qu.:44.91   1st Qu.:-93.42   1st Qu.: 21601  
@@ -275,4 +348,4 @@ Warning messages:
 > q("no")
 > proc.time()
    user  system elapsed 
- 62.567   2.636  44.853 
+ 61.535   2.146  42.959 
