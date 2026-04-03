@@ -1,7 +1,7 @@
 #!/bin/bash
 
 BASEDIR=~/BigFilesExternal/attom
-OUTFILE=~/DropboxExternal/dataProcessed/attomTract.tsv
+OUTFILE=~/DropboxExternal/dataProcessed/attomSQFT.tsv
 TMPDIR="$BASEDIR/tmp_extract"
 
 echo -e "ATTOM_ID\tAreaBuilding\tYearBuilt" > "$OUTFILE"
