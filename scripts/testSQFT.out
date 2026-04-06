@@ -1,0 +1,257 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # testSQFT.R
+> # R to test whether square feet are different assessor history vs flat
+> # Tom Davidoff 
+> # 04/03/26
+> library(data.table)
+> library(duckdb)
+Loading required package: DBI
+Warning message:
+package ‘duckdb’ was built under R version 4.5.2 
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> cf <-  list(SALES_FILE = "~/DropboxExternal/dataProcessed/27053.txt",
++ 	ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_MN.parquet",
++ 	TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
++ 	ASSESSOR_PARQUET_2 = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_MN.parquet",
++ 	FIPS_MUNI = "053",
++ 	LON_RANGE = c(-95.5, -91.0),
++ 	LAT_RANGE = c(43.0, 47.0),
++ 	YEARS = 2016:2020,
++ 	ZIP_START = "55",
++ 	MIN_SQFT = 400
++ )
+> MIN_OBS <- 20
+> con <- dbConnect(duckdb())
+> # --- Assessor History: filtered parquet read via DuckDB ---
+> dtA <- as.data.table(dbGetQuery(con, sprintf(
++ 	"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
++ 	SA_FIN_SQFT_1, SA_FIN_SQFT_2, SA_FIN_SQFT_3, SA_FIN_SQFT_4, SA_BSMT_FIN_SQFT,
++ 	CAST(SA_FIN_SQFT_TOT AS DOUBLE) AS sqft, CAST(SA_SQFT AS DOUBLE) AS sqft_alt,
++ 	SA_SQFT_DQ,
++ 	CAST(SA_BLDG_SQFT AS DOUBLE) AS bldgSqft,
++ 	CAST(SA_LOTSIZE AS DOUBLE) AS lotSize,
++ 	ASSR_YEAR
++ 	FROM read_parquet('%s')
++ 	WHERE MM_FIPS_MUNI_CODE = '%s'
++ 	AND USE_CODE_STD = 'RSFR'
++ 	AND CAST(SA_FIN_SQFT_TOT AS DOUBLE) > %d",
++ 	cf$ASSESSOR_PARQUET, cf$FIPS_MUNI, cf$MIN_SQFT
++ )))
+> dtA[, maxYear := max(ASSR_YEAR), by = attom_id]
+> dtA <- dtA[ASSR_YEAR == maxYear]
+> 
+> # --- Tax Assessor (flat file): AreaBuilding measure ---
+> dtA2 <- as.data.table(dbGetQuery(con, sprintf(
++ 	"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
++ 	CAST(AreaBuilding AS DOUBLE) AS AreaBuilding,
++ 	AreaBuildingDefinitionCode,
++ 	CAST(AreaGross AS DOUBLE) AS AreaGross,
++ 	CAST(Area1stFloor AS DOUBLE) AS Area1stFloor,
++ 	CAST(Area2ndFloor AS DOUBLE) AS Area2ndFloor,
++ 	CAST(AreaUpperFloors AS DOUBLE) AS AreaUpperFloors,
++ 	PropertyUseMuni, PropertyUseGroup, PropertyUseStandardized,
++ 	CAST(StoriesCount AS INT) AS StoriesCount,
++ 	CAST(PropertyLongitude AS DOUBLE) AS Longitude,
++ 	CAST(PropertyLatitude AS DOUBLE) AS Latitude,
++ 	ZonedCodeLocal
++ 	FROM read_parquet('%s')
++ 	WHERE PropertyUseStandardized = '385'",
++ 	cf$ASSESSOR_PARQUET_2
++ )))
+> 
+> dbDisconnect(con)
+> 
+> # --- Merge ---
+> setkey(dtA, attom_id)
+> setkey(dtA2, attom_id)
+> dtM <- dtA[dtA2, nomatch = 0]
+> 
+> # --- The key comparison ---
+> message("=== Definition codes (what does each sqft field actually mean?) ===")
+=== Definition codes (what does each sqft field actually mean?) ===
+> message("SA_SQFT_DQ from history file:")
+SA_SQFT_DQ from history file:
+> print(table(dtM$SA_SQFT_DQ, useNA = "ifany"))
+
+     0      1      4 
+     2 503609      5 
+> message("AreaBuildingDefinitionCode from flat file:")
+AreaBuildingDefinitionCode from flat file:
+> print(table(dtM$AreaBuildingDefinitionCode, useNA = "ifany"))
+
+    10   <NA> 
+503079    537 
+> 
+> message("=== All sqft measures side by side ===")
+=== All sqft measures side by side ===
+> print(summary(dtM[, .(sqft, sqft_alt, bldgSqft, AreaBuilding, AreaGross,
++ 	Area1stFloor, Area2ndFloor, AreaUpperFloors)]))
+      sqft           sqft_alt         bldgSqft       AreaBuilding   
+ Min.   :   404   Min.   :   100   Min.   :     0   Min.   :     0  
+ 1st Qu.:  1080   1st Qu.:  1092   1st Qu.:  1100   1st Qu.:  1092  
+ Median :  1328   Median :  1355   Median :  1378   Median :  1356  
+ Mean   :  1589   Mean   :  1619   Mean   :  1636   Mean   :  1620  
+ 3rd Qu.:  1864   3rd Qu.:  1934   3rd Qu.:  1958   3rd Qu.:  1936  
+ Max.   :112133   Max.   :112133   Max.   :112133   Max.   :112133  
+                                                                    
+   AreaGross       Area1stFloor     Area2ndFloor     AreaUpperFloors
+ Min.   :     0   Min.   :     0   Min.   :    0.0   Min.   :0      
+ 1st Qu.:  1720   1st Qu.:   950   1st Qu.:    0.0   1st Qu.:0      
+ Median :  2126   Median :  1155   Median :    0.0   Median :0      
+ Mean   :  2402   Mean   :  1360   Mean   :  370.3   Mean   :0      
+ 3rd Qu.:  2804   3rd Qu.:  1541   3rd Qu.:  640.0   3rd Qu.:0      
+ Max.   :112133   Max.   :101284   Max.   :26145.0   Max.   :0      
+                                                     NA's   :340    
+> 
+> message("=== AreaBuilding (flat) vs SA_FIN_SQFT_TOT (history) ===")
+=== AreaBuilding (flat) vs SA_FIN_SQFT_TOT (history) ===
+> print(summary(dtM[, .(sqft, AreaBuilding, diff = sqft - AreaBuilding, ratio = sqft / AreaBuilding)]))
+      sqft         AreaBuilding         diff               ratio        
+ Min.   :   404   Min.   :     0   Min.   :-18242.00   Min.   :0.06862  
+ 1st Qu.:  1080   1st Qu.:  1092   1st Qu.:     0.00   1st Qu.:1.00000  
+ Median :  1328   Median :  1356   Median :     0.00   Median :1.00000  
+ Mean   :  1589   Mean   :  1620   Mean   :   -30.52   Mean   :    Inf  
+ 3rd Qu.:  1864   3rd Qu.:  1936   3rd Qu.:     0.00   3rd Qu.:1.00000  
+ Max.   :112133   Max.   :112133   Max.   : 22785.00   Max.   :    Inf  
+> 
+> message("=== By StoriesCount ===")
+=== By StoriesCount ===
+> print(dtM[, .(medianHistory = median(sqft, na.rm = TRUE),
++ 	medianFlat = median(AreaBuilding, na.rm = TRUE),
++ 	medianGross = median(AreaGross, na.rm = TRUE),
++ 	medianRatio = median(sqft / AreaBuilding, na.rm = TRUE),
++ 	N = .N), by = StoriesCount][order(StoriesCount)])
+   StoriesCount medianHistory medianFlat medianGross medianRatio      N
+          <int>         <num>      <num>       <num>       <num>  <int>
+1:            0        1244.5       1246      1246.5           1  16532
+2:            1        1155.0       1176      1978.0           1 218908
+3:            2        1557.0       1594      2301.0           1 258449
+4:            3        2038.0       2089      2970.0           1   9713
+5:            4       17832.0      17832     13932.0           1      3
+6:            5       18580.0      18580     15840.0           1     11
+> 
+> message("=== By AreaBuildingDefinitionCode ===")
+=== By AreaBuildingDefinitionCode ===
+> print(dtM[, .(medianHistory = median(sqft, na.rm = TRUE),
++ 	medianFlat = median(AreaBuilding, na.rm = TRUE),
++ 	medianGross = median(AreaGross, na.rm = TRUE),
++ 	N = .N), by = AreaBuildingDefinitionCode][order(AreaBuildingDefinitionCode)])
+   AreaBuildingDefinitionCode medianHistory medianFlat medianGross      N
+                       <char>         <num>      <num>       <num>  <int>
+1:                         10          1327       1356        2125 503079
+2:                       <NA>          2477       2470        4589    537
+> 
+> # --- Convert floor sqft to numeric and decompose ---
+> dtM[, SA_FIN_SQFT_1 := as.numeric(SA_FIN_SQFT_1)]
+> dtM[, SA_FIN_SQFT_2 := as.numeric(SA_FIN_SQFT_2)]
+> dtM[, SA_FIN_SQFT_3 := as.numeric(SA_FIN_SQFT_3)]
+> dtM[, SA_FIN_SQFT_4 := as.numeric(SA_FIN_SQFT_4)]
+> dtM[, SA_BSMT_FIN_SQFT := as.numeric(SA_BSMT_FIN_SQFT)]
+> 
+> message("=== sqft - sum of floors (should be ~0 if sqft = sum of floors) ===")
+=== sqft - sum of floors (should be ~0 if sqft = sum of floors) ===
+> print(summary(dtM[, sqft - SA_FIN_SQFT_1 - SA_FIN_SQFT_2 - SA_FIN_SQFT_3 - SA_FIN_SQFT_4]))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00    0.00    0.00   46.77    0.00 4642.00 
+> 
+> message("=== sqft - sum of floors - basement ===")
+=== sqft - sum of floors - basement ===
+> print(summary(dtM[, sqft - SA_FIN_SQFT_1 - SA_FIN_SQFT_2 - SA_FIN_SQFT_3 - SA_FIN_SQFT_4 - SA_BSMT_FIN_SQFT]))
+    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+-13500.0   -304.0      0.0   -156.2      0.0   4642.0 
+> 
+> message("=== AreaBuilding vs 1st floor only (footprint check) ===")
+=== AreaBuilding vs 1st floor only (footprint check) ===
+> print(summary(dtM[, .(AreaBuilding, SA_FIN_SQFT_1, diff = AreaBuilding - SA_FIN_SQFT_1)]))
+  AreaBuilding    SA_FIN_SQFT_1         diff         
+ Min.   :     0   Min.   :     0   Min.   :-13218.0  
+ 1st Qu.:  1092   1st Qu.:   896   1st Qu.:     0.0  
+ Median :  1356   Median :  1100   Median :   216.0  
+ Mean   :  1620   Mean   :  1179   Mean   :   440.8  
+ 3rd Qu.:  1936   3rd Qu.:  1376   3rd Qu.:   780.0  
+ Max.   :112133   Max.   :101284   Max.   : 26145.0  
+> 
+> # --- Zoning ---
+> zoning_file <- "~/DropboxExternal/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp"
+> message("Reading Minneapolis zoning data...")
+Reading Minneapolis zoning data...
+> sfZoning <- st_read(zoning_file)
+Reading layer `Planning_Primary_Zoning' from data source 
+  `/Volumes/Crucial X10/Dropbox/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 1259 features and 6 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -10389350 ymin: 5604313 xmax: -10374400 ymax: 5629592
+Projected CRS: WGS 84 / Pseudo-Mercator
+> names(sfZoning) <- tolower(names(sfZoning))
+> sfZoning <- st_transform(sfZoning, 26915)
+> 
+> message("Converting property locations to sf points...")
+Converting property locations to sf points...
+> sfPoints <- st_as_sf(dtM, coords = c("Longitude", "Latitude"), crs = 4326)
+> sfPoints <- st_transform(sfPoints, 26915)
+> 
+> message("Performing spatial join...")
+Performing spatial join...
+> sfPointsZoned <- st_join(sfPoints, sfZoning, left = TRUE)
+> dtMZoned <- as.data.table(sfPointsZoned)
+> 
+> message("=== Zoning land use codes ===")
+=== Zoning land use codes ===
+> print(table(dtMZoned$land_use_c))
+
+  CM1   CM2   CM3   CM4   DT1   DT2   PR1   PR2   RM1   RM2   RM3   UN1   UN2 
+  560  2170   266   102     9    46    72    32  5110     9    63 70385 55474 
+  UN3 
+ 8487 
+> message(sprintf("Rows before join: %d, after: %d", nrow(dtM), nrow(dtMZoned)))
+Rows before join: 503616, after: 503616
+> 
+> message("=== Summary for UN1/UN2/UN3 zones ===")
+=== Summary for UN1/UN2/UN3 zones ===
+> print(summary(dtMZoned[land_use_c %in% c("UN1", "UN2", "UN3"),
++ 	.(sqft, AreaBuilding, StoriesCount,AreaGross)]))
+      sqft        AreaBuilding    StoriesCount     AreaGross    
+ Min.   :  404   Min.   :  112   Min.   :1.000   Min.   :    0  
+ 1st Qu.: 1024   1st Qu.: 1040   1st Qu.:2.000   1st Qu.: 1792  
+ Median : 1248   Median : 1270   Median :2.000   Median : 2116  
+ Mean   : 1364   Mean   : 1392   Mean   :1.864   Mean   : 2240  
+ 3rd Qu.: 1552   3rd Qu.: 1590   3rd Qu.:2.000   3rd Qu.: 2505  
+ Max.   :12595   Max.   :12595   Max.   :3.000   Max.   :18260  
+> 
+> message("=== Comparison by stories, UN1/UN2/UN3 only ===")
+=== Comparison by stories, UN1/UN2/UN3 only ===
+> print(dtMZoned[land_use_c %in% c("UN1", "UN2", "UN3"),
++ 	.(medianHistory = median(sqft, na.rm = TRUE),
++ 	  medianFlat = median(AreaBuilding, na.rm = TRUE),
++ 	  N = .N), by = StoriesCount][order(StoriesCount)])
+   StoriesCount medianHistory medianFlat     N
+          <int>         <num>      <num> <int>
+1:            1           960        960 27415
+2:            2          1299       1324 97782
+3:            3          2048       2097  9149
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 25.682   4.697  15.777 

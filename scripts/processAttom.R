@@ -8,25 +8,28 @@ library(duckdb)
 library(fixest)
 library(ggplot2)
 
+NYEARS <- 10 # need better sample size for good estimates of slopes but very odd behaviour Portland over 5
 CITIES <- list(
 	portland = list(
 		SALES_FILE = "~/DropboxExternal/dataProcessed/41051.txt",
 		ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_OR.parquet",
+		FLAT_ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_OR.parquet",
 		TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
 		FIPS_MUNI = "051",
 		LON_RANGE = c(-124.0, -121.0),
 		LAT_RANGE = c(44.0, 47.0),
-		YEARS = 2018:2021,
+		LASTYEAR = 2021,
 		ZIP_START = "97",
 		MIN_SQFT = 1200),
 	minneapolis = list(
 		SALES_FILE = "~/DropboxExternal/dataProcessed/27053.txt",
 		ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_MN.parquet",
+		FLAT_ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_MN.parquet",
 		TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
 		FIPS_MUNI = "053",
 		LON_RANGE = c(-95.5, -91.0),
 		LAT_RANGE = c(43.0, 47.0),
-		YEARS = 2016:2020,
+		LASTYEAR = 2020,
 		ZIP_START = "55",
 		MIN_SQFT = 400
   )
@@ -37,6 +40,7 @@ con <- dbConnect(duckdb())
 
 for (CITY_NAME in names(CITIES)) {
 	cf <- CITIES[[CITY_NAME]]
+	cf$YEARS <- (cf$LASTYEAR - NYEARS + 1):cf$LASTYEAR
 	message("\n=== ", toupper(CITY_NAME), " ===")
 
 	# --- Sales: pipe-delimited text ---
@@ -66,12 +70,14 @@ for (CITY_NAME in names(CITIES)) {
 
 	# --- Tracts: filtered parquet read via DuckDB ---
 	dtT <- as.data.table(dbGetQuery(con, sprintf(
-		"SELECT CAST(ATTOM_ID AS VARCHAR) AS attom_id,
-		Latitude AS lat, Longitude AS lon, CensusTract
+		"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
+		CAST (PropertyLatitude AS DOUBLE) AS lat, CAST (PropertyLongitude AS DOUBLE) AS lon, CensusTract,
+		CAST (AreaBuilding AS DOUBLE) AS AreaBuilding, CAST (AreaGross AS DOUBLE) AS AreaGross, CAST(ParkingGarageArea AS DOUBLE) AS ParkingGarageArea,
 		FROM read_parquet('%s')
-		WHERE Longitude BETWEEN %f AND %f
-		AND Latitude  BETWEEN %f AND %f",
-		cf$TRACT_PARQUET,
+		WHERE PropertyUseStandardized = '385'
+		AND lon BETWEEN %f AND %f
+		AND lat  BETWEEN %f AND %f",
+		cf$FLAT_ASSESSOR_PARQUET,
 		cf$LON_RANGE[1], cf$LON_RANGE[2],
 		cf$LAT_RANGE[1], cf$LAT_RANGE[2]
 	)))
@@ -100,25 +106,52 @@ for (CITY_NAME in names(CITIES)) {
 	print(summary(dt))
 	print(nrow(dt))
 	#mz <- feols(lppsf ~ 0 + i(zip) + i(zip):lsqft + llotSize | yearMonth, data = dt[substring(zip, 1, 2) == cf$ZIP_START], cluster = "zip")
-	mt <- feols(lppsf ~ 0 + i(CensusTract)+ i(CensusTract):lsqft + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
+	mt <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):lsqft + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") # not ppsf as denominator choice ungood
 	#ml <- feols(ppsf ~ 0 + i(CensusTract) + i(CensusTract):sqft + llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
+	dt[,logGrossLessGarage := log(AreaGross - ParkingGarageArea)]
+	mtGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGrossLessGarage + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
+	print(summary(feols(log(price) ~ log(AreaBuilding)+llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "CensusTract")))
 
 	#print(summary(mt))
 	#print(summary(ml))
 	# bigger Adj R2 at tract level and way bigger in logs
 
 	b <- coef(mt)
+	print(b)
 	keep <- grepl(":lsqft$", names(b))
 	dtSlopes <- data.table(
-	tract   = sub(":lsqft$", "", sub("^CensusTract", "", names(b)[keep])),
-	slope = unname(b[keep])
+		tract   = sub(":lsqft$", "", sub("^CensusTract", "", names(b)[keep])),
+		slope = unname(b[keep])
 	)
 	dtSlopes[,tract:=gsub("::","",tract)]
-	meanLPPSF <- dt[,.(lppsf=mean(lppsf,na.rm=TRUE),count=.N,medianSqft=median(sqft)),by=CensusTract]
-	meanLPPSF[,tract := as.character(CensusTract)]
+	bG <- coef(mtGross)
+	keepG <- grepl(":logGrossLessGarage$", names(bG))
+	print(keepG)
+	dtSlopesG <- data.table(
+		tract = sub(":logGrossLessGarage$", "", sub("^CensusTract", "", names(bG)[keepG])),
+		slopeGross = unname(bG[keepG])
+		)
+	dtSlopesG[,tract:=gsub("::","",tract)]
+
+
+	# get tract-specific coefficients from feols(lppsf ~ = +i(CensusTract) | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") for comparison
+	pReg <- feols(lppsf ~ 0 + i(CensusTract) | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
+	pb <- coef(pReg)
+	keepP <- grepl("^CensusTract", names(pb))
+	dtP <- data.table(
+		tract = sub("^CensusTract", "", names(pb)[keepP]),
+		lppsf = unname(pb[keepP])
+	)
+	dtP[,tract := gsub("::","",tract)]
+	dtCount <- dt[, .(count=.N), by = CensusTract]
+	#meanLPPSF <- dt[,.(lppsf=mean(lppsf,na.rm=TRUE),count=.N,medianSqft=median(sqft)),by=CensusTract]
+	#meanLPPSF[,tract := as.character(CensusTract)]
 	print(head(dtSlopes))
-	print(head(meanLPPSF))
-	dtSlopes <- merge(dtSlopes, meanLPPSF[, .(tract, lppsf, count,medianSqft)], by = "tract")
+	setkey(dtSlopes, tract)
+	setkey(dtP, tract)
+	setkey(dtSlopesG, tract)
+	setkey(dtCount, CensusTract)
+	dtSlopes <- dtSlopes[dtP][dtSlopesG][dtCount]
 
 	saveRDS(dtSlopes, sprintf("~/DropboxExternal/dataProcessed/%s_slopes.rds", CITY_NAME))
 	# do a loess fit of price per square foot against square feet
