@@ -109,7 +109,9 @@ for (CITY_NAME in names(CITIES)) {
 	mt <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):lsqft + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") # not ppsf as denominator choice ungood
 	#ml <- feols(ppsf ~ 0 + i(CensusTract) + i(CensusTract):sqft + llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
 	dt[,logGrossLessGarage := log(AreaGross - ParkingGarageArea)]
+	dt[,logGross := log(AreaGross)]
 	mtGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGrossLessGarage + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
+	mtGrossGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGross + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
 	print(summary(feols(log(price) ~ log(AreaBuilding)+llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "CensusTract")))
 
 	#print(summary(mt))
@@ -132,6 +134,13 @@ for (CITY_NAME in names(CITIES)) {
 		slopeGross = unname(bG[keepG])
 		)
 	dtSlopesG[,tract:=gsub("::","",tract)]
+	bGG <- coef(mtGrossGross)
+	dtSlopesGG <- data.table(
+		tract = sub(":logGross$", "", sub("^CensusTract", "", names(bGG)[grepl(":logGross$", names(bGG))])),
+		slopeGrossGross = unname(bGG[grepl(":logGross$", names(bGG))])
+	)
+	dtSlopesGG[,tract:=gsub("::","",tract)]
+
 
 
 	# get tract-specific coefficients from feols(lppsf ~ = +i(CensusTract) | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") for comparison
@@ -151,7 +160,8 @@ for (CITY_NAME in names(CITIES)) {
 	setkey(dtP, tract)
 	setkey(dtSlopesG, tract)
 	setkey(dtCount, CensusTract)
-	dtSlopes <- dtSlopes[dtP][dtSlopesG][dtCount]
+	setkey(dtSlopesGG, tract)
+	dtSlopes <- dtSlopes[dtP][dtSlopesG][dtSlopesGG][dtCount]
 
 	saveRDS(dtSlopes, sprintf("~/DropboxExternal/dataProcessed/%s_slopes.rds", CITY_NAME))
 	# do a loess fit of price per square foot against square feet

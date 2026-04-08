@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -25,8 +25,6 @@ Type 'q()' to quit R.
 > library(data.table)
 > library(duckdb)
 Loading required package: DBI
-Warning message:
-package ‘duckdb’ was built under R version 4.5.2 
 > library(fixest)
 > library(ggplot2)
 > 
@@ -131,7 +129,9 @@ package ‘duckdb’ was built under R version 4.5.2
 + 	mt <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):lsqft + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") # not ppsf as denominator choice ungood
 + 	#ml <- feols(ppsf ~ 0 + i(CensusTract) + i(CensusTract):sqft + llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
 + 	dt[,logGrossLessGarage := log(AreaGross - ParkingGarageArea)]
++ 	dt[,logGross := log(AreaGross)]
 + 	mtGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGrossLessGarage + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
++ 	mtGrossGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGross + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
 + 	print(summary(feols(log(price) ~ log(AreaBuilding)+llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "CensusTract")))
 + 
 + 	#print(summary(mt))
@@ -154,6 +154,13 @@ package ‘duckdb’ was built under R version 4.5.2
 + 		slopeGross = unname(bG[keepG])
 + 		)
 + 	dtSlopesG[,tract:=gsub("::","",tract)]
++ 	bGG <- coef(mtGrossGross)
++ 	dtSlopesGG <- data.table(
++ 		tract = sub(":logGross$", "", sub("^CensusTract", "", names(bGG)[grepl(":logGross$", names(bGG))])),
++ 		slopeGrossGross = unname(bGG[grepl(":logGross$", names(bGG))])
++ 	)
++ 	dtSlopesGG[,tract:=gsub("::","",tract)]
++ 
 + 
 + 
 + 	# get tract-specific coefficients from feols(lppsf ~ = +i(CensusTract) | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") for comparison
@@ -173,7 +180,8 @@ package ‘duckdb’ was built under R version 4.5.2
 + 	setkey(dtP, tract)
 + 	setkey(dtSlopesG, tract)
 + 	setkey(dtCount, CensusTract)
-+ 	dtSlopes <- dtSlopes[dtP][dtSlopesG][dtCount]
++ 	setkey(dtSlopesGG, tract)
++ 	dtSlopes <- dtSlopes[dtP][dtSlopesG][dtSlopesGG][dtCount]
 + 
 + 	saveRDS(dtSlopes, sprintf("~/DropboxExternal/dataProcessed/%s_slopes.rds", CITY_NAME))
 + 	# do a loess fit of price per square foot against square feet
@@ -219,6 +227,7 @@ package ‘duckdb’ was built under R version 4.5.2
 19:          2426             0             0             0  2426
 20:          1354           972             0             0  2326
     SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
+           <char>        <char>        <char>        <char> <num>
    attom_id             price             sale_date              zip           
  Length:63690       Min.   :   101000   Min.   :2012-01-01   Length:63690      
  Class :character   1st Qu.:   309900   1st Qu.:2014-09-23   Class :character  
@@ -269,9 +278,15 @@ package ‘duckdb’ was built under R version 4.5.2
  3rd Qu.:31105  
  Max.   :31105  
 [1] 63690
-The variable 'CensusTract::4901:lsqft' has been removed because of collinearity (see $collin.var).
+The variable 'CensusTract::4901:lsqft' has been removed because of collinearity
+(see $collin.var).
 NOTE: 9 observations removed because of NA values (RHS: 9).
-The variables 'CensusTract::0:logGrossLessGarage' and 'CensusTract::4901:logGrossLessGarage' have been removed because of collinearity (see $collin.var).
+The variables 'CensusTract::0:logGrossLessGarage' and
+'CensusTract::4901:logGrossLessGarage' have been removed because of collinearity
+(see $collin.var).
+NOTE: 8 observations removed because of NA values (RHS: 8).
+The variables 'CensusTract::0:logGross' and 'CensusTract::4901:logGross' have
+been removed because of collinearity (see $collin.var).
 OLS estimation, Dep. Var.: log(price)
 Observations: 23,261
 Fixed-effects: yearMonth: 120
@@ -284,129 +299,129 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.352784     Adj. R2: 0.466443
                  Within R2: 0.367749
        CensusTract::1000       CensusTract::10001       CensusTract::10002 
-              4.11303028               4.80442038               6.68439197 
+              4.11385364               4.80468287               6.66896817 
         CensusTract::101       CensusTract::10101       CensusTract::10102 
-              6.97424802               8.55571137               1.58871414 
+              6.98158896               8.53984375               1.55853282 
         CensusTract::102       CensusTract::10200       CensusTract::10303 
-             10.14451053               4.76636977               8.40124934 
+             10.13770653               4.76026012               8.39041680 
       CensusTract::10304       CensusTract::10305       CensusTract::10306 
-              5.01638981               6.91937800               6.74616031 
+              5.00667906               6.92012839               6.74036017 
       CensusTract::10402       CensusTract::10405       CensusTract::10407 
-              8.83663254               4.99001475               6.50577519 
+              8.83350289               5.00901647               6.48978308 
       CensusTract::10408       CensusTract::10410       CensusTract::10411 
-              5.05861676               5.20504654               8.83760943 
+              5.05993104               5.18907257               8.83144227 
       CensusTract::10412       CensusTract::10413       CensusTract::10500 
-              5.59525713               6.85640085               5.34478710 
+              5.57122036               6.84828170               5.35478731 
        CensusTract::1101        CensusTract::1102        CensusTract::1202 
-              3.44938571               3.80984092               8.03171377 
+              3.44851408               3.80480836               8.05086982 
        CensusTract::1203        CensusTract::1204        CensusTract::1301 
-              4.21619964               9.13683968               7.91593300 
+              4.23390254               9.12204649               7.89646298 
        CensusTract::1302        CensusTract::1400        CensusTract::1500 
-              7.01093444               5.85404361               5.48965714 
+              7.02370257               5.85726866               5.50090300 
        CensusTract::1601        CensusTract::1602        CensusTract::1702 
-              6.71765009               7.32753694               9.12195360 
+              6.72114561               7.30858908               9.12990806 
        CensusTract::1703        CensusTract::1704        CensusTract::1801 
-              9.88748760               6.21655099               4.10231688 
+              9.88046425               6.22209050               4.10261612 
        CensusTract::1802        CensusTract::1900        CensusTract::2001 
-              7.60996494               5.59273370               5.64870671 
+              7.61357539               5.59713397               5.64183028 
        CensusTract::2002         CensusTract::201         CensusTract::202 
-              8.69109287               7.55953331               7.56400390 
+              8.67862590               7.55447319               7.55642944 
        CensusTract::2102        CensusTract::2203        CensusTract::2303 
-             14.09059438              12.26619558              -0.14196169 
+             14.08478366              12.25880377              -0.13762227 
        CensusTract::2401        CensusTract::2402        CensusTract::2501 
-              3.54378861               6.43237801               4.23599800 
+              3.53410979               6.41941101               4.24503607 
        CensusTract::2502        CensusTract::2600        CensusTract::2701 
-              7.01581126               6.49381969               6.85259063 
+              7.03949624               6.49789351               6.86401979 
        CensusTract::2702        CensusTract::2801        CensusTract::2802 
-              8.82030832               8.79119603               8.16729718 
+              8.80729848               8.78049302               8.15997209 
        CensusTract::2901        CensusTract::2902        CensusTract::2903 
-             10.75120198               7.91048783               6.05642825 
+             10.73578894               7.90335279               6.06675405 
        CensusTract::3000         CensusTract::301         CensusTract::302 
-              6.52968648               6.79948921               7.09612676 
+              6.53070590               6.79114879               7.07769101 
        CensusTract::3100        CensusTract::3200        CensusTract::3301 
-              7.14696443               8.66641968               4.27994984 
+              7.13877498               8.66361093               4.30024815 
        CensusTract::3302        CensusTract::3401        CensusTract::3402 
-              7.96629858               7.07342516               5.68904288 
+              7.97139054               7.05482703               5.69269020 
        CensusTract::3501        CensusTract::3502        CensusTract::3601 
-              9.14146167               8.46052440               4.87645888 
+              9.15518829               8.44803617               4.88725627 
        CensusTract::3602        CensusTract::3603        CensusTract::3701 
-              6.22581424               9.01044307               5.68334150 
+              6.22299428               9.01993946               5.70180541 
        CensusTract::3702        CensusTract::3801        CensusTract::3802 
-              8.29852858               7.21509774               6.10720539 
+              8.27957713               7.21981179               6.11680357 
        CensusTract::3803        CensusTract::3902        CensusTract::3903 
-              8.17071396               7.40721381               4.14463283 
+              8.16527082               7.39454088               4.13284798 
        CensusTract::3904        CensusTract::4002        CensusTract::4003 
-              7.16520215               7.20020971               7.58164811 
+              7.15564365               7.19683562               7.57669625 
         CensusTract::401         CensusTract::402        CensusTract::4102 
-              6.18633658               2.10765375               4.84605565 
+              6.18322929               2.10545155               4.82405145 
        CensusTract::4103        CensusTract::4104        CensusTract::4200 
-              5.43660669               4.82031496               6.46694812 
+              5.44126393               4.80959964               6.46962625 
        CensusTract::4300        CensusTract::4500        CensusTract::4601 
-              7.27812109               0.69401493               2.43358638 
+              7.27794886               0.67856945               2.44698406 
        CensusTract::4602        CensusTract::4700        CensusTract::4800 
-              4.66173823               4.25161466              14.21102629 
+              4.66178848               4.25149036              14.21459546 
        CensusTract::4901         CensusTract::501         CensusTract::502 
-             10.98808000               9.75678691               5.14954723 
+             10.99765588               9.75537648               5.14298652 
        CensusTract::5202        CensusTract::5500        CensusTract::5701 
-             28.58479274              27.55826448               7.46384187 
+             28.57493171              27.55342721               7.45131844 
        CensusTract::5800        CensusTract::5901        CensusTract::5903 
-              6.64172389               8.57413843               5.62824350 
+              6.67222561               8.57068098               5.61081549 
        CensusTract::6001        CensusTract::6002         CensusTract::601 
-              2.62653734               5.06054390               4.40211144 
+              2.61818823               5.04034864               4.39634524 
         CensusTract::602        CensusTract::6100        CensusTract::6200 
-              5.69530169               8.66364065               5.84721634 
+              5.68183208               8.66973966               5.82964235 
        CensusTract::6300        CensusTract::6402        CensusTract::6403 
-              5.21228661               5.65641933               5.09565228 
+              5.20080069               5.66567932               5.10808226 
        CensusTract::6404        CensusTract::6501        CensusTract::6502 
-              7.28565485               6.46047188               6.07302799 
+              7.29722759               6.44754759               6.06500932 
        CensusTract::6601        CensusTract::6602        CensusTract::6701 
-              7.37226076               5.88122407               9.21851139 
+              7.37306192               5.87892236               9.20545891 
        CensusTract::6702        CensusTract::6801        CensusTract::6802 
-              6.07760589               3.89556257               7.38615310 
+              6.06437108               3.88666833               7.36955740 
        CensusTract::6900        CensusTract::7001        CensusTract::7002 
-              6.42777462               4.63745522               5.67011535 
+              6.43868128               4.61532317               5.66205126 
         CensusTract::701         CensusTract::702        CensusTract::7100 
-              5.96086664               5.35760705               2.07622927 
+              5.96353427               5.34910048               2.07455036 
        CensusTract::7201        CensusTract::7202        CensusTract::7300 
-              0.56581552               2.96004211              21.78251496 
+              0.59082440               2.96228847              21.78544070 
        CensusTract::7400        CensusTract::7500        CensusTract::7600 
-              4.33645455               6.85744979               7.17141245 
+              4.31844418               6.85705226               7.16096196 
        CensusTract::7700        CensusTract::7800        CensusTract::7900 
-              5.46105394               9.52088704               9.62372248 
+              5.45464993               9.50765257               9.62054998 
        CensusTract::8001        CensusTract::8002         CensusTract::801 
-              5.27388907               7.49442157               7.01549779 
+              5.24722725               7.50956754               7.01250377 
         CensusTract::802        CensusTract::8100        CensusTract::8201 
-              4.00244146               6.82535988               6.91172466 
+              3.99516080               6.82178716               6.91467811 
        CensusTract::8203        CensusTract::8204        CensusTract::8301 
-              8.75462348               6.92733494               3.90076441 
+              8.73780072               6.93080281               3.90113767 
        CensusTract::8302        CensusTract::8400        CensusTract::8500 
-              4.83052588               6.47346582               3.67492756 
+              4.83589500               6.47212755               3.64568679 
        CensusTract::8600        CensusTract::8700        CensusTract::8800 
-              5.91877460               4.67850283               5.88421472 
+              5.91826686               4.67223782               5.88452175 
        CensusTract::8902        CensusTract::8903        CensusTract::8904 
-              6.29561506               5.34126927               7.96755611 
+              6.27895398               5.34869656               7.95874457 
        CensusTract::9001        CensusTract::9002         CensusTract::901 
-              5.01045238               7.45188455               7.12904464 
+              4.99311903               7.45369974               7.12336174 
         CensusTract::902        CensusTract::9101        CensusTract::9102 
-              6.95196676               8.98836644               6.07461041 
+              6.96026189               8.99303074               6.05676847 
        CensusTract::9202        CensusTract::9203        CensusTract::9204 
-              6.53184965               5.04880318               5.55255216 
+              6.51881040               5.04166223               5.56860533 
        CensusTract::9301        CensusTract::9302        CensusTract::9400 
-              6.40029044               5.52496034               6.92115555 
+              6.40436289               5.50664739               6.91870955 
        CensusTract::9501        CensusTract::9502        CensusTract::9603 
-              7.26355390               7.46277228               9.33094178 
+              7.25943539               7.46880343               9.33486914 
        CensusTract::9604        CensusTract::9605        CensusTract::9606 
-              5.38230791               5.22470145               9.67433011 
+              5.38485128               5.24227115               9.67273277 
        CensusTract::9701        CensusTract::9703        CensusTract::9704 
-              8.54091510              10.39833212               7.17747526 
+              8.54652886              10.39162087               7.17455543 
        CensusTract::9801        CensusTract::9803        CensusTract::9804 
-              8.68798402               7.46514813               8.76348351 
+              8.67228965               7.45983626               8.74937360 
        CensusTract::9903        CensusTract::9904        CensusTract::9905 
-              6.94439764               5.40458857               6.69133624 
+              6.93822918               5.40011641               6.69465749 
        CensusTract::9906        CensusTract::9907                 llotSize 
-              6.44220870               5.36854337               0.06783367 
+              6.44716700               5.38147169               0.06783367 
     CensusTract::0:lsqft  CensusTract::1000:lsqft CensusTract::10001:lsqft 
-              1.37103098               0.85003031               0.68610083 
+              1.36992264               0.85003031               0.68610083 
 CensusTract::10002:lsqft   CensusTract::101:lsqft CensusTract::10101:lsqft 
               0.44191593               0.48253492               0.17127928 
 CensusTract::10102:lsqft   CensusTract::102:lsqft CensusTract::10200:lsqft 
@@ -560,7 +575,7 @@ CensusTract::10500:lsqft  CensusTract::1101:lsqft  CensusTract::1102:lsqft
 [361]  TRUE  TRUE  TRUE  TRUE
     tract     slope
    <char>     <num>
-1:      0 1.3710310
+1:      0 1.3699226
 2:   1000 0.8500303
 3:  10001 0.6861008
 4:  10002 0.4419159
@@ -595,6 +610,7 @@ CensusTract::10500:lsqft  CensusTract::1101:lsqft  CensusTract::1102:lsqft
 19:           940             0             0             0   940
 20:          1338           724             0             0  2062
     SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
+           <char>        <char>        <char>        <char> <num>
    attom_id             price            sale_date              zip           
  Length:157348      Min.   :  100100   Min.   :2011-01-03   Length:157348     
  Class :character   1st Qu.:  203000   1st Qu.:2014-01-31   Class :character  
@@ -645,9 +661,15 @@ CensusTract::10500:lsqft  CensusTract::1101:lsqft  CensusTract::1102:lsqft
  3rd Qu.: 4100  
  Max.   :11904  
 [1] 157348
-The variable 'CensusTract::980000:lsqft' has been removed because of collinearity (see $collin.var).
+The variable 'CensusTract::980000:lsqft' has been removed because of
+collinearity (see $collin.var).
 NOTE: 117 observations removed because of NA values (RHS: 117).
-The variables 'CensusTract::0:logGrossLessGarage' and 'CensusTract::980000:logGrossLessGarage' have been removed because of collinearity (see $collin.var).
+The variables 'CensusTract::0:logGrossLessGarage' and
+'CensusTract::980000:logGrossLessGarage' have been removed because of
+collinearity (see $collin.var).
+NOTE: 3 observations removed because of NA values (RHS: 3).
+The variable 'CensusTract::980000:logGross' has been removed because of
+collinearity (see $collin.var).
 NOTE: 2 observations removed because of infinite values (RHS: 2).
 OLS estimation, Dep. Var.: log(price)
 Observations: 97,587
@@ -661,217 +683,217 @@ Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 0.337419     Adj. R2: 0.545616
                  Within R2: 0.528662
       CensusTract::100200       CensusTract::100400       CensusTract::100500 
-              1.090759338               1.256889563               0.226732569 
+              1.091559446               1.258241018               0.226153086 
       CensusTract::100700       CensusTract::100800       CensusTract::100900 
-             -0.589069083               0.689802020               1.741913909 
+             -0.589290910               0.690612804               1.742981155 
          CensusTract::101       CensusTract::101200       CensusTract::101300 
-              0.550638353               0.531933565               1.865589392 
+              0.551576944               0.532645022               1.866696147 
       CensusTract::101600       CensusTract::101800       CensusTract::101900 
-              2.309390548               0.814776857              -2.132301436 
+              2.309549267               0.814161724              -2.132342823 
          CensusTract::102       CensusTract::102000       CensusTract::102100 
-              1.304359423              -0.324324029              -0.219500973 
+              1.305177224              -0.324556416              -0.218478757 
       CensusTract::102500       CensusTract::102600       CensusTract::102800 
-             -2.516572540              -0.097567850               1.138814962 
+             -2.516738456              -0.098118938               1.138187217 
       CensusTract::103000       CensusTract::103100       CensusTract::103400 
-             -1.492522070               1.560827015              -0.941718829 
+             -1.492048139               1.561126985              -0.940986927 
       CensusTract::103600       CensusTract::103700       CensusTract::104001 
-              2.153459886              -2.955569325              -0.192338929 
+              2.153025653              -2.956596725              -0.193019412 
       CensusTract::104002       CensusTract::104100       CensusTract::104902 
-             -2.192625847               2.107808853               1.468556665 
+             -2.192716666               2.108707451               1.469061828 
       CensusTract::105100       CensusTract::105500       CensusTract::105600 
-             -0.538175937              -1.221663713               1.839138025 
+             -0.537986957              -1.223076109               1.838800949 
       CensusTract::105700        CensusTract::10600       CensusTract::106000 
-              0.344743187              -2.170583779               0.014252817 
+              0.345416608              -2.169212542               0.013304972 
       CensusTract::106200       CensusTract::106400       CensusTract::106500 
-             -0.084261195              -4.936849305              -2.063331534 
+             -0.083985523              -4.935711474              -2.062747563 
       CensusTract::106600       CensusTract::106700       CensusTract::106900 
-             -7.197348997              -0.108412285              -5.814497660 
+             -7.196322756              -0.107791327              -5.815946444 
        CensusTract::10700       CensusTract::107000       CensusTract::107400 
-             -3.087836701               9.252798452               1.239276069 
+             -3.086981916               9.251662316               1.237949332 
       CensusTract::107500       CensusTract::107600       CensusTract::108000 
-              1.382792812              -1.918940811              -3.499963758 
+              1.384055873              -1.917527335              -3.498476891 
       CensusTract::108600       CensusTract::108700       CensusTract::108800 
-              0.390241534               0.455681533               0.668036542 
+              0.389419702               0.455462259               0.668522085 
       CensusTract::108900       CensusTract::109000       CensusTract::109100 
-             -0.258486491              -1.127062916              -2.477883521 
+             -0.257966074              -1.126366982              -2.477893602 
       CensusTract::109200       CensusTract::109300       CensusTract::109400 
-              1.695541729              -0.497153043               1.931005314 
+              1.695975120              -0.496586739               1.931132266 
       CensusTract::109700       CensusTract::109800       CensusTract::109900 
-              1.058212547              -0.291303500              -0.347357807 
+              1.057613457              -0.290703760              -0.347274217 
         CensusTract::1100        CensusTract::11000       CensusTract::110000 
-              1.269234082               0.273348341               0.855027079 
+              1.269636772               0.273836326               0.854753042 
       CensusTract::110100       CensusTract::110200       CensusTract::110400 
-              1.789728371               0.600290141               0.553602056 
+              1.788217563               0.600017065               0.552576420 
       CensusTract::110500       CensusTract::110800       CensusTract::110900 
-             -0.951869543              -0.524828760              -0.955386850 
+             -0.952821025              -0.524692123              -0.956010697 
       CensusTract::111100       CensusTract::111200       CensusTract::111300 
-             -0.603897136              -0.231074173              -0.664217358 
+             -0.603286866              -0.232705263              -0.664004202 
       CensusTract::111400       CensusTract::111500       CensusTract::111600 
-             -1.618436528              -2.419867956              -1.915954336 
+             -1.618420080              -2.419068125              -1.914743136 
        CensusTract::11703        CensusTract::11704        CensusTract::11800 
-             -0.815305384               1.361947479              -1.172075602 
+             -0.815600343               1.362048668              -1.172089651 
        CensusTract::11998        CensusTract::12001        CensusTract::12003 
-              0.219448514              -0.426448329              -2.309725063 
+              0.219209471              -0.426117734              -2.310945256 
        CensusTract::12101        CensusTract::12102       CensusTract::122500 
-              0.558075329               0.180040368               0.303854763 
+              0.558269124               0.179279717               0.304350288 
       CensusTract::122600       CensusTract::125500       CensusTract::125600 
-              1.246883744               2.729616932              -2.446160658 
+              1.247275166               2.731176167              -2.446382501 
       CensusTract::125700       CensusTract::125800       CensusTract::125900 
-              2.335593972               1.850492485               2.505006337 
+              2.335337582               1.849656886               2.505880749 
       CensusTract::126000       CensusTract::126300         CensusTract::1700 
-              0.661511692               1.698127202               1.798623906 
+              0.660647971               1.698662783               1.798558819 
        CensusTract::20101        CensusTract::20102        CensusTract::20201 
-             -2.109798729              -0.587236213              -0.174325725 
+             -2.109440190              -0.586406596              -0.175409401 
        CensusTract::20202        CensusTract::20301        CensusTract::20302 
-             -0.789923078               1.301666294              -0.114022353 
+             -0.789575444               1.302571426              -0.114365536 
        CensusTract::20303        CensusTract::20304        CensusTract::20400 
-              2.482786061               1.571782956               1.191661005 
+              2.483297918               1.572004599               1.192450075 
        CensusTract::20500        CensusTract::20600        CensusTract::20700 
-              1.228544929               1.774144438               0.034296284 
+              1.230879777               1.774023705               0.033470528 
        CensusTract::20801        CensusTract::20804        CensusTract::20902 
-             -0.462439229               0.047366288               0.176860060 
+             -0.463599352               0.048711997               0.176115453 
        CensusTract::20903        CensusTract::21001        CensusTract::21002 
-             -0.151167535               0.127557244               0.001477377 
+             -0.150825682               0.126440838               0.002065966 
        CensusTract::21100        CensusTract::21200        CensusTract::21300 
-              0.028285054              -0.224304846               0.207690129 
+              0.027425065              -0.222048491               0.207222381 
        CensusTract::21400        CensusTract::21501        CensusTract::21502 
-              1.066746453               2.058473984              -0.434051730 
+              1.065449699               2.058783362              -0.434000758 
        CensusTract::21503        CensusTract::21504        CensusTract::21505 
-              0.390176199               2.004265831               2.510652526 
+              0.390071498               2.004786325               2.510968021 
        CensusTract::21601        CensusTract::21602        CensusTract::21700 
-             -1.751419996              -1.020250837              -1.682453009 
+             -1.751600968              -1.019062447              -1.683167877 
        CensusTract::21800        CensusTract::21900         CensusTract::2200 
-             -1.478758173              -1.175372851               2.702651615 
+             -1.478549798              -1.175861426               2.701948346 
        CensusTract::22000        CensusTract::22101        CensusTract::22102 
-              1.469511531               0.598077956               1.848819500 
+              1.471070989               0.597830095               1.850203900 
        CensusTract::22200        CensusTract::22301        CensusTract::22302 
-             -0.282621502              -0.670038274               2.112225084 
+             -0.283446422              -0.668829048               2.111154156 
        CensusTract::22400        CensusTract::22700        CensusTract::22801 
-              0.855974401               0.212423381              -2.155622782 
+              0.856027785               0.212039196              -2.154934063 
        CensusTract::22802        CensusTract::22901        CensusTract::22902 
-             -0.625287112               1.035298839               0.019680427 
+             -0.624625575               1.036305591               0.020521984 
        CensusTract::23000        CensusTract::23100        CensusTract::23201 
-              0.475553223              -2.958768263              -1.564222187 
+              0.474533350              -2.958706578              -1.564481634 
        CensusTract::23202        CensusTract::23300        CensusTract::23401 
-              1.468146443               1.083323135              -1.207668214 
+              1.469134996               1.083532661              -1.206770755 
        CensusTract::23402        CensusTract::23501        CensusTract::23502 
-             -2.065969613              -2.544152600               0.284029766 
+             -2.066583964              -2.544689726               0.284110513 
        CensusTract::23600        CensusTract::23700        CensusTract::23801 
-             -2.035829139              -2.245954725              -3.299565377 
+             -2.034904873              -2.244550830              -3.298708545 
        CensusTract::23802        CensusTract::23901        CensusTract::23902 
-             -1.594931735              -0.962703620               0.867844949 
+             -1.597244456              -0.963897136               0.868931100 
        CensusTract::23903         CensusTract::2400        CensusTract::24003 
-              0.615360878               0.049173806               0.327944117 
+              0.616646516               0.049461621               0.328480430 
        CensusTract::24004        CensusTract::24006        CensusTract::24100 
-              2.732523374              -1.961264594               0.408945319 
+              2.733092309              -1.960180068               0.409487911 
        CensusTract::24200        CensusTract::24300        CensusTract::24400 
-              0.320165347               0.599731631               0.062619050 
+              0.320388361               0.600726879               0.063107924 
        CensusTract::24500        CensusTract::24600        CensusTract::24700 
-              1.068204271              -0.217344313               1.024496617 
+              1.067260252              -0.216286755               1.024761009 
        CensusTract::24801        CensusTract::24802        CensusTract::24903 
-              1.352802063               2.166462245               2.875307563 
+              1.353565134               2.167634642               2.875083498 
        CensusTract::24904        CensusTract::25100        CensusTract::25201 
-              1.072783802               0.852512143               0.815547481 
+              1.071715201               0.852371558               0.815963953 
        CensusTract::25205        CensusTract::25301        CensusTract::25302 
-              1.658124608              -1.391054960               1.684324680 
+              1.658040631              -1.392257511               1.685402905 
        CensusTract::25401        CensusTract::25403        CensusTract::25601 
-              0.922955996               1.128477492              -0.481070532 
+              0.924099399               1.128241758              -0.479726421 
        CensusTract::25603        CensusTract::25605        CensusTract::25702 
-              0.433894620               1.620859581              -1.583517534 
+              0.434988937               1.620379318              -1.583791974 
        CensusTract::25703        CensusTract::25704        CensusTract::25801 
-             -1.563760211               0.498049246              -1.434412597 
+             -1.563188623               0.497029226              -1.434219859 
        CensusTract::25802        CensusTract::25803        CensusTract::25805 
-              0.117584546               1.357580211               0.298019550 
+              0.118686687               1.357389970               0.300163963 
        CensusTract::25905        CensusTract::25906        CensusTract::25907 
-              1.326953135              -3.710777778              -3.009608306 
+              1.328124941              -3.711359101              -3.010808421 
        CensusTract::25908        CensusTract::25909        CensusTract::26005 
-              1.389448619              -2.706434078              -0.532110748 
+              1.389360477              -2.707348063              -0.531601634 
        CensusTract::26006        CensusTract::26007        CensusTract::26013 
-             -0.410798626              -0.201640281               1.724859786 
+             -0.412392392              -0.202770698               1.725613569 
        CensusTract::26014        CensusTract::26015        CensusTract::26020 
-             -0.780907972               0.591359974               0.800346197 
+             -0.781397246               0.590967182               0.798623700 
        CensusTract::26021        CensusTract::26023        CensusTract::26024 
-             -2.992055432              -2.501136893              -1.674835494 
+             -2.992210997              -2.501167871              -1.674810880 
        CensusTract::26025        CensusTract::26026        CensusTract::26027 
-              2.460373278               1.381278536               0.981373199 
+              2.460718238               1.380698452               0.982934377 
        CensusTract::26028        CensusTract::26101        CensusTract::26103 
-             -0.719718473              -0.327624817              -1.002855060 
+             -0.719867735              -0.326832570              -1.002745778 
        CensusTract::26104        CensusTract::26201        CensusTract::26202 
-             -2.468221449              -1.045966192              -1.682723640 
+             -2.468472546              -1.047699296              -1.681881719 
        CensusTract::26205        CensusTract::26206        CensusTract::26207 
-             -0.948045600              -2.211643194               0.355753237 
+             -0.947568625              -2.211425697               0.354119674 
        CensusTract::26208        CensusTract::26301        CensusTract::26302 
-             -0.416160038              -1.905477828               0.451893045 
+             -0.417333180              -1.906754721               0.452776589 
        CensusTract::26403        CensusTract::26404        CensusTract::26405 
-             -0.024910503              -2.306817515              -0.905052247 
+             -0.025242658              -2.306500310              -0.905754547 
        CensusTract::26406        CensusTract::26505        CensusTract::26507 
-             -0.605181796              -0.517796646              -0.766976877 
+             -0.605995682              -0.517593373              -0.767246609 
        CensusTract::26508        CensusTract::26509        CensusTract::26510 
-             -2.046344345               0.947980847               1.318516486 
+             -2.046331797               0.947222607               1.317682930 
        CensusTract::26511        CensusTract::26514        CensusTract::26515 
-              1.663193363               0.859773217              -0.027339626 
+              1.661887990               0.859320738              -0.028163526 
        CensusTract::26516        CensusTract::26605        CensusTract::26606 
-             -2.008972055              -0.994058589              -0.686737359 
+             -2.009448622              -0.995208554              -0.687878945 
        CensusTract::26609        CensusTract::26610        CensusTract::26611 
-             -3.086292129              -2.085734657              -0.699465257 
+             -3.084907154              -2.086134688              -0.699434786 
        CensusTract::26614        CensusTract::26615        CensusTract::26616 
-              0.407010981              -0.077417982              -0.703348009 
+              0.406762188              -0.077695185              -0.703671000 
        CensusTract::26617        CensusTract::26702        CensusTract::26706 
-             -1.338581144              -0.392539179               1.192615681 
+             -1.339922757              -0.392154360               1.193962014 
        CensusTract::26707        CensusTract::26708        CensusTract::26711 
-              1.520545194              -0.418969253               0.114817427 
+              1.519596769              -0.419209101               0.114802540 
        CensusTract::26712        CensusTract::26713        CensusTract::26717 
-              0.815373916              -0.609503628               0.631064508 
+              0.815508349              -0.609520092               0.631757928 
        CensusTract::26718        CensusTract::26719        CensusTract::26720 
-              0.381006428               0.982257540              -0.965510832 
+              0.379845259               0.982958257              -0.965254767 
        CensusTract::26721        CensusTract::26722        CensusTract::26723 
-             -1.580302994               1.585279370               0.273059316 
+             -1.579473360               1.587325629               0.273379452 
        CensusTract::26724        CensusTract::26725        CensusTract::26726 
-              2.417678624               0.347727876              -0.097511292 
+              2.417891884               0.348676757              -0.097492502 
        CensusTract::26807        CensusTract::26809        CensusTract::26811 
-              0.568159559               1.137246639               1.920631663 
+              0.568886354               1.137215093               1.921364637 
        CensusTract::26812        CensusTract::26814        CensusTract::26815 
-             -0.857063689               2.287674168               0.637882805 
+             -0.856813904               2.287752274               0.637477218 
        CensusTract::26816        CensusTract::26818        CensusTract::26819 
-              2.358252458               1.747063700               1.350447429 
+              2.358117377               1.746228893               1.348889348 
        CensusTract::26822        CensusTract::26823        CensusTract::26824 
-             -0.387379052               1.773566647               0.115461466 
+             -0.388139536               1.773015907               0.114418294 
        CensusTract::26825        CensusTract::26826        CensusTract::26827 
-             -0.012295200              -0.500454641               2.585876978 
+             -0.012824829              -0.499505236               2.586873612 
        CensusTract::26828        CensusTract::26903        CensusTract::26906 
-              2.782596578              -0.483673573               0.834777135 
+              2.782815363              -0.484736878               0.835595401 
        CensusTract::26907        CensusTract::26908        CensusTract::26910 
-             -0.840115534               0.980347370              -3.889736602 
+             -0.839006571               0.979098394              -3.889151073 
        CensusTract::26911        CensusTract::26912         CensusTract::2700 
-             -7.005267962              -1.388059126               1.992670814 
+             -7.005703573              -1.388586454               1.992821560 
        CensusTract::27001        CensusTract::27002        CensusTract::27101 
-              0.598965439              -1.579986720              -1.411784299 
+              0.598546652              -1.579762767              -1.412339308 
        CensusTract::27102        CensusTract::27202        CensusTract::27203 
-             -0.610766272              -0.179043852              -6.528567610 
+             -0.609682001              -0.179759097              -6.529021563 
        CensusTract::27204        CensusTract::27205        CensusTract::27300 
-             -2.605033414              -2.446890869              -4.118681559 
+             -2.604264769              -2.446381325              -4.117910913 
        CensusTract::27400        CensusTract::27501        CensusTract::27503 
-             -2.087292628              -2.922667350              -3.388894961 
+             -2.086938386              -2.923669556              -3.388352515 
        CensusTract::27504        CensusTract::27601        CensusTract::27602 
-             -1.880806347              -1.970048302              -2.134414161 
+             -1.879799911              -1.969426255              -2.134552371 
        CensusTract::27701        CensusTract::27702        CensusTract::27703 
-             -1.504094242               0.071871086               0.371785191 
+             -1.504185500               0.072005570               0.372206808 
          CensusTract::300         CensusTract::3200         CensusTract::3300 
-             -0.711407442               0.231679265               1.244900062 
+             -0.711470631               0.231179203               1.245541165 
         CensusTract::3801         CensusTract::3802         CensusTract::5901 
-             -1.828379034             -22.006832926              -6.576290464 
+             -1.829322775             -22.005233003              -6.575869034 
         CensusTract::5902          CensusTract::601          CensusTract::603 
-              2.261623587               0.543478314              -0.890494984 
+              2.261638451               0.542344583              -0.890788999 
         CensusTract::6800         CensusTract::7700         CensusTract::7801 
-              3.482387890              -1.676262407               1.581133222 
+              3.481184095              -1.676584258               1.580265609 
         CensusTract::8100         CensusTract::8200         CensusTract::8300 
-              1.070384999               0.921215783               0.139249266 
+              1.071036406               0.919919882               0.138968960 
         CensusTract::8400         CensusTract::8500         CensusTract::9500 
-             -0.754032342               0.863227805              -0.621217837 
+             -0.753718367               0.863172226              -0.621016609 
         CensusTract::9600       CensusTract::980000                  llotSize 
-              0.790439367               3.102069044               0.077058919 
+              0.788140278               3.101542782               0.077058919 
      CensusTract::0:lsqft CensusTract::100200:lsqft CensusTract::100400:lsqft 
-              0.424769045               0.308279690               0.267529526 
+              0.424695791               0.308279690               0.267529526 
 CensusTract::100500:lsqft CensusTract::100700:lsqft CensusTract::100800:lsqft 
               0.460563949               0.547176096               0.347016567 
 CensusTract::100900:lsqft    CensusTract::101:lsqft CensusTract::101200:lsqft 
@@ -1135,7 +1157,7 @@ CensusTract::125900:lsqft CensusTract::126000:lsqft CensusTract::126300:lsqft
 [625]  TRUE  TRUE  TRUE  TRUE
     tract     slope
    <char>     <num>
-1:      0 0.4247690
+1:      0 0.4246958
 2: 100200 0.3082797
 3: 100400 0.2675295
 4: 100500 0.4605639
@@ -1143,12 +1165,20 @@ CensusTract::125900:lsqft CensusTract::126000:lsqft CensusTract::126300:lsqft
 6: 100800 0.3470166
 `geom_smooth()` using formula = 'y ~ x'
 Warning messages:
-1: In log(AreaGross - ParkingGarageArea) : NaNs produced
+1: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
 2: In log(AreaGross - ParkingGarageArea) : NaNs produced
+3: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+4: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+5: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+6: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+7: In log(AreaGross - ParkingGarageArea) : NaNs produced
+8: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+9: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+10: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
 > 
 > dbDisconnect(con)
 > 
 > q("no")
 > proc.time()
    user  system elapsed 
-165.752  11.453 151.450 
+143.564   2.903 139.961 

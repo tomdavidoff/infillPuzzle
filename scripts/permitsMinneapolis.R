@@ -156,6 +156,18 @@ dtLots <- dtAnalysis[!is.na(geo_id) & !is.na(get(parcel_id)), .(
   total_units = sum(units, na.rm = TRUE),
   permit_count = .N
 ), by = c(parcel_id, "geo_id", "land_use_c", "geo_name")]
+print(head(dtLots))
+sfLots <- st_as_sf(dtLots, sf_column_name = "geometry")
+
+
+# plot isPlex dummy by lat and lon and add boundaries of zoning districts
+ggplot() +
+  geom_sf(data = sfZoning, fill = NA, color = "gray") +
+  geom_sf(data = sfLots, aes(color = isPlexLot), size = 0.5) +
+  labs(title = "Permit Locations Colored by Plex Status") +
+  theme_minimal()
+ggsave("text/permitLocationMinneapolis.png")
+
 
 message("Total lots with permits: ", nrow(dtLots))
 message("Lots with plex permits: ", sum(dtLots$isPlexLot))

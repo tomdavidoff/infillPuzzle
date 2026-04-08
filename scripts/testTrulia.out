@@ -1,0 +1,711 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # testTrulia.R
+> # see if can match square footage in Minneapolis
+> # Tom Davidoff 
+> # 04/07/26
+> 
+> library(data.table)
+> library(duckdb)
+Loading required package: DBI
+> 
+> 
+> 
+> # enter in a table by hand with street name and number and square footage
+> dTrulia <- data.table(number=21,street="Russell Ave S",sqft=1948,zip=55405)
+> dTrulia <- rbind(dTrulia,data.table(number=3482,street="Fremont Ave N",sqft=2088,zip=55412))
+> dTrulia <- rbind(dTrulia,data.table(number=5036,street="11th Ave S",sqft=2646,zip=55417))
+> dTrulia <- rbind(dTrulia,data.table(number=5233,street="Aldrich Ave N",sqft=1736,zip=55430))
+> dTrulia <- rbind(dTrulia,data.table(number=1715,street="W 31st St",sqft=3154,zip=55408))
+> dTrulia <- rbind(dTrulia,data.table(number=3017,street="James Ave S",sqft=1961,zip=55408))
+> dTrulia <- rbind(dTrulia,data.table(number=3013,street="James Ave S",sqft=4232,zip=55408))
+> dTrulia <- rbind(dTrulia,data.table(number=1510,street="W 31st St",sqft=2173,zip=55408))
+> dTrulia <- rbind(dTrulia,data.table(number=2511,street="Washington St NE",sqft=1321,zip=55418))
+> dTrulia <- rbind(dTrulia,data.table(number=2790,street="Dean Pkwy",sqft=1646,zip=55416))
+> dTrulia <- rbind(dTrulia,data.table(number=4453,street="44th Ave S",sqft=2152,zip=55406))
+> dTrulia <- rbind(dTrulia,data.table(number=5608,street="Colfax Ave S",sqft=2736,zip=55419))
+> dTrulia <- rbind(dTrulia,data.table(number=5413,street="Oliver Ave S",sqft=2518,zip=55419))
+> dTrulia <- rbind(dTrulia,data.table(number=4534,street="Queen Ave N",sqft=588,zip=55412))
+> dTrulia <- rbind(dTrulia,data.table(number=5321,street="Drew Ave S",sqft=3169,zip=55410))
+> dTrulia <- rbind(dTrulia,data.table(number=3135,street="Pierce St NE",sqft=1440,zip=55418))
+> dTrulia <- rbind(dTrulia,data.table(number=205,street="W 52nd St",sqft=3157,zip=55419))
+> dTrulia <- rbind(dTrulia,data.table(number=5052,street="Morgan Ave S",sqft=2448,zip=55419))
+> dTrulia <- rbind(dTrulia,data.table(number=5204,street="Abbott Ave S",sqft=2688,zip=55410))
+> dTrulia <- rbind(dTrulia,data.table(number=5157,street="Washburn Ave S",sqft=1882,zip=55410))
+> dTrulia <- rbind(dTrulia,data.table(number=5324,street="Nokomis Ave",sqft=581,zip=55417))
+> dTrulia <- rbind(dTrulia,data.table(number=4017,street="44th Ave S",sqft=1756,zip=55406))
+> dTrulia <- rbind(dTrulia,data.table(number=3331,street="Tyler St NE",sqft=1988,zip=55418))
+> dTrulia <- rbind(dTrulia,data.table(number=3032,street="Longfellow Ave",sqft=2759,zip=55407))
+> dTrulia <- rbind(dTrulia,data.table(number=5816,street="Queen Ave S",sqft=2128,zip=55410))
+> dTrulia <- rbind(dTrulia,data.table(number=2867,street="Kenwood Isles Dr",sqft=1540,zip=55408))
+> dTrulia <- rbind(dTrulia,data.table(number=2804,street="Pillsbury Ave S",sqft=1684,zip=55408))
+> dTrulia <- rbind(dTrulia,data.table(number=201,street="W 48th St",sqft=2783,zip=55419))
+> dTrulia <- rbind(dTrulia,data.table(number=4340,street="14th Ave S",sqft=1440,zip=55407))
+> dTrulia <- rbind(dTrulia,data.table(number=5708,street="37th Ave S",sqft=1256,zip=55417))
+> dTrulia <- rbind(dTrulia,data.table(number=4008,street="Garfield Ave",sqft=2664,zip=55409))
+> dTrulia <- rbind(dTrulia,data.table(number=406,street="River St",sqft=5167,zip=55401))
+> 
+> # do fuzzy match in SQL, like number, street with any capitalization and zip match. Then grab AreaBuilding and AreaGross, too
+> con <- dbConnect(duckdb::duckdb())
+> 
+> 
+> for (i in 1:nrow(dTrulia)) {
++   print(c("looking for", dTrulia[i,.(number,street,zip,sqft)]))
++ 
++   # split street into words for fuzzy matching
++   words <- strsplit(dTrulia$street[i], "\\s+")[[1]]
++   # build ILIKE clause: number at start, each street word anywhere, zip matches
++   like_clauses <- paste0("PropertyAddressFull ILIKE '%", words, "%'", collapse = " AND ")
++ 
++   query <- sprintf(
++     "SELECT PropertyAddressFull, PropertyAddressZip, AreaBuilding, AreaGross, RoomsBasementArea
++      FROM '~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_MN.parquet'
++      WHERE CAST(PropertyAddressFull AS VARCHAR) ILIKE '%s%%'
++      AND %s
++      AND CAST(PropertyAddressZip AS VARCHAR) LIKE '%s%%'",
++     dTrulia$number[i],
++     like_clauses,
++     dTrulia$zip[i]
++   )
++ 
++   result <- dbGetQuery(con, query)
++   print(result)
++ }
+[[1]]
+[1] "looking for"
+
+$number
+[1] 21
+
+$street
+[1] "Russell Ave S"
+
+$zip
+[1] 55405
+
+$sqft
+[1] 1948
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1    21 RUSSELL AVE S              55405         1260      2100
+2   215 RUSSELL AVE S              55405         1012      1430
+3   212 RUSSELL AVE S              55405         1536      2318
+4   217 RUSSELL AVE S              55405         1560      2340
+5   216 RUSSELL AVE S              55405         1783      2838
+  RoomsBasementArea
+1               840
+2               572
+3               782
+4               780
+5               920
+[[1]]
+[1] "looking for"
+
+$number
+[1] 3482
+
+$street
+[1] "Fremont Ave N"
+
+$zip
+[1] 55412
+
+$sqft
+[1] 2088
+
+[1] PropertyAddressFull PropertyAddressZIP  AreaBuilding       
+[4] AreaGross           RoomsBasementArea  
+<0 rows> (or 0-length row.names)
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5036
+
+$street
+[1] "11th Ave S"
+
+$zip
+[1] 55417
+
+$sqft
+[1] 2646
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1     5036 11TH AVE S              55417         1529      2583
+  RoomsBasementArea
+1              1054
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5233
+
+$street
+[1] "Aldrich Ave N"
+
+$zip
+[1] 55430
+
+$sqft
+[1] 1736
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1  5233 ALDRICH AVE N              55430          836      1672
+  RoomsBasementArea
+1               836
+[[1]]
+[1] "looking for"
+
+$number
+[1] 1715
+
+$street
+[1] "W 31st St"
+
+$zip
+[1] 55408
+
+$sqft
+[1] 3154
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1      1715 W 31ST ST              55408         2138      3088
+  RoomsBasementArea
+1               950
+[[1]]
+[1] "looking for"
+
+$number
+[1] 3017
+
+$street
+[1] "James Ave S"
+
+$zip
+[1] 55408
+
+$sqft
+[1] 1961
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1    3017 JAMES AVE S              55408         1975      2487
+  RoomsBasementArea
+1               748
+[[1]]
+[1] "looking for"
+
+$number
+[1] 3013
+
+$street
+[1] "James Ave S"
+
+$zip
+[1] 55408
+
+$sqft
+[1] 4232
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1    3013 JAMES AVE S              55408         3432      5488
+  RoomsBasementArea
+1              1666
+[[1]]
+[1] "looking for"
+
+$number
+[1] 1510
+
+$street
+[1] "W 31st St"
+
+$zip
+[1] 55408
+
+$sqft
+[1] 2173
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1      1510 W 31ST ST              55408         1320      2022
+  RoomsBasementArea
+1               702
+[[1]]
+[1] "looking for"
+
+$number
+[1] 2511
+
+$street
+[1] "Washington St NE"
+
+$zip
+[1] 55418
+
+$sqft
+[1] 1321
+
+    PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1 2511 WASHINGTON ST NE              55418         1129      1793
+  RoomsBasementArea
+1               664
+[[1]]
+[1] "looking for"
+
+$number
+[1] 2790
+
+$street
+[1] "Dean Pkwy"
+
+$zip
+[1] 55416
+
+$sqft
+[1] 1646
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1      2790 DEAN PKWY              55416         1520      2350
+  RoomsBasementArea
+1               830
+[[1]]
+[1] "looking for"
+
+$number
+[1] 4453
+
+$street
+[1] "44th Ave S"
+
+$zip
+[1] 55406
+
+$sqft
+[1] 2152
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1     4453 44TH AVE S              55406         1266      2086
+  RoomsBasementArea
+1               820
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5608
+
+$street
+[1] "Colfax Ave S"
+
+$zip
+[1] 55419
+
+$sqft
+[1] 2736
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1   5608 COLFAX AVE S              55419         1841      2772
+  RoomsBasementArea
+1               931
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5413
+
+$street
+[1] "Oliver Ave S"
+
+$zip
+[1] 55419
+
+$sqft
+[1] 2518
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1   5413 OLIVER AVE S              55419         1288      2282
+  RoomsBasementArea
+1               756
+[[1]]
+[1] "looking for"
+
+$number
+[1] 4534
+
+$street
+[1] "Queen Ave N"
+
+$zip
+[1] 55412
+
+$sqft
+[1] 588
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1    4534 QUEEN AVE N              55412          688      1376
+  RoomsBasementArea
+1               688
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5321
+
+$street
+[1] "Drew Ave S"
+
+$zip
+[1] 55410
+
+$sqft
+[1] 3169
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1     5321 DREW AVE S              55410         2302      1320
+  RoomsBasementArea
+1              1140
+[[1]]
+[1] "looking for"
+
+$number
+[1] 3135
+
+$street
+[1] "Pierce St NE"
+
+$zip
+[1] 55418
+
+$sqft
+[1] 1440
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1   3135 PIERCE ST NE              55418          720      1440
+  RoomsBasementArea
+1               720
+[[1]]
+[1] "looking for"
+
+$number
+[1] 205
+
+$street
+[1] "W 52nd St"
+
+$zip
+[1] 55419
+
+$sqft
+[1] 3157
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1       205 W 52ND ST              55419         2073      3138
+  RoomsBasementArea
+1              1065
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5052
+
+$street
+[1] "Morgan Ave S"
+
+$zip
+[1] 55419
+
+$sqft
+[1] 2448
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1   5052 MORGAN AVE S              55419         1352      2184
+  RoomsBasementArea
+1              1048
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5204
+
+$street
+[1] "Abbott Ave S"
+
+$zip
+[1] 55410
+
+$sqft
+[1] 2688
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1   5204 ABBOTT AVE S              55410         1674      2700
+  RoomsBasementArea
+1              1026
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5157
+
+$street
+[1] "Washburn Ave S"
+
+$zip
+[1] 55410
+
+$sqft
+[1] 1882
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1 5157 WASHBURN AVE S              55410         1253      1882
+  RoomsBasementArea
+1               629
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5324
+
+$street
+[1] "Nokomis Ave"
+
+$zip
+[1] 55417
+
+$sqft
+[1] 581
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1    5324 NOKOMIS AVE              55417          534      1068
+  RoomsBasementArea
+1               534
+[[1]]
+[1] "looking for"
+
+$number
+[1] 4017
+
+$street
+[1] "44th Ave S"
+
+$zip
+[1] 55406
+
+$sqft
+[1] 1756
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1     4017 44TH AVE S              55406          896      1373
+  RoomsBasementArea
+1               477
+[[1]]
+[1] "looking for"
+
+$number
+[1] 3331
+
+$street
+[1] "Tyler St NE"
+
+$zip
+[1] 55418
+
+$sqft
+[1] 1988
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1    3331 TYLER ST NE              55418         1236      1953
+  RoomsBasementArea
+1               717
+[[1]]
+[1] "looking for"
+
+$number
+[1] 3032
+
+$street
+[1] "Longfellow Ave"
+
+$zip
+[1] 55407
+
+$sqft
+[1] 2759
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1 3032 LONGFELLOW AVE              55407         1504      2344
+  RoomsBasementArea
+1               840
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5816
+
+$street
+[1] "Queen Ave S"
+
+$zip
+[1] 55410
+
+$sqft
+[1] 2128
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1    5816 QUEEN AVE S              55410          994      1988
+  RoomsBasementArea
+1               994
+[[1]]
+[1] "looking for"
+
+$number
+[1] 2867
+
+$street
+[1] "Kenwood Isles Dr"
+
+$zip
+[1] 55408
+
+$sqft
+[1] 1540
+
+    PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1 2867 KENWOOD ISLES DR              55408         1328      1992
+  RoomsBasementArea
+1               264
+[[1]]
+[1] "looking for"
+
+$number
+[1] 2804
+
+$street
+[1] "Pillsbury Ave S"
+
+$zip
+[1] 55408
+
+$sqft
+[1] 1684
+
+   PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1 2804 PILLSBURY AVE S              55408         1401      1471
+  RoomsBasementArea
+1                70
+[[1]]
+[1] "looking for"
+
+$number
+[1] 201
+
+$street
+[1] "W 48th St"
+
+$zip
+[1] 55419
+
+$sqft
+[1] 2783
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1       201 W 48TH ST              55419         2177      3308
+2       201 W 48TH ST              55419            0         0
+  RoomsBasementArea
+1               606
+2                 0
+[[1]]
+[1] "looking for"
+
+$number
+[1] 4340
+
+$street
+[1] "14th Ave S"
+
+$zip
+[1] 55407
+
+$sqft
+[1] 1440
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1     4340 14TH AVE S              55407          728      1300
+  RoomsBasementArea
+1               572
+[[1]]
+[1] "looking for"
+
+$number
+[1] 5708
+
+$street
+[1] "37th Ave S"
+
+$zip
+[1] 55417
+
+$sqft
+[1] 1256
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1     5708 37TH AVE S              55417         1008      1728
+  RoomsBasementArea
+1               720
+[[1]]
+[1] "looking for"
+
+$number
+[1] 4008
+
+$street
+[1] "Garfield Ave"
+
+$zip
+[1] 55409
+
+$sqft
+[1] 2664
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1   4008 GARFIELD AVE              55409         1744      2664
+  RoomsBasementArea
+1               920
+[[1]]
+[1] "looking for"
+
+$number
+[1] 406
+
+$street
+[1] "River St"
+
+$zip
+[1] 55401
+
+$sqft
+[1] 5167
+
+  PropertyAddressFull PropertyAddressZIP AreaBuilding AreaGross
+1        406 RIVER ST              55401         3347      4981
+  RoomsBasementArea
+1              1634
+> 
+> proc.time()
+   user  system elapsed 
+  3.729   0.392   2.008 

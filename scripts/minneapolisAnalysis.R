@@ -35,13 +35,16 @@ print(head(dt))
 print(summary(lm(propensity ~ (lppsf)*zone, dt)))
 print(summary(lm(propensity ~ (slope)*zone, dt)))
 print(summary(lm(propensity ~ (slope)+lppsf+zone, dt)))
-print(dt[,.(mp=mean(propensity),mpl=mean(lppsf),mslope=mean(slope),msqft=mean(medianSqft)),by=zone])
+print(summary(lm(propensity ~ (slopeGrossGross)+lppsf+zone, dt)))
 for (z in unique(dt[,zone])) {
 	print(z)
 	print(summary(lm(propensity ~lppsf, dt[zone==z ])))
 	print(summary(lm(propensity ~slope+lppsf, dt[zone==z ])))
-	print(summary(lm(propensity ~slope+lppsf, dt[zone==z & slope %between% c(-1,0)])))
+	print(summary(lm(propensity ~slopeGrossGross+lppsf, dt[zone==z ])))
 }
+
+
+
 q("no")
 
 
