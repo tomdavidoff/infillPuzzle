@@ -79,6 +79,7 @@ message("Reading Minneapolis zoning data...")
 sfZoning <- st_read(zoning_file)
 names(sfZoning) <- tolower(names(sfZoning))
 sfZoning <- st_transform(sfZoning, 26915)
+print(head(sfZoning))
 
 # Print zoning field names to identify the zone column
 message("Zoning fields: ", paste(names(sfZoning), collapse = ", "))
@@ -151,24 +152,50 @@ if ("pin" %in% names(dtAnalysis)) {
 }
 
 # Collapse multiple permits per parcel into a single lot record
+# Collapse — now include lon/lat (take first point per lot)
+print(head(dtAnalysis))
 dtLots <- dtAnalysis[!is.na(geo_id) & !is.na(get(parcel_id)), .(
   isPlexLot = any(isPlex, na.rm = TRUE),
   total_units = sum(units, na.rm = TRUE),
-  permit_count = .N
+  permit_count = .N,
+  lon = st_coordinates(geometry)[,1],
+  lat = st_coordinates(geometry)[,2]
 ), by = c(parcel_id, "geo_id", "land_use_c", "geo_name")]
-print(head(dtLots))
-sfLots <- st_as_sf(dtLots, sf_column_name = "geometry")
+
+# Convert back to sf
+sfLots <- st_as_sf(dtLots, coords = c("lon", "lat"), crs = 26915)
 
 
 # plot isPlex dummy by lat and lon and add boundaries of zoning districts
 ggplot() +
-  geom_sf(data = sfZoning, fill = NA, color = "gray") +
-  geom_sf(data = sfLots, aes(color = isPlexLot), size = 0.5) +
-  labs(title = "Permit Locations Colored by Plex Status") +
-  theme_minimal()
-ggsave("text/permitLocationMinneapolis.png")
+  geom_sf(data = sfZoning[sfZoning$land_use_c %in% c("UN1", "UN2", "UN3"), ], 
+          aes(fill = land_use_c), alpha = 0.5, color = "grey50", linewidth = 0.1) +
+  geom_sf(data = sfLots, 
+          aes(color = isPlexLot, size = isPlexLot), shape = 16) +
+  scale_fill_manual(
+    values = c("UN1" = "lightyellow", "UN2" = "lightblue", "UN3" = "lightgreen"),
+    name = "Zone"
+  ) +
+  scale_color_manual(
+    values = c("FALSE" = "grey50", "TRUE" = "red"),
+    labels = c("FALSE" = "Non-Plex", "TRUE" = "Plex"),
+    name = "Permit Type"
+  ) +
+  scale_size_manual(
+    values = c("FALSE" = 1, "TRUE" = 1.5),
+    labels = c("FALSE" = "Non-Plex", "TRUE" = "Plex"),
+    name = "Permit Type"
+  ) +
+  labs(title = "Minneapolis New Construction Permits by Zoning District, 2020-2025") +
+  theme_minimal() +
+  theme(legend.position = "bottom") +
+  guides(
+    fill = guide_legend(order = 1),
+    color = guide_legend(order = 2, override.aes = list(size = 3)),
+    size = "none"
+  )
 
-
+ggsave("text/permitLocationMinneapolis.png")#, width = 14, height = 10, dpi = 300)
 message("Total lots with permits: ", nrow(dtLots))
 message("Lots with plex permits: ", sum(dtLots$isPlexLot))
 

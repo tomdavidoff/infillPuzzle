@@ -120,6 +120,26 @@ Bounding box:  xmin: -10389350 ymin: 5604313 xmax: -10374400 ymax: 5629592
 Projected CRS: WGS 84 / Pseudo-Mercator
 > names(sfZoning) <- tolower(names(sfZoning))
 > sfZoning <- st_transform(sfZoning, 26915)
+> print(head(sfZoning))
+Simple feature collection with 6 features and 6 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: 475114 ymin: 4973993 xmax: 483135.7 ymax: 4981609
+Projected CRS: NAD83 / UTM zone 15N
+  objectid                     land_use land_use_c ruleid shape__are shape__len
+1        1 Residence Goods and Services        RM1      9  15994.910   764.8789
+2        2       Neighborhood Mixed Use        CM1      1 200440.086  3108.9587
+3        3       Neighborhood Mixed Use        CM1      1   7054.164   383.0595
+4        4         Urban Neighborhood 2        UN2     14 101409.590  1883.9191
+5        5         Urban Neighborhood 3        UN3     15 236796.332  3729.6346
+6        6          Community Mixed Use        CM3      3  51391.336  1189.5704
+                        geometry
+1 POLYGON ((481847.7 4981275,...
+2 POLYGON ((476516 4977060, 4...
+3 POLYGON ((478736.8 4978489,...
+4 POLYGON ((482790 4981578, 4...
+5 POLYGON ((475409.9 4975655,...
+6 POLYGON ((482405.7 4974106,...
 > 
 > # Print zoning field names to identify the zone column
 > message("Zoning fields: ", paste(names(sfZoning), collapse = ", "))
@@ -263,30 +283,188 @@ Permits in R-zones: 519
 + }
 > 
 > # Collapse multiple permits per parcel into a single lot record
+> # Collapse — now include lon/lat (take first point per lot)
+> print(head(dtAnalysis))
+   sde_id co_code ctu_code   ctu_id    coctu_id    ctu_name   year tenure
+    <num>  <char>   <char>   <char>      <char>      <char> <char> <char>
+1: 129173     053    43000 02395345 05302395345 Minneapolis   2020    OWN
+2: 130711     053    43000 02395345 05302395345 Minneapolis   2020    OWN
+3: 130712     053    43000 02395345 05302395345 Minneapolis   2020    OWN
+4: 130713     053    43000 02395345 05302395345 Minneapolis   2020    OWN
+5: 130714     053    43000 02395345 05302395345 Minneapolis   2020    OWN
+6: 131151     053    43000 02395345 05302395345 Minneapolis   2020    OWN
+   housing_ty              housing__1 res_permit           address zip_code
+       <char>                  <char>     <char>            <char>   <char>
+1:        ADU Accessory Dwelling Unit         NU  4120 BEARD AVE S     <NA>
+2:        ADU Accessory Dwelling Unit         NU 3241 PORTLAND AVE     <NA>
+3:        ADU Accessory Dwelling Unit         NU   4404 29TH AVE S     <NA>
+4:        ADU Accessory Dwelling Unit         NU 4148 COLFAX AVE S     <NA>
+5:        ADU Accessory Dwelling Unit         NU  5600 CLINTON AVE     <NA>
+6:        ADU Accessory Dwelling Unit         NU 3306 TAYLOR ST NE     <NA>
+   zip_plus_4   name buildings units age_restri memory_car assisted com_off_re
+       <char> <char>     <num> <num>      <num>      <num>    <num>     <char>
+1:       <NA>   <NA>         0     1          0          0        0       <NA>
+2:       <NA>   <NA>         0     1          0          0        0       <NA>
+3:       <NA>   <NA>         0     1          0          0        0       <NA>
+4:       <NA>   <NA>         0     1          0          0        0       <NA>
+5:       <NA>   <NA>         0     1          0          0        0       <NA>
+6:       <NA>   <NA>         0     1          0          0        0       <NA>
+   acreage   sqf    pin public_fun permit_val community_  notes isPlex objectid
+     <num> <num> <char>     <char>      <num>     <char> <char> <lgcl>    <int>
+1:       0     0   <NA>       <NA>     227500      Urban     \r   TRUE      339
+2:       0     0   <NA>       <NA>      80000      Urban     \r   TRUE       72
+3:       0     0   <NA>       <NA>     100000      Urban     \r   TRUE     1027
+4:       0     0   <NA>       <NA>     167000      Urban     \r   TRUE      339
+5:       0     0   <NA>       <NA>      78000      Urban     \r   TRUE      339
+6:       0     0   <NA>       <NA>      75000      Urban     \r   TRUE      178
+               land_use land_use_c ruleid shape__are shape__len      geo_id
+                 <char>     <char>  <int>      <num>      <num>      <char>
+1: Urban Neighborhood 1        UN1     13 54195565.7 131543.078 27053109800
+2: Urban Neighborhood 2        UN2     14  1426707.9   6101.081 27053008400
+3: Urban Neighborhood 2        UN2     14   131148.4   3942.304 27053111100
+4: Urban Neighborhood 1        UN1     13 54195565.7 131543.078 27053109900
+5: Urban Neighborhood 1        UN1     13 54195565.7 131543.078 27053012003
+6: Urban Neighborhood 1        UN1     13  6013493.4  21055.396 27053000601
+              geo_name                 geometry
+                <char>              <sfc_POINT>
+1:   Census Tract 1098 POINT (474406.5 4975006)
+2:     Census Tract 84 POINT (478913.9 4976713)
+3:   Census Tract 1111 POINT (481753.2 4974425)
+4:   Census Tract 1099   POINT (476921 4974896)
+5: Census Tract 120.03 POINT (478421.8 4972049)
+6:   Census Tract 6.01 POINT (480787.8 4986079)
 > dtLots <- dtAnalysis[!is.na(geo_id) & !is.na(get(parcel_id)), .(
 +   isPlexLot = any(isPlex, na.rm = TRUE),
 +   total_units = sum(units, na.rm = TRUE),
-+   permit_count = .N
++   permit_count = .N,
++   lon = st_coordinates(geometry)[,1],
++   lat = st_coordinates(geometry)[,2]
 + ), by = c(parcel_id, "geo_id", "land_use_c", "geo_name")]
-> print(head(dtLots))
-             address      geo_id land_use_c            geo_name isPlexLot
-              <char>      <char>     <char>              <char>    <lgcl>
-1:  4120 BEARD AVE S 27053109800        UN1   Census Tract 1098      TRUE
-2: 3241 PORTLAND AVE 27053008400        UN2     Census Tract 84      TRUE
-3:   4404 29TH AVE S 27053111100        UN2   Census Tract 1111      TRUE
-4: 4148 COLFAX AVE S 27053109900        UN1   Census Tract 1099      TRUE
-5:  5600 CLINTON AVE 27053012003        UN1 Census Tract 120.03      TRUE
-6: 3306 TAYLOR ST NE 27053000601        UN1   Census Tract 6.01      TRUE
-   total_units permit_count
-         <num>        <int>
-1:           1            1
-2:           1            1
-3:           1            1
-4:           1            1
-5:           1            1
-6:           1            1
-> sfLots <- st_as_sf(dtLots, sf_column_name = "geometry")
-Error in st_sf(x, ..., agr = agr, sf_column_name = sf_column_name) : 
-  no simple features geometry column present
-Calls: st_as_sf -> st_as_sf.data.frame -> st_sf
-Execution halted
+> 
+> # Convert back to sf
+> sfLots <- st_as_sf(dtLots, coords = c("lon", "lat"), crs = 26915)
+> 
+> 
+> # plot isPlex dummy by lat and lon and add boundaries of zoning districts
+> ggplot() +
++   geom_sf(data = sfZoning[sfZoning$land_use_c %in% c("UN1", "UN2", "UN3"), ], 
++           aes(fill = land_use_c), alpha = 0.5, color = "grey50", linewidth = 0.1) +
++   geom_sf(data = sfLots, 
++           aes(color = isPlexLot, size = isPlexLot), shape = 16) +
++   scale_fill_manual(
++     values = c("UN1" = "lightyellow", "UN2" = "lightblue", "UN3" = "lightgreen"),
++     name = "Zone"
++   ) +
++   scale_color_manual(
++     values = c("FALSE" = "grey50", "TRUE" = "red"),
++     labels = c("FALSE" = "Non-Plex", "TRUE" = "Plex"),
++     name = "Permit Type"
++   ) +
++   scale_size_manual(
++     values = c("FALSE" = 1, "TRUE" = 1.5),
++     labels = c("FALSE" = "Non-Plex", "TRUE" = "Plex"),
++     name = "Permit Type"
++   ) +
++   labs(title = "Minneapolis New Construction Permits by Zoning District, 2020-2025") +
++   theme_minimal() +
++   theme(legend.position = "bottom") +
++   guides(
++     fill = guide_legend(order = 1),
++     color = guide_legend(order = 2, override.aes = list(size = 3)),
++     size = "none"
++   )
+> 
+> ggsave("text/permitLocationMinneapolis.png")#, width = 14, height = 10, dpi = 300)
+Saving 7 x 7 in image
+> message("Total lots with permits: ", nrow(dtLots))
+Total lots with permits: 519
+> message("Lots with plex permits: ", sum(dtLots$isPlexLot))
+Lots with plex permits: 208
+> 
+> # ==========================================
+> # GEOGRAPHY-LEVEL PROPENSITY (Based on Lots)
+> # ==========================================
+> 
+> dtGeo <- dtLots[, .(
++   infill_lot_count = sum(isPlexLot, na.rm = TRUE),
++   total_lots_active = .N,
++   total_units = sum(total_units, na.rm = TRUE),
++   propensity = sum(isPlexLot, na.rm = TRUE) / .N
++ ), by = .(geo_id, land_use_c,geo_name)]
+> 
+> setorder(dtGeo, -total_lots_active)
+> 
+> # ==========================================
+> # SAVE & SUMMARY
+> # ==========================================
+> output_file <- sprintf("~/DropboxExternal/dataProcessed/minneapolis_%s_propensity.rds", GEOGRAPHY)
+> saveRDS(dtGeo, output_file)
+> 
+> cat("\n=== LOT-LEVEL SUMMARY BY", toupper(GEOGRAPHY), "===\n")
+
+=== LOT-LEVEL SUMMARY BY TRACT ===
+> cat("Total Active Lots (R-Zones):", nrow(dtLots), "\n")
+Total Active Lots (R-Zones): 519 
+> cat("Total Infill Lots (Plexes):", sum(dtLots$isPlexLot), "\n")
+Total Infill Lots (Plexes): 208 
+> cat("Overall Infill Propensity (Lot-based):",
++     round(sum(dtGeo$infill_lot_count) / sum(dtGeo$total_lots_active), 4), "\n")
+Overall Infill Propensity (Lot-based): 0.4008 
+> 
+> print(head(dtGeo, 15))
+         geo_id land_use_c             geo_name infill_lot_count
+         <char>     <char>               <char>            <int>
+ 1: 27053109800        UN1    Census Tract 1098                5
+ 2: 27053104100        UN2    Census Tract 1041               15
+ 3: 27053111200        UN1    Census Tract 1112                2
+ 4: 27053125700        UN2    Census Tract 1257                3
+ 5: 27053101600        UN2    Census Tract 1016                1
+ 6: 27053109100        UN1    Census Tract 1091                2
+ 7: 27053102100        UN2    Census Tract 1021                3
+ 8: 27053110500        UN1    Census Tract 1105                5
+ 9: 27053102000        UN2    Census Tract 1020                1
+10: 27053100900        UN1    Census Tract 1009                1
+11: 27053003802        UN2   Census Tract 38.02               10
+12: 27053103900        UN2    Census Tract 1039               11
+13: 27053100800        UN1    Census Tract 1008                0
+14: 27053104001        UN2 Census Tract 1040.01                8
+15: 27053126300        UN2    Census Tract 1263                2
+    total_lots_active total_units propensity
+                <int>       <num>      <num>
+ 1:                19          23 0.26315789
+ 2:                19          24 0.78947368
+ 3:                18          22 0.11111111
+ 4:                17         103 0.17647059
+ 5:                17          18 0.05882353
+ 6:                15          16 0.13333333
+ 7:                13          16 0.23076923
+ 8:                13          18 0.38461538
+ 9:                11          11 0.09090909
+10:                11          12 0.09090909
+11:                11          25 0.90909091
+12:                11          34 1.00000000
+13:                10          10 0.00000000
+14:                 9          19 0.88888889
+15:                 9          11 0.22222222
+> 
+> # ==========================================
+> # DIAGNOSTIC: Check zoning field names
+> # ==========================================
+> cat("\n=== DIAGNOSTIC INFO ===\n")
+
+=== DIAGNOSTIC INFO ===
+> cat("Zoning column names available:\n")
+Zoning column names available:
+> print(names(sfZoning)[1:min(10, length(names(sfZoning)))])
+[1] "objectid"   "land_use"   "land_use_c" "ruleid"     "shape__are"
+[6] "shape__len" "geometry"  
+> cat("\nSample zone values (first 20 unique):\n
++ ")
+
+Sample zone values (first 20 unique):
+
+> # print(head(unique(dtFinal$land_use_c), 20))
+> 
+> proc.time()
+   user  system elapsed 
+  2.643   0.166   2.813 

@@ -19,6 +19,7 @@ CITIES <- list(
 		LON_RANGE = c(-124.0, -121.0),
 		LAT_RANGE = c(44.0, 47.0),
 		LASTYEAR = 2021,
+		CITYNAME = "PORTLAND",
 		ZIP_START = "97",
 		MIN_SQFT = 1200),
 	minneapolis = list(
@@ -30,6 +31,7 @@ CITIES <- list(
 		LON_RANGE = c(-95.5, -91.0),
 		LAT_RANGE = c(43.0, 47.0),
 		LASTYEAR = 2020,
+		CITYNAME = "MINNEAPOLIS",
 		ZIP_START = "55",
 		MIN_SQFT = 400
   )
@@ -73,11 +75,15 @@ for (CITY_NAME in names(CITIES)) {
 		"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
 		CAST (PropertyLatitude AS DOUBLE) AS lat, CAST (PropertyLongitude AS DOUBLE) AS lon, CensusTract,
 		CAST (AreaBuilding AS DOUBLE) AS AreaBuilding, CAST (AreaGross AS DOUBLE) AS AreaGross, CAST(ParkingGarageArea AS DOUBLE) AS ParkingGarageArea,
+		ZonedCodeLocal, PropertyAddressCity,
 		FROM read_parquet('%s')
 		WHERE PropertyUseStandardized = '385'
+		AND ZonedCodeLocal LIKE 'R%%'
+		AND PropertyAddressCity = '%s'
 		AND lon BETWEEN %f AND %f
 		AND lat  BETWEEN %f AND %f",
 		cf$FLAT_ASSESSOR_PARQUET,
+		cf$CITYNAME,
 		cf$LON_RANGE[1], cf$LON_RANGE[2],
 		cf$LAT_RANGE[1], cf$LAT_RANGE[2]
 	)))
@@ -87,11 +93,16 @@ for (CITY_NAME in names(CITIES)) {
 	dtA[,maxYear:=max(year,na.rm=TRUE),by=attom_id]
 	dtA <- dtA[year==maxYear]
 	dt <- dtS[dtA, on = "attom_id", nomatch = 0L ][dtT, on = "attom_id", nomatch = 0L]
+	print("TABLE ZONED")
+	print(table(dt[, ZonedCodeLocal]))
+	print(table(dt[,PropertyAddressCity]))
 
 	if (nrow(dt) == 0L) { message("No records for ", CITY_NAME); next }
+	print(head(dtT))
+	print(head(dt))
 
 	dt[, lppsf     := log(price / sqft)]
-	dt[,ppsf     := price / sqft]
+	dt[,ppsf     := price / AreaGross] # nb
 	dt[, lsqft     := log(sqft)]
 	dt[, llotSize  := log(pmax(as.numeric(lotSize), 1))]
 	dt[, yearMonth := format(sale_date, "%Y-%m")]
@@ -101,6 +112,19 @@ for (CITY_NAME in names(CITIES)) {
 	print(quantile(dt[, sqft], probs = seq(0,1,.1)))
 	print("SQUARE FOOT WEIRD!")
 	print(dt[1:20,.(SA_FIN_SQFT_1, SA_FIN_SQFT_2, SA_FIN_SQFT_3,SA_FIN_SQFT_4, sqft)])
+
+	qmaxppsf <- quantile(dt$ppsf, 0.97, na.rm = TRUE)
+	qminppsf <- quantile(dt$ppsf, 0.03, na.rm = TRUE)
+	# plot price per square foot against latitude
+	ggplot(dt[ppsf %between% c(qminppsf,qmaxppsf)],aes(x=lon,y=lat,color=ppsf)) +
+		geom_point(trans=log,size=1) +
+		scale_color_viridis_c() +
+		labs(title = paste("Price per Square Foot by Location in", toupper(CITY_NAME)),
+			 x = "Longitude",
+			 y = "Latitude",
+			 color = "Price per Sqft") +
+		theme_minimal()
+	ggsave(sprintf("text/%sPricePerSqftMap.png", CITY_NAME), width = 8, height = 6)
 
 	# --- Regression ---
 	print(summary(dt))
