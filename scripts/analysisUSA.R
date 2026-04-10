@@ -84,12 +84,15 @@ for (CITY in CITIES) {
   # ------------------------------------------
   cat("\n--- Pooled regressions ---\n")
 
-  m1 <- lm(propensity ~ lppsf * zone, dt)
-  m2 <- lm(propensity ~ slope + lppsf + zone, dt)
+  dt[,logOdds:= log(propensity / (1 - propensity))]
+  dt[abs(logOdds)>100, logOdds := NA_real_]
+  print(summary(dt[,.(logOdds,is.na(logOdds))]))
+  m1 <- lm(logOdds ~ lppsf * zone, dt[!is.na(logOdds)])
+  m2 <- lm(logOdds ~ slope + lppsf + zone, dt[!is.na(logOdds)])
 
   # Print slope variants if available (Minneapolis has slopeGrossGross)
   if ("slopeGrossGross" %in% names(dt)) {
-    m3 <- lm(propensity ~ slopeGrossGross + lppsf + zone, dt)
+    m3 <- lm(logOdds ~ slopeGrossGross + lppsf + zone, dt[!is.na(logOdds)])
     print(summary(m3))
   }
 
@@ -103,8 +106,8 @@ for (CITY in CITIES) {
   for (z in unique(dt[, zone])) {
     cat("\n  Zone:", z, "\n")
     dtz <- dt[zone == z]
-    print(summary(lm(propensity ~ lppsf, dtz)))
-    print(summary(lm(propensity ~ slope + lppsf, dtz)))
+    print(summary(lm(logOdds ~ lppsf, dtz[!is.na(logOdds)])))
+    print(summary(lm(logOdds ~ slope + lppsf, dtz[!is.na(logOdds)])))
   }
 
   # ------------------------------------------
@@ -129,9 +132,9 @@ core_zones <- unlist(lapply(city_config, `[[`, "core_zones"))
 dtCore <- dtAll[zone %in% core_zones]
 
 cat("\nCore-zone regressions (formerly single-family areas):\n")
-mc1 <- feols(propensity ~ slope + lppsf | city, dtCore, vcov = "hc1")
-mc2 <- feols(propensity ~ slope + lppsf | city + zone, dtCore, vcov = "hc1")
-mc3 <- feols(propensity ~ lppsf | city + zone, dtCore, vcov = "hc1")
+mc1 <- feols(logOdds ~ slope + lppsf | city, dtCore[!is.na(logOdds)], vcov = "hc1")
+mc2 <- feols(logOdds ~ slope + lppsf | city + zone, dtCore[!is.na(logOdds)], vcov = "hc1")
+mc3 <- feols(logOdds ~ lppsf | city + zone, dtCore[!is.na(logOdds)], vcov = "hc1")
 
 print(etable(mc1, mc2, mc3))
 

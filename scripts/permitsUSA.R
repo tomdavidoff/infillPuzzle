@@ -31,7 +31,8 @@ city_config <- list(
     # --- permit filters ---
     filter_permits = function(dt) {
       dt <- dt[year >= 2020 & year <= 2025]
-      dt <- dt[res_permit == "NU"]
+      qmin <- quantile(dt[res_permit=="NU", permit_val], 0.2, na.rm = TRUE) # more than .1 as would be single detached
+      dt <- dt[res_permit == "NU" | permit_val >= qmin]
       dt <- dt[ctu_name == "Minneapolis"]
       dt <- dt[(co_code == "053") | (co_code == 53)]
       dt
@@ -69,7 +70,8 @@ city_config <- list(
     # --- permit filters ---
     filter_permits = function(dt) {
       dt <- dt[as.IDate(issued) >= "2021-01-01"]
-      dt <- dt[work %in% c("New Construction", "Addition")]
+      qmin <- quantile(dt[work == "New Construction", total_sqft], 0.2, na.rm = TRUE)
+      dt <- dt[work == "New Construction" | total_sqft >= qmin]
       dt <- dt[!is.na(x_web_mercator)]
       dt
     },
@@ -119,6 +121,8 @@ for (CITY in CITIES) {
     dtPermit <- fread(cfg$permit_file)
     setnames(dtPermit, tolower(names(dtPermit)))
   }
+  print("HERE ARE THE PERMIT FIELDS")
+  print(names(dtPermit))
 
   # ------------------------------------------
   # 2. FILTER PERMITS

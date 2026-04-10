@@ -53,7 +53,8 @@ in your R script or .Rprofile.
 +     # --- permit filters ---
 +     filter_permits = function(dt) {
 +       dt <- dt[year >= 2020 & year <= 2025]
-+       dt <- dt[res_permit == "NU"]
++       qmin <- quantile(dt[res_permit=="NU", permit_val], 0.2, na.rm = TRUE) # more than .1 as would be single detached
++       dt <- dt[res_permit == "NU" | permit_val >= qmin]
 +       dt <- dt[ctu_name == "Minneapolis"]
 +       dt <- dt[(co_code == "053") | (co_code == 53)]
 +       dt
@@ -91,7 +92,8 @@ in your R script or .Rprofile.
 +     # --- permit filters ---
 +     filter_permits = function(dt) {
 +       dt <- dt[as.IDate(issued) >= "2021-01-01"]
-+       dt <- dt[work %in% c("New Construction", "Addition")]
++       qmin <- quantile(dt[work == "New Construction", total_sqft], 0.2, na.rm = TRUE)
++       dt <- dt[work == "New Construction" | total_sqft >= qmin]
 +       dt <- dt[!is.na(x_web_mercator)]
 +       dt
 +     },
@@ -141,6 +143,8 @@ in your R script or .Rprofile.
 +     dtPermit <- fread(cfg$permit_file)
 +     setnames(dtPermit, tolower(names(dtPermit)))
 +   }
++   print("HERE ARE THE PERMIT FIELDS")
++   print(names(dtPermit))
 + 
 +   # ------------------------------------------
 +   # 2. FILTER PERMITS
@@ -309,7 +313,14 @@ Geometry type: POINT
 Dimension:     XY
 Bounding box:  xmin: 420204.1 ymin: 4923165 xmax: 521207.2 ymax: 5028983
 Projected CRS: NAD83 / UTM zone 15N
-Permits after filtering: 648
+[1] "HERE ARE THE PERMIT FIELDS"
+ [1] "sde_id"     "co_code"    "ctu_code"   "ctu_id"     "coctu_id"  
+ [6] "ctu_name"   "year"       "tenure"     "housing_ty" "housing__1"
+[11] "res_permit" "address"    "zip_code"   "zip_plus_4" "name"      
+[16] "buildings"  "units"      "age_restri" "memory_car" "assisted"  
+[21] "com_off_re" "acreage"    "sqf"        "pin"        "public_fun"
+[26] "permit_val" "community_" "notes"      "geometry"  
+Permits after filtering: 740
 Reading layer `Planning_Primary_Zoning' from data source 
   `/Volumes/Micron2TB/Dropbox/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp' 
   using driver `ESRI Shapefile'
@@ -320,15 +331,15 @@ Bounding box:  xmin: -10389350 ymin: 5604313 xmax: -10374400 ymax: 5629592
 Projected CRS: WGS 84 / Pseudo-Mercator
 Zoning fields: objectid, land_use, land_use_c, ruleid, shape__are, shape__len, geometry
 Fetching census tracts...
-Permits in residential zones: 519
-Total lots with permits: 509
-Lots with plex permits: 198
+Permits in residential zones: 548
+Total lots with permits: 537
+Lots with plex permits: 217
 Saved plot: text/permitLocationMinneapolis.png
 
 === MINNEAPOLIS LOT-LEVEL SUMMARY BY TRACT ===
-Total Active Lots: 509 
-Total Infill Lots: 198 
-Overall Propensity: 0.389 
+Total Active Lots: 537 
+Total Infill Lots: 217 
+Overall Propensity: 0.4041 
          geo_id land_use_c             geo_name infill_lot_count
          <char>     <char>               <char>            <int>
  1: 27053109800        UN1    Census Tract 1098                5
@@ -337,11 +348,11 @@ Overall Propensity: 0.389
  4: 27053125700        UN2    Census Tract 1257                3
  5: 27053101600        UN2    Census Tract 1016                1
  6: 27053109100        UN1    Census Tract 1091                2
- 7: 27053102100        UN2    Census Tract 1021                3
- 8: 27053110500        UN1    Census Tract 1105                5
- 9: 27053102000        UN2    Census Tract 1020                1
-10: 27053100900        UN1    Census Tract 1009                1
-11: 27053003802        UN2   Census Tract 38.02               10
+ 7: 27053003802        UN2   Census Tract 38.02               12
+ 8: 27053102100        UN2    Census Tract 1021                3
+ 9: 27053110500        UN1    Census Tract 1105                5
+10: 27053102000        UN2    Census Tract 1020                1
+11: 27053100900        UN1    Census Tract 1009                1
 12: 27053103900        UN2    Census Tract 1039               11
 13: 27053100800        UN1    Census Tract 1008                0
 14: 27053104001        UN2 Census Tract 1040.01                8
@@ -354,11 +365,11 @@ Overall Propensity: 0.389
  4:                17         103 0.17647059
  5:                17          18 0.05882353
  6:                15          16 0.13333333
- 7:                13          16 0.23076923
- 8:                13          18 0.38461538
- 9:                11          11 0.09090909
-10:                11          12 0.09090909
-11:                11          25 0.90909091
+ 7:                14          29 0.85714286
+ 8:                13          16 0.23076923
+ 9:                13          18 0.38461538
+10:                11          11 0.09090909
+11:                11          12 0.09090909
 12:                11          34 1.00000000
 13:                10          10 0.00000000
 14:                 9          19 0.88888889
@@ -366,7 +377,18 @@ Overall Propensity: 0.389
 
 ========== Processing: Portland ==========
 
-Permits after filtering: 6566
+[1] "HERE ARE THE PERMIT FIELDS"
+ [1] "ivr_number"             "application_number"     "status"                
+ [4] "type"                   "description"            "work"                  
+ [7] "address"                "state_id"               "property_id"           
+[10] "set_up"                 "under_review"           "issued"                
+[13] "final"                  "neighborhood"           "neighborhood_coalition"
+[16] "business_association"   "county"                 "x_web_mercator"        
+[19] "y_web_mercator"         "ccb_number"             "occupancy_group"       
+[22] "construction_type"      "submitted_valuation"    "final_valuation"       
+[25] "new_units"              "total_sqft"             "stories"               
+[28] "customer"              
+Permits after filtering: 5459
 Reading layer `Zoning' from data source 
   `/Volumes/Micron2TB/Dropbox/dataRaw/portlandZoning/Zoning.shp' 
   using driver `ESRI Shapefile'
@@ -377,50 +399,50 @@ Bounding box:  xmin: -13674130 ymin: 5689506 xmax: -13633520 ymax: 5724897
 Projected CRS: WGS 84 / Pseudo-Mercator
 Zoning fields: objectid, zone, cmp, ovrly, cmpovr, pldist, hist, consv, nrmp, uninc, shape_leng, shape_area, zone_desc, cmp_desc, ovrly_desc, pldist_des, hist_desc, consv_desc, nrmp_desc, maplabel, cmpdiffer, cmpovr_des, geometry
 Fetching census tracts...
-Permits in residential zones: 4950
-Total lots with permits: 3538
-Lots with plex permits: 403
+Permits in residential zones: 3896
+Total lots with permits: 2555
+Lots with plex permits: 415
 Saved plot: text/permitLocationPortland.png
 
 === PORTLAND LOT-LEVEL SUMMARY BY TRACT ===
-Total Active Lots: 3538 
-Total Infill Lots: 403 
-Overall Propensity: 0.1139 
+Total Active Lots: 2555 
+Total Infill Lots: 415 
+Overall Propensity: 0.1624 
          geo_id   zone           geo_name infill_lot_count total_lots_active
          <char> <char>             <char>            <int>             <int>
- 1: 41051000302     R5  Census Tract 3.02                5                84
- 2: 41051008903    R10 Census Tract 89.03                4                72
- 3: 41051001900     R5    Census Tract 19                3                57
- 4: 41051003200     R5    Census Tract 32                2                51
- 5: 41051004003     R5 Census Tract 40.03               11                50
- 6: 41051003904     R5 Census Tract 39.04                9                48
- 7: 41051006300    R20    Census Tract 63                0                47
- 8: 41051002501     R5 Census Tract 25.01                1                47
- 9: 41051006701     R7 Census Tract 67.01                1                46
-10: 41051008700     R5    Census Tract 87                1                44
-11: 41051000102     R5  Census Tract 1.02                4                42
-12: 41051000401     R5  Census Tract 4.01                3                42
-13: 41051007001    R10 Census Tract 70.01                0                39
-14: 41051003000     R5    Census Tract 30                4                38
-15: 41051001601     R5 Census Tract 16.01                1                37
+ 1: 41051008903    R10 Census Tract 89.03                4                65
+ 2: 41051000302     R5  Census Tract 3.02                5                50
+ 3: 41051004003     R5 Census Tract 40.03               11                46
+ 4: 41051006300    R20    Census Tract 63                0                40
+ 5: 41051003904     R5 Census Tract 39.04                9                40
+ 6: 41051003200     R5    Census Tract 32                2                39
+ 7: 41051001900     R5    Census Tract 19                3                35
+ 8: 41051008700     R5    Census Tract 87                1                35
+ 9: 41051000402     R5  Census Tract 4.02                6                31
+10: 41051006701     R7 Census Tract 67.01                1                30
+11: 41051000102     R5  Census Tract 1.02                4                27
+12: 41051004103     R5 Census Tract 41.03               10                26
+13: 41051003000     R5    Census Tract 30                4                26
+14: 41051000401     R5  Census Tract 4.01                3                26
+15: 41051001601     R5 Census Tract 16.01                1                25
     total_units propensity
           <int>      <num>
- 1:          43 0.05952381
- 2:          75 0.05555556
- 3:          13 0.05263158
- 4:          21 0.03921569
- 5:          74 0.22000000
- 6:          50 0.18750000
- 7:          13 0.00000000
- 8:          10 0.02127660
- 9:          21 0.02173913
-10:          54 0.02272727
-11:          18 0.09523810
-12:          23 0.07142857
-13:          12 0.00000000
-14:          54 0.10526316
-15:          12 0.02702703
+ 1:          75 0.06153846
+ 2:          40 0.10000000
+ 3:          75 0.23913043
+ 4:          14 0.00000000
+ 5:          50 0.22500000
+ 6:          22 0.05128205
+ 7:          12 0.08571429
+ 8:          54 0.02857143
+ 9:          70 0.19354839
+10:          21 0.03333333
+11:          16 0.14814815
+12:          71 0.38461538
+13:          53 0.15384615
+14:          22 0.11538462
+15:           9 0.04000000
 > 
 > proc.time()
    user  system elapsed 
-  4.951   0.433   6.095 
+  4.917   0.324   5.077 

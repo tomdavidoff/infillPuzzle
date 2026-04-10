@@ -103,12 +103,15 @@ Type 'q()' to quit R.
 +   # ------------------------------------------
 +   cat("\n--- Pooled regressions ---\n")
 + 
-+   m1 <- lm(propensity ~ lppsf * zone, dt)
-+   m2 <- lm(propensity ~ slope + lppsf + zone, dt)
++   dt[,logOdds:= log(propensity / (1 - propensity))]
++   dt[abs(logOdds)>100, logOdds := NA_real_]
++   print(summary(dt[,.(logOdds,is.na(logOdds))]))
++   m1 <- lm(logOdds ~ lppsf * zone, dt[!is.na(logOdds)])
++   m2 <- lm(logOdds ~ slope + lppsf + zone, dt[!is.na(logOdds)])
 + 
 +   # Print slope variants if available (Minneapolis has slopeGrossGross)
 +   if ("slopeGrossGross" %in% names(dt)) {
-+     m3 <- lm(propensity ~ slopeGrossGross + lppsf + zone, dt)
++     m3 <- lm(logOdds ~ slopeGrossGross + lppsf + zone, dt[!is.na(logOdds)])
 +     print(summary(m3))
 +   }
 + 
@@ -122,8 +125,8 @@ Type 'q()' to quit R.
 +   for (z in unique(dt[, zone])) {
 +     cat("\n  Zone:", z, "\n")
 +     dtz <- dt[zone == z]
-+     print(summary(lm(propensity ~ lppsf, dtz)))
-+     print(summary(lm(propensity ~ slope + lppsf, dtz)))
++     print(summary(lm(logOdds ~ lppsf, dtz[!is.na(logOdds)])))
++     print(summary(lm(logOdds ~ slope + lppsf, dtz[!is.na(logOdds)])))
 +   }
 + 
 +   # ------------------------------------------
@@ -134,95 +137,99 @@ Type 'q()' to quit R.
 
 ========== Portland ==========
 
-Merged rows: 302
+Merged rows: 293
 
 --- Zone summaries ---
-     zone mean_propensity   mean_lppsf mean_sqft n_tracts
-   <char>           <num>        <num>     <num>    <int>
-1:     R5      0.09247325 -0.110509597        NA      118
-2:   R2.5      0.26711009 -0.083981505        NA       84
-3:     R7      0.05353813 -0.264127428        NA       61
-4:    R10      0.08647133 -0.190651350        NA       28
-5:    R20      0.00000000  0.005328818        NA       11
+     zone mean_propensity  mean_lppsf mean_sqft n_tracts
+   <char>           <num>       <num>     <num>    <int>
+1:     R5      0.12998808 -0.11107290        NA      115
+2:   R2.5      0.34704200 -0.07763326        NA       83
+3:     R7      0.08608580 -0.27666661        NA       57
+4:    R10      0.07690018 -0.20294462        NA       28
+5:    R20      0.00000000 -0.01512799        NA       10
 
 --- Pooled regressions ---
+    logOdds            V2         
+ Min.   :-3.5264   Mode :logical  
+ 1st Qu.:-1.7705   FALSE:147      
+ Median :-1.0986   TRUE :146      
+ Mean   :-1.1673                  
+ 3rd Qu.:-0.5596                  
+ Max.   : 1.3863                  
+ NA's   :146                      
 
 Call:
-lm(formula = propensity ~ slopeGrossGross + lppsf + zone, data = dt)
+lm(formula = logOdds ~ slopeGrossGross + lppsf + zone, data = dt[!is.na(logOdds)])
 
 Residuals:
      Min       1Q   Median       3Q      Max 
--0.35924 -0.08873 -0.02404  0.04991  0.95850 
+-2.11322 -0.49086 -0.02154  0.51643  2.39820 
 
 Coefficients:
                 Estimate Std. Error t value Pr(>|t|)    
-(Intercept)      0.03643    0.03581   1.017   0.3099    
-slopeGrossGross  0.04396    0.02216   1.984   0.0482 *  
-lppsf           -0.18094    0.03991  -4.534 8.46e-06 ***
-zoneR2.5         0.19619    0.03877   5.060 7.41e-07 ***
-zoneR20         -0.06055    0.06323  -0.958   0.3391    
-zoneR5           0.01723    0.03726   0.462   0.6441    
-zoneR7          -0.05286    0.04064  -1.301   0.1944    
+(Intercept)     -1.63033    0.40712  -4.005 0.000100 ***
+slopeGrossGross -0.18571    0.31507  -0.589 0.556527    
+lppsf           -1.00468    0.28497  -3.526 0.000572 ***
+zoneR2.5         1.02140    0.38533   2.651 0.008958 ** 
+zoneR5           0.07001    0.37914   0.185 0.853777    
+zoneR7           0.10635    0.41106   0.259 0.796232    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.1765 on 293 degrees of freedom
-  (2 observations deleted due to missingness)
-Multiple R-squared:  0.2439,	Adjusted R-squared:  0.2284 
-F-statistic: 15.75 on 6 and 293 DF,  p-value: 1.106e-15
+Residual standard error: 0.8164 on 140 degrees of freedom
+  (1 observation deleted due to missingness)
+Multiple R-squared:  0.2827,	Adjusted R-squared:  0.2571 
+F-statistic: 11.04 on 5 and 140 DF,  p-value: 5.678e-09
 
 
 Call:
-lm(formula = propensity ~ lppsf * zone, data = dt)
+lm(formula = logOdds ~ lppsf * zone, data = dt[!is.na(logOdds)])
 
 Residuals:
      Min       1Q   Median       3Q      Max 
--0.42137 -0.07862 -0.02861  0.04687  0.92640 
+-2.26652 -0.47585 -0.08182  0.54172  1.84822 
 
 Coefficients:
-                Estimate Std. Error t value Pr(>|t|)    
-(Intercept)     0.075355   0.038356   1.965 0.050411 .  
-lppsf          -0.058308   0.098445  -0.592 0.554116    
-zoneR2.5        0.165678   0.043554   3.804 0.000174 ***
-zoneR20        -0.075355   0.065741  -1.146 0.252643    
-zoneR5          0.002305   0.042131   0.055 0.956400    
-zoneR7         -0.044276   0.049200  -0.900 0.368915    
-lppsf:zoneR2.5 -0.247492   0.128647  -1.924 0.055357 .  
-lppsf:zoneR20   0.058308   0.320602   0.182 0.855811    
-lppsf:zoneR5   -0.082887   0.112470  -0.737 0.461736    
-lppsf:zoneR7   -0.026724   0.126255  -0.212 0.832515    
+               Estimate Std. Error t value Pr(>|t|)    
+(Intercept)    -0.72745    0.47517  -1.531 0.128077    
+lppsf           3.73513    1.52180   2.454 0.015356 *  
+zoneR2.5        0.07718    0.48852   0.158 0.874699    
+zoneR5         -0.99058    0.48637  -2.037 0.043593 *  
+zoneR7         -1.02867    0.55219  -1.863 0.064607 .  
+lppsf:zoneR2.5 -4.27135    1.58851  -2.689 0.008052 ** 
+lppsf:zoneR5   -5.31434    1.56957  -3.386 0.000924 ***
+lppsf:zoneR7   -5.22158    1.68684  -3.095 0.002380 ** 
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.177 on 290 degrees of freedom
-  (2 observations deleted due to missingness)
-Multiple R-squared:  0.2476,	Adjusted R-squared:  0.2243 
-F-statistic:  10.6 on 9 and 290 DF,  p-value: 3.284e-14
+Residual standard error: 0.786 on 138 degrees of freedom
+  (1 observation deleted due to missingness)
+Multiple R-squared:  0.3446,	Adjusted R-squared:  0.3114 
+F-statistic: 10.37 on 7 and 138 DF,  p-value: 2.056e-10
 
 
 Call:
-lm(formula = propensity ~ slope + lppsf + zone, data = dt)
+lm(formula = logOdds ~ slope + lppsf + zone, data = dt[!is.na(logOdds)])
 
 Residuals:
      Min       1Q   Median       3Q      Max 
--0.35030 -0.08882 -0.02428  0.04788  0.95136 
+-2.18146 -0.52953 -0.04288  0.56324  2.45936 
 
 Coefficients:
             Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.04145    0.03814   1.087    0.278    
-slope        0.03115    0.03106   1.003    0.317    
-lppsf       -0.15843    0.03794  -4.175 3.93e-05 ***
-zoneR2.5     0.19734    0.03899   5.062 7.36e-07 ***
-zoneR20     -0.06028    0.06359  -0.948    0.344    
-zoneR5       0.01881    0.03744   0.502    0.616    
-zoneR7      -0.04515    0.04061  -1.112    0.267    
+(Intercept) -1.75484    0.39065  -4.492 1.46e-05 ***
+slope        0.05191    0.26877   0.193  0.84714    
+lppsf       -1.03942    0.27883  -3.728  0.00028 ***
+zoneR2.5     1.04121    0.38420   2.710  0.00757 ** 
+zoneR5       0.07118    0.37959   0.188  0.85154    
+zoneR7       0.10605    0.41154   0.258  0.79702    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.1774 on 293 degrees of freedom
-  (2 observations deleted due to missingness)
-Multiple R-squared:  0.2364,	Adjusted R-squared:  0.2207 
-F-statistic: 15.12 on 6 and 293 DF,  p-value: 4.447e-15
+Residual standard error: 0.8173 on 140 degrees of freedom
+  (1 observation deleted due to missingness)
+Multiple R-squared:  0.2811,	Adjusted R-squared:  0.2554 
+F-statistic: 10.95 on 5 and 140 DF,  p-value: 6.576e-09
 
 
 --- By-zone regressions ---
@@ -230,519 +237,167 @@ F-statistic: 15.12 on 6 and 293 DF,  p-value: 4.447e-15
   Zone: R5 
 
 Call:
-lm(formula = propensity ~ lppsf, data = dtz)
+lm(formula = logOdds ~ lppsf, data = dtz[!is.na(logOdds)])
 
 Residuals:
      Min       1Q   Median       3Q      Max 
--0.24896 -0.06891 -0.01403  0.04940  0.62773 
+-2.26652 -0.42815 -0.05185  0.45474  1.54206 
 
 Coefficients:
             Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.07766    0.01174   6.614 1.23e-09 ***
-lppsf       -0.14120    0.03664  -3.854 0.000192 ***
+(Intercept) -1.71803    0.09151  -18.77  < 2e-16 ***
+lppsf       -1.57921    0.33888   -4.66 1.55e-05 ***
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.1192 on 115 degrees of freedom
-  (1 observation deleted due to missingness)
-Multiple R-squared:  0.1144,	Adjusted R-squared:  0.1067 
-F-statistic: 14.85 on 1 and 115 DF,  p-value: 0.0001918
+Residual standard error: 0.6931 on 67 degrees of freedom
+Multiple R-squared:  0.2448,	Adjusted R-squared:  0.2335 
+F-statistic: 21.72 on 1 and 67 DF,  p-value: 1.551e-05
 
 
 Call:
-lm(formula = propensity ~ slope + lppsf, data = dtz)
+lm(formula = logOdds ~ slope + lppsf, data = dtz[!is.na(logOdds)])
 
 Residuals:
      Min       1Q   Median       3Q      Max 
--0.20379 -0.07006 -0.01432  0.05149  0.63158 
+-2.25155 -0.44829 -0.04975  0.44338  1.51789 
 
 Coefficients:
             Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.06702    0.02157   3.107 0.002387 ** 
-slope        0.01962    0.03333   0.589 0.557216    
-lppsf       -0.14914    0.03914  -3.810 0.000225 ***
+(Intercept) -1.68518    0.21263  -7.925 3.60e-11 ***
+slope       -0.06714    0.39166  -0.171    0.864    
+lppsf       -1.58021    0.34141  -4.629 1.78e-05 ***
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.1196 on 114 degrees of freedom
-  (1 observation deleted due to missingness)
-Multiple R-squared:  0.1171,	Adjusted R-squared:  0.1016 
-F-statistic: 7.558 on 2 and 114 DF,  p-value: 0.0008273
+Residual standard error: 0.6982 on 66 degrees of freedom
+Multiple R-squared:  0.2451,	Adjusted R-squared:  0.2223 
+F-statistic: 10.72 on 2 and 66 DF,  p-value: 9.33e-05
 
 
   Zone: R2.5 
 
 Call:
-lm(formula = propensity ~ lppsf, data = dtz)
+lm(formula = logOdds ~ lppsf, data = dtz[!is.na(logOdds)])
 
 Residuals:
-     Min       1Q   Median       3Q      Max 
--0.42137 -0.17815 -0.05225  0.14927  0.64038 
+    Min      1Q  Median      3Q     Max 
+-1.2930 -0.4959 -0.2018  0.5495  1.7619 
 
 Coefficients:
             Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.24103    0.02873   8.388 1.29e-12 ***
-lppsf       -0.30580    0.11532  -2.652  0.00963 ** 
+(Intercept)  -0.6503     0.1124  -5.787 4.41e-07 ***
+lppsf        -0.5362     0.4511  -1.189     0.24    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.2465 on 81 degrees of freedom
+Residual standard error: 0.7785 on 51 degrees of freedom
   (1 observation deleted due to missingness)
-Multiple R-squared:  0.07988,	Adjusted R-squared:  0.06852 
-F-statistic: 7.032 on 1 and 81 DF,  p-value: 0.009629
+Multiple R-squared:  0.02695,	Adjusted R-squared:  0.007875 
+F-statistic: 1.413 on 1 and 51 DF,  p-value: 0.2401
 
 
 Call:
-lm(formula = propensity ~ slope + lppsf, data = dtz)
+lm(formula = logOdds ~ slope + lppsf, data = dtz[!is.na(logOdds)])
 
 Residuals:
-     Min       1Q   Median       3Q      Max 
--0.41987 -0.17452 -0.04838  0.14919  0.63720 
+    Min      1Q  Median      3Q     Max 
+-1.2403 -0.5559 -0.1467  0.4894  1.8166 
 
 Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.24930    0.05292   4.711 1.02e-05 ***
-slope       -0.01779    0.09533  -0.187  0.85245    
-lppsf       -0.30674    0.11612  -2.642  0.00992 ** 
+            Estimate Std. Error t value Pr(>|t|)  
+(Intercept)  -0.5413     0.2115  -2.559   0.0136 *
+slope        -0.2315     0.3800  -0.609   0.5451  
+lppsf        -0.5625     0.4560  -1.234   0.2231  
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.2479 on 80 degrees of freedom
+Residual standard error: 0.7833 on 50 degrees of freedom
   (1 observation deleted due to missingness)
-Multiple R-squared:  0.08028,	Adjusted R-squared:  0.05729 
-F-statistic: 3.492 on 2 and 80 DF,  p-value: 0.03517
+Multiple R-squared:  0.03413,	Adjusted R-squared:  -0.004509 
+F-statistic: 0.8833 on 2 and 50 DF,  p-value: 0.4198
 
 
   Zone: R7 
 
 Call:
-lm(formula = propensity ~ lppsf, data = dtz)
+lm(formula = logOdds ~ lppsf, data = dtz[!is.na(logOdds)])
 
 Residuals:
-     Min       1Q   Median       3Q      Max 
--0.08805 -0.07159 -0.03046 -0.00031  0.41467 
+    Min      1Q  Median      3Q     Max 
+-1.7145 -0.5800  0.1870  0.7473  1.8482 
 
 Coefficients:
-            Estimate Std. Error t value Pr(>|t|)  
-(Intercept)  0.03108    0.01890   1.644   0.1055  
-lppsf       -0.08503    0.04850  -1.753   0.0847 .
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  -1.7561     0.3771  -4.657 0.000226 ***
+lppsf        -1.4865     0.9756  -1.524 0.145974    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.1086 on 59 degrees of freedom
-Multiple R-squared:  0.04953,	Adjusted R-squared:  0.03342 
-F-statistic: 3.074 on 1 and 59 DF,  p-value: 0.08472
+Residual standard error: 1.054 on 17 degrees of freedom
+Multiple R-squared:  0.1202,	Adjusted R-squared:  0.0684 
+F-statistic: 2.322 on 1 and 17 DF,  p-value: 0.146
 
 
 Call:
-lm(formula = propensity ~ slope + lppsf, data = dtz)
+lm(formula = logOdds ~ slope + lppsf, data = dtz[!is.na(logOdds)])
 
 Residuals:
-     Min       1Q   Median       3Q      Max 
--0.08746 -0.07093 -0.02985 -0.00147  0.41330 
+    Min      1Q  Median      3Q     Max 
+-1.4572 -0.7395  0.0379  0.6652  1.6562 
 
 Coefficients:
-             Estimate Std. Error t value Pr(>|t|)  
-(Intercept)  0.027717   0.035101   0.790   0.4330  
-slope        0.006034   0.052894   0.114   0.9096  
-lppsf       -0.086475   0.050514  -1.712   0.0923 .
+            Estimate Std. Error t value Pr(>|t|)    
+(Intercept)  -2.3711     0.5577  -4.251  0.00061 ***
+slope         1.1571     0.7931   1.459  0.16393    
+lppsf        -1.6579     0.9520  -1.741  0.10079    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.1095 on 58 degrees of freedom
-Multiple R-squared:  0.04974,	Adjusted R-squared:  0.01697 
-F-statistic: 1.518 on 2 and 58 DF,  p-value: 0.2277
+Residual standard error: 1.02 on 16 degrees of freedom
+Multiple R-squared:  0.2235,	Adjusted R-squared:  0.1264 
+F-statistic: 2.302 on 2 and 16 DF,  p-value: 0.1322
 
 
   Zone: R10 
 
 Call:
-lm(formula = propensity ~ lppsf, data = dtz)
+lm(formula = logOdds ~ lppsf, data = dtz[!is.na(logOdds)])
 
 Residuals:
-     Min       1Q   Median       3Q      Max 
--0.14610 -0.09481 -0.07269 -0.06090  0.92640 
+       1        2        3        4        5 
+ 1.30809 -0.74936 -0.92615 -0.02476  0.39218 
 
 Coefficients:
             Estimate Std. Error t value Pr(>|t|)
-(Intercept)  0.07535    0.05757   1.309    0.202
-lppsf       -0.05831    0.14775  -0.395    0.696
+(Intercept)  -0.7274     0.6326  -1.150    0.334
+lppsf         3.7351     2.0259   1.844    0.162
 
-Residual standard error: 0.2657 on 26 degrees of freedom
-Multiple R-squared:  0.005954,	Adjusted R-squared:  -0.03228 
-F-statistic: 0.1557 on 1 and 26 DF,  p-value: 0.6963
+Residual standard error: 1.046 on 3 degrees of freedom
+Multiple R-squared:  0.5312,	Adjusted R-squared:  0.3749 
+F-statistic: 3.399 on 1 and 3 DF,  p-value: 0.1624
 
 
 Call:
-lm(formula = propensity ~ slope + lppsf, data = dtz)
+lm(formula = logOdds ~ slope + lppsf, data = dtz[!is.na(logOdds)])
 
 Residuals:
-     Min       1Q   Median       3Q      Max 
--0.15794 -0.09907 -0.06547 -0.03471  0.94995 
+       1        2        3        4        5 
+ 0.54601  0.08784 -0.86030  0.47638 -0.24993 
 
 Coefficients:
             Estimate Std. Error t value Pr(>|t|)
-(Intercept)  0.02406    0.09266   0.260    0.797
-slope        0.07809    0.10984   0.711    0.484
-lppsf       -0.13254    0.18210  -0.728    0.473
+(Intercept)    1.900      1.615   1.176    0.360
+slope         -4.971      2.909  -1.709    0.230
+lppsf          5.171      1.791   2.887    0.102
 
-Residual standard error: 0.2682 on 25 degrees of freedom
-Multiple R-squared:  0.02565,	Adjusted R-squared:  -0.0523 
-F-statistic: 0.3291 on 2 and 25 DF,  p-value: 0.7227
+Residual standard error: 0.8171 on 2 degrees of freedom
+Multiple R-squared:  0.8094,	Adjusted R-squared:  0.6188 
+F-statistic: 4.247 on 2 and 2 DF,  p-value: 0.1906
 
 
   Zone: R20 
-
-Call:
-lm(formula = propensity ~ lppsf, data = dtz)
-
-Residuals:
-   Min     1Q Median     3Q    Max 
-     0      0      0      0      0 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)        0          0     NaN      NaN
-lppsf              0          0     NaN      NaN
-
-Residual standard error: 0 on 9 degrees of freedom
-Multiple R-squared:    NaN,	Adjusted R-squared:    NaN 
-F-statistic:   NaN on 1 and 9 DF,  p-value: NA
-
-
-Call:
-lm(formula = propensity ~ slope + lppsf, data = dtz)
-
-Residuals:
-   Min     1Q Median     3Q    Max 
-     0      0      0      0      0 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)        0          0     NaN      NaN
-slope              0          0     NaN      NaN
-lppsf              0          0     NaN      NaN
-
-Residual standard error: 0 on 8 degrees of freedom
-Multiple R-squared:    NaN,	Adjusted R-squared:    NaN 
-F-statistic:   NaN on 2 and 8 DF,  p-value: NA
-
-
-========== Minneapolis ==========
-
-Merged rows: 142
-
---- Zone summaries ---
-     zone mean_propensity mean_lppsf mean_sqft n_tracts
-   <char>           <num>      <num>     <num>    <int>
-1:    UN1       0.2412448  0.3998382        NA       40
-2:    UN2       0.5106358  0.2294427        NA       71
-3:    UN3       0.7580645  0.1945449        NA       31
-
---- Pooled regressions ---
-
-Call:
-lm(formula = propensity ~ slopeGrossGross + lppsf + zone, data = dt)
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--0.76280 -0.25553 -0.02752  0.28349  0.75775 
-
-Coefficients:
-                Estimate Std. Error t value Pr(>|t|)    
-(Intercept)      0.24345    0.07570   3.216 0.001630 ** 
-slopeGrossGross -0.04459    0.03374  -1.321 0.188635    
-lppsf            0.08217    0.10624   0.773 0.440610    
-zoneUN2          0.28196    0.07972   3.537 0.000557 ***
-zoneUN3          0.50940    0.09609   5.301 4.61e-07 ***
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Residual standard error: 0.3876 on 134 degrees of freedom
-  (3 observations deleted due to missingness)
-Multiple R-squared:  0.1956,	Adjusted R-squared:  0.1716 
-F-statistic: 8.147 on 4 and 134 DF,  p-value: 6.533e-06
-
-
-Call:
-lm(formula = propensity ~ lppsf * zone, data = dt)
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--0.77209 -0.25450 -0.03876  0.25929  0.75524 
-
-Coefficients:
-              Estimate Std. Error t value Pr(>|t|)    
-(Intercept)    0.23085    0.10846   2.129 0.035138 *  
-lppsf          0.04146    0.22141   0.187 0.851752    
-zoneUN2        0.27410    0.12261   2.235 0.027057 *  
-zoneUN3        0.53283    0.13608   3.916 0.000143 ***
-lppsf:zoneUN2  0.04783    0.26270   0.182 0.855788    
-lppsf:zoneUN3 -0.07036    0.31147  -0.226 0.821617    
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Residual standard error: 0.3913 on 133 degrees of freedom
-  (3 observations deleted due to missingness)
-Multiple R-squared:  0.1864,	Adjusted R-squared:  0.1558 
-F-statistic: 6.095 on 5 and 133 DF,  p-value: 4.088e-05
-
-
-Call:
-lm(formula = propensity ~ slope + lppsf + zone, data = dt)
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--0.76914 -0.26708 -0.02299  0.26783  0.76706 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.20055    0.08145   2.462 0.015084 *  
-slope        0.06081    0.07396   0.822 0.412414    
-lppsf        0.02539    0.10888   0.233 0.815934    
-zoneUN2      0.28634    0.07996   3.581 0.000477 ***
-zoneUN3      0.51738    0.09616   5.380 3.22e-07 ***
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Residual standard error: 0.3892 on 134 degrees of freedom
-  (3 observations deleted due to missingness)
-Multiple R-squared:  0.1892,	Adjusted R-squared:  0.165 
-F-statistic: 7.819 on 4 and 134 DF,  p-value: 1.076e-05
-
-
---- By-zone regressions ---
-
-  Zone: UN1 
-
-Call:
-lm(formula = propensity ~ lppsf, data = dtz)
-
-Residuals:
-    Min      1Q  Median      3Q     Max 
--0.2648 -0.2427 -0.1328  0.1116  0.7552 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)  
-(Intercept)  0.23085    0.08930   2.585   0.0138 *
-lppsf        0.04146    0.18229   0.227   0.8213  
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Residual standard error: 0.3222 on 37 degrees of freedom
-  (1 observation deleted due to missingness)
-Multiple R-squared:  0.001396,	Adjusted R-squared:  -0.02559 
-F-statistic: 0.05172 on 1 and 37 DF,  p-value: 0.8213
-
-
-Call:
-lm(formula = propensity ~ slope + lppsf, data = dtz)
-
-Residuals:
-    Min      1Q  Median      3Q     Max 
--0.2775 -0.2407 -0.1241  0.1301  0.7956 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)  
-(Intercept)   0.3094     0.1456   2.125   0.0405 *
-slope        -0.2037     0.2971  -0.686   0.4973  
-lppsf         0.1529     0.2452   0.623   0.5369  
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Residual standard error: 0.3245 on 36 degrees of freedom
-  (1 observation deleted due to missingness)
-Multiple R-squared:  0.01427,	Adjusted R-squared:  -0.0405 
-F-statistic: 0.2605 on 2 and 36 DF,  p-value: 0.7721
-
-
-  Zone: UN2 
-
-Call:
-lm(formula = propensity ~ lppsf, data = dtz)
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--0.57979 -0.39997 -0.03918  0.45771  0.51183 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.50495    0.06080   8.306 6.77e-12 ***
-lppsf        0.08929    0.15028   0.594    0.554    
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Residual standard error: 0.4159 on 67 degrees of freedom
-  (2 observations deleted due to missingness)
-Multiple R-squared:  0.005242,	Adjusted R-squared:  -0.009605 
-F-statistic: 0.353 on 1 and 67 DF,  p-value: 0.5544
-
-
-Call:
-lm(formula = propensity ~ slope + lppsf, data = dtz)
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--0.62985 -0.40130 -0.03916  0.45884  0.53031 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.46741    0.07767   6.018 8.62e-08 ***
-slope        0.08800    0.11279   0.780    0.438    
-lppsf        0.04647    0.16040   0.290    0.773    
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Residual standard error: 0.4171 on 66 degrees of freedom
-  (2 observations deleted due to missingness)
-Multiple R-squared:  0.01433,	Adjusted R-squared:  -0.01554 
-F-statistic: 0.4798 on 2 and 66 DF,  p-value: 0.621
-
-
-  Zone: UN3 
-
-Call:
-lm(formula = propensity ~ lppsf, data = dtz)
-
-Residuals:
-    Min      1Q  Median      3Q     Max 
--0.7721 -0.2468  0.2367  0.2444  0.2623 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.76369    0.08663   8.815 1.06e-09 ***
-lppsf       -0.02891    0.23090  -0.125    0.901    
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Residual standard error: 0.4124 on 29 degrees of freedom
-Multiple R-squared:  0.0005401,	Adjusted R-squared:  -0.03392 
-F-statistic: 0.01567 on 1 and 29 DF,  p-value: 0.9012
-
-
-Call:
-lm(formula = propensity ~ slope + lppsf, data = dtz)
-
-Residuals:
-    Min      1Q  Median      3Q     Max 
--0.7747 -0.2472  0.2405  0.2551  0.2658 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  0.73570    0.10875   6.765  2.4e-07 ***
-slope        0.05155    0.11805   0.437    0.666    
-lppsf       -0.03843    0.23520  -0.163    0.871    
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Residual standard error: 0.4183 on 28 degrees of freedom
-Multiple R-squared:  0.007302,	Adjusted R-squared:  -0.06361 
-F-statistic: 0.103 on 2 and 28 DF,  p-value: 0.9025
-
-> 
-> # ==========================================
-> # POOLED CROSS-CITY ANALYSIS
-> # ==========================================
-> message("\n========== Pooled Cross-City ==========\n")
-
-========== Pooled Cross-City ==========
-
-> 
-> dtAll <- rbindlist(city_results, use.names = TRUE, fill = TRUE)
-> 
-> cat("Total tract-zone obs:", nrow(dtAll), "\n")
-Total tract-zone obs: 444 
-> cat("By city:\n")
-By city:
-> print(dtAll[, .N, by = city])
-          city     N
-        <char> <int>
-1:    Portland   302
-2: Minneapolis   142
-> 
-> # Core zones only (R2.5/R5 for Portland, UN1/UN2 for Minneapolis)
-> core_zones <- unlist(lapply(city_config, `[[`, "core_zones"))
-> dtCore <- dtAll[zone %in% core_zones]
-> 
-> cat("\nCore-zone regressions (formerly single-family areas):\n")
-
-Core-zone regressions (formerly single-family areas):
-> mc1 <- feols(propensity ~ slope + lppsf | city, dtCore, vcov = "hc1")
-NOTE: 5 observations removed because of NA values (RHS: 5).
-> mc2 <- feols(propensity ~ slope + lppsf | city + zone, dtCore, vcov = "hc1")
-NOTE: 5 observations removed because of NA values (RHS: 5).
-> mc3 <- feols(propensity ~ lppsf | city + zone, dtCore, vcov = "hc1")
-NOTE: 5 observations removed because of NA values (RHS: 5).
-> 
-> print(etable(mc1, mc2, mc3))
-                              mc1               mc2              mc3
-Dependent Var.:        propensity        propensity       propensity
-                                                                    
-slope             0.0387 (0.0450)   0.0485 (0.0349)                 
-lppsf           -0.1278* (0.0599) -0.0979. (0.0570) -0.0801 (0.0572)
-Fixed-Effects:  ----------------- ----------------- ----------------
-city                          Yes               Yes              Yes
-zone                           No               Yes              Yes
-_______________ _________________ _________________ ________________
-S.E. type       Heteroskeda.-rob. Heteroskeda.-rob. Heterosked.-rob.
-Observations                  308               308              308
-R2                        0.16656           0.27167          0.26895
-Within R2                 0.01528           0.01103          0.00734
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-> 
-> # ==========================================
-> # PLOT
-> # ==========================================
-> ggplot(dtCore, aes(x = lppsf, y = propensity, color = city)) +
-+   geom_point(alpha = 0.5) +
-+   geom_smooth(method = "lm", se = TRUE, linewidth = 0.8) +
-+   facet_wrap(~ city, scales = "free_x") +
-+   theme_minimal() +
-+   labs(x = "Log Price Per Square Foot",
-+        y = "Infill Propensity",
-+        title = "Price Level and Infill Propensity by City") +
-+   theme(legend.position = "none")
-`geom_smooth()` using formula = 'y ~ x'
-Warning messages:
-1: Removed 5 rows containing non-finite outside the scale range (`stat_smooth()`). 
-2: Removed 5 rows containing missing values or values outside the scale range
-(`geom_point()`). 
-> 
-> ggsave("text/propensity_cross_city.png", width = 10, height = 5, dpi = 300)
-`geom_smooth()` using formula = 'y ~ x'
-Warning messages:
-1: Removed 5 rows containing non-finite outside the scale range (`stat_smooth()`). 
-2: Removed 5 rows containing missing values or values outside the scale range
-(`geom_point()`). 
-> 
-> ggplot(dtCore, aes(x = slope, y = propensity, color = city)) +
-+   geom_point(alpha = 0.5) +
-+   geom_smooth(method = "lm", se = TRUE, linewidth = 0.8) +
-+   facet_wrap(~ city, scales = "free_x") +
-+   theme_minimal() +
-+   labs(x = "Price-Size Slope",
-+        y = "Infill Propensity",
-+        title = "Price-Size Gradient and Infill Propensity by City") +
-+   theme(legend.position = "none")
-`geom_smooth()` using formula = 'y ~ x'
-Warning messages:
-1: Removed 5 rows containing non-finite outside the scale range (`stat_smooth()`). 
-2: Removed 5 rows containing missing values or values outside the scale range
-(`geom_point()`). 
-> 
-> ggsave("text/slope_cross_city.png", width = 10, height = 5, dpi = 300)
-`geom_smooth()` using formula = 'y ~ x'
-Warning messages:
-1: Removed 5 rows containing non-finite outside the scale range (`stat_smooth()`). 
-2: Removed 5 rows containing missing values or values outside the scale range
-(`geom_point()`). 
-> 
-> # ==========================================
-> # SAVE
-> # ==========================================
-> saveRDS(dtAll, "~/DropboxExternal/dataProcessed/analysis_pooled.rds")
-> 
-> proc.time()
-   user  system elapsed 
-  1.636   0.132   1.851 
+Error in lm.fit(x, y, offset = offset, singular.ok = singular.ok, ...) : 
+  0 (non-NA) cases
+Calls: print -> summary -> lm -> lm.fit
+Execution halted
