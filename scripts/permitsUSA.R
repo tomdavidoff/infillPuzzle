@@ -49,6 +49,7 @@ city_config <- list(
     zone_field   = "land_use_c",
     zone_filter  = "UN1|UN2|UN3",
     zone_plot_values = c("UN1", "UN2", "UN3"),
+    topZone = "UN3",
     zone_colors  = c("UN1" = "lightyellow", "UN2" = "lightblue", "UN3" = "lightgreen"),
     # --- parcel id ---
     parcel_id    = "address",
@@ -87,6 +88,7 @@ city_config <- list(
     zone_field   = "zone",
     zone_filter  = "^R2.5|^R5|^R7|^R10|^R20",
     zone_plot_values = c("R2.5", "R5", "R7", "R10", "R20"),
+    topZone = "R2.5",
     zone_colors  = c("R2.5" = "lightyellow", "R5" = "lightblue",
                       "R7" = "lightgreen", "R10" = "wheat", "R20" = "lavender"),
     # --- parcel id ---
@@ -173,6 +175,10 @@ for (CITY in CITIES) {
                        year = 2021, cb = TRUE)
     sfTracts <- st_transform(sfTracts, cfg$crs)
     sfFinal <- st_join(sfPermitZoned, sfTracts[, c("GEOID", "NAMELSAD")])
+    sfTopZone <- st_union(sfZoning[sfZoning[[cfg$zone_field]] == cfg$topZone, ])
+    sfFinal$dist_to_topZone <- as.numeric(st_distance(sfFinal, sfTopZone))
+    print("TOPZONE")
+    print(summary(sfFinal$dist_to_topZone))
     dtFinal <- as.data.table(sfFinal)
     setnames(dtFinal, c("GEOID", "NAMELSAD"), c("geo_id", "geo_name"),
              skip_absent = TRUE)
@@ -182,6 +188,11 @@ for (CITY in CITIES) {
     sfZips <- sfZips[grepl(cfg$zip_pattern, sfZips$ZCTA5CE20), ]
     sfZips <- st_transform(sfZips, cfg$crs)
     sfFinal <- st_join(sfPermitZoned, sfZips[, c("ZCTA5CE20")])
+    # calculate distance to nearest topZoned area for each permit
+    sfTopZone <- st_union(sfZoning[sfZoning[[cfg$zone_field]] == cfg$topZone, ])
+    sfFinal$dist_to_topZone <- as.numeric(st_distance(sfFinal, sfTopZone))
+    print("TOPZONE")
+    print(summary(sfFinal$dist_to_topZone))
     dtFinal <- as.data.table(sfFinal)
     setnames(dtFinal, "ZCTA5CE20", "geo_id", skip_absent = TRUE)
     dtFinal[, geo_name := paste("ZIP", geo_id)]
@@ -201,15 +212,20 @@ for (CITY in CITIES) {
     lon = st_coordinates(geometry)[, 1],
     lat = st_coordinates(geometry)[, 2]
   )]
+  print("TOPZONE?")
+  print(names(dtAnalysis))
+
 
   pid <- cfg$parcel_id
   dtLots <- dtAnalysis[!is.na(geo_id) & !is.na(get(pid)), .(
     isPlexLot    = any(isPlex, na.rm = TRUE),
     total_units  = sum(get(cfg$units_field), na.rm = TRUE),
+    distTopZone = min(dist_to_topZone, na.rm = TRUE),
     permit_count = .N,
     lon = lon[1],
     lat = lat[1]
   ), by = c(pid, "geo_id", zone_col, "geo_name")]
+  saveRDS(dtLots, sprintf("~/DropboxExternal/dataProcessed/%s_lot_level.rds", CITY))
 
   sfLots <- st_as_sf(dtLots, coords = c("lon", "lat"), crs = cfg$crs)
 
