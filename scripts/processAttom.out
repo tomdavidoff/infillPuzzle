@@ -17,974 +17,405 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
-> # processAttom.R
+> # permitsUSA.R
+> # Unified permit analysis for Portland and Minneapolis
 > # Tom Davidoff
-> # Purpose: Pricing slopes by ZIP for Portland or Minneapolis
-> # Unified script with city toggle
+> # Consolidation by Claude, April 2026 -- April 15 cut mandatory multi lots in Portland
 > 
 > library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(ggplot2)
+> library(tigris)
+To enable caching of data, set `options(tigris_use_cache = TRUE)`
+in your R script or .Rprofile.
 > library(duckdb)
 Loading required package: DBI
-> library(fixest)
-> library(ggplot2)
 > 
-> NYEARS <- 10 # need better sample size for good estimates of slopes but very odd behaviour Portland over 5
-> CITIES <- list(
-+ 	portland = list(
-+ 		SALES_FILE = "~/DropboxExternal/dataProcessed/41051.txt",
-+ 		ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_OR.parquet",
-+ 		FLAT_ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_OR.parquet",
-+ 		TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
-+ 		FIPS_MUNI = "051",
-+ 		LON_RANGE = c(-124.0, -121.0),
-+ 		LAT_RANGE = c(44.0, 47.0),
-+ 		LASTYEAR = 2021,
-+ 		CITYNAME = "PORTLAND",
-+ 		ZIP_START = "97",
-+ 		MIN_SQFT = 1200),
-+ 	minneapolis = list(
-+ 		SALES_FILE = "~/DropboxExternal/dataProcessed/27053.txt",
-+ 		ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_MN.parquet",
-+ 		FLAT_ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_MN.parquet",
-+ 		TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
-+ 		FIPS_MUNI = "053",
-+ 		LON_RANGE = c(-95.5, -91.0),
-+ 		LAT_RANGE = c(43.0, 47.0),
-+ 		LASTYEAR = 2020,
-+ 		CITYNAME = "MINNEAPOLIS",
-+ 		ZIP_START = "55",
-+ 		MIN_SQFT = 400
+> options(timeout = 600)
+> options(tigris_use_cache = TRUE)
+> 
+> # ==========================================
+> # TOGGLES
+> # ==========================================
+> GEOGRAPHY <- "tract"
+> CITIES <- c("minneapolis", "portland")  # run both, or subset
+> # ==========================================
+> 
+> # ==========================================
+> # DUCKDB CONNECTION (for ATTOM parquet reads)
+> # ==========================================
+> con <- dbConnect(duckdb())
+> 
+> # ==========================================
+> # CITY CONFIGURATIONS
+> # ==========================================
+> city_config <- list(
++   minneapolis = list(
++     city_name    = "Minneapolis",
++     crs          = 26915,
++     # --- permit data ---
++     permit_file  = "~/DropboxExternal/dataRaw/shp_econ_residential_building_permts/ResidentialPermits.shp",
++     permit_type  = "shp",
++     # --- permit filters ---
++     filter_permits = function(dt) {
++       dt <- dt[year >= 2020 & year <= 2025]
++       qmin <- quantile(dt[res_permit=="NU", permit_val], 0.2, na.rm = TRUE)
++       dt <- dt[res_permit == "NU" | permit_val >= qmin]
++       dt <- dt[ctu_name == "Minneapolis"]
++       dt <- dt[(co_code == "053") | (co_code == 53)]
++       dt
++     },
++     # --- plex logic ---
++     flag_plex = function(dt) {
++       dt[, isPlex := units >= 2 |
++            !housing_ty %in% c("SFD") |
++            grepl("duplex|triplex|fourplex|twinhome|townhouse",
++                  housing__1, ignore.case = TRUE)]
++     },
++     # --- zoning ---
++     zoning_file  = "~/DropboxExternal/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp",
++     zone_field   = "land_use_c",
++     zone_filter  = "UN1|UN2|UN3",
++     zone_plot_values = c("UN1", "UN2", "UN3"),
++     topZone = "UN3",
++     zone_colors  = c("UN1" = "lightyellow", "UN2" = "lightblue", "UN3" = "lightgreen"),
++     # --- parcel id ---
++     parcel_id    = "address",
++     # --- units field ---
++     units_field  = "units",
++     # --- geography ---
++     tract_state  = "MN",
++     tract_county = "Hennepin",
++     zip_pattern  = "^55[34]",
++     # --- ATTOM lot size (not needed for Minneapolis) ---
++     attom_parquet = NULL,
++     attom_city_filter = NULL,
++     mandate_thresholds = NULL
++   ),
++ 
++   portland = list(
++     city_name    = "Portland",
++     crs          = 3857,
++     # --- permit data ---
++     permit_file  = "~/DropboxExternal/dataRaw/portlandPermit-Search-Results.csv",
++     permit_type  = "csv",
++     csv_coords   = c("x_web_mercator", "y_web_mercator"),
++     # --- permit filters ---
++     filter_permits = function(dt) {
++       dt <- dt[as.IDate(issued) >= "2021-01-01"]
++       qmin <- quantile(dt[work == "New Construction", total_sqft], 0.2, na.rm = TRUE)
++       dt <- dt[work == "New Construction" | total_sqft >= qmin]
++       dt <- dt[!is.na(x_web_mercator)]
++       dt
++     },
++     # --- plex logic ---
++     flag_plex = function(dt) {
++       dt[, isPlex := new_units >= 2 |
++            grepl("duplex|triplex|fourplex", description, ignore.case = TRUE) |
++            grepl("Townhouse", type, ignore.case = TRUE)]
++     },
++     # --- zoning ---
++     zoning_file  = "~/DropboxExternal/dataRaw/portlandZoning",
++     zoning_is_dir = TRUE,
++     zone_field   = "zone",
++     zone_filter  = "^R2.5|^R5|^R7|^R10|^R20",
++     zone_plot_values = c("R2.5", "R5", "R7", "R10", "R20"),
++     topZone = "R2.5",
++     zone_colors  = c("R2.5" = "lightyellow", "R5" = "lightblue",
++                       "R7" = "lightgreen", "R10" = "wheat", "R20" = "lavender"),
++     # --- parcel id ---
++     parcel_id    = "property_id",
++     # --- units field ---
++     units_field  = "new_units",
++     # --- geography ---
++     tract_state  = "OR",
++     tract_county = "Multnomah",
++     zip_pattern  = "^972",
++     # --- ATTOM lot size ---
++     attom_parquet = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_OR.parquet",
++     attom_city_filter = "PORTLAND",
++     attom_address_field = "PropertyAddressFull",
++     permit_address_field = "address",  # Portland permit address column (after tolower)
++     # --- mandate thresholds: lots >= this size MUST build multiplex, so drop them ---
++     mandate_thresholds = list(
++       "R7"  = 14000,
++       "R5"  = 10000,
++       "R2.5" = 5000
++     )
 +   )
 + )
 > 
-> MIN_OBS <- 20
-> con <- dbConnect(duckdb())
+> # ==========================================
+> # MAIN LOOP
+> # ==========================================
+> results <- list()
 > 
-> for (CITY_NAME in names(CITIES)) {
-+ 	cf <- CITIES[[CITY_NAME]]
-+ 	cf$YEARS <- (cf$LASTYEAR - NYEARS + 1):cf$LASTYEAR
-+ 	message("\n=== ", toupper(CITY_NAME), " ===")
+> for (CITY in CITIES) {
++   cfg <- city_config[[CITY]]
++   message("\n========== Processing: ", cfg$city_name, " ==========\n")
 + 
-+ 	# --- Sales: pipe-delimited text ---
-+ 	raw <- readLines(cf$SALES_FILE, warn = FALSE, encoding = "latin1")
-+ 	hdr <- make.names(tolower(unlist(strsplit(raw[1], "|", fixed = TRUE))))
-+ 	dtS <- data.table(raw = raw[-1])[, tstrsplit(raw, "|", fixed = TRUE, fill = NA)]
-+ 	setnames(dtS, seq_along(hdr), hdr)
-+ 	dtS[, attom_id  := as.character(X.attom.id.)]
-+ 	dtS[, price     := as.numeric(transferamount)]
-+ 	dtS[, sale_date := as.IDate(transactiondate)]
-+ 	dtS[, zip       := substr(gsub("[^0-9]", "", as.character(propertyaddresszip)), 1, 5)]
-+ 	dtS <- dtS[price > 1e5 & year(sale_date) %in% cf$YEARS,
-+ 	.(attom_id, price, sale_date, zip)]
++   # ------------------------------------------
++   # 1. READ PERMITS
++   # ------------------------------------------
++   if (cfg$permit_type == "shp") {
++     sfPermit <- st_read(cfg$permit_file)
++     names(sfPermit) <- tolower(names(sfPermit))
++     sfPermit <- st_transform(sfPermit, cfg$crs)
++     dtPermit <- as.data.table(sfPermit)
++   } else {
++     dtPermit <- fread(cfg$permit_file)
++     setnames(dtPermit, tolower(names(dtPermit)))
++   }
++   print("HERE ARE THE PERMIT FIELDS")
++   print(names(dtPermit))
 + 
-+ 	# --- Assessor: filtered parquet read via DuckDB ---
-+ 	dtA <- as.data.table(dbGetQuery(con, sprintf(
-+ 		"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
-+ 		SA_FIN_SQFT_1, SA_FIN_SQFT_2, SA_FIN_SQFT_3,SA_FIN_SQFT_4,
-+ 		CAST(SA_FIN_SQFT_TOT AS DOUBLE) AS sqft, CAST(SA_LOTSIZE AS DOUBLE) AS lotSize,
-+ 		ASSR_YEAR
-+ 		FROM read_parquet('%s')
-+ 		WHERE MM_FIPS_MUNI_CODE = '%s'
-+ 		AND USE_CODE_STD = 'RSFR'
-+ 		AND sqft > %d",
-+ 		cf$ASSESSOR_PARQUET, cf$FIPS_MUNI, cf$MIN_SQFT
-+ 	)))
++   # ------------------------------------------
++   # 2. FILTER PERMITS
++   # ------------------------------------------
++   dtPermit <- cfg$filter_permits(dtPermit)
 + 
-+ 	# --- Tracts: filtered parquet read via DuckDB ---
-+ 	dtT <- as.data.table(dbGetQuery(con, sprintf(
-+ 		"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
-+ 		CAST (PropertyLatitude AS DOUBLE) AS lat, CAST (PropertyLongitude AS DOUBLE) AS lon, CensusTract,
-+ 		CAST (AreaBuilding AS DOUBLE) AS AreaBuilding, CAST (AreaGross AS DOUBLE) AS AreaGross, CAST(ParkingGarageArea AS DOUBLE) AS ParkingGarageArea,
-+ 		ZonedCodeLocal, PropertyAddressCity,
-+ 		FROM read_parquet('%s')
-+ 		WHERE PropertyUseStandardized = '385'
-+ 		AND ZonedCodeLocal LIKE 'R%%'
-+ 		AND PropertyAddressCity = '%s'
-+ 		AND lon BETWEEN %f AND %f
-+ 		AND lat  BETWEEN %f AND %f",
-+ 		cf$FLAT_ASSESSOR_PARQUET,
-+ 		cf$CITYNAME,
-+ 		cf$LON_RANGE[1], cf$LON_RANGE[2],
-+ 		cf$LAT_RANGE[1], cf$LAT_RANGE[2]
-+ 	)))
++   # ------------------------------------------
++   # 3. FLAG PLEX
++   # ------------------------------------------
++   cfg$flag_plex(dtPermit)
 + 
-+ 	# --- Join in data.table ---
-+ 	dtA[,year:=as.numeric(substr(ASSR_YEAR,1,4))]
-+ 	dtA[,maxYear:=max(year,na.rm=TRUE),by=attom_id]
-+ 	dtA <- dtA[year==maxYear]
-+ 	dt <- dtS[dtA, on = "attom_id", nomatch = 0L ][dtT, on = "attom_id", nomatch = 0L]
-+ 	print("TABLE ZONED")
-+ 	print(table(dt[, ZonedCodeLocal]))
-+ 	print(table(dt[,PropertyAddressCity]))
++   message("Permits after filtering: ", nrow(dtPermit))
 + 
-+ 	if (nrow(dt) == 0L) { message("No records for ", CITY_NAME); next }
-+ 	print(head(dtT))
-+ 	print(head(dt))
++   # ------------------------------------------
++   # 4. MERGE ATTOM LOT SIZE (if configured)
++   # ------------------------------------------
++   if (!is.null(cfg$attom_parquet)) {
++     message("Merging ATTOM lot size data...")
++     dtAttom <- as.data.table(dbGetQuery(con, sprintf(
++       "SELECT PropertyAddressFull, AreaLotSF FROM read_parquet('%s') WHERE PropertyAddressCity = '%s'",
++       cfg$attom_parquet, cfg$attom_city_filter
++     )))
++     dtAttom[, addrClean := toupper(trimws(gsub("\\s+", " ", PropertyAddressFull)))]
++     # deduplicate ATTOM to one row per address (take first non-NA lot size)
++     dtAttom <- dtAttom[!is.na(AreaLotSF)][order(-AreaLotSF)]
++     dtAttom <- dtAttom[!duplicated(addrClean)]
 + 
-+ 	dt[, lppsf     := log(price / sqft)]
-+ 	dt[,ppsf     := price / AreaGross] # nb
-+ 	dt[, lsqft     := log(sqft)]
-+ 	dt[, llotSize  := log(pmax(as.numeric(lotSize), 1))]
-+ 	dt[, yearMonth := format(sale_date, "%Y-%m")]
-+ 	dt[, zip_n     := .N, by = zip]
-+ 	dt <- dt[zip_n >= MIN_OBS]
-+ 	# get quantiles of sqft#
-+ 	print(quantile(dt[, sqft], probs = seq(0,1,.1)))
-+ 	print("SQUARE FOOT WEIRD!")
-+ 	print(dt[1:20,.(SA_FIN_SQFT_1, SA_FIN_SQFT_2, SA_FIN_SQFT_3,SA_FIN_SQFT_4, sqft)])
++     dtPermit[, addrClean := toupper(trimws(gsub("\\s+", " ", get(cfg$permit_address_field))))]
++     dtPermit <- merge(dtPermit, dtAttom[, .(addrClean, AreaLotSF)],
++                       by = "addrClean", all.x = TRUE)
 + 
-+ 	qmaxppsf <- quantile(dt$ppsf, 0.97, na.rm = TRUE)
-+ 	qminppsf <- quantile(dt$ppsf, 0.03, na.rm = TRUE)
-+ 	# plot price per square foot against latitude
-+ 	ggplot(dt[ppsf %between% c(qminppsf,qmaxppsf)],aes(x=lon,y=lat,color=ppsf)) +
-+ 		geom_point(trans=log,size=1) +
-+ 		scale_color_viridis_c() +
-+ 		labs(title = paste("Price per Square Foot by Location in", toupper(CITY_NAME)),
-+ 			 x = "Longitude",
-+ 			 y = "Latitude",
-+ 			 color = "Price per Sqft") +
-+ 		theme_minimal()
-+ 	ggsave(sprintf("text/%sPricePerSqftMap.png", CITY_NAME), width = 8, height = 6)
++     match_rate <- mean(!is.na(dtPermit$AreaLotSF))
++     message(sprintf("ATTOM address match rate: %.1f%% (%d of %d)",
++                     match_rate * 100,
++                     sum(!is.na(dtPermit$AreaLotSF)),
++                     nrow(dtPermit)))
++   }
 + 
-+ 	# --- Regression ---
-+ 	print(summary(dt))
-+ 	print(nrow(dt))
-+ 	#mz <- feols(lppsf ~ 0 + i(zip) + i(zip):lsqft + llotSize | yearMonth, data = dt[substring(zip, 1, 2) == cf$ZIP_START], cluster = "zip")
-+ 	mt <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):lsqft + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") # not ppsf as denominator choice ungood
-+ 	#ml <- feols(ppsf ~ 0 + i(CensusTract) + i(CensusTract):sqft + llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
-+ 	dt[,logGrossLessGarage := log(AreaGross - ParkingGarageArea)]
-+ 	dt[,logGross := log(AreaGross)]
-+ 	mtGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGrossLessGarage + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
-+ 	mtGrossGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGross + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
-+ 	print(summary(feols(log(price) ~ log(AreaBuilding)+llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "CensusTract")))
++   # ------------------------------------------
++   # 5. CONVERT TO SF
++   # ------------------------------------------
++   if (cfg$permit_type == "csv") {
++     sfPermit <- st_as_sf(dtPermit,
++                          coords = cfg$csv_coords,
++                          crs = cfg$crs)
++   } else {
++     sfPermit <- st_as_sf(dtPermit)
++     sfPermit <- st_transform(sfPermit, cfg$crs)
++   }
 + 
-+ 	#print(summary(mt))
-+ 	#print(summary(ml))
-+ 	# bigger Adj R2 at tract level and way bigger in logs
++   # ------------------------------------------
++   # 6. READ ZONING & SPATIAL JOIN
++   # ------------------------------------------
++   if (isTRUE(cfg$zoning_is_dir)) {
++     shp_path <- list.files(cfg$zoning_file, pattern = "\\.shp$", full.names = TRUE)
++     sfZoning <- st_read(shp_path)
++   } else {
++     sfZoning <- st_read(cfg$zoning_file)
++   }
++   names(sfZoning) <- tolower(names(sfZoning))
++   sfZoning <- st_transform(sfZoning, cfg$crs)
 + 
-+ 	b <- coef(mt)
-+ 	print(b)
-+ 	keep <- grepl(":lsqft$", names(b))
-+ 	dtSlopes <- data.table(
-+ 		tract   = sub(":lsqft$", "", sub("^CensusTract", "", names(b)[keep])),
-+ 		slope = unname(b[keep])
-+ 	)
-+ 	dtSlopes[,tract:=gsub("::","",tract)]
-+ 	bG <- coef(mtGross)
-+ 	keepG <- grepl(":logGrossLessGarage$", names(bG))
-+ 	print(keepG)
-+ 	dtSlopesG <- data.table(
-+ 		tract = sub(":logGrossLessGarage$", "", sub("^CensusTract", "", names(bG)[keepG])),
-+ 		slopeGross = unname(bG[keepG])
-+ 		)
-+ 	dtSlopesG[,tract:=gsub("::","",tract)]
-+ 	bGG <- coef(mtGrossGross)
-+ 	dtSlopesGG <- data.table(
-+ 		tract = sub(":logGross$", "", sub("^CensusTract", "", names(bGG)[grepl(":logGross$", names(bGG))])),
-+ 		slopeGrossGross = unname(bGG[grepl(":logGross$", names(bGG))])
-+ 	)
-+ 	dtSlopesGG[,tract:=gsub("::","",tract)]
++   message("Zoning fields: ", paste(names(sfZoning), collapse = ", "))
 + 
++   sfPermitZoned <- st_join(sfPermit, sfZoning)
 + 
++   # ------------------------------------------
++   # 7. GEOGRAPHY JOIN (TRACT or ZIP)
++   # ------------------------------------------
++   if (GEOGRAPHY == "tract") {
++     message("Fetching census tracts...")
++     sfTracts <- tracts(state = cfg$tract_state, county = cfg$tract_county,
++                        year = 2021, cb = TRUE)
++     sfTracts <- st_transform(sfTracts, cfg$crs)
++     sfFinal <- st_join(sfPermitZoned, sfTracts[, c("GEOID", "NAMELSAD")])
++     sfTopZone <- st_union(sfZoning[sfZoning[[cfg$zone_field]] == cfg$topZone, ])
++     sfFinal$dist_to_topZone <- as.numeric(st_distance(sfFinal, sfTopZone))
++     print("TOPZONE")
++     print(summary(sfFinal$dist_to_topZone))
++     dtFinal <- as.data.table(sfFinal)
++     setnames(dtFinal, c("GEOID", "NAMELSAD"), c("geo_id", "geo_name"),
++              skip_absent = TRUE)
++   } else {
++     message("Fetching ZCTAs...")
++     sfZips <- zctas(year = 2020, cb = TRUE)
++     sfZips <- sfZips[grepl(cfg$zip_pattern, sfZips$ZCTA5CE20), ]
++     sfZips <- st_transform(sfZips, cfg$crs)
++     sfFinal <- st_join(sfPermitZoned, sfZips[, c("ZCTA5CE20")])
++     sfTopZone <- st_union(sfZoning[sfZoning[[cfg$zone_field]] == cfg$topZone, ])
++     sfFinal$dist_to_topZone <- as.numeric(st_distance(sfFinal, sfTopZone))
++     print("TOPZONE")
++     print(summary(sfFinal$dist_to_topZone))
++     dtFinal <- as.data.table(sfFinal)
++     setnames(dtFinal, "ZCTA5CE20", "geo_id", skip_absent = TRUE)
++     dtFinal[, geo_name := paste("ZIP", geo_id)]
++   }
 + 
-+ 	# get tract-specific coefficients from feols(lppsf ~ = +i(CensusTract) | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") for comparison
-+ 	pReg <- feols(lppsf ~ 0 + i(CensusTract) | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
-+ 	pb <- coef(pReg)
-+ 	keepP <- grepl("^CensusTract", names(pb))
-+ 	dtP <- data.table(
-+ 		tract = sub("^CensusTract", "", names(pb)[keepP]),
-+ 		lppsf = unname(pb[keepP])
-+ 	)
-+ 	dtP[,tract := gsub("::","",tract)]
-+ 	dtCount <- dt[, .(count=.N), by = CensusTract]
-+ 	#meanLPPSF <- dt[,.(lppsf=mean(lppsf,na.rm=TRUE),count=.N,medianSqft=median(sqft)),by=CensusTract]
-+ 	#meanLPPSF[,tract := as.character(CensusTract)]
-+ 	print(head(dtSlopes))
-+ 	setkey(dtSlopes, tract)
-+ 	setkey(dtP, tract)
-+ 	setkey(dtSlopesG, tract)
-+ 	setkey(dtCount, CensusTract)
-+ 	setkey(dtSlopesGG, tract)
-+ 	dtSlopes <- dtSlopes[dtP][dtSlopesG][dtSlopesGG][dtCount]
++   # ------------------------------------------
++   # 8. FILTER TO RESIDENTIAL ZONES
++   # ------------------------------------------
++   zone_col <- cfg$zone_field
++   dtAnalysis <- dtFinal[grepl(cfg$zone_filter, get(zone_col), ignore.case = TRUE)]
++   message("Permits in residential zones: ", nrow(dtAnalysis))
 + 
-+ 	saveRDS(dtSlopes, sprintf("~/DropboxExternal/dataProcessed/%s_slopes.rds", CITY_NAME))
-+ 	# do a loess fit of price per square foot against square feet
-+ 	q99sf <- quantile(dt$sqft, 0.95, na.rm = TRUE)
-+ 	q01sf <- quantile(dt$sqft, 0.05, na.rm = TRUE)
-+ 	q99p <- quantile(dt$ppsf, 0.95, na.rm = TRUE)
-+ 	q01p <- quantile(dt$ppsf, 0.05, na.rm = TRUE)
-+ 	dt[,nZip:=.N,by=zip] # have to watch cross-zip big homes, big prices
-+ 	ggplot(dt[nZip==max(nZip) & sqft %between% c(q01sf,q99sf) & ppsf %between% c(q01p,q99p)], aes(x = sqft, y = price/sqft)) +
-+ 		geom_point(alpha = 0.1, size=.5,color="gray") +
-+ 		geom_smooth(method = "loess",color="blue",se=FALSE) +
-+ 		labs(title = paste("Price per Square Foot vs. Square Footage in", toupper(CITY_NAME)),
-+ 			 x = "Square Footage ",
-+ 			 y = "Price per Square Foot ") +
-+ 		theme_minimal()
-+ 	ggsave(sprintf("text/%sPriceSqftLoess.png", CITY_NAME), width = 8, height = 6)
++   # ------------------------------------------
++   # 8b. DROP MANDATED MULTIPLEX LOTS (Portland)
++   #     Lots above zone-specific thresholds MUST
++   #     build multiplex, so no choice to estimate.
++   # ------------------------------------------
++   if (!is.null(cfg$mandate_thresholds)) {
++     n_before <- nrow(dtAnalysis)
++     n_no_lotsize <- sum(is.na(dtAnalysis$AreaLotSF))
++     message(sprintf("Permits missing lot size (kept for now): %d of %d", n_no_lotsize, n_before))
++ 
++     for (z in names(cfg$mandate_thresholds)) {
++       thresh <- cfg$mandate_thresholds[[z]]
++       mask <- dtAnalysis[[zone_col]] == z & !is.na(dtAnalysis$AreaLotSF) & dtAnalysis$AreaLotSF >= thresh
++       n_drop <- sum(mask)
++       message(sprintf("  Dropping %d mandated lots in %s (>= %d sqft)", n_drop, z, thresh))
++       dtAnalysis <- dtAnalysis[!mask]
++     }
++     message(sprintf("Permits after mandate filter: %d (dropped %d)", nrow(dtAnalysis), n_before - nrow(dtAnalysis)))
++   }
++ 
++   # ------------------------------------------
++   # 9. EXTRACT COORDINATES & COLLAPSE TO LOTS
++   # ------------------------------------------
++   dtAnalysis[, `:=`(
++     lon = st_coordinates(geometry)[, 1],
++     lat = st_coordinates(geometry)[, 2]
++   )]
++ 
++   pid <- cfg$parcel_id
++   lot_vars <- c(pid, "geo_id", zone_col, "geo_name")
++ 
++   dtLots <- dtAnalysis[!is.na(geo_id) & !is.na(get(pid)), .(
++     isPlexLot    = any(isPlex, na.rm = TRUE),
++     total_units  = sum(get(cfg$units_field), na.rm = TRUE),
++     distTopZone  = min(dist_to_topZone, na.rm = TRUE),
++     AreaLotSF    = AreaLotSF[1],
++     permit_count = .N,
++     lon = lon[1],
++     lat = lat[1]
++   ), by = lot_vars]
++   saveRDS(dtLots, sprintf("~/DropboxExternal/dataProcessed/%s_lot_level.rds", CITY))
++ 
++   sfLots <- st_as_sf(dtLots, coords = c("lon", "lat"), crs = cfg$crs)
++ 
++   message("Total lots with permits: ", nrow(dtLots))
++   message("Lots with plex permits: ", sum(dtLots$isPlexLot))
++ 
++   # ------------------------------------------
++   # 10. PLOT
++   # ------------------------------------------
++   sfZoningRes <- sfZoning[sfZoning[[zone_col]] %in% cfg$zone_plot_values, ]
++ 
++   p <- ggplot() +
++     geom_sf(data = sfZoningRes,
++             aes(fill = .data[[zone_col]]),
++             alpha = 0.5, color = "grey50", linewidth = 0.1) +
++     geom_sf(data = sfLots,
++             aes(color = isPlexLot, size = isPlexLot), shape = 16) +
++     scale_fill_manual(values = cfg$zone_colors, name = "Zone") +
++     scale_color_manual(
++       values = c("FALSE" = "grey50", "TRUE" = "red"),
++       labels = c("FALSE" = "Non-Plex", "TRUE" = "Plex"),
++       name = "Permit Type"
++     ) +
++     scale_size_manual(
++       values = c("FALSE" = 1, "TRUE" = 1.5),
++       labels = c("FALSE" = "Non-Plex", "TRUE" = "Plex"),
++       name = "Permit Type"
++     ) +
++     labs(title = sprintf("%s New Construction Permits by Zoning District",
++                          cfg$city_name)) +
++     theme_minimal() +
++     theme(legend.position = "bottom") +
++     guides(
++       fill = guide_legend(order = 1),
++       color = guide_legend(order = 2, override.aes = list(size = 3)),
++       size = "none"
++     )
++ 
++   plot_file <- sprintf("text/permitLocation%s.png", cfg$city_name)
++   ggsave(plot_file, p, width = 10, height = 8, dpi = 300)
++   message("Saved plot: ", plot_file)
++ 
++   # ------------------------------------------
++   # 11. GEOGRAPHY-LEVEL SUMMARY
++   # ------------------------------------------
++   dtGeo <- dtLots[, .(
++     infill_lot_count  = sum(isPlexLot, na.rm = TRUE),
++     total_lots_active = .N,
++     total_units       = sum(total_units, na.rm = TRUE),
++     propensity        = sum(isPlexLot, na.rm = TRUE) / .N
++   ), by = c("geo_id", zone_col, "geo_name")]
++ 
++   setorder(dtGeo, -total_lots_active)
++ 
++   output_file <- sprintf("~/DropboxExternal/dataProcessed/%s_%s_propensity.rds",
++                           CITY, GEOGRAPHY)
++   saveRDS(dtGeo, output_file)
++ 
++   cat(sprintf("\n=== %s LOT-LEVEL SUMMARY BY %s ===\n",
++               toupper(cfg$city_name), toupper(GEOGRAPHY)))
++   cat("Total Active Lots:", nrow(dtLots), "\n")
++   cat("Total Infill Lots:", sum(dtLots$isPlexLot), "\n")
++   cat("Overall Propensity:",
++       round(sum(dtGeo$infill_lot_count) / sum(dtGeo$total_lots_active), 4), "\n")
++   print(head(dtGeo, 15))
++ 
++   # Store for cross-city comparison
++   results[[CITY]] <- list(dtLots = dtLots, dtGeo = dtGeo,
++                           sfLots = sfLots, sfZoning = sfZoning)
 + }
 
-=== PORTLAND ===
-[1] "TABLE ZONED"
+========== Processing: Minneapolis ==========
 
-        R R-5_&_EG2      R.25        R1       R10  R10_R10C   R10_R5H      R10A 
-        2         2        10       827      9767        34        10        20 
-     R10C     R10CP      R10H      R10P      R10S       R1A      R1AD       R1D 
-       60        32        39         4         2       270        10        96 
-     R1DH      R1DN       R1H       R1M       R1R       R1S       R1T        R2 
-        1         2        28         2        20         1         2      2007 
-      R2.      R2.5     R2.5A    R2.5AD    R2.5AH     R2.5C     R2.5H       R20 
-      449      4085       494        53        28        12        26      1152 
-     R20C     R20CP      R20P       R25      R25A       R2A     R2ACD      R2AD 
-       35         1         2        47         1       888         1        30 
-     R2AH       R2D       R2H       R2O       R2R       R2S       R2T        R3 
-       37         8       140         1         1         3         3      1009 
-      R30       R3A       R3H      R3HX       R3T       R3X        R4        R5 
-       43        40        98         1         2        31         3     21534 
-     R5.A       R50       R5A  R5A,R10C      R5AH      R5AN      R5AS       R5C 
-       11         1      6059         1       121         1         3        53 
-      R5D       R5H       R5L       R5R       R5S       R5T        R7    R7_R7C 
-      126      1335        84         7        44         9     12845         9 
-  R7,OSDP       R75       R7A      R7AH       R7C     R7CHX       R7D       R7H 
-        1        97       752        13        73         1         2       732 
-     R7HX       R7S       R7X        RC        RF    RF_OSC       RFC      RFCF 
-        4         9        27         2       244         3        51         1 
-      RFF       RFH       RFP       RFR       RFS        RH       RHD      RHDH 
-        6         6        23        28        11       173        55         8 
-      RHS       RHT        RM        RR       RR/       RRC       RRF       RRS 
-        1         9        12       154         1         1         1         3 
-      RTC       RXD 
-        6        10 
-
-PORTLAND 
-   66735 
-    attom_id      lat       lon CensusTract AreaBuilding AreaGross
-      <char>    <num>     <num>      <char>        <num>     <num>
-1: 158603653 45.52679 -122.7750       30106         1543      1543
-2: 158603657 45.52682 -122.7744       30106         2034      2034
-3: 158603662 45.52699 -122.7736       30106         2263      2263
-4: 158603666 45.52707 -122.7718       30106         2335      2335
-5: 158603673 45.52761 -122.7713       30106         1543      1543
-6: 167924146 45.51418 -122.7752       30104         3299      3299
-   ParkingGarageArea ZonedCodeLocal PropertyAddressCity
-               <num>         <char>              <char>
-1:               397            R-9            PORTLAND
-2:               318            R-9            PORTLAND
-3:               351            R-9            PORTLAND
-4:              1075            R-9            PORTLAND
-5:               397            R-9            PORTLAND
-6:               816            R-5            PORTLAND
-    attom_id  price  sale_date    zip SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3
-      <char>  <num>     <IDat> <char>        <char>        <char>        <char>
-1: 158350086 249000 2014-01-22      0           724          1124             0
-2: 158295710 419010 2013-09-25      0           836           943             0
-3: 158519359 307154 2013-12-30  97202          1051           595             0
-4: 158519359 307154 2013-12-30  97202          1051           595             0
-5: 158519359 307154 2013-12-30  97202          1051           595             0
-6: 158519359 307154 2013-12-30  97202          1051           595             0
-   SA_FIN_SQFT_4  sqft lotSize ASSR_YEAR  year maxYear      lat       lon
-          <char> <num>   <num>    <char> <num>   <num>    <num>     <num>
-1:             0  1848    5972      2021  2021    2021 45.50218 -122.5318
-2:             0  1779    2475      2021  2021    2021 45.55960 -122.6441
-3:             0  1646    5000      2022  2022    2022 45.46033 -122.6553
-4:             0  1646    5000      2022  2022    2022 45.46033 -122.6553
-5:             0  1646    5000      2022  2022    2022 45.46033 -122.6553
-6:             0  1646    5000      2022  2022    2022 45.46033 -122.6553
-   CensusTract AreaBuilding AreaGross ParkingGarageArea ZonedCodeLocal
-        <char>        <num>     <num>             <num>         <char>
-1:        9002         1848      2248               400            R5A
-2:        3200         1779      1779                 0           R2.5
-3:         101         2990      2174               264         R2.5AD
-4:         101         2990      2174               264         R2.5AD
-5:         101         2990      2174               264         R2.5AD
-6:         101         2990      2174               264         R2.5AD
-   PropertyAddressCity
-                <char>
-1:            PORTLAND
-2:            PORTLAND
-3:            PORTLAND
-4:            PORTLAND
-5:            PORTLAND
-6:            PORTLAND
-    0%    10%    20%    30%    40%    50%    60%    70%    80%    90%   100% 
-1201.0 1265.0 1344.0 1432.0 1532.0 1646.0 1797.2 2010.0 2304.0 2763.0 8429.0 
-[1] "SQUARE FOOT WEIRD!"
-    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
-           <char>        <char>        <char>        <char> <num>
- 1:           724          1124             0             0  1848
- 2:           836           943             0             0  1779
- 3:          1051           595             0             0  1646
- 4:          1051           595             0             0  1646
- 5:          1051           595             0             0  1646
- 6:          1051           595             0             0  1646
- 7:          1051           595             0             0  1646
- 8:          1051           595             0             0  1646
- 9:          1051           595             0             0  1646
-10:          1051           595             0             0  1646
-11:          1051           595             0             0  1646
-12:          1051           595             0             0  1646
-13:          1544             0             0             0  1544
-14:           731           908             0             0  1639
-15:          2426             0             0             0  2426
-16:          1354           972             0             0  2326
-17:          1235             0             0             0  1235
-18:           939           816             0             0  1755
-19:          1584             0             0             0  1584
-20:          1584             0             0             0  1584
-    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
-           <char>        <char>        <char>        <char> <num>
-   attom_id             price             sale_date              zip           
- Length:46628       Min.   :   101000   Min.   :2012-01-01   Length:46628      
- Class :character   1st Qu.:   340000   1st Qu.:2014-08-20   Class :character  
- Mode  :character   Median :   470000   Median :2016-12-15   Mode  :character  
-                    Mean   :   539806   Mean   :2017-02-23                     
-                    3rd Qu.:   659000   3rd Qu.:2019-11-16                     
-                    Max.   :110000000   Max.   :2021-12-30                     
- SA_FIN_SQFT_1      SA_FIN_SQFT_2      SA_FIN_SQFT_3      SA_FIN_SQFT_4     
- Length:46628       Length:46628       Length:46628       Length:46628      
- Class :character   Class :character   Class :character   Class :character  
- Mode  :character   Mode  :character   Mode  :character   Mode  :character  
-                                                                            
-                                                                            
-                                                                            
-      sqft         lotSize        ASSR_YEAR              year     
- Min.   :1201   Min.   :     0   Length:46628       Min.   :2020  
- 1st Qu.:1386   1st Qu.:  5000   Class :character   1st Qu.:2021  
- Median :1646   Median :  6180   Mode  :character   Median :2022  
- Mean   :1872   Mean   :  8699                      Mean   :2022  
- 3rd Qu.:2147   3rd Qu.:  9400                      3rd Qu.:2022  
- Max.   :8429   Max.   :887753                      Max.   :2022  
-    maxYear          lat             lon         CensusTract       
- Min.   :2020   Min.   :45.43   Min.   :-122.9   Length:46628      
- 1st Qu.:2021   1st Qu.:45.48   1st Qu.:-122.7   Class :character  
- Median :2022   Median :45.52   Median :-122.6   Mode  :character  
- Mean   :2022   Mean   :45.52   Mean   :-122.6                     
- 3rd Qu.:2022   3rd Qu.:45.55   3rd Qu.:-122.6                     
- Max.   :2022   Max.   :45.67   Max.   :-122.5                     
-  AreaBuilding    AreaGross     ParkingGarageArea ZonedCodeLocal    
- Min.   : 243   Min.   :    0   Min.   :   0.0    Length:46628      
- 1st Qu.:1598   1st Qu.: 1997   1st Qu.: 240.0    Class :character  
- Median :2108   Median : 2625   Median : 399.0    Mode  :character  
- Mean   :2292   Mean   : 2782   Mean   : 382.5                      
- 3rd Qu.:2752   3rd Qu.: 3292   3rd Qu.: 484.0                      
- Max.   :9955   Max.   :12130   Max.   :3552.0                      
- PropertyAddressCity     lppsf             ppsf            lsqft      
- Length:46628        Min.   : 3.075   Min.   : 11.94   Min.   :7.091  
- Class :character    1st Qu.: 5.308   1st Qu.:143.31   1st Qu.:7.234  
- Mode  :character    Median : 5.609   Median :188.38   Median :7.406  
-                     Mean   : 5.586   Mean   :   Inf   Mean   :7.481  
-                     3rd Qu.: 5.878   3rd Qu.:237.47   3rd Qu.:7.672  
-                     Max.   :10.933   Max.   :   Inf   Max.   :9.039  
-    llotSize       yearMonth             zip_n      
- Min.   : 0.000   Length:46628       Min.   :   20  
- 1st Qu.: 8.517   Class :character   1st Qu.:  950  
- Median : 8.729   Mode  :character   Median : 4444  
- Mean   : 8.824                      Mean   :11640  
- 3rd Qu.: 9.148                      3rd Qu.:22498  
- Max.   :13.696                      Max.   :22498  
-[1] 46628
-The variables 'CensusTract::4901:lsqft' and 'CensusTract::9604:lsqft' have been
-removed because of collinearity (see $collin.var).
-NOTE: 5 observations removed because of NA values (RHS: 5).
-The variables 'CensusTract::4901:logGrossLessGarage' and
-'CensusTract::9604:logGrossLessGarage' have been removed because of collinearity
-(see $collin.var).
-NOTE: 4 observations removed because of NA values (RHS: 4).
-The variables 'CensusTract::4901:logGross' and 'CensusTract::9604:logGross' have
-been removed because of collinearity (see $collin.var).
-OLS estimation, Dep. Var.: log(price)
-Observations: 17,384
-Fixed-effects: yearMonth: 120
-Standard-errors: Clustered (CensusTract) 
-                   Estimate Std. Error  t value  Pr(>|t|)    
-log(AreaBuilding)  0.798696   0.045459 17.56973 < 2.2e-16 ***
-llotSize          -0.035126   0.029966 -1.17220   0.24288    
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.356801     Adj. R2: 0.475005
-                 Within R2: 0.378042
-        CensusTract::101         CensusTract::102       CensusTract::10200 
-              2.68002137               6.00233495               2.38011966 
-       CensusTract::1101        CensusTract::1102        CensusTract::1202 
-             -0.80005270              -1.29541776               3.86700004 
-       CensusTract::1203        CensusTract::1204        CensusTract::1301 
-              0.18963534               4.08705088               3.72996703 
-       CensusTract::1302        CensusTract::1400        CensusTract::1500 
-              2.99458898               1.47990622               1.42436216 
-       CensusTract::1601        CensusTract::1602        CensusTract::1702 
-              2.61195136               3.00332864               6.30066893 
-       CensusTract::1703        CensusTract::1704        CensusTract::1801 
-              5.86801677               2.08786273               0.19088933 
-       CensusTract::1802        CensusTract::1900        CensusTract::2001 
-              4.92751842               1.28111109               1.78172495 
-       CensusTract::2002         CensusTract::201         CensusTract::202 
-              3.91710815               3.21357876               3.54212945 
-       CensusTract::2102        CensusTract::2203        CensusTract::2303 
-             10.04148822               7.81390679              -4.01524214 
-       CensusTract::2401        CensusTract::2402        CensusTract::2501 
-             -0.28294881               1.56854364               0.06008362 
-       CensusTract::2502        CensusTract::2600        CensusTract::2701 
-              2.83965563               2.31325547               2.73551725 
-       CensusTract::2702        CensusTract::2801        CensusTract::2802 
-              4.55372536               4.67853724               3.89739976 
-       CensusTract::2901        CensusTract::2902        CensusTract::2903 
-              5.74318975               3.92873478               2.23076964 
-       CensusTract::3000         CensusTract::301         CensusTract::302 
-              2.45118198               2.71155623               3.01726391 
-       CensusTract::3100        CensusTract::3200        CensusTract::3301 
-              3.09336899               4.81464080               0.38715021 
-       CensusTract::3302        CensusTract::3401        CensusTract::3402 
-              4.00450670               3.08373718               2.34685102 
-       CensusTract::3501        CensusTract::3502        CensusTract::3601 
-              5.20098179               4.48211246               0.73979282 
-       CensusTract::3602        CensusTract::3603        CensusTract::3701 
-              2.04562139               4.76772478               1.72335504 
-       CensusTract::3702        CensusTract::3801        CensusTract::3802 
-              4.38432404               2.78142289               1.87084207 
-       CensusTract::3803        CensusTract::3902        CensusTract::3903 
-              3.84472305               3.26933890               0.15903623 
-       CensusTract::3904        CensusTract::4002        CensusTract::4003 
-              3.14898986               3.13965623               3.57896777 
-        CensusTract::401         CensusTract::402        CensusTract::4102 
-              2.01068730              -2.28498184               0.85644917 
-       CensusTract::4103        CensusTract::4104        CensusTract::4200 
-              1.53953381               0.51440672               1.99084037 
-       CensusTract::4300        CensusTract::4500        CensusTract::4601 
-              3.31967683              -2.80180411              -1.66290247 
-       CensusTract::4602        CensusTract::4700        CensusTract::4800 
-              0.32926247               0.43115381              10.89255412 
-       CensusTract::4901         CensusTract::501         CensusTract::502 
-              6.77563677               5.83820710              -0.27368299 
-       CensusTract::5202        CensusTract::5500        CensusTract::5701 
-             23.99390410              23.92751122              11.49485483 
-       CensusTract::5800        CensusTract::5901        CensusTract::5903 
-              2.45849830               5.23069018               0.99652673 
-       CensusTract::6001        CensusTract::6002         CensusTract::601 
-             -1.34757936               1.04147866               0.17634725 
-        CensusTract::602        CensusTract::6100        CensusTract::6200 
-             -0.00986933               4.86738359               1.60925310 
-       CensusTract::6300        CensusTract::6402        CensusTract::6403 
-              1.03656042               1.38781785               0.84678343 
-       CensusTract::6404        CensusTract::6501        CensusTract::6502 
-              2.77849907               2.32916102               1.97265817 
-       CensusTract::6601        CensusTract::6602        CensusTract::6701 
-              3.23752359               2.32087785               5.04876571 
-       CensusTract::6702        CensusTract::6801        CensusTract::6802 
-              1.79206708              -0.40322922               3.05369153 
-       CensusTract::6900        CensusTract::7001        CensusTract::7002 
-              2.47203891               0.54986821               1.48274655 
-        CensusTract::701         CensusTract::702        CensusTract::7100 
-              1.25842924               0.89619914              -0.15284679 
-       CensusTract::7201        CensusTract::7202        CensusTract::7300 
-             -3.26450790              -0.86430216             -12.16908978 
-       CensusTract::7400        CensusTract::7500        CensusTract::7600 
-              0.12672182               2.97365660               3.22843079 
-       CensusTract::7700        CensusTract::7800        CensusTract::7900 
-              1.12821799               6.28965840               5.64961835 
-       CensusTract::8001        CensusTract::8002         CensusTract::801 
-              0.72297556               3.34929782               3.03477546 
-        CensusTract::802        CensusTract::8100        CensusTract::8201 
-             -0.29018545               2.88495150               2.66318409 
-       CensusTract::8203        CensusTract::8204        CensusTract::8301 
-              5.04317321               2.59822432               0.00191696 
-       CensusTract::8302        CensusTract::8400        CensusTract::8500 
-              0.65002521               2.65554744              -0.64508192 
-       CensusTract::8600        CensusTract::8700        CensusTract::8800 
-              1.76893707               0.60104814               1.78352256 
-       CensusTract::8902        CensusTract::8903        CensusTract::8904 
-              2.07743666               2.27751296               3.71504706 
-       CensusTract::9001        CensusTract::9002         CensusTract::901 
-              0.88216628               3.20545743               2.99566392 
-        CensusTract::902        CensusTract::9101        CensusTract::9102 
-              2.80020720               3.93274180               2.33900060 
-       CensusTract::9202        CensusTract::9203        CensusTract::9204 
-              0.51093171              -0.90628588               1.26001379 
-       CensusTract::9301        CensusTract::9302        CensusTract::9400 
-              1.38478225               0.99221125               2.54559383 
-       CensusTract::9501        CensusTract::9502        CensusTract::9604 
-              3.20014722               3.66079921               5.37786051 
-       CensusTract::9605        CensusTract::9606        CensusTract::9701 
-              9.73055028              26.36049758               4.87100312 
-       CensusTract::9703        CensusTract::9704        CensusTract::9803 
-              6.92707227               0.47197799               4.41786653 
-       CensusTract::9804        CensusTract::9903                 llotSize 
-              4.31445475               4.24629600               0.08036263 
- CensusTract::1000:lsqft   CensusTract::101:lsqft   CensusTract::102:lsqft 
-              0.84073721               0.49563461               0.06206391 
-CensusTract::10200:lsqft  CensusTract::1101:lsqft  CensusTract::1102:lsqft 
-              0.45376771               0.97715237               1.06482246 
- CensusTract::1202:lsqft  CensusTract::1203:lsqft  CensusTract::1204:lsqft 
-              0.36384850               0.83757953               0.30618781 
- CensusTract::1301:lsqft  CensusTract::1302:lsqft  CensusTract::1400:lsqft 
-              0.36533492               0.46465001               0.66922630 
- CensusTract::1500:lsqft  CensusTract::1601:lsqft  CensusTract::1602:lsqft 
-              0.67747200               0.49793776               0.35858608 
- CensusTract::1702:lsqft  CensusTract::1703:lsqft  CensusTract::1704:lsqft 
-             -0.07570856               0.01966935               0.54628149 
- CensusTract::1801:lsqft  CensusTract::1802:lsqft  CensusTract::1900:lsqft 
-              0.81434159               0.18893236               0.71073099 
- CensusTract::2001:lsqft  CensusTract::2002:lsqft   CensusTract::201:lsqft 
-              0.61366381               0.34086568               0.40299096 
-  CensusTract::202:lsqft  CensusTract::2102:lsqft  CensusTract::2203:lsqft 
-              0.35543071              -0.54427601              -0.21718264 
- CensusTract::2303:lsqft  CensusTract::2401:lsqft  CensusTract::2402:lsqft 
-              1.36553731               0.91280295               0.65451869 
- CensusTract::2501:lsqft  CensusTract::2502:lsqft  CensusTract::2600:lsqft 
-              0.87276498               0.51042648               0.56831929 
- CensusTract::2701:lsqft  CensusTract::2702:lsqft  CensusTract::2801:lsqft 
-              0.51347719               0.19914063               0.21537584 
- CensusTract::2802:lsqft  CensusTract::2901:lsqft  CensusTract::2902:lsqft 
-              0.31935554               0.03764334               0.28450747 
- CensusTract::2903:lsqft  CensusTract::3000:lsqft   CensusTract::301:lsqft 
-              0.48300563               0.52416930               0.47580916 
-  CensusTract::302:lsqft  CensusTract::3100:lsqft  CensusTract::3200:lsqft 
-              0.46560199               0.46353593               0.20860403 
- CensusTract::3301:lsqft  CensusTract::3302:lsqft  CensusTract::3401:lsqft 
-              0.79653420               0.30716522               0.43437682 
- CensusTract::3402:lsqft  CensusTract::3501:lsqft  CensusTract::3502:lsqft 
-              0.52422664               0.13089298               0.24359170 
- CensusTract::3601:lsqft  CensusTract::3602:lsqft  CensusTract::3603:lsqft 
-              0.72870151               0.55861340               0.19797570 
- CensusTract::3701:lsqft  CensusTract::3702:lsqft  CensusTract::3801:lsqft 
-              0.60096550               0.26145858               0.43496816 
- CensusTract::3802:lsqft  CensusTract::3803:lsqft  CensusTract::3902:lsqft 
-              0.57634331               0.30052326               0.38023346 
- CensusTract::3903:lsqft  CensusTract::3904:lsqft  CensusTract::4002:lsqft 
-              0.76833544               0.37260545               0.39486047 
- CensusTract::4003:lsqft   CensusTract::401:lsqft   CensusTract::402:lsqft 
-              0.30684490               0.56224216               1.11351706 
- CensusTract::4102:lsqft  CensusTract::4103:lsqft  CensusTract::4104:lsqft 
-              0.69495032               0.57832645               0.73108021 
- CensusTract::4200:lsqft  CensusTract::4300:lsqft  CensusTract::4500:lsqft 
-              0.54045943               0.38398871               1.26406443 
- CensusTract::4601:lsqft  CensusTract::4602:lsqft  CensusTract::4700:lsqft 
-              1.10857752               0.83591414               0.84589331 
- CensusTract::4800:lsqft   CensusTract::501:lsqft   CensusTract::502:lsqft 
-             -0.49806869               0.01401977               0.84741088 
- CensusTract::5202:lsqft  CensusTract::5500:lsqft  CensusTract::5701:lsqft 
-             -2.07277064              -2.25117393              -0.76896252 
- CensusTract::5800:lsqft  CensusTract::5901:lsqft  CensusTract::5903:lsqft 
-              0.54031272               0.12946834               0.70664875 
- CensusTract::6001:lsqft  CensusTract::6002:lsqft   CensusTract::601:lsqft 
-              1.02264236               0.70711230               0.73667954 
-  CensusTract::602:lsqft  CensusTract::6100:lsqft  CensusTract::6200:lsqft 
-              0.77083626               0.19363091               0.62187932 
- CensusTract::6300:lsqft  CensusTract::6402:lsqft  CensusTract::6403:lsqft 
-              0.70404148               0.62383862               0.69285027 
- CensusTract::6404:lsqft  CensusTract::6501:lsqft  CensusTract::6502:lsqft 
-              0.44022290               0.49982576               0.55986739 
- CensusTract::6601:lsqft  CensusTract::6602:lsqft  CensusTract::6701:lsqft 
-              0.38592827               0.52022594               0.14448192 
- CensusTract::6702:lsqft  CensusTract::6801:lsqft  CensusTract::6802:lsqft 
-              0.58861201               0.89423441               0.43250688 
- CensusTract::6900:lsqft  CensusTract::7001:lsqft  CensusTract::7002:lsqft 
-              0.53900054               0.76290747               0.65343342 
-  CensusTract::701:lsqft   CensusTract::702:lsqft  CensusTract::7100:lsqft 
-              0.66273617               0.67618260               0.82789536 
- CensusTract::7201:lsqft  CensusTract::7202:lsqft  CensusTract::7300:lsqft 
-              1.22420037               0.89253114               2.40474543 
- CensusTract::7400:lsqft  CensusTract::7500:lsqft  CensusTract::7600:lsqft 
-              0.76827932               0.39715265               0.34037042 
- CensusTract::7700:lsqft  CensusTract::7800:lsqft  CensusTract::7900:lsqft 
-              0.61460751              -0.05225704               0.01094613 
- CensusTract::8001:lsqft  CensusTract::8002:lsqft   CensusTract::801:lsqft 
-              0.66003536               0.30422412               0.42535294 
-  CensusTract::802:lsqft  CensusTract::8100:lsqft  CensusTract::8201:lsqft 
-              0.84785651               0.38486017               0.43311079 
- CensusTract::8203:lsqft  CensusTract::8204:lsqft  CensusTract::8301:lsqft 
-              0.06296990               0.40696090               0.76614698 
- CensusTract::8302:lsqft  CensusTract::8400:lsqft  CensusTract::8500:lsqft 
-              0.67359729               0.39467935               0.83589210 
- CensusTract::8600:lsqft  CensusTract::8700:lsqft  CensusTract::8800:lsqft 
-              0.52076191               0.71643919               0.53527797 
- CensusTract::8902:lsqft  CensusTract::8903:lsqft  CensusTract::8904:lsqft 
-              0.48668698               0.47693643               0.27489955 
- CensusTract::9001:lsqft  CensusTract::9002:lsqft   CensusTract::901:lsqft 
-              0.63160200               0.32242139               0.45360145 
-  CensusTract::902:lsqft  CensusTract::9101:lsqft  CensusTract::9102:lsqft 
-              0.44868900               0.21361222               0.45408157 
- CensusTract::9202:lsqft  CensusTract::9203:lsqft  CensusTract::9204:lsqft 
-              0.69161910               0.87123615               0.58041602 
- CensusTract::9301:lsqft  CensusTract::9302:lsqft  CensusTract::9400:lsqft 
-              0.57351824               0.62958348               0.43523135 
- CensusTract::9501:lsqft  CensusTract::9502:lsqft  CensusTract::9605:lsqft 
-              0.34136170               0.29169171              -0.55432517 
- CensusTract::9606:lsqft  CensusTract::9701:lsqft  CensusTract::9703:lsqft 
-             -2.89949262               0.07461295              -0.19142452 
- CensusTract::9704:lsqft  CensusTract::9803:lsqft  CensusTract::9804:lsqft 
-              0.68484341               0.15895610               0.16544420 
- CensusTract::9903:lsqft 
-              0.22766446 
-  [1] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [13] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [25] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [37] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [49] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [61] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [73] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [85] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [97] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
-[109] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
-[121] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
-[133] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
-[145] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
-[157] FALSE FALSE FALSE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[169]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[181]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[193]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[205]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[217]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[229]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[241]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[253]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[265]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[277]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[289]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[301]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[313]  TRUE  TRUE  TRUE  TRUE
-    tract      slope
-   <char>      <num>
-1:   1000 0.84073721
-2:    101 0.49563461
-3:    102 0.06206391
-4:  10200 0.45376771
-5:   1101 0.97715237
-6:   1102 1.06482246
-`geom_smooth()` using formula = 'y ~ x'
-
-=== MINNEAPOLIS ===
-[1] "TABLE ZONED"
-
-   R1   R1A    R2   R2B    R3    R4    R5    R6 
-12262 38586   335  9559   159   776   542    88 
-
-MINNEAPOLIS 
-      62307 
-    attom_id      lat       lon CensusTract AreaBuilding AreaGross
-      <char>    <num>     <num>      <char>        <num>     <num>
-1: 188378044 45.03493 -93.30894         300         1260      2232
-2: 192842429 44.89905 -93.23784       12101         1050      1836
-3: 196263671 44.90872 -93.23191       11800         1092      1872
-4: 196284650 44.92294 -93.27187      110900         1023      1810
-5: 192642781 44.94244 -93.20603      107600          897      1626
-6: 192851041 44.94070 -93.29746      109200          964      1928
-   ParkingGarageArea ZonedCodeLocal PropertyAddressCity
-               <num>         <char>              <char>
-1:                 0            R1A         MINNEAPOLIS
-2:                 0            R1A         MINNEAPOLIS
-3:                 0            R1A         MINNEAPOLIS
-4:                 0            R1A         MINNEAPOLIS
-5:                 0            R1A         MINNEAPOLIS
-6:                 0            R2B         MINNEAPOLIS
-    attom_id  price  sale_date    zip SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3
-      <char>  <num>     <IDat> <char>        <char>        <char>        <char>
-1: 188378044 195000 2017-02-15  55412           972           288             0
-2: 192842429 100990 2013-12-17  55417           810           216             0
-3: 192842429 140000 2013-12-23  55417           810           216             0
-4: 196284650 201500 2016-01-29  55419           787           236             0
-5: 196284650 243000 2018-11-16                  787           236             0
-6: 192642781 145883 2016-04-29  55406           729           168             0
-   SA_FIN_SQFT_4  sqft lotSize ASSR_YEAR  year maxYear      lat       lon
-          <char> <num>   <num>    <char> <num>   <num>    <num>     <num>
-1:             0  1260    5663      2021  2021    2021 45.03493 -93.30894
-2:             0  1026    5227      2021  2021    2021 44.89905 -93.23784
-3:             0  1026    5227      2021  2021    2021 44.89905 -93.23784
-4:             0  1023    5227      2021  2021    2021 44.92294 -93.27187
-5:             0  1023    5227      2021  2021    2021 44.92294 -93.27187
-6:             0   897    4792      2021  2021    2021 44.94244 -93.20603
-   CensusTract AreaBuilding AreaGross ParkingGarageArea ZonedCodeLocal
-        <char>        <num>     <num>             <num>         <char>
-1:         300         1260      2232                 0            R1A
-2:       12101         1050      1836                 0            R1A
-3:       12101         1050      1836                 0            R1A
-4:      110900         1023      1810                 0            R1A
-5:      110900         1023      1810                 0            R1A
-6:      107600          897      1626                 0            R1A
-   PropertyAddressCity
-                <char>
-1:         MINNEAPOLIS
-2:         MINNEAPOLIS
-3:         MINNEAPOLIS
-4:         MINNEAPOLIS
-5:         MINNEAPOLIS
-6:         MINNEAPOLIS
-  0%  10%  20%  30%  40%  50%  60%  70%  80%  90% 100% 
- 408  828  950 1042 1123 1200 1300 1416 1578 1825 8204 
-[1] "SQUARE FOOT WEIRD!"
-    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
-           <char>        <char>        <char>        <char> <num>
- 1:           972           288             0             0  1260
- 2:           810           216             0             0  1026
- 3:           810           216             0             0  1026
- 4:           787           236             0             0  1023
- 5:           787           236             0             0  1023
- 6:           729           168             0             0   897
- 7:           964             0             0             0   964
- 8:          1716          1140           350             0  3206
- 9:           864             0             0             0   864
-10:           876           354             0             0  1230
-11:          1038             0             0             0  1038
-12:           816             0             0             0   816
-13:           432           389             0             0   821
-14:           432           389             0             0   821
-15:          1087           350             0             0  1437
-16:           894           546             0             0  1440
-17:           868             0             0             0   868
-18:          1023           640             0             0  1663
-19:          1023           640             0             0  1663
-20:          1022           306             0             0  1328
-    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
-           <char>        <char>        <char>        <char> <num>
-   attom_id             price           sale_date              zip           
- Length:42975       Min.   : 100100   Min.   :2011-01-05   Length:42975      
- Class :character   1st Qu.: 174500   1st Qu.:2014-01-31   Class :character  
- Mode  :character   Median : 232000   Median :2016-07-14   Mode  :character  
-                    Mean   : 284134   Mean   :2016-06-23                     
-                    3rd Qu.: 325000   3rd Qu.:2019-01-16                     
-                    Max.   :7330941   Max.   :2020-12-31                     
- SA_FIN_SQFT_1      SA_FIN_SQFT_2      SA_FIN_SQFT_3      SA_FIN_SQFT_4     
- Length:42975       Length:42975       Length:42975       Length:42975      
- Class :character   Class :character   Class :character   Class :character  
- Mode  :character   Mode  :character   Mode  :character   Mode  :character  
-                                                                            
-                                                                            
-                                                                            
-      sqft         lotSize       ASSR_YEAR              year     
- Min.   : 408   Min.   :  871   Length:42975       Min.   :2019  
- 1st Qu.:1002   1st Qu.: 5227   Class :character   1st Qu.:2021  
- Median :1200   Median : 5227   Mode  :character   Median :2022  
- Mean   :1308   Mean   : 5892                      Mean   :2022  
- 3rd Qu.:1492   3rd Qu.: 6534                      3rd Qu.:2022  
- Max.   :8204   Max.   :33977                      Max.   :2022  
-    maxYear          lat             lon         CensusTract       
- Min.   :2019   Min.   :44.89   Min.   :-93.33   Length:42975      
- 1st Qu.:2021   1st Qu.:44.91   1st Qu.:-93.30   Class :character  
- Median :2022   Median :44.94   Median :-93.27   Mode  :character  
- Mean   :2022   Mean   :44.95   Mean   :-93.27                     
- 3rd Qu.:2022   3rd Qu.:45.01   3rd Qu.:-93.24                     
- Max.   :2022   Max.   :45.05   Max.   :-93.20                     
-  AreaBuilding    AreaGross     ParkingGarageArea ZonedCodeLocal    
- Min.   : 419   Min.   :  420   Min.   :0         Length:42975      
- 1st Qu.:1024   1st Qu.: 1748   1st Qu.:0         Class :character  
- Median :1232   Median : 2056   Median :0         Mode  :character  
- Mean   :1346   Mean   : 2164   Mean   :0                           
- 3rd Qu.:1550   3rd Qu.: 2424   3rd Qu.:0                           
- Max.   :7075   Max.   :11375   Max.   :0                           
- PropertyAddressCity     lppsf            ppsf            lsqft      
- Length:42975        Min.   :3.830   Min.   :  30.1   Min.   :6.011  
- Class :character    1st Qu.:5.031   1st Qu.:  90.8   1st Qu.:6.910  
- Mode  :character    Median :5.317   Median : 119.4   Median :7.090  
-                     Mean   :5.295   Mean   : 129.9   Mean   :7.117  
-                     3rd Qu.:5.566   3rd Qu.: 154.7   3rd Qu.:7.308  
-                     Max.   :8.442   Max.   :2495.4   Max.   :9.012  
-    llotSize       yearMonth             zip_n     
- Min.   : 6.770   Length:42975       Min.   :  20  
- 1st Qu.: 8.562   Class :character   1st Qu.:1187  
- Median : 8.562   Mode  :character   Median :3330  
- Mean   : 8.648                      Mean   :2581  
- 3rd Qu.: 8.785                      3rd Qu.:3530  
- Max.   :10.433                      Max.   :4132  
-[1] 42975
-The variables 'CensusTract::105700:lsqft', 'CensusTract::23000:lsqft' and
-'CensusTract::980000:lsqft' have been removed because of collinearity (see
-$collin.var).
-The variables 'CensusTract::105700:logGrossLessGarage',
-'CensusTract::23000:logGrossLessGarage' and
-'CensusTract::980000:logGrossLessGarage' have been removed because of
-collinearity (see $collin.var).
-The variables 'CensusTract::105700:logGross', 'CensusTract::23000:logGross' and
-'CensusTract::980000:logGross' have been removed because of collinearity (see
-$collin.var).
-OLS estimation, Dep. Var.: log(price)
-Observations: 32,405
-Fixed-effects: yearMonth: 120
-Standard-errors: Clustered (CensusTract) 
-                  Estimate Std. Error  t value   Pr(>|t|)    
-log(AreaBuilding) 0.784751   0.064275 12.20934  < 2.2e-16 ***
-llotSize          0.178509   0.052416  3.40564 0.00092507 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.359505     Adj. R2: 0.388888
-                 Within R2: 0.35457 
-      CensusTract::100400       CensusTract::100500       CensusTract::100700 
-               0.02566856               -0.76710410               -1.79715921 
-      CensusTract::100800       CensusTract::100900          CensusTract::101 
-              -0.36320470                0.49011644               -0.63634659 
-      CensusTract::101200       CensusTract::101300       CensusTract::101600 
-              -1.67855271                0.70184810                1.40785255 
-      CensusTract::101800       CensusTract::101900          CensusTract::102 
-              -0.47536110               -3.29002701                0.20459196 
-      CensusTract::102000       CensusTract::102100       CensusTract::102500 
-              -1.39237381               -1.27474681               -3.44749668 
-      CensusTract::102600       CensusTract::102800       CensusTract::103000 
-              -1.22269089                0.14505053               -2.27952568 
-      CensusTract::103100       CensusTract::103400       CensusTract::103600 
-               0.42527848               -3.63553769                0.25170851 
-      CensusTract::103700       CensusTract::104001       CensusTract::104002 
-              -3.91729628               -1.53303306               -3.20868270 
-      CensusTract::104100       CensusTract::104902       CensusTract::105100 
-               0.93969430                0.96055099               -1.71671045 
-      CensusTract::105500       CensusTract::105700        CensusTract::10600 
-              -1.98540151                2.33127538               -3.28604199 
-      CensusTract::106000       CensusTract::106200       CensusTract::106400 
-              -0.04122074               -0.81896587               -6.28761081 
-      CensusTract::106500       CensusTract::106600       CensusTract::106700 
-              -3.00930883               -7.66161836               -0.83666784 
-      CensusTract::106900        CensusTract::10700       CensusTract::107000 
-              -0.51920210               -4.09213644               -1.60098148 
-      CensusTract::107400       CensusTract::107500       CensusTract::107600 
-               0.19387275                0.33536420               -2.80731670 
-      CensusTract::108000       CensusTract::108600       CensusTract::108700 
-              -4.22139858               -0.62954425               -0.50764974 
-      CensusTract::108800       CensusTract::108900       CensusTract::109000 
-              -0.64247099               -1.54759872               -2.30341755 
-      CensusTract::109100       CensusTract::109200       CensusTract::109300 
-              -3.48991235               -0.68823331               -1.37528692 
-      CensusTract::109400       CensusTract::109700       CensusTract::109800 
-               0.77805665               -0.08330527               -1.48901338 
-      CensusTract::109900         CensusTract::1100        CensusTract::11000 
-              -1.57914107               -0.23380203               -0.81547864 
-      CensusTract::110000       CensusTract::110100       CensusTract::110200 
-              -0.39245198                0.74038362               -0.60556476 
-      CensusTract::110400       CensusTract::110500       CensusTract::110800 
-              -0.72911195               -2.23043229               -1.65374774 
-      CensusTract::110900       CensusTract::111100       CensusTract::111200 
-              -2.02036593               -1.77388764               -1.35079460 
-      CensusTract::111300       CensusTract::111400       CensusTract::111500 
-              -1.79348435               -2.72198687               -3.52443947 
-      CensusTract::111600        CensusTract::11703        CensusTract::11704 
-              -2.91155259               -2.14237229                0.53997569 
-       CensusTract::11800        CensusTract::11998        CensusTract::12001 
-              -2.46745752               -0.88445097               -1.40754209 
-       CensusTract::12003        CensusTract::12101        CensusTract::12102 
-              -3.31690127               -0.37114292               -0.99311082 
-      CensusTract::125600       CensusTract::125700       CensusTract::125800 
-              -3.33308496                1.00469560                0.84886687 
-      CensusTract::125900       CensusTract::126000       CensusTract::126300 
-               1.48859953               -0.41214408                0.56596288 
-        CensusTract::1700         CensusTract::2200        CensusTract::23000 
-               0.63822916                1.51682067                2.43911591 
-        CensusTract::2400         CensusTract::2700          CensusTract::300 
-              -1.32647425                0.70119039               -2.02788960 
-        CensusTract::3200         CensusTract::3300         CensusTract::3801 
-              -0.74556974                0.02281117               -2.78979486 
-        CensusTract::3802         CensusTract::5901         CensusTract::5902 
-             -25.10669210               -7.73009968                1.40782511 
-         CensusTract::601          CensusTract::603         CensusTract::6800 
-              -0.62605102               -1.94327086               -0.20114667 
-        CensusTract::7700         CensusTract::7801         CensusTract::8100 
-              -1.57256430                0.95166970                0.22195875 
-        CensusTract::8200         CensusTract::8300         CensusTract::8400 
-              -0.16054637               -1.11301055               -1.59701989 
-        CensusTract::8500         CensusTract::9500         CensusTract::9600 
-              -0.16392195               -1.42554915               -0.31139739 
-      CensusTract::980000                  llotSize CensusTract::100200:lsqft 
-               1.98750958                0.13449730                0.30125092 
-CensusTract::100400:lsqft CensusTract::100500:lsqft CensusTract::100700:lsqft 
-               0.28049896                0.44127203                0.55724692 
-CensusTract::100800:lsqft CensusTract::100900:lsqft    CensusTract::101:lsqft 
-               0.33550949                0.21017813                0.39835889 
-CensusTract::101200:lsqft CensusTract::101300:lsqft CensusTract::101600:lsqft 
-               0.59593865                0.19673864                0.08745564 
-CensusTract::101800:lsqft CensusTract::101900:lsqft    CensusTract::102:lsqft 
-               0.39836527                0.79953243                0.26503289 
-CensusTract::102000:lsqft CensusTract::102100:lsqft CensusTract::102500:lsqft 
-               0.48757455                0.46109400                0.81149896 
-CensusTract::102600:lsqft CensusTract::102800:lsqft CensusTract::103000:lsqft 
-               0.50514964                0.27188920                0.68641647 
-CensusTract::103100:lsqft CensusTract::103400:lsqft CensusTract::103600:lsqft 
-               0.29095843                0.81339573                0.32803688 
-CensusTract::103700:lsqft CensusTract::104001:lsqft CensusTract::104002:lsqft 
-               0.90243421                0.56044005                0.79536427 
-CensusTract::104100:lsqft CensusTract::104902:lsqft CensusTract::105100:lsqft 
-               0.16863987                0.23414787                0.64396566 
-CensusTract::105500:lsqft  CensusTract::10600:lsqft CensusTract::106000:lsqft 
-               0.71697921                0.89232636                0.31800597 
-CensusTract::106200:lsqft CensusTract::106400:lsqft CensusTract::106500:lsqft 
-               0.47844533                1.25421196                0.85548996 
-CensusTract::106600:lsqft CensusTract::106700:lsqft CensusTract::106900:lsqft 
-               1.44053136                0.51372367                0.43689369 
- CensusTract::10700:lsqft CensusTract::107000:lsqft CensusTract::107400:lsqft 
-               0.97348099                0.57738904                0.30515054 
-CensusTract::107500:lsqft CensusTract::107600:lsqft CensusTract::108000:lsqft 
-               0.30669583                0.76934205                1.01620300 
-CensusTract::108600:lsqft CensusTract::108700:lsqft CensusTract::108800:lsqft 
-               0.41181636                0.40459924                0.42919180 
-CensusTract::108900:lsqft CensusTract::109000:lsqft CensusTract::109100:lsqft 
-               0.56784637                0.71235055                0.92885168 
-CensusTract::109200:lsqft CensusTract::109300:lsqft CensusTract::109400:lsqft 
-               0.48933620                0.55365824                0.21553239 
-CensusTract::109700:lsqft CensusTract::109800:lsqft CensusTract::109900:lsqft 
-               0.35034543                0.63885644                0.60701214 
-  CensusTract::1100:lsqft  CensusTract::11000:lsqft CensusTract::110000:lsqft 
-               0.37237430                0.47928896                0.38402082 
-CensusTract::110100:lsqft CensusTract::110200:lsqft CensusTract::110400:lsqft 
-               0.24457395                0.43585877                0.44896068 
-CensusTract::110500:lsqft CensusTract::110800:lsqft CensusTract::110900:lsqft 
-               0.67944791                0.60712190                0.64022849 
-CensusTract::111100:lsqft CensusTract::111200:lsqft CensusTract::111300:lsqft 
-               0.61532466                0.62440158                0.67640705 
-CensusTract::111400:lsqft CensusTract::111500:lsqft CensusTract::111600:lsqft 
-               0.79618265                0.88380650                0.79202986 
- CensusTract::11703:lsqft  CensusTract::11704:lsqft  CensusTract::11800:lsqft 
-               0.69690299                0.30251260                0.71081162 
- CensusTract::11998:lsqft  CensusTract::12001:lsqft  CensusTract::12003:lsqft 
-               0.47997671                0.58339127                0.83082051 
- CensusTract::12101:lsqft  CensusTract::12102:lsqft CensusTract::125600:lsqft 
-               0.39261091                0.48535038                0.85257006 
-CensusTract::125700:lsqft CensusTract::125800:lsqft CensusTract::125900:lsqft 
-               0.14281680                0.18411870                0.09626134 
-CensusTract::126000:lsqft CensusTract::126300:lsqft   CensusTract::1700:lsqft 
-               0.35870939                0.22418575                0.24346437 
-  CensusTract::2200:lsqft   CensusTract::2400:lsqft   CensusTract::2700:lsqft 
-               0.06199198                0.52054017                0.19930454 
-   CensusTract::300:lsqft   CensusTract::3200:lsqft   CensusTract::3300:lsqft 
-               0.60684627                0.40729399                0.28792119 
-  CensusTract::3801:lsqft   CensusTract::3802:lsqft   CensusTract::5901:lsqft 
-               0.77558603                3.88038304                1.37303692 
-  CensusTract::5902:lsqft    CensusTract::601:lsqft    CensusTract::603:lsqft 
-               0.07796263                0.42551761                0.62944838 
-  CensusTract::6800:lsqft   CensusTract::7700:lsqft   CensusTract::7801:lsqft 
-               0.40077506                0.55254119                0.21019928 
-  CensusTract::8100:lsqft   CensusTract::8200:lsqft   CensusTract::8300:lsqft 
-               0.37087498                0.38765518                0.47712660 
-  CensusTract::8400:lsqft   CensusTract::8500:lsqft   CensusTract::9500:lsqft 
-               0.53199071                0.34360682                0.53118959 
-  CensusTract::9600:lsqft 
-               0.38621492 
-  [1] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [13] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [25] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [37] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [49] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [61] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [73] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [85] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
- [97] FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE FALSE
-[109] FALSE FALSE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[121]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[133]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[145]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[157]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[169]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[181]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[193]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[205]  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE  TRUE
-[217]  TRUE
-    tract     slope
-   <char>     <num>
-1: 100200 0.3012509
-2: 100400 0.2804990
-3: 100500 0.4412720
-4: 100700 0.5572469
-5: 100800 0.3355095
-6: 100900 0.2101781
-`geom_smooth()` using formula = 'y ~ x'
-There were 11 warnings (use warnings() to see them)
-> 
-> dbDisconnect(con)
-> 
-> q("no")
-> proc.time()
-   user  system elapsed 
- 36.413   1.778  34.055 
+Reading layer `ResidentialPermits' from data source 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/shp_econ_residential_building_permts/ResidentialPermits.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 107370 features and 28 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: 420204.1 ymin: 4923165 xmax: 521207.2 ymax: 5028983
+Projected CRS: NAD83 / UTM zone 15N
+[1] "HERE ARE THE PERMIT FIELDS"
+ [1] "sde_id"     "co_code"    "ctu_code"   "ctu_id"     "coctu_id"  
+ [6] "ctu_name"   "year"       "tenure"     "housing_ty" "housing__1"
+[11] "res_permit" "address"    "zip_code"   "zip_plus_4" "name"      
+[16] "buildings"  "units"      "age_restri" "memory_car" "assisted"  
+[21] "com_off_re" "acreage"    "sqf"        "pin"        "public_fun"
+[26] "permit_val" "community_" "notes"      "geometry"  
+Permits after filtering: 740
+Reading layer `Planning_Primary_Zoning' from data source 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 1259 features and 6 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -10389350 ymin: 5604313 xmax: -10374400 ymax: 5629592
+Projected CRS: WGS 84 / Pseudo-Mercator
+Zoning fields: objectid, land_use, land_use_c, ruleid, shape__are, shape__len, geometry
+Fetching census tracts...
+[1] "TOPZONE"
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00   64.44  151.86  234.52  318.88 1354.74 
+Permits in residential zones: 548
+Error: object 'AreaLotSF' not found
+Execution halted

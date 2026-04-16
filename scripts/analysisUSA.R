@@ -1,11 +1,12 @@
-# analysisUnified.R
-# Analyze ppsf slope vs. infill propensity, pooled across cities
+# analysisUSA.R
+# Lot-level analysis of plex propensity
 # Tom Davidoff
 # Unified by Claude, April 2026
 
 library(data.table)
 library(fixest)
 library(ggplot2)
+library(marginaleffects)
 
 # ==========================================
 # CITY CONFIGURATIONS
@@ -13,17 +14,17 @@ library(ggplot2)
 city_config <- list(
   portland = list(
     city_name     = "Portland",
-    permits_file  = "~/DropboxExternal/dataProcessed/portland_tract_propensity.rds",
+    lots_file     = "~/DropboxExternal/dataProcessed/portland_lot_level.rds",
     slopes_file   = "~/DropboxExternal/dataProcessed/portland_slopes.rds",
-    tract_start   = 7,   # substring position for numeric tract ID
+    tract_start   = 7,
     tract_end     = 11,
     zone_field    = "zone",
-    core_zones    = c("R2.5", "R5"),       # main zones for focused regressions
-    all_zones     = c("R2.5", "R5", "R7", "R10", "R20")
+    core_zones    = c("R2.5", "R5"),
+    all_zones     = c("R2.5", "R5", "R7", "R10")
   ),
   minneapolis = list(
     city_name     = "Minneapolis",
-    permits_file  = "~/DropboxExternal/dataProcessed/minneapolis_tract_propensity.rds",
+    lots_file     = "~/DropboxExternal/dataProcessed/minneapolis_lot_level.rds",
     slopes_file   = "~/DropboxExternal/dataProcessed/minneapolis_slopes.rds",
     tract_start   = 6,
     tract_end     = 11,
@@ -36,7 +37,7 @@ city_config <- list(
 CITIES <- c("portland", "minneapolis")
 
 # ==========================================
-# MAIN LOOP
+# LOAD & MERGE
 # ==========================================
 city_results <- list()
 
@@ -44,75 +45,110 @@ for (CITY in CITIES) {
   cfg <- city_config[[CITY]]
   message("\n========== ", cfg$city_name, " ==========\n")
 
-  # ------------------------------------------
-  # 1. LOAD
-  # ------------------------------------------
-  permits <- readRDS(cfg$permits_file)
+  # Load lot-level permits and tract-level slopes
+  dtLots  <- readRDS(cfg$lots_file)
   slopes  <- readRDS(cfg$slopes_file)
-  setDT(permits); setDT(slopes)
+  setDT(dtLots); setDT(slopes)
 
-  # ------------------------------------------
-  # 2. MERGE ON TRACT
-  # ------------------------------------------
-  permits[, tractNumeric := as.numeric(substring(geo_id, cfg$tract_start, cfg$tract_end))]
-  slopes[,  tractNumeric := as.numeric(tract)]
-
-  dt <- merge(permits, slopes, by = "tractNumeric")
+  # Merge on tract
+  dtLots[, tractNumeric := as.numeric(substring(geo_id, cfg$tract_start, cfg$tract_end))]
+  slopes[, tractNumeric := as.numeric(tract)]
+  dt <- merge(dtLots, slopes, by = "tractNumeric", all.x = TRUE)
 
   # Standardize zone column name
-  if (cfg$zone_field != "zone") {
-    dt[, zone := get(cfg$zone_field)]
+  zone_col <- cfg$zone_field
+  if (zone_col != "zone") {
+    dt[, zone := get(zone_col)]
   }
-
   dt[, city := cfg$city_name]
 
-  message("Merged rows: ", nrow(dt))
+  # Log lot size (0 and NA -> NA)
+  dt[, AreaLotSF := as.numeric(AreaLotSF)]
+  dt[AreaLotSF <= 0, AreaLotSF := NA_real_]
+  dt[, logLotSF := log(AreaLotSF)]
+
+  message("Lots with valid lot size: ", sum(!is.na(dt$logLotSF)), " of ", nrow(dt))
+
+  message("Total lots: ", nrow(dt))
+  message("Lots with lot size: ", sum(!is.na(dt$AreaLotSF)))
+  message("Lots with slopes: ", sum(!is.na(dt$slope)))
 
   # ------------------------------------------
-  # 3. SUMMARY BY ZONE
+  # SUMMARY BY ZONE
   # ------------------------------------------
   cat("\n--- Zone summaries ---\n")
   print(dt[, .(
-    mean_propensity = mean(propensity, na.rm = TRUE),
-    mean_lppsf      = mean(lppsf, na.rm = TRUE),
-    mean_sqft       = if ("medianSqft" %in% names(dt)) mean(medianSqft, na.rm = TRUE) else NA_real_,
-    n_tracts        = .N
+    n_lots      = .N,
+    n_plex      = sum(isPlexLot),
+    plex_share  = mean(isPlexLot),
+    mean_lotSF  = mean(AreaLotSF, na.rm = TRUE),
+    med_lotSF   = median(AreaLotSF, na.rm = TRUE),
+    pct_has_lot = mean(!is.na(AreaLotSF)) * 100
   ), by = zone])
 
   # ------------------------------------------
-  # 4. REGRESSIONS: POOLED ACROSS ZONES
+  # CITY-LEVEL LOGIT REGRESSIONS
   # ------------------------------------------
-  cat("\n--- Pooled regressions ---\n")
+  cat("\n--- City-level logit regressions ---\n")
 
-  dt[,logOdds:= log(propensity / (1 - propensity))]
-  dt[abs(logOdds)>100, logOdds := NA_real_]
-  print(summary(dt[,.(logOdds,is.na(logOdds))]))
-  m1 <- lm(logOdds ~ lppsf * zone, dt[!is.na(logOdds)])
-  m2 <- lm(logOdds ~ slope + lppsf + zone, dt[!is.na(logOdds)])
+  # Filter to zones of interest and non-missing covariates
+  dt_reg <- dt[zone %in% cfg$all_zones]
+  dt_reg_full <- dt_reg[!is.na(logLotSF) & !is.na(lppsf) & !is.na(slope)]
 
-  # Print slope variants if available (Minneapolis has slopeGrossGross)
-  if ("slopeGrossGross" %in% names(dt)) {
-    m3 <- lm(logOdds ~ slopeGrossGross + lppsf + zone, dt[!is.na(logOdds)])
-    print(summary(m3))
+  cat(sprintf("  Regression sample: %d lots (of %d in target zones)\n",
+              nrow(dt_reg_full), nrow(dt_reg)))
+  cat("  Zone distribution in regression sample:\n")
+  print(dt_reg_full[, .(n = .N, n_plex = sum(isPlexLot), plex_share = round(mean(isPlexLot), 3)), by = zone])
+
+  # Drop zones with no variation in outcome or too few obs
+  zone_ok <- dt_reg_full[, .(n = .N, plex_share = mean(isPlexLot)), by = zone]
+  zone_ok <- zone_ok[n >= 10 & plex_share > 0 & plex_share < 1, zone]
+  dt_reg_full <- dt_reg_full[zone %in% zone_ok]
+  dt_reg_full[, zone := factor(zone)]
+
+  if (length(zone_ok) < 2) {
+    cat("  Only one usable zone, dropping zone from regressions\n")
+    m2 <- glm(isPlexLot ~ logLotSF, family = binomial, data = dt_reg_full)
+    m5 <- glm(isPlexLot ~ logLotSF + slope + lppsf, family = binomial, data = dt_reg_full)
+  } else {
+    m2 <- glm(isPlexLot ~ zone + logLotSF, family = binomial, data = dt_reg_full)
+    m5 <- glm(isPlexLot ~ zone + logLotSF + slope + lppsf, family = binomial, data = dt_reg_full)
   }
 
-  print(summary(m1))
+  if ("slopeGrossGross" %in% names(dt_reg_full) && length(zone_ok) >= 2) {
+    m6 <- glm(isPlexLot ~ zone + logLotSF + slopeGrossGross + lppsf, family = binomial, data = dt_reg_full)
+  }
+
+  cat("\n  Model summaries:\n")
   print(summary(m2))
+  print(summary(m5))
+  if (exists("m6")) { print(summary(m6)); rm(m6) }
+
+  # Average marginal effects for the main spec
+  cat("\n  Average marginal effects (M5):\n")
+  print(avg_slopes(m5))
 
   # ------------------------------------------
-  # 5. REGRESSIONS: BY ZONE
+  # BY-ZONE LOGIT
   # ------------------------------------------
-  cat("\n--- By-zone regressions ---\n")
-  for (z in unique(dt[, zone])) {
-    cat("\n  Zone:", z, "\n")
-    dtz <- dt[zone == z]
-    print(summary(lm(logOdds ~ lppsf, dtz[!is.na(logOdds)])))
-    print(summary(lm(logOdds ~ slope + lppsf, dtz[!is.na(logOdds)])))
+  cat("\n--- By-zone logit regressions ---\n")
+  for (z in cfg$all_zones) {
+    dtz <- dt_reg[zone == z & !is.na(logLotSF)]
+    if (nrow(dtz) < 10) {
+      cat(sprintf("\n  Zone %s: only %d obs with lot size, skipping\n", z, nrow(dtz)))
+      next
+    }
+    cat(sprintf("\n  Zone: %s (n=%d, plex=%d)\n", z, nrow(dtz), sum(dtz$isPlexLot)))
+
+    mz1 <- glm(isPlexLot ~ logLotSF, family = binomial, data = dtz)
+    mz2 <- glm(isPlexLot ~ logLotSF + lppsf, family = binomial, data = dtz)
+    mz3 <- glm(isPlexLot ~ logLotSF + slope, family = binomial, data = dtz)
+
+    print(summary(mz2))
+    cat("  AME:\n")
+    print(avg_slopes(mz2))
   }
 
-  # ------------------------------------------
-  # 6. STORE FOR POOLING
-  # ------------------------------------------
   city_results[[CITY]] <- dt
 }
 
@@ -123,49 +159,101 @@ message("\n========== Pooled Cross-City ==========\n")
 
 dtAll <- rbindlist(city_results, use.names = TRUE, fill = TRUE)
 
-cat("Total tract-zone obs:", nrow(dtAll), "\n")
+cat("Total lots:", nrow(dtAll), "\n")
 cat("By city:\n")
 print(dtAll[, .N, by = city])
 
-# Core zones only (R2.5/R5 for Portland, UN1/UN2 for Minneapolis)
+# Core zones only
 core_zones <- unlist(lapply(city_config, `[[`, "core_zones"))
 dtCore <- dtAll[zone %in% core_zones]
 
-cat("\nCore-zone regressions (formerly single-family areas):\n")
-mc1 <- feols(logOdds ~ slope + lppsf | city, dtCore[!is.na(logOdds)], vcov = "hc1")
-mc2 <- feols(logOdds ~ slope + lppsf | city + zone, dtCore[!is.na(logOdds)], vcov = "hc1")
-mc3 <- feols(logOdds ~ lppsf | city + zone, dtCore[!is.na(logOdds)], vcov = "hc1")
+cat("\nCore-zone lot counts:\n")
+print(dtCore[, .(n = .N, n_plex = sum(isPlexLot), plex_share = mean(isPlexLot),
+                  pct_has_lot = mean(!is.na(AreaLotSF)) * 100), by = .(city, zone)])
 
-print(etable(mc1, mc2, mc3))
+# ------------------------------------------
+# POOLED LOGIT WITH CITY FE
+# ------------------------------------------
+cat("\n--- Pooled logit (core zones, city FE) ---\n")
+
+# feglm for logit with fixed effects
+pc1 <- feglm(isPlexLot ~ logLotSF | city, family = binomial, data = dtCore)
+pc2 <- feglm(isPlexLot ~ logLotSF | city + zone, family = binomial, data = dtCore)
+pc3 <- feglm(isPlexLot ~ logLotSF + lppsf | city + zone, family = binomial, data = dtCore)
+pc4 <- feglm(isPlexLot ~ logLotSF + slope | city + zone, family = binomial, data = dtCore)
+pc5 <- feglm(isPlexLot ~ logLotSF + slope + lppsf | city + zone, family = binomial, data = dtCore)
+
+print(etable(pc1, pc2, pc3, pc4, pc5))
+
+# AME for main spec
+cat("\nAverage marginal effects (pooled M5):\n")
+print(avg_slopes(pc5))
+
+# ------------------------------------------
+# ALL ZONES POOLED
+# ------------------------------------------
+cat("\n--- Pooled logit (all zones, city FE) ---\n")
+dtAllZones <- dtAll[zone %in% unlist(lapply(city_config, `[[`, "all_zones"))]
+
+pa1 <- feglm(isPlexLot ~ logLotSF | city + zone, family = binomial, data = dtAllZones)
+pa2 <- feglm(isPlexLot ~ logLotSF + lppsf | city + zone, family = binomial, data = dtAllZones)
+pa3 <- feglm(isPlexLot ~ logLotSF + slope + lppsf | city + zone, family = binomial, data = dtAllZones)
+
+print(etable(pa1, pa2, pa3))
 
 # ==========================================
-# PLOT
+# PLOTS
 # ==========================================
-ggplot(dtCore, aes(x = lppsf, y = propensity, color = city)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = TRUE, linewidth = 0.8) +
-  facet_wrap(~ city, scales = "free_x") +
+
+# Plex share by lot size bin
+dtCore[, lotBin := cut(AreaLotSF, breaks = c(0, 3000, 5000, 7000, 10000, 15000, Inf),
+                       labels = c("<3k", "3-5k", "5-7k", "7-10k", "10-15k", "15k+"))]
+
+pLot <- ggplot(dtCore[!is.na(lotBin)],
+               aes(x = lotBin, fill = isPlexLot)) +
+  geom_bar(position = "fill") +
+  facet_wrap(~ city) +
+  scale_fill_manual(values = c("FALSE" = "grey70", "TRUE" = "tomato"),
+                    labels = c("Single-Family", "Plex"),
+                    name = "") +
+  labs(x = "Lot Size (sqft)", y = "Share of Permits",
+       title = "Plex Share by Lot Size and City") +
   theme_minimal() +
+  theme(legend.position = "bottom")
+
+ggsave("text/plex_by_lotsize.png", pLot, width = 10, height = 5, dpi = 300)
+
+# Plex share by price level
+pPrice <- ggplot(dtCore[!is.na(lppsf)],
+                 aes(x = lppsf, y = as.numeric(isPlexLot), color = city)) +
+  geom_point(alpha = 0.3, size = 1) +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"),
+              se = TRUE, linewidth = 0.8) +
+  facet_wrap(~ city, scales = "free_x") +
   labs(x = "Log Price Per Square Foot",
-       y = "Infill Propensity",
-       title = "Price Level and Infill Propensity by City") +
-  theme(legend.position = "none")
-
-ggsave("text/propensity_cross_city.png", width = 10, height = 5, dpi = 300)
-
-ggplot(dtCore, aes(x = slope, y = propensity, color = city)) +
-  geom_point(alpha = 0.5) +
-  geom_smooth(method = "lm", se = TRUE, linewidth = 0.8) +
-  facet_wrap(~ city, scales = "free_x") +
+       y = "Pr(Plex)",
+       title = "Plex Probability and Price Level by City") +
   theme_minimal() +
-  labs(x = "Price-Size Slope",
-       y = "Infill Propensity",
-       title = "Price-Size Gradient and Infill Propensity by City") +
   theme(legend.position = "none")
 
-ggsave("text/slope_cross_city.png", width = 10, height = 5, dpi = 300)
+ggsave("text/plex_by_price.png", pPrice, width = 10, height = 5, dpi = 300)
+
+# Plex share by slope
+pSlope <- ggplot(dtCore[!is.na(slope)],
+                 aes(x = slope, y = as.numeric(isPlexLot), color = city)) +
+  geom_point(alpha = 0.3, size = 1) +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"),
+              se = TRUE, linewidth = 0.8) +
+  facet_wrap(~ city, scales = "free_x") +
+  labs(x = "Price-Size Slope",
+       y = "Pr(Plex)",
+       title = "Plex Probability and Price-Size Gradient by City") +
+  theme_minimal() +
+  theme(legend.position = "none")
+
+ggsave("text/plex_by_slope.png", pSlope, width = 10, height = 5, dpi = 300)
 
 # ==========================================
 # SAVE
 # ==========================================
-saveRDS(dtAll, "~/DropboxExternal/dataProcessed/analysis_pooled.rds")
+saveRDS(dtAll, "~/DropboxExternal/dataProcessed/analysis_lot_level_pooled.rds")

@@ -17,7 +17,7 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
-> # permitsUnified.R
+> # permitsUSA.R
 > # Unified permit analysis for Portland and Minneapolis
 > # Tom Davidoff
 > # Consolidation by Claude, April 2026
@@ -29,6 +29,8 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(tigris)
 To enable caching of data, set `options(tigris_use_cache = TRUE)`
 in your R script or .Rprofile.
+> library(duckdb)
+Loading required package: DBI
 > 
 > options(timeout = 600)
 > options(tigris_use_cache = TRUE)
@@ -39,6 +41,11 @@ in your R script or .Rprofile.
 > GEOGRAPHY <- "tract"
 > CITIES <- c("minneapolis", "portland")  # run both, or subset
 > # ==========================================
+> 
+> # ==========================================
+> # DUCKDB CONNECTION (for ATTOM parquet reads)
+> # ==========================================
+> con <- dbConnect(duckdb())
 > 
 > # ==========================================
 > # CITY CONFIGURATIONS
@@ -53,7 +60,7 @@ in your R script or .Rprofile.
 +     # --- permit filters ---
 +     filter_permits = function(dt) {
 +       dt <- dt[year >= 2020 & year <= 2025]
-+       qmin <- quantile(dt[res_permit=="NU", permit_val], 0.2, na.rm = TRUE) # more than .1 as would be single detached
++       qmin <- quantile(dt[res_permit=="NU", permit_val], 0.2, na.rm = TRUE)
 +       dt <- dt[res_permit == "NU" | permit_val >= qmin]
 +       dt <- dt[ctu_name == "Minneapolis"]
 +       dt <- dt[(co_code == "053") | (co_code == 53)]
@@ -80,7 +87,11 @@ in your R script or .Rprofile.
 +     # --- geography ---
 +     tract_state  = "MN",
 +     tract_county = "Hennepin",
-+     zip_pattern  = "^55[34]"
++     zip_pattern  = "^55[34]",
++     # --- ATTOM lot size (not needed for Minneapolis) ---
++     attom_parquet = NULL,
++     attom_city_filter = NULL,
++     mandate_thresholds = NULL
 +   ),
 + 
 +   portland = list(
@@ -106,7 +117,7 @@ in your R script or .Rprofile.
 +     },
 +     # --- zoning ---
 +     zoning_file  = "~/DropboxExternal/dataRaw/portlandZoning",
-+     zoning_is_dir = TRUE,  # Portland zoning is a directory; grab the .shp inside
++     zoning_is_dir = TRUE,
 +     zone_field   = "zone",
 +     zone_filter  = "^R2.5|^R5|^R7|^R10|^R20",
 +     zone_plot_values = c("R2.5", "R5", "R7", "R10", "R20"),
@@ -115,12 +126,23 @@ in your R script or .Rprofile.
 +                       "R7" = "lightgreen", "R10" = "wheat", "R20" = "lavender"),
 +     # --- parcel id ---
 +     parcel_id    = "property_id",
-+     # --- units field (Portland uses total_sqft instead of units) ---
++     # --- units field ---
 +     units_field  = "new_units",
 +     # --- geography ---
 +     tract_state  = "OR",
 +     tract_county = "Multnomah",
-+     zip_pattern  = "^972"
++     zip_pattern  = "^972",
++     # --- ATTOM lot size ---
++     attom_parquet = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_OR.parquet",
++     attom_city_filter = "PORTLAND",
++     attom_address_field = "PropertyAddressFull",
++     permit_address_field = "address",  # Portland permit address column (after tolower)
++     # --- mandate thresholds: lots >= this size MUST build multiplex, so drop them ---
++     mandate_thresholds = list(
++       "R7"  = 14000,
++       "R5"  = 10000,
++       "R2.5" = 5000
++     )
 +   )
 + )
 > 
@@ -161,7 +183,32 @@ in your R script or .Rprofile.
 +   message("Permits after filtering: ", nrow(dtPermit))
 + 
 +   # ------------------------------------------
-+   # 4. CONVERT TO SF
++   # 4. MERGE ATTOM LOT SIZE (if configured)
++   # ------------------------------------------
++   if (!is.null(cfg$attom_parquet)) {
++     message("Merging ATTOM lot size data...")
++     dtAttom <- as.data.table(dbGetQuery(con, sprintf(
++       "SELECT PropertyAddressFull, AreaLotSF FROM read_parquet('%s') WHERE PropertyAddressCity = '%s'",
++       cfg$attom_parquet, cfg$attom_city_filter
++     )))
++     dtAttom[, addrClean := toupper(trimws(gsub("\\s+", " ", PropertyAddressFull)))]
++     # deduplicate ATTOM to one row per address (take first non-NA lot size)
++     dtAttom <- dtAttom[!is.na(AreaLotSF)][order(-AreaLotSF)]
++     dtAttom <- dtAttom[!duplicated(addrClean)]
++ 
++     dtPermit[, addrClean := toupper(trimws(gsub("\\s+", " ", get(cfg$permit_address_field))))]
++     dtPermit <- merge(dtPermit, dtAttom[, .(addrClean, AreaLotSF)],
++                       by = "addrClean", all.x = TRUE)
++ 
++     match_rate <- mean(!is.na(dtPermit$AreaLotSF))
++     message(sprintf("ATTOM address match rate: %.1f%% (%d of %d)",
++                     match_rate * 100,
++                     sum(!is.na(dtPermit$AreaLotSF)),
++                     nrow(dtPermit)))
++   }
++ 
++   # ------------------------------------------
++   # 5. CONVERT TO SF
 +   # ------------------------------------------
 +   if (cfg$permit_type == "csv") {
 +     sfPermit <- st_as_sf(dtPermit,
@@ -173,7 +220,7 @@ in your R script or .Rprofile.
 +   }
 + 
 +   # ------------------------------------------
-+   # 5. READ ZONING & SPATIAL JOIN
++   # 6. READ ZONING & SPATIAL JOIN
 +   # ------------------------------------------
 +   if (isTRUE(cfg$zoning_is_dir)) {
 +     shp_path <- list.files(cfg$zoning_file, pattern = "\\.shp$", full.names = TRUE)
@@ -189,7 +236,7 @@ in your R script or .Rprofile.
 +   sfPermitZoned <- st_join(sfPermit, sfZoning)
 + 
 +   # ------------------------------------------
-+   # 6. GEOGRAPHY JOIN (TRACT or ZIP)
++   # 7. GEOGRAPHY JOIN (TRACT or ZIP)
 +   # ------------------------------------------
 +   if (GEOGRAPHY == "tract") {
 +     message("Fetching census tracts...")
@@ -210,7 +257,6 @@ in your R script or .Rprofile.
 +     sfZips <- sfZips[grepl(cfg$zip_pattern, sfZips$ZCTA5CE20), ]
 +     sfZips <- st_transform(sfZips, cfg$crs)
 +     sfFinal <- st_join(sfPermitZoned, sfZips[, c("ZCTA5CE20")])
-+     # calculate distance to nearest topZoned area for each permit
 +     sfTopZone <- st_union(sfZoning[sfZoning[[cfg$zone_field]] == cfg$topZone, ])
 +     sfFinal$dist_to_topZone <- as.numeric(st_distance(sfFinal, sfTopZone))
 +     print("TOPZONE")
@@ -221,32 +267,54 @@ in your R script or .Rprofile.
 +   }
 + 
 +   # ------------------------------------------
-+   # 7. FILTER TO RESIDENTIAL ZONES
++   # 8. FILTER TO RESIDENTIAL ZONES
 +   # ------------------------------------------
 +   zone_col <- cfg$zone_field
 +   dtAnalysis <- dtFinal[grepl(cfg$zone_filter, get(zone_col), ignore.case = TRUE)]
 +   message("Permits in residential zones: ", nrow(dtAnalysis))
 + 
 +   # ------------------------------------------
-+   # 8. EXTRACT COORDINATES & COLLAPSE TO LOTS
++   # 8b. DROP MANDATED MULTIPLEX LOTS (Portland)
++   #     Lots above zone-specific thresholds MUST
++   #     build multiplex, so no choice to estimate.
++   # ------------------------------------------
++   if (!is.null(cfg$mandate_thresholds)) {
++     n_before <- nrow(dtAnalysis)
++     n_no_lotsize <- sum(is.na(dtAnalysis$AreaLotSF))
++     message(sprintf("Permits missing lot size (kept for now): %d of %d", n_no_lotsize, n_before))
++ 
++     for (z in names(cfg$mandate_thresholds)) {
++       thresh <- cfg$mandate_thresholds[[z]]
++       mask <- dtAnalysis[[zone_col]] == z & !is.na(dtAnalysis$AreaLotSF) & dtAnalysis$AreaLotSF >= thresh
++       n_drop <- sum(mask)
++       message(sprintf("  Dropping %d mandated lots in %s (>= %d sqft)", n_drop, z, thresh))
++       dtAnalysis <- dtAnalysis[!mask]
++     }
++     message(sprintf("Permits after mandate filter: %d (dropped %d)", nrow(dtAnalysis), n_before - nrow(dtAnalysis)))
++   }
++ 
++   # ------------------------------------------
++   # 9. EXTRACT COORDINATES & COLLAPSE TO LOTS
 +   # ------------------------------------------
 +   dtAnalysis[, `:=`(
 +     lon = st_coordinates(geometry)[, 1],
 +     lat = st_coordinates(geometry)[, 2]
 +   )]
-+   print("TOPZONE?")
-+   print(names(dtAnalysis))
-+ 
 + 
 +   pid <- cfg$parcel_id
++   lot_vars <- c(pid, "geo_id", zone_col, "geo_name")
++ 
++   if (!"AreaLotSF" %in% names(dtAnalysis)) dtAnalysis[, AreaLotSF := NA_real_]
++ 
 +   dtLots <- dtAnalysis[!is.na(geo_id) & !is.na(get(pid)), .(
 +     isPlexLot    = any(isPlex, na.rm = TRUE),
 +     total_units  = sum(get(cfg$units_field), na.rm = TRUE),
-+     distTopZone = min(dist_to_topZone, na.rm = TRUE),
++     distTopZone  = min(dist_to_topZone, na.rm = TRUE),
++     AreaLotSF    = AreaLotSF[1],
 +     permit_count = .N,
 +     lon = lon[1],
 +     lat = lat[1]
-+   ), by = c(pid, "geo_id", zone_col, "geo_name")]
++   ), by = lot_vars]
 +   saveRDS(dtLots, sprintf("~/DropboxExternal/dataProcessed/%s_lot_level.rds", CITY))
 + 
 +   sfLots <- st_as_sf(dtLots, coords = c("lon", "lat"), crs = cfg$crs)
@@ -255,7 +323,7 @@ in your R script or .Rprofile.
 +   message("Lots with plex permits: ", sum(dtLots$isPlexLot))
 + 
 +   # ------------------------------------------
-+   # 9. PLOT
++   # 10. PLOT
 +   # ------------------------------------------
 +   sfZoningRes <- sfZoning[sfZoning[[zone_col]] %in% cfg$zone_plot_values, ]
 + 
@@ -291,7 +359,7 @@ in your R script or .Rprofile.
 +   message("Saved plot: ", plot_file)
 + 
 +   # ------------------------------------------
-+   # 10. GEOGRAPHY-LEVEL SUMMARY
++   # 11. GEOGRAPHY-LEVEL SUMMARY
 +   # ------------------------------------------
 +   dtGeo <- dtLots[, .(
 +     infill_lot_count  = sum(isPlexLot, na.rm = TRUE),
@@ -351,18 +419,6 @@ Fetching census tracts...
    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
    0.00   64.44  151.86  234.52  318.88 1354.74 
 Permits in residential zones: 548
-[1] "TOPZONE?"
- [1] "sde_id"          "co_code"         "ctu_code"        "ctu_id"         
- [5] "coctu_id"        "ctu_name"        "year"            "tenure"         
- [9] "housing_ty"      "housing__1"      "res_permit"      "address"        
-[13] "zip_code"        "zip_plus_4"      "name"            "buildings"      
-[17] "units"           "age_restri"      "memory_car"      "assisted"       
-[21] "com_off_re"      "acreage"         "sqf"             "pin"            
-[25] "public_fun"      "permit_val"      "community_"      "notes"          
-[29] "isPlex"          "objectid"        "land_use"        "land_use_c"     
-[33] "ruleid"          "shape__are"      "shape__len"      "geo_id"         
-[37] "geo_name"        "geometry"        "dist_to_topZone" "lon"            
-[41] "lat"            
 Total lots with permits: 537
 Lots with plex permits: 217
 Saved plot: text/permitLocationMinneapolis.png
@@ -420,6 +476,8 @@ Overall Propensity: 0.4041
 [25] "new_units"              "total_sqft"             "stories"               
 [28] "customer"              
 Permits after filtering: 5459
+Merging ATTOM lot size data...
+ATTOM address match rate: 45.7% (2497 of 5459)
 Reading layer `Zoning' from data source 
   `/Volumes/Micron2TB/Dropbox/dataRaw/portlandZoning/Zoning.shp' 
   using driver `ESRI Shapefile'
@@ -434,69 +492,59 @@ Fetching census tracts...
     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
     0.00    30.57   275.00   721.46   728.61 23213.46 
 Permits in residential zones: 3896
-[1] "TOPZONE?"
- [1] "ivr_number"             "application_number"     "status"                
- [4] "type"                   "description"            "work"                  
- [7] "address"                "state_id"               "property_id"           
-[10] "set_up"                 "under_review"           "issued"                
-[13] "final"                  "neighborhood"           "neighborhood_coalition"
-[16] "business_association"   "county"                 "ccb_number"            
-[19] "occupancy_group"        "construction_type"      "submitted_valuation"   
-[22] "final_valuation"        "new_units"              "total_sqft"            
-[25] "stories"                "customer"               "isPlex"                
-[28] "objectid"               "zone"                   "cmp"                   
-[31] "ovrly"                  "cmpovr"                 "pldist"                
-[34] "hist"                   "consv"                  "nrmp"                  
-[37] "uninc"                  "shape_leng"             "shape_area"            
-[40] "zone_desc"              "cmp_desc"               "ovrly_desc"            
-[43] "pldist_des"             "hist_desc"              "consv_desc"            
-[46] "nrmp_desc"              "maplabel"               "cmpdiffer"             
-[49] "cmpovr_des"             "geo_id"                 "geo_name"              
-[52] "geometry"               "dist_to_topZone"        "lon"                   
-[55] "lat"                   
-Total lots with permits: 2555
-Lots with plex permits: 415
+Permits missing lot size (kept for now): 1965 of 3896
+  Dropping 242 mandated lots in R7 (>= 14000 sqft)
+  Dropping 884 mandated lots in R5 (>= 10000 sqft)
+  Dropping 171 mandated lots in R2.5 (>= 5000 sqft)
+Permits after mandate filter: 2599 (dropped 1297)
+Total lots with permits: 1449
+Lots with plex permits: 376
 Saved plot: text/permitLocationPortland.png
 
 === PORTLAND LOT-LEVEL SUMMARY BY TRACT ===
-Total Active Lots: 2555 
-Total Infill Lots: 415 
-Overall Propensity: 0.1624 
+Total Active Lots: 1449 
+Total Infill Lots: 376 
+Overall Propensity: 0.2595 
          geo_id   zone           geo_name infill_lot_count total_lots_active
          <char> <char>             <char>            <int>             <int>
  1: 41051008903    R10 Census Tract 89.03                4                65
- 2: 41051000302     R5  Census Tract 3.02                5                50
- 3: 41051004003     R5 Census Tract 40.03               11                46
- 4: 41051006300    R20    Census Tract 63                0                40
- 5: 41051003904     R5 Census Tract 39.04                9                40
- 6: 41051003200     R5    Census Tract 32                2                39
- 7: 41051001900     R5    Census Tract 19                3                35
- 8: 41051008700     R5    Census Tract 87                1                35
- 9: 41051000402     R5  Census Tract 4.02                6                31
-10: 41051006701     R7 Census Tract 67.01                1                30
-11: 41051000102     R5  Census Tract 1.02                4                27
-12: 41051004103     R5 Census Tract 41.03               10                26
-13: 41051003000     R5    Census Tract 30                4                26
-14: 41051000401     R5  Census Tract 4.01                3                26
-15: 41051001601     R5 Census Tract 16.01                1                25
+ 2: 41051006300    R20    Census Tract 63                0                40
+ 3: 41051007001    R10 Census Tract 70.01                0                23
+ 4: 41051004003     R5 Census Tract 40.03                8                22
+ 5: 41051004102   R2.5 Census Tract 41.02                5                22
+ 6: 41051000402     R5  Census Tract 4.02                6                20
+ 7: 41051008700   R2.5    Census Tract 87                6                19
+ 8: 41051006402    R10 Census Tract 64.02                0                18
+ 9: 41051006801    R10 Census Tract 68.01                0                18
+10: 41051000501   R2.5  Census Tract 5.01                4                17
+11: 41051004103     R5 Census Tract 41.03                9                16
+12: 41051005800    R10    Census Tract 58                0                16
+13: 41051006900    R20    Census Tract 69                0                15
+14: 41051003602     R5 Census Tract 36.02                4                15
+15: 41051000502   R2.5  Census Tract 5.02                6                15
     total_units propensity
           <int>      <num>
  1:          75 0.06153846
- 2:          40 0.10000000
- 3:          75 0.23913043
- 4:          14 0.00000000
- 5:          50 0.22500000
- 6:          22 0.05128205
- 7:          12 0.08571429
- 8:          54 0.02857143
- 9:          70 0.19354839
-10:          21 0.03333333
-11:          16 0.14814815
-12:          71 0.38461538
-13:          53 0.15384615
-14:          22 0.11538462
-15:           9 0.04000000
+ 2:          14 0.00000000
+ 3:          12 0.00000000
+ 4:          50 0.36363636
+ 5:          54 0.22727273
+ 6:          61 0.30000000
+ 7:          43 0.31578947
+ 8:           7 0.00000000
+ 9:          11 0.00000000
+10:          40 0.23529412
+11:          57 0.56250000
+12:           4 0.00000000
+13:           1 0.00000000
+14:          31 0.26666667
+15:          39 0.40000000
+> 
+> # ==========================================
+> # CLEANUP
+> # ==========================================
+> dbDisconnect(con, shutdown = TRUE)
 > 
 > proc.time()
    user  system elapsed 
-  4.924   0.397   5.481 
+  6.446   0.314   6.035 

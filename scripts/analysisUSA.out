@@ -17,14 +17,15 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
-> # analysisUnified.R
-> # Analyze ppsf slope vs. infill propensity, pooled across cities
+> # analysisUSA.R
+> # Lot-level analysis of plex propensity
 > # Tom Davidoff
 > # Unified by Claude, April 2026
 > 
 > library(data.table)
 > library(fixest)
 > library(ggplot2)
+> library(marginaleffects)
 > 
 > # ==========================================
 > # CITY CONFIGURATIONS
@@ -32,17 +33,17 @@ Type 'q()' to quit R.
 > city_config <- list(
 +   portland = list(
 +     city_name     = "Portland",
-+     permits_file  = "~/DropboxExternal/dataProcessed/portland_tract_propensity.rds",
++     lots_file     = "~/DropboxExternal/dataProcessed/portland_lot_level.rds",
 +     slopes_file   = "~/DropboxExternal/dataProcessed/portland_slopes.rds",
-+     tract_start   = 7,   # substring position for numeric tract ID
++     tract_start   = 7,
 +     tract_end     = 11,
 +     zone_field    = "zone",
-+     core_zones    = c("R2.5", "R5"),       # main zones for focused regressions
-+     all_zones     = c("R2.5", "R5", "R7", "R10", "R20")
++     core_zones    = c("R2.5", "R5"),
++     all_zones     = c("R2.5", "R5", "R7", "R10")
 +   ),
 +   minneapolis = list(
 +     city_name     = "Minneapolis",
-+     permits_file  = "~/DropboxExternal/dataProcessed/minneapolis_tract_propensity.rds",
++     lots_file     = "~/DropboxExternal/dataProcessed/minneapolis_lot_level.rds",
 +     slopes_file   = "~/DropboxExternal/dataProcessed/minneapolis_slopes.rds",
 +     tract_start   = 6,
 +     tract_end     = 11,
@@ -55,7 +56,7 @@ Type 'q()' to quit R.
 > CITIES <- c("portland", "minneapolis")
 > 
 > # ==========================================
-> # MAIN LOOP
+> # LOAD & MERGE
 > # ==========================================
 > city_results <- list()
 > 
@@ -63,341 +64,340 @@ Type 'q()' to quit R.
 +   cfg <- city_config[[CITY]]
 +   message("\n========== ", cfg$city_name, " ==========\n")
 + 
-+   # ------------------------------------------
-+   # 1. LOAD
-+   # ------------------------------------------
-+   permits <- readRDS(cfg$permits_file)
++   # Load lot-level permits and tract-level slopes
++   dtLots  <- readRDS(cfg$lots_file)
 +   slopes  <- readRDS(cfg$slopes_file)
-+   setDT(permits); setDT(slopes)
++   setDT(dtLots); setDT(slopes)
 + 
-+   # ------------------------------------------
-+   # 2. MERGE ON TRACT
-+   # ------------------------------------------
-+   permits[, tractNumeric := as.numeric(substring(geo_id, cfg$tract_start, cfg$tract_end))]
-+   slopes[,  tractNumeric := as.numeric(tract)]
-+ 
-+   dt <- merge(permits, slopes, by = "tractNumeric")
++   # Merge on tract
++   dtLots[, tractNumeric := as.numeric(substring(geo_id, cfg$tract_start, cfg$tract_end))]
++   slopes[, tractNumeric := as.numeric(tract)]
++   dt <- merge(dtLots, slopes, by = "tractNumeric", all.x = TRUE)
 + 
 +   # Standardize zone column name
-+   if (cfg$zone_field != "zone") {
-+     dt[, zone := get(cfg$zone_field)]
++   zone_col <- cfg$zone_field
++   if (zone_col != "zone") {
++     dt[, zone := get(zone_col)]
 +   }
-+ 
 +   dt[, city := cfg$city_name]
 + 
-+   message("Merged rows: ", nrow(dt))
++   # Log lot size (0 and NA -> NA)
++   dt[, AreaLotSF := as.numeric(AreaLotSF)]
++   dt[AreaLotSF <= 0, AreaLotSF := NA_real_]
++   dt[, logLotSF := log(AreaLotSF)]
++ 
++   message("Lots with valid lot size: ", sum(!is.na(dt$logLotSF)), " of ", nrow(dt))
++ 
++   message("Total lots: ", nrow(dt))
++   message("Lots with lot size: ", sum(!is.na(dt$AreaLotSF)))
++   message("Lots with slopes: ", sum(!is.na(dt$slope)))
 + 
 +   # ------------------------------------------
-+   # 3. SUMMARY BY ZONE
++   # SUMMARY BY ZONE
 +   # ------------------------------------------
 +   cat("\n--- Zone summaries ---\n")
 +   print(dt[, .(
-+     mean_propensity = mean(propensity, na.rm = TRUE),
-+     mean_lppsf      = mean(lppsf, na.rm = TRUE),
-+     mean_sqft       = if ("medianSqft" %in% names(dt)) mean(medianSqft, na.rm = TRUE) else NA_real_,
-+     n_tracts        = .N
++     n_lots      = .N,
++     n_plex      = sum(isPlexLot),
++     plex_share  = mean(isPlexLot),
++     mean_lotSF  = mean(AreaLotSF, na.rm = TRUE),
++     med_lotSF   = median(AreaLotSF, na.rm = TRUE),
++     pct_has_lot = mean(!is.na(AreaLotSF)) * 100
 +   ), by = zone])
 + 
 +   # ------------------------------------------
-+   # 4. REGRESSIONS: POOLED ACROSS ZONES
++   # CITY-LEVEL LOGIT REGRESSIONS
 +   # ------------------------------------------
-+   cat("\n--- Pooled regressions ---\n")
++   cat("\n--- City-level logit regressions ---\n")
 + 
-+   dt[,logOdds:= log(propensity / (1 - propensity))]
-+   dt[abs(logOdds)>100, logOdds := NA_real_]
-+   print(summary(dt[,.(logOdds,is.na(logOdds))]))
-+   m1 <- lm(logOdds ~ lppsf * zone, dt[!is.na(logOdds)])
-+   m2 <- lm(logOdds ~ slope + lppsf + zone, dt[!is.na(logOdds)])
++   # Filter to zones of interest and non-missing covariates
++   dt_reg <- dt[zone %in% cfg$all_zones]
++   dt_reg_full <- dt_reg[!is.na(logLotSF) & !is.na(lppsf) & !is.na(slope)]
 + 
-+   # Print slope variants if available (Minneapolis has slopeGrossGross)
-+   if ("slopeGrossGross" %in% names(dt)) {
-+     m3 <- lm(logOdds ~ slopeGrossGross + lppsf + zone, dt[!is.na(logOdds)])
-+     print(summary(m3))
++   cat(sprintf("  Regression sample: %d lots (of %d in target zones)\n",
++               nrow(dt_reg_full), nrow(dt_reg)))
++   cat("  Zone distribution in regression sample:\n")
++   print(dt_reg_full[, .(n = .N, n_plex = sum(isPlexLot), plex_share = round(mean(isPlexLot), 3)), by = zone])
++ 
++   # Drop zones with no variation in outcome or too few obs
++   zone_ok <- dt_reg_full[, .(n = .N, plex_share = mean(isPlexLot)), by = zone]
++   zone_ok <- zone_ok[n >= 10 & plex_share > 0 & plex_share < 1, zone]
++   dt_reg_full <- dt_reg_full[zone %in% zone_ok]
++   dt_reg_full[, zone := factor(zone)]
++ 
++   if (length(zone_ok) < 2) {
++     cat("  Only one usable zone, dropping zone from regressions\n")
++     m2 <- glm(isPlexLot ~ logLotSF, family = binomial, data = dt_reg_full)
++     m5 <- glm(isPlexLot ~ logLotSF + slope + lppsf, family = binomial, data = dt_reg_full)
++   } else {
++     m2 <- glm(isPlexLot ~ zone + logLotSF, family = binomial, data = dt_reg_full)
++     m5 <- glm(isPlexLot ~ zone + logLotSF + slope + lppsf, family = binomial, data = dt_reg_full)
 +   }
 + 
-+   print(summary(m1))
++   if ("slopeGrossGross" %in% names(dt_reg_full) && length(zone_ok) >= 2) {
++     m6 <- glm(isPlexLot ~ zone + logLotSF + slopeGrossGross + lppsf, family = binomial, data = dt_reg_full)
++   }
++ 
++   cat("\n  Model summaries:\n")
 +   print(summary(m2))
++   print(summary(m5))
++   if (exists("m6")) { print(summary(m6)); rm(m6) }
++ 
++   # Average marginal effects for the main spec
++   cat("\n  Average marginal effects (M5):\n")
++   print(avg_slopes(m5))
 + 
 +   # ------------------------------------------
-+   # 5. REGRESSIONS: BY ZONE
++   # BY-ZONE LOGIT
 +   # ------------------------------------------
-+   cat("\n--- By-zone regressions ---\n")
-+   for (z in unique(dt[, zone])) {
-+     cat("\n  Zone:", z, "\n")
-+     dtz <- dt[zone == z]
-+     print(summary(lm(logOdds ~ lppsf, dtz[!is.na(logOdds)])))
-+     print(summary(lm(logOdds ~ slope + lppsf, dtz[!is.na(logOdds)])))
++   cat("\n--- By-zone logit regressions ---\n")
++   for (z in cfg$all_zones) {
++     dtz <- dt_reg[zone == z & !is.na(logLotSF)]
++     if (nrow(dtz) < 10) {
++       cat(sprintf("\n  Zone %s: only %d obs with lot size, skipping\n", z, nrow(dtz)))
++       next
++     }
++     cat(sprintf("\n  Zone: %s (n=%d, plex=%d)\n", z, nrow(dtz), sum(dtz$isPlexLot)))
++ 
++     mz1 <- glm(isPlexLot ~ logLotSF, family = binomial, data = dtz)
++     mz2 <- glm(isPlexLot ~ logLotSF + lppsf, family = binomial, data = dtz)
++     mz3 <- glm(isPlexLot ~ logLotSF + slope, family = binomial, data = dtz)
++ 
++     print(summary(mz2))
++     cat("  AME:\n")
++     print(avg_slopes(mz2))
 +   }
 + 
-+   # ------------------------------------------
-+   # 6. STORE FOR POOLING
-+   # ------------------------------------------
 +   city_results[[CITY]] <- dt
 + }
 
 ========== Portland ==========
 
-Merged rows: 293
+Lots with valid lot size: 495 of 1449
+Total lots: 1449
+Lots with lot size: 495
+Lots with slopes: 1435
 
 --- Zone summaries ---
-     zone mean_propensity  mean_lppsf mean_sqft n_tracts
-   <char>           <num>       <num>     <num>    <int>
-1:     R5      0.12998808 -0.11107290        NA      115
-2:   R2.5      0.34704200 -0.07763326        NA       83
-3:     R7      0.08608580 -0.27666661        NA       57
-4:    R10      0.07690018 -0.20294462        NA       28
-5:    R20      0.00000000 -0.01512799        NA       10
+     zone n_lots n_plex plex_share mean_lotSF med_lotSF pct_has_lot
+   <char>  <int>  <int>      <num>      <num>     <num>       <num>
+1:   R2.5    420    179 0.42619048   3846.377    3316.5    34.76190
+2:     R5    503    156 0.31013917        NaN        NA     0.00000
+3:     R7    175     30 0.17142857  13058.839   11355.5    32.00000
+4:    R10    261     11 0.04214559  14123.946   10141.5    85.05747
+5:    R20     90      0 0.00000000  41216.028   30000.0    78.88889
 
---- Pooled regressions ---
-    logOdds            V2         
- Min.   :-3.5264   Mode :logical  
- 1st Qu.:-1.7705   FALSE:147      
- Median :-1.0986   TRUE :146      
- Mean   :-1.1673                  
- 3rd Qu.:-0.5596                  
- Max.   : 1.3863                  
- NA's   :146                      
+--- City-level logit regressions ---
+  Regression sample: 420 lots (of 1359 in target zones)
+  Zone distribution in regression sample:
+     zone     n n_plex plex_share
+   <char> <int>  <int>      <num>
+1:   R2.5   142     36      0.254
+2:     R7    56      1      0.018
+3:    R10   222      3      0.014
+
+  Model summaries:
 
 Call:
-lm(formula = logOdds ~ slopeGrossGross + lppsf + zone, data = dt[!is.na(logOdds)])
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--2.11322 -0.49086 -0.02154  0.51643  2.39820 
+glm(formula = isPlexLot ~ zone + logLotSF, family = binomial, 
+    data = dt_reg_full)
 
 Coefficients:
-                Estimate Std. Error t value Pr(>|t|)    
-(Intercept)     -1.63033    0.40712  -4.005 0.000100 ***
-slopeGrossGross -0.18571    0.31507  -0.589 0.556527    
-lppsf           -1.00468    0.28497  -3.526 0.000572 ***
-zoneR2.5         1.02140    0.38533   2.651 0.008958 ** 
-zoneR5           0.07001    0.37914   0.185 0.853777    
-zoneR7           0.10635    0.41106   0.259 0.796232    
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  -0.8972     4.0671  -0.221 0.825403    
+zoneR2.5      2.7978     0.7753   3.609 0.000308 ***
+zoneR7        0.3271     1.1669   0.280 0.779228    
+logLotSF     -0.3669     0.4380  -0.838 0.402175    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.8164 on 140 degrees of freedom
-  (1 observation deleted due to missingness)
-Multiple R-squared:  0.2827,	Adjusted R-squared:  0.2571 
-F-statistic: 11.04 on 5 and 140 DF,  p-value: 5.678e-09
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 264.17  on 419  degrees of freedom
+Residual deviance: 201.87  on 416  degrees of freedom
+AIC: 209.87
+
+Number of Fisher Scoring iterations: 7
 
 
 Call:
-lm(formula = logOdds ~ lppsf * zone, data = dt[!is.na(logOdds)])
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--2.26652 -0.47585 -0.08182  0.54172  1.84822 
+glm(formula = isPlexLot ~ zone + logLotSF + slope + lppsf, family = binomial, 
+    data = dt_reg_full)
 
 Coefficients:
-               Estimate Std. Error t value Pr(>|t|)    
-(Intercept)    -0.72745    0.47517  -1.531 0.128077    
-lppsf           3.73513    1.52180   2.454 0.015356 *  
-zoneR2.5        0.07718    0.48852   0.158 0.874699    
-zoneR5         -0.99058    0.48637  -2.037 0.043593 *  
-zoneR7         -1.02867    0.55219  -1.863 0.064607 .  
-lppsf:zoneR2.5 -4.27135    1.58851  -2.689 0.008052 ** 
-lppsf:zoneR5   -5.31434    1.56957  -3.386 0.000924 ***
-lppsf:zoneR7   -5.22158    1.68684  -3.095 0.002380 ** 
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)   0.2994     4.1378   0.072 0.942313    
+zoneR2.5      2.8961     0.8213   3.526 0.000421 ***
+zoneR7        0.3733     1.1880   0.314 0.753347    
+logLotSF     -0.4495     0.4417  -1.018 0.308775    
+slope        -1.2693     0.4802  -2.643 0.008208 ** 
+lppsf        -0.1293     0.7813  -0.165 0.868555    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.786 on 138 degrees of freedom
-  (1 observation deleted due to missingness)
-Multiple R-squared:  0.3446,	Adjusted R-squared:  0.3114 
-F-statistic: 10.37 on 7 and 138 DF,  p-value: 2.056e-10
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 264.17  on 419  degrees of freedom
+Residual deviance: 195.54  on 414  degrees of freedom
+AIC: 207.54
+
+Number of Fisher Scoring iterations: 7
 
 
 Call:
-lm(formula = logOdds ~ slope + lppsf + zone, data = dt[!is.na(logOdds)])
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--2.18146 -0.52953 -0.04288  0.56324  2.45936 
+glm(formula = isPlexLot ~ zone + logLotSF + slopeGrossGross + 
+    lppsf, family = binomial, data = dt_reg_full)
 
 Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept) -1.75484    0.39065  -4.492 1.46e-05 ***
-slope        0.05191    0.26877   0.193  0.84714    
-lppsf       -1.03942    0.27883  -3.728  0.00028 ***
-zoneR2.5     1.04121    0.38420   2.710  0.00757 ** 
-zoneR5       0.07118    0.37959   0.188  0.85154    
-zoneR7       0.10605    0.41154   0.258  0.79702    
+                Estimate Std. Error z value Pr(>|z|)    
+(Intercept)      -0.8252     4.0815  -0.202 0.839773    
+zoneR2.5          2.8639     0.7998   3.581 0.000342 ***
+zoneR7            0.4041     1.1795   0.343 0.731927    
+logLotSF         -0.3633     0.4371  -0.831 0.405849    
+slopeGrossGross  -0.4530     0.3503  -1.293 0.195979    
+lppsf            -0.2059     0.8020  -0.257 0.797361    
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
-Residual standard error: 0.8173 on 140 degrees of freedom
-  (1 observation deleted due to missingness)
-Multiple R-squared:  0.2811,	Adjusted R-squared:  0.2554 
-F-statistic: 10.95 on 5 and 140 DF,  p-value: 6.576e-09
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 264.17  on 419  degrees of freedom
+Residual deviance: 200.35  on 414  degrees of freedom
+AIC: 212.35
+
+Number of Fisher Scoring iterations: 7
 
 
---- By-zone regressions ---
+  Average marginal effects (M5):
 
-  Zone: R5 
+     Term   Contrast Estimate Std. Error      z Pr(>|z|)   S   2.5 %  97.5 %
+ logLotSF dY/dX      -0.03205     0.0313 -1.022  0.30659 1.7 -0.0935  0.0294
+ lppsf    dY/dX      -0.00922     0.0557 -0.165  0.86862 0.2 -0.1185  0.1000
+ slope    dY/dX      -0.09050     0.0334 -2.708  0.00677 7.2 -0.1560 -0.0250
+ zone     R2.5 - R10  0.18399     0.0584  3.150  0.00163 9.3  0.0695  0.2984
+ zone     R7 - R10    0.00647     0.0227  0.285  0.77589 0.4 -0.0381  0.0510
 
-Call:
-lm(formula = logOdds ~ lppsf, data = dtz[!is.na(logOdds)])
+Type: response
 
-Residuals:
-     Min       1Q   Median       3Q      Max 
--2.26652 -0.42815 -0.05185  0.45474  1.54206 
 
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept) -1.71803    0.09151  -18.77  < 2e-16 ***
-lppsf       -1.57921    0.33888   -4.66 1.55e-05 ***
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+--- By-zone logit regressions ---
 
-Residual standard error: 0.6931 on 67 degrees of freedom
-Multiple R-squared:  0.2448,	Adjusted R-squared:  0.2335 
-F-statistic: 21.72 on 1 and 67 DF,  p-value: 1.551e-05
-
+  Zone: R2.5 (n=146, plex=37)
 
 Call:
-lm(formula = logOdds ~ slope + lppsf, data = dtz[!is.na(logOdds)])
-
-Residuals:
-     Min       1Q   Median       3Q      Max 
--2.25155 -0.44829 -0.04975  0.44338  1.51789 
+glm(formula = isPlexLot ~ logLotSF + lppsf, family = binomial, 
+    data = dtz)
 
 Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept) -1.68518    0.21263  -7.925 3.60e-11 ***
-slope       -0.06714    0.39166  -0.171    0.864    
-lppsf       -1.58021    0.34141  -4.629 1.78e-05 ***
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+            Estimate Std. Error z value Pr(>|z|)
+(Intercept)  0.97862    3.83734   0.255    0.799
+logLotSF    -0.25209    0.47178  -0.534    0.593
+lppsf        0.09782    0.89114   0.110    0.913
 
-Residual standard error: 0.6982 on 66 degrees of freedom
-Multiple R-squared:  0.2451,	Adjusted R-squared:  0.2223 
-F-statistic: 10.72 on 2 and 66 DF,  p-value: 9.33e-05
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 160.79  on 141  degrees of freedom
+Residual deviance: 160.49  on 139  degrees of freedom
+  (4 observations deleted due to missingness)
+AIC: 166.49
+
+Number of Fisher Scoring iterations: 4
+
+  AME:
+
+     Term Estimate Std. Error      z Pr(>|z|)   S  2.5 % 97.5 %
+ logLotSF  -0.0476     0.0889 -0.536    0.592 0.8 -0.222  0.127
+ lppsf      0.0185     0.1683  0.110    0.913 0.1 -0.311  0.348
+
+Type: response
+Comparison: dY/dX
 
 
-  Zone: R2.5 
+  Zone R5: only 0 obs with lot size, skipping
+
+  Zone: R7 (n=56, plex=1)
 
 Call:
-lm(formula = logOdds ~ lppsf, data = dtz[!is.na(logOdds)])
-
-Residuals:
-    Min      1Q  Median      3Q     Max 
--1.2930 -0.4959 -0.2018  0.5495  1.7619 
+glm(formula = isPlexLot ~ logLotSF + lppsf, family = binomial, 
+    data = dtz)
 
 Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  -0.6503     0.1124  -5.787 4.41e-07 ***
-lppsf        -0.5362     0.4511  -1.189     0.24    
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+            Estimate Std. Error z value Pr(>|z|)
+(Intercept)  -29.970     62.450  -0.480    0.631
+logLotSF       2.099      6.015   0.349    0.727
+lppsf        -13.733     16.881  -0.814    0.416
 
-Residual standard error: 0.7785 on 51 degrees of freedom
-  (1 observation deleted due to missingness)
-Multiple R-squared:  0.02695,	Adjusted R-squared:  0.007875 
-F-statistic: 1.413 on 1 and 51 DF,  p-value: 0.2401
+(Dispersion parameter for binomial family taken to be 1)
 
+    Null deviance: 10.0327  on 55  degrees of freedom
+Residual deviance:  7.2723  on 53  degrees of freedom
+AIC: 13.272
+
+Number of Fisher Scoring iterations: 10
+
+  AME:
+
+     Term Estimate Std. Error      z Pr(>|z|)   S  2.5 % 97.5 %
+ logLotSF   0.0343      0.102  0.338    0.735 0.4 -0.165  0.233
+ lppsf     -0.2243      0.324 -0.693    0.488 1.0 -0.859  0.410
+
+Type: response
+Comparison: dY/dX
+
+
+  Zone: R10 (n=222, plex=3)
 
 Call:
-lm(formula = logOdds ~ slope + lppsf, data = dtz[!is.na(logOdds)])
-
-Residuals:
-    Min      1Q  Median      3Q     Max 
--1.2403 -0.5559 -0.1467  0.4894  1.8166 
+glm(formula = isPlexLot ~ logLotSF + lppsf, family = binomial, 
+    data = dtz)
 
 Coefficients:
-            Estimate Std. Error t value Pr(>|t|)  
-(Intercept)  -0.5413     0.2115  -2.559   0.0136 *
-slope        -0.2315     0.3800  -0.609   0.5451  
-lppsf        -0.5625     0.4560  -1.234   0.2231  
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+            Estimate Std. Error z value Pr(>|z|)
+(Intercept)   1.6833    12.4263   0.135    0.892
+logLotSF     -0.6895     1.3352  -0.516    0.606
+lppsf        -1.2016     2.1682  -0.554    0.579
 
-Residual standard error: 0.7833 on 50 degrees of freedom
-  (1 observation deleted due to missingness)
-Multiple R-squared:  0.03413,	Adjusted R-squared:  -0.004509 
-F-statistic: 0.8833 on 2 and 50 DF,  p-value: 0.4198
+(Dispersion parameter for binomial family taken to be 1)
 
+    Null deviance: 31.784  on 221  degrees of freedom
+Residual deviance: 30.660  on 219  degrees of freedom
+AIC: 36.66
 
-  Zone: R7 
+Number of Fisher Scoring iterations: 7
 
-Call:
-lm(formula = logOdds ~ lppsf, data = dtz[!is.na(logOdds)])
+  AME:
 
-Residuals:
-    Min      1Q  Median      3Q     Max 
--1.7145 -0.5800  0.1870  0.7473  1.8482 
+     Term Estimate Std. Error      z Pr(>|z|)   S   2.5 % 97.5 %
+ logLotSF -0.00914     0.0184 -0.497    0.619 0.7 -0.0452 0.0269
+ lppsf    -0.01593     0.0300 -0.531    0.595 0.7 -0.0747 0.0429
 
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  -1.7561     0.3771  -4.657 0.000226 ***
-lppsf        -1.4865     0.9756  -1.524 0.145974    
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-Residual standard error: 1.054 on 17 degrees of freedom
-Multiple R-squared:  0.1202,	Adjusted R-squared:  0.0684 
-F-statistic: 2.322 on 1 and 17 DF,  p-value: 0.146
+Type: response
+Comparison: dY/dX
 
 
-Call:
-lm(formula = logOdds ~ slope + lppsf, data = dtz[!is.na(logOdds)])
+========== Minneapolis ==========
 
-Residuals:
-    Min      1Q  Median      3Q     Max 
--1.4572 -0.7395  0.0379  0.6652  1.6562 
+Lots with valid lot size: 0 of 537
+Total lots: 537
+Lots with lot size: 0
+Lots with slopes: 521
 
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)    
-(Intercept)  -2.3711     0.5577  -4.251  0.00061 ***
-slope         1.1571     0.7931   1.459  0.16393    
-lppsf        -1.6579     0.9520  -1.741  0.10079    
----
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+--- Zone summaries ---
+     zone n_lots n_plex plex_share mean_lotSF med_lotSF pct_has_lot
+   <char>  <int>  <int>      <num>      <num>     <num>       <num>
+1:    UN1    189     43  0.2275132        NaN        NA           0
+2:    UN2    298    134  0.4496644        NaN        NA           0
+3:    UN3     50     40  0.8000000        NaN        NA           0
 
-Residual standard error: 1.02 on 16 degrees of freedom
-Multiple R-squared:  0.2235,	Adjusted R-squared:  0.1264 
-F-statistic: 2.302 on 2 and 16 DF,  p-value: 0.1322
-
-
-  Zone: R10 
-
-Call:
-lm(formula = logOdds ~ lppsf, data = dtz[!is.na(logOdds)])
-
-Residuals:
-       1        2        3        4        5 
- 1.30809 -0.74936 -0.92615 -0.02476  0.39218 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)  -0.7274     0.6326  -1.150    0.334
-lppsf         3.7351     2.0259   1.844    0.162
-
-Residual standard error: 1.046 on 3 degrees of freedom
-Multiple R-squared:  0.5312,	Adjusted R-squared:  0.3749 
-F-statistic: 3.399 on 1 and 3 DF,  p-value: 0.1624
-
-
-Call:
-lm(formula = logOdds ~ slope + lppsf, data = dtz[!is.na(logOdds)])
-
-Residuals:
-       1        2        3        4        5 
- 0.54601  0.08784 -0.86030  0.47638 -0.24993 
-
-Coefficients:
-            Estimate Std. Error t value Pr(>|t|)
-(Intercept)    1.900      1.615   1.176    0.360
-slope         -4.971      2.909  -1.709    0.230
-lppsf          5.171      1.791   2.887    0.102
-
-Residual standard error: 0.8171 on 2 degrees of freedom
-Multiple R-squared:  0.8094,	Adjusted R-squared:  0.6188 
-F-statistic: 4.247 on 2 and 2 DF,  p-value: 0.1906
-
-
-  Zone: R20 
-Error in lm.fit(x, y, offset = offset, singular.ok = singular.ok, ...) : 
-  0 (non-NA) cases
-Calls: print -> summary -> lm -> lm.fit
+--- City-level logit regressions ---
+  Regression sample: 0 lots (of 537 in target zones)
+  Zone distribution in regression sample:
+Empty data.table (0 rows and 4 cols): zone,n,n_plex,plex_share
+  Only one usable zone, dropping zone from regressions
+Error in family$linkfun(mustart) : 
+  Argument mu must be a nonempty numeric vector
+Calls: glm ... eval -> eval -> glm.fit -> %||% -> <Anonymous> -> .Call
+In addition: Warning messages:
+1: glm.fit: algorithm did not converge 
+2: glm.fit: fitted probabilities numerically 0 or 1 occurred 
 Execution halted

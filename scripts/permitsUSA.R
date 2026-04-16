@@ -1,4 +1,4 @@
-# permitsUnified.R
+# permitsUSA.R
 # Unified permit analysis for Portland and Minneapolis
 # Tom Davidoff
 # Consolidation by Claude, April 2026
@@ -7,6 +7,7 @@ library(data.table)
 library(sf)
 library(ggplot2)
 library(tigris)
+library(duckdb)
 
 options(timeout = 600)
 options(tigris_use_cache = TRUE)
@@ -17,6 +18,11 @@ options(tigris_use_cache = TRUE)
 GEOGRAPHY <- "tract"
 CITIES <- c("minneapolis", "portland")  # run both, or subset
 # ==========================================
+
+# ==========================================
+# DUCKDB CONNECTION (for ATTOM parquet reads)
+# ==========================================
+con <- dbConnect(duckdb())
 
 # ==========================================
 # CITY CONFIGURATIONS
@@ -31,7 +37,7 @@ city_config <- list(
     # --- permit filters ---
     filter_permits = function(dt) {
       dt <- dt[year >= 2020 & year <= 2025]
-      qmin <- quantile(dt[res_permit=="NU", permit_val], 0.2, na.rm = TRUE) # more than .1 as would be single detached
+      qmin <- quantile(dt[res_permit=="NU", permit_val], 0.2, na.rm = TRUE)
       dt <- dt[res_permit == "NU" | permit_val >= qmin]
       dt <- dt[ctu_name == "Minneapolis"]
       dt <- dt[(co_code == "053") | (co_code == 53)]
@@ -58,7 +64,11 @@ city_config <- list(
     # --- geography ---
     tract_state  = "MN",
     tract_county = "Hennepin",
-    zip_pattern  = "^55[34]"
+    zip_pattern  = "^55[34]",
+    # --- ATTOM lot size (not needed for Minneapolis) ---
+    attom_parquet = NULL,
+    attom_city_filter = NULL,
+    mandate_thresholds = NULL
   ),
 
   portland = list(
@@ -84,7 +94,7 @@ city_config <- list(
     },
     # --- zoning ---
     zoning_file  = "~/DropboxExternal/dataRaw/portlandZoning",
-    zoning_is_dir = TRUE,  # Portland zoning is a directory; grab the .shp inside
+    zoning_is_dir = TRUE,
     zone_field   = "zone",
     zone_filter  = "^R2.5|^R5|^R7|^R10|^R20",
     zone_plot_values = c("R2.5", "R5", "R7", "R10", "R20"),
@@ -93,12 +103,23 @@ city_config <- list(
                       "R7" = "lightgreen", "R10" = "wheat", "R20" = "lavender"),
     # --- parcel id ---
     parcel_id    = "property_id",
-    # --- units field (Portland uses total_sqft instead of units) ---
+    # --- units field ---
     units_field  = "new_units",
     # --- geography ---
     tract_state  = "OR",
     tract_county = "Multnomah",
-    zip_pattern  = "^972"
+    zip_pattern  = "^972",
+    # --- ATTOM lot size ---
+    attom_parquet = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_OR.parquet",
+    attom_city_filter = "PORTLAND",
+    attom_address_field = "PropertyAddressFull",
+    permit_address_field = "address",  # Portland permit address column (after tolower)
+    # --- mandate thresholds: lots >= this size MUST build multiplex, so drop them ---
+    mandate_thresholds = list(
+      "R7"  = 14000,
+      "R5"  = 10000,
+      "R2.5" = 5000
+    )
   )
 )
 
@@ -139,7 +160,32 @@ for (CITY in CITIES) {
   message("Permits after filtering: ", nrow(dtPermit))
 
   # ------------------------------------------
-  # 4. CONVERT TO SF
+  # 4. MERGE ATTOM LOT SIZE (if configured)
+  # ------------------------------------------
+  if (!is.null(cfg$attom_parquet)) {
+    message("Merging ATTOM lot size data...")
+    dtAttom <- as.data.table(dbGetQuery(con, sprintf(
+      "SELECT PropertyAddressFull, AreaLotSF FROM read_parquet('%s') WHERE PropertyAddressCity = '%s'",
+      cfg$attom_parquet, cfg$attom_city_filter
+    )))
+    dtAttom[, addrClean := toupper(trimws(gsub("\\s+", " ", PropertyAddressFull)))]
+    # deduplicate ATTOM to one row per address (take first non-NA lot size)
+    dtAttom <- dtAttom[!is.na(AreaLotSF)][order(-AreaLotSF)]
+    dtAttom <- dtAttom[!duplicated(addrClean)]
+
+    dtPermit[, addrClean := toupper(trimws(gsub("\\s+", " ", get(cfg$permit_address_field))))]
+    dtPermit <- merge(dtPermit, dtAttom[, .(addrClean, AreaLotSF)],
+                      by = "addrClean", all.x = TRUE)
+
+    match_rate <- mean(!is.na(dtPermit$AreaLotSF))
+    message(sprintf("ATTOM address match rate: %.1f%% (%d of %d)",
+                    match_rate * 100,
+                    sum(!is.na(dtPermit$AreaLotSF)),
+                    nrow(dtPermit)))
+  }
+
+  # ------------------------------------------
+  # 5. CONVERT TO SF
   # ------------------------------------------
   if (cfg$permit_type == "csv") {
     sfPermit <- st_as_sf(dtPermit,
@@ -151,7 +197,7 @@ for (CITY in CITIES) {
   }
 
   # ------------------------------------------
-  # 5. READ ZONING & SPATIAL JOIN
+  # 6. READ ZONING & SPATIAL JOIN
   # ------------------------------------------
   if (isTRUE(cfg$zoning_is_dir)) {
     shp_path <- list.files(cfg$zoning_file, pattern = "\\.shp$", full.names = TRUE)
@@ -167,7 +213,7 @@ for (CITY in CITIES) {
   sfPermitZoned <- st_join(sfPermit, sfZoning)
 
   # ------------------------------------------
-  # 6. GEOGRAPHY JOIN (TRACT or ZIP)
+  # 7. GEOGRAPHY JOIN (TRACT or ZIP)
   # ------------------------------------------
   if (GEOGRAPHY == "tract") {
     message("Fetching census tracts...")
@@ -188,7 +234,6 @@ for (CITY in CITIES) {
     sfZips <- sfZips[grepl(cfg$zip_pattern, sfZips$ZCTA5CE20), ]
     sfZips <- st_transform(sfZips, cfg$crs)
     sfFinal <- st_join(sfPermitZoned, sfZips[, c("ZCTA5CE20")])
-    # calculate distance to nearest topZoned area for each permit
     sfTopZone <- st_union(sfZoning[sfZoning[[cfg$zone_field]] == cfg$topZone, ])
     sfFinal$dist_to_topZone <- as.numeric(st_distance(sfFinal, sfTopZone))
     print("TOPZONE")
@@ -199,32 +244,54 @@ for (CITY in CITIES) {
   }
 
   # ------------------------------------------
-  # 7. FILTER TO RESIDENTIAL ZONES
+  # 8. FILTER TO RESIDENTIAL ZONES
   # ------------------------------------------
   zone_col <- cfg$zone_field
   dtAnalysis <- dtFinal[grepl(cfg$zone_filter, get(zone_col), ignore.case = TRUE)]
   message("Permits in residential zones: ", nrow(dtAnalysis))
 
   # ------------------------------------------
-  # 8. EXTRACT COORDINATES & COLLAPSE TO LOTS
+  # 8b. DROP MANDATED MULTIPLEX LOTS (Portland)
+  #     Lots above zone-specific thresholds MUST
+  #     build multiplex, so no choice to estimate.
+  # ------------------------------------------
+  if (!is.null(cfg$mandate_thresholds)) {
+    n_before <- nrow(dtAnalysis)
+    n_no_lotsize <- sum(is.na(dtAnalysis$AreaLotSF))
+    message(sprintf("Permits missing lot size (kept for now): %d of %d", n_no_lotsize, n_before))
+
+    for (z in names(cfg$mandate_thresholds)) {
+      thresh <- cfg$mandate_thresholds[[z]]
+      mask <- dtAnalysis[[zone_col]] == z & !is.na(dtAnalysis$AreaLotSF) & dtAnalysis$AreaLotSF >= thresh
+      n_drop <- sum(mask)
+      message(sprintf("  Dropping %d mandated lots in %s (>= %d sqft)", n_drop, z, thresh))
+      dtAnalysis <- dtAnalysis[!mask]
+    }
+    message(sprintf("Permits after mandate filter: %d (dropped %d)", nrow(dtAnalysis), n_before - nrow(dtAnalysis)))
+  }
+
+  # ------------------------------------------
+  # 9. EXTRACT COORDINATES & COLLAPSE TO LOTS
   # ------------------------------------------
   dtAnalysis[, `:=`(
     lon = st_coordinates(geometry)[, 1],
     lat = st_coordinates(geometry)[, 2]
   )]
-  print("TOPZONE?")
-  print(names(dtAnalysis))
-
 
   pid <- cfg$parcel_id
+  lot_vars <- c(pid, "geo_id", zone_col, "geo_name")
+
+  if (!"AreaLotSF" %in% names(dtAnalysis)) dtAnalysis[, AreaLotSF := NA_real_]
+
   dtLots <- dtAnalysis[!is.na(geo_id) & !is.na(get(pid)), .(
     isPlexLot    = any(isPlex, na.rm = TRUE),
     total_units  = sum(get(cfg$units_field), na.rm = TRUE),
-    distTopZone = min(dist_to_topZone, na.rm = TRUE),
+    distTopZone  = min(dist_to_topZone, na.rm = TRUE),
+    AreaLotSF    = AreaLotSF[1],
     permit_count = .N,
     lon = lon[1],
     lat = lat[1]
-  ), by = c(pid, "geo_id", zone_col, "geo_name")]
+  ), by = lot_vars]
   saveRDS(dtLots, sprintf("~/DropboxExternal/dataProcessed/%s_lot_level.rds", CITY))
 
   sfLots <- st_as_sf(dtLots, coords = c("lon", "lat"), crs = cfg$crs)
@@ -233,7 +300,7 @@ for (CITY in CITIES) {
   message("Lots with plex permits: ", sum(dtLots$isPlexLot))
 
   # ------------------------------------------
-  # 9. PLOT
+  # 10. PLOT
   # ------------------------------------------
   sfZoningRes <- sfZoning[sfZoning[[zone_col]] %in% cfg$zone_plot_values, ]
 
@@ -269,7 +336,7 @@ for (CITY in CITIES) {
   message("Saved plot: ", plot_file)
 
   # ------------------------------------------
-  # 10. GEOGRAPHY-LEVEL SUMMARY
+  # 11. GEOGRAPHY-LEVEL SUMMARY
   # ------------------------------------------
   dtGeo <- dtLots[, .(
     infill_lot_count  = sum(isPlexLot, na.rm = TRUE),
@@ -296,3 +363,8 @@ for (CITY in CITIES) {
   results[[CITY]] <- list(dtLots = dtLots, dtGeo = dtGeo,
                           sfLots = sfLots, sfZoning = sfZoning)
 }
+
+# ==========================================
+# CLEANUP
+# ==========================================
+dbDisconnect(con, shutdown = TRUE)
