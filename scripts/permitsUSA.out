@@ -48,6 +48,50 @@ Loading required package: DBI
 > con <- dbConnect(duckdb())
 > 
 > # ==========================================
+> # ADDRESS NORMALIZATION
+> # Standardizes directional placement, type
+> # abbreviations, and strips unit numbers
+> # ==========================================
+> normalize_address <- function(addr) {
++   x <- toupper(trimws(addr))
++   x <- gsub("\\s+", " ", x)
++ 
++   # Strip unit/apt suffixes: "123 MAIN ST APT 4" -> "123 MAIN ST"
++   x <- sub("\\s+(APT|UNIT|STE|#|SUITE)\\s*.*$", "", x)
++ 
++   # Expand common abbreviations to canonical short forms
++   x <- gsub("\\bAVENUE\\b", "AVE", x)
++   x <- gsub("\\bPLACE\\b", "PL", x)
++   x <- gsub("\\bSTREET\\b", "ST", x)
++   x <- gsub("\\bDRIVE\\b", "DR", x)
++   x <- gsub("\\bLANE\\b", "LN", x)
++   x <- gsub("\\bCOURT\\b", "CT", x)
++   x <- gsub("\\bBOULEVARD\\b", "BLVD", x)
++   x <- gsub("\\bPARKWAY\\b", "PKWY", x)
++   x <- gsub("\\bTERRACE\\b", "TER", x)
++   x <- gsub("\\bCIRCLE\\b", "CIR", x)
++   x <- gsub("\\bROAD\\b", "RD", x)
++ 
++   # Normalize directional placement:
++   # Move post-number directionals (e.g. "1000 NE MAIN ST") to end ("1000 MAIN ST NE")
++   # Move post-type directionals stay as-is (already canonical)
++   # Pattern: number + directional + street -> number + street + directional
++   dirs <- "\\b(N|S|E|W|NE|NW|SE|SW)\\b"
++   # Capture: (number) (directional) (rest)
++   # Only if directional is right after the house number
++   x <- sub("^(\\d+)\\s+(N|S|E|W|NE|NW|SE|SW)\\s+(.+)$", "\\1 \\3 \\2", x)
++ 
++   # Also handle directional before type at end: "116 E 22ND ST" -> need to move E to end
++   # Pattern: (number) (dir) (ordinal/name) (type) -> (number) (ordinal/name) (type) (dir)
++   x <- sub("^(\\d+)\\s+(N|S|E|W|NE|NW|SE|SW)\\s+(\\S+)\\s+(ST|AVE|DR|LN|PL|CT|WAY|BLVD|RD|TER|CIR|PKWY)$",
++            "\\1 \\3 \\4 \\2", x)
++ 
++   # Clean up any double spaces from transformations
++   x <- gsub("\\s+", " ", trimws(x))
++   x
++ }
+> 
+> # ==========================================
 > # CITY CONFIGURATIONS
 > # ==========================================
 > city_config <- list(
@@ -88,9 +132,11 @@ Loading required package: DBI
 +     tract_state  = "MN",
 +     tract_county = "Hennepin",
 +     zip_pattern  = "^55[34]",
-+     # --- ATTOM lot size (not needed for Minneapolis) ---
-+     attom_parquet = NULL,
-+     attom_city_filter = NULL,
++     # --- ATTOM lot size (assessor history — better address matching for Minneapolis) ---
++     ah_parquet = "~/DropboxExternal/dataProcessed/AH_state_MN.parquet",
++     contemp_parquet = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_MN.parquet",
++     attom_city_filter = "MINNEAPOLIS",
++     permit_address_field = "address",
 +     mandate_thresholds = NULL
 +   ),
 + 
@@ -132,12 +178,12 @@ Loading required package: DBI
 +     tract_state  = "OR",
 +     tract_county = "Multnomah",
 +     zip_pattern  = "^972",
-+     # --- ATTOM lot size ---
-+     attom_parquet = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_OR.parquet",
++     # --- ATTOM lot size (4-step cascade: AH address → AH normalized → contemp→AH ID → contemp latlon→AH) ---
++     ah_parquet = "~/DropboxExternal/dataProcessed/AH_state_OR.parquet",
++     contemp_parquet = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_OR.parquet",
 +     attom_city_filter = "PORTLAND",
-+     attom_address_field = "PropertyAddressFull",
-+     permit_address_field = "address",  # Portland permit address column (after tolower)
-+     # --- mandate thresholds: lots >= this size MUST build multiplex, so drop them ---
++     permit_address_field = "address",
++     # --- mandate thresholds: lots >= this size MUST build multiplex, flag them ---
 +     mandate_thresholds = list(
 +       "R7"  = 14000,
 +       "R5"  = 10000,
@@ -183,28 +229,211 @@ Loading required package: DBI
 +   message("Permits after filtering: ", nrow(dtPermit))
 + 
 +   # ------------------------------------------
-+   # 4. MERGE ATTOM LOT SIZE (if configured)
++   # 4. MERGE ATTOM LOT SIZE — 4-STEP CASCADE
++   #    Goal: get pre-split lot size from AH file.
++   #    Step 1: AH raw address match
++   #    Step 2: AH normalized address match
++   #    Step 3: Permit→contemporary(address)→ATTOM ID→AH
++   #    Step 4: Permit→contemporary(lat/lon nearest)→ATTOM ID→AH
 +   # ------------------------------------------
-+   if (!is.null(cfg$attom_parquet)) {
-+     message("Merging ATTOM lot size data...")
-+     dtAttom <- as.data.table(dbGetQuery(con, sprintf(
-+       "SELECT PropertyAddressFull, AreaLotSF FROM read_parquet('%s') WHERE PropertyAddressCity = '%s'",
-+       cfg$attom_parquet, cfg$attom_city_filter
++   if (!is.null(cfg$ah_parquet)) {
++     message("=== 4-step ATTOM lot size cascade ===")
++ 
++     # --- Load AH: earliest year per ATTOM ID ---
++     message("Loading AH file...")
++     dtAH <- as.data.table(dbGetQuery(con, sprintf(
++       "SELECT SA_SITE_HOUSE_NBR, SA_SITE_DIR, SA_SITE_STREET_NAME,
++               SA_SITE_SUF, SA_SITE_POST_DIR, SA_LOTSIZE,
++               AH_HISTORY_YR, \"[ATTOM ID]\"
++        FROM read_parquet('%s')
++        WHERE SA_SITE_CITY = '%s'",
++       cfg$ah_parquet, cfg$attom_city_filter
 +     )))
-+     dtAttom[, addrClean := toupper(trimws(gsub("\\s+", " ", PropertyAddressFull)))]
-+     # deduplicate ATTOM to one row per address (take first non-NA lot size)
-+     dtAttom <- dtAttom[!is.na(AreaLotSF)][order(-AreaLotSF)]
-+     dtAttom <- dtAttom[!duplicated(addrClean)]
++     dtAH[, SA_LOTSIZE := as.numeric(SA_LOTSIZE)]
++     dtAH <- dtAH[!is.na(SA_LOTSIZE) & SA_LOTSIZE > 0]
++     setorder(dtAH, `[ATTOM ID]`, AH_HISTORY_YR)
++     dtAH <- dtAH[!duplicated(`[ATTOM ID]`)]
 + 
-+     dtPermit[, addrClean := toupper(trimws(gsub("\\s+", " ", get(cfg$permit_address_field))))]
-+     dtPermit <- merge(dtPermit, dtAttom[, .(addrClean, AreaLotSF)],
-+                       by = "addrClean", all.x = TRUE)
++     # Build AH raw address (directionals at end)
++     dtAH[, addrRaw := toupper(trimws(paste(
++       fifelse(is.na(SA_SITE_HOUSE_NBR), "", SA_SITE_HOUSE_NBR),
++       fifelse(is.na(SA_SITE_STREET_NAME), "", SA_SITE_STREET_NAME),
++       fifelse(is.na(SA_SITE_SUF), "", SA_SITE_SUF),
++       fifelse(is.na(SA_SITE_POST_DIR), "", SA_SITE_POST_DIR),
++       fifelse(is.na(SA_SITE_DIR), "", SA_SITE_DIR)
++     )))]
++     dtAH[, addrRaw := gsub("\\s+", " ", trimws(addrRaw))]
 + 
-+     match_rate <- mean(!is.na(dtPermit$AreaLotSF))
-+     message(sprintf("ATTOM address match rate: %.1f%% (%d of %d)",
-+                     match_rate * 100,
-+                     sum(!is.na(dtPermit$AreaLotSF)),
-+                     nrow(dtPermit)))
++     # Also build normalized version
++     dtAH[, addrNorm := normalize_address(addrRaw)]
++ 
++     # AH keyed by ATTOM ID for later lookups
++     ahByID <- dtAH[, .(`[ATTOM ID]`, SA_LOTSIZE)]
++     setkey(ahByID, `[ATTOM ID]`)
++ 
++     message(sprintf("AH: %d unique parcels for %s", nrow(dtAH), cfg$attom_city_filter))
++ 
++     # --- Build permit address keys ---
++     dtPermit[, addrRaw := toupper(trimws(gsub("\\s+", " ", get(cfg$permit_address_field))))]
++     dtPermit[, addrNorm := normalize_address(get(cfg$permit_address_field))]
++     dtPermit[, AreaLotSF := NA_real_]
++     dtPermit[, matchStep := NA_character_]
++ 
++     # ==========================================
++     # STEP 1: AH raw address match
++     # ==========================================
++     ahAddr1 <- dtAH[!duplicated(addrRaw), .(addrRaw, lotSF_1 = SA_LOTSIZE)]
++     dtPermit <- merge(dtPermit, ahAddr1, by = "addrRaw", all.x = TRUE)
++     matched1 <- !is.na(dtPermit$lotSF_1)
++     dtPermit[matched1 & is.na(AreaLotSF), `:=`(AreaLotSF = lotSF_1, matchStep = "1_AH_raw")]
++     dtPermit[, lotSF_1 := NULL]
++     message(sprintf("Step 1 (AH raw address): %d matched", sum(matched1)))
++ 
++     # ==========================================
++     # STEP 2: AH normalized address match
++     # ==========================================
++     ahAddr2 <- dtAH[!duplicated(addrNorm), .(addrNorm, lotSF_2 = SA_LOTSIZE)]
++     dtPermit <- merge(dtPermit, ahAddr2, by = "addrNorm", all.x = TRUE)
++     matched2 <- !is.na(dtPermit$lotSF_2) & is.na(dtPermit$matchStep)
++     dtPermit[matched2, `:=`(AreaLotSF = lotSF_2, matchStep = "2_AH_norm")]
++     dtPermit[, lotSF_2 := NULL]
++     message(sprintf("Step 2 (AH normalized): %d new matches", sum(matched2)))
++ 
++     # ==========================================
++     # STEP 3: Contemporary address → ATTOM ID → AH
++     # ==========================================
++     if (!is.null(cfg$contemp_parquet)) {
++       message("Loading contemporary file for ATTOM ID bridge...")
++       dtContemp <- as.data.table(dbGetQuery(con, sprintf(
++         "SELECT \"[ATTOM ID]\", PropertyAddressFull, PropertyLatitude, PropertyLongitude
++          FROM read_parquet('%s') WHERE PropertyAddressCity = '%s'",
++         cfg$contemp_parquet, cfg$attom_city_filter
++       )))
++       dtContemp[, addrNorm := normalize_address(PropertyAddressFull)]
++       dtContemp[, PropertyLatitude := as.numeric(PropertyLatitude)]
++       dtContemp[, PropertyLongitude := as.numeric(PropertyLongitude)]
++ 
++       # Match permit normalized address → contemporary → get ATTOM ID → look up in AH
++       still_unmatched <- is.na(dtPermit$matchStep)
++       if (sum(still_unmatched) > 0) {
++         # Join unmatched permits to contemporary on normalized address
++         contempAddr <- dtContemp[!duplicated(addrNorm), .(addrNorm, contempID = `[ATTOM ID]`)]
++         dtPermit <- merge(dtPermit, contempAddr, by = "addrNorm", all.x = TRUE)
++ 
++         # Look up contemporary ATTOM ID in AH
++         dtPermit[, ahLotSF_3 := ahByID[.(`[ATTOM ID]` = contempID), SA_LOTSIZE]]
++         matched3 <- !is.na(dtPermit$ahLotSF_3) & is.na(dtPermit$matchStep)
++         dtPermit[matched3, `:=`(AreaLotSF = ahLotSF_3, matchStep = "3_contemp_addr_AH")]
++         dtPermit[, c("contempID", "ahLotSF_3") := NULL]
++         message(sprintf("Step 3 (contemp address → AH): %d new matches", sum(matched3)))
++       }
++ 
++       # ==========================================
++       # STEP 4: Lat/lon nearest → contemporary → ATTOM ID → AH
++       # ==========================================
++       still_unmatched <- is.na(dtPermit$matchStep)
++       if (sum(still_unmatched) > 0 && cfg$permit_type == "csv") {
++         message("Step 4: spatial nearest-neighbor match...")
++ 
++         # Get permit coordinates (need to convert from CRS to lat/lon if needed)
++         # Portland permits have x_web_mercator, y_web_mercator
++         unmatchedPermits <- dtPermit[still_unmatched & !is.na(get(cfg$csv_coords[1]))]
++ 
++         if (nrow(unmatchedPermits) > 0) {
++           # Convert permit coords to WGS84 lat/lon
++           sfUnmatched <- st_as_sf(unmatchedPermits,
++                                   coords = cfg$csv_coords, crs = cfg$crs)
++           sfUnmatched <- st_transform(sfUnmatched, 4326)
++           coordsPermit <- st_coordinates(sfUnmatched)
++           unmatchedPermits[, `:=`(pLon = coordsPermit[,1], pLat = coordsPermit[,2])]
++ 
++           # Contemporary parcels with valid coords and AH lot size
++           dtContempWithAH <- dtContemp[!is.na(PropertyLatitude) & !is.na(PropertyLongitude)]
++           dtContempWithAH <- merge(dtContempWithAH,
++                                    ahByID[, .(contempID = `[ATTOM ID]`, ahLotSF = SA_LOTSIZE)],
++                                    by.x = "[ATTOM ID]", by.y = "contempID", all.x = FALSE)
++ 
++           if (nrow(dtContempWithAH) > 0) {
++             # Simple nearest-neighbor: for each unmatched permit, find closest contemp parcel
++             # Using Euclidean distance on lat/lon (fine for small areas within a city)
++             sfContemp <- st_as_sf(dtContempWithAH,
++                                   coords = c("PropertyLongitude", "PropertyLatitude"),
++                                   crs = 4326)
++ 
++             sfUnmatched2 <- st_as_sf(unmatchedPermits, coords = c("pLon", "pLat"), crs = 4326)
++             nn <- st_nearest_feature(sfUnmatched2, sfContemp)
++             nn_dist <- as.numeric(st_distance(sfUnmatched2, sfContemp[nn,], by_element = TRUE))
++ 
++             # Only accept matches within 50 meters
++             close_enough <- nn_dist <= 20
++             unmatchedPermits[close_enough, `:=`(
++               AreaLotSF = dtContempWithAH$ahLotSF[nn[close_enough]],
++               matchStep = "4_latlon_AH"
++             )]
++ 
++             # Write back to dtPermit
++             matchIdx <- which(still_unmatched)[which(
++               dtPermit[still_unmatched, get(cfg$csv_coords[1])] %in% unmatchedPermits[, get(cfg$csv_coords[1])]
++             )]
++             # Simpler: use addrRaw as key to write back
++             for (i in which(close_enough)) {
++               ar <- unmatchedPermits$addrRaw[i]
++               dtPermit[addrRaw == ar & is.na(matchStep),
++                        `:=`(AreaLotSF = unmatchedPermits$AreaLotSF[i],
++                             matchStep = "4_latlon_AH")]
++             }
++ 
++             message(sprintf("Step 4 (lat/lon → contemp → AH, <=20m): %d new matches", sum(close_enough)))
++           }
++         }
++       } else if (sum(still_unmatched) > 0 && cfg$permit_type == "shp") {
++         # Minneapolis: permits already have geometry
++         message("Step 4: spatial nearest-neighbor match (shp)...")
++         unmatchedPermits <- dtPermit[still_unmatched]
++ 
++         if (nrow(unmatchedPermits) > 0) {
++           # Get permit lat/lon from geometry
++           sfUnmatched <- st_as_sf(unmatchedPermits)
++           sfUnmatched <- st_transform(sfUnmatched, 4326)
++           coordsPermit <- st_coordinates(sfUnmatched)
++           unmatchedPermits[, `:=`(pLon = coordsPermit[,1], pLat = coordsPermit[,2])]
++ 
++           dtContempWithAH <- dtContemp[!is.na(PropertyLatitude) & !is.na(PropertyLongitude)]
++           dtContempWithAH <- merge(dtContempWithAH,
++                                    ahByID[, .(contempID = `[ATTOM ID]`, ahLotSF = SA_LOTSIZE)],
++                                    by.x = "[ATTOM ID]", by.y = "contempID", all.x = FALSE)
++ 
++           if (nrow(dtContempWithAH) > 0) {
++             sfContemp <- st_as_sf(dtContempWithAH,
++                                   coords = c("PropertyLongitude", "PropertyLatitude"),
++                                   crs = 4326)
++             sfUnmatched2 <- st_as_sf(unmatchedPermits, coords = c("pLon", "pLat"), crs = 4326)
++             nn <- st_nearest_feature(sfUnmatched2, sfContemp)
++             nn_dist <- as.numeric(st_distance(sfUnmatched2, sfContemp[nn,], by_element = TRUE))
++ 
++             close_enough <- nn_dist <= 20
++             for (i in which(close_enough)) {
++               ar <- unmatchedPermits$addrRaw[i]
++               dtPermit[addrRaw == ar & is.na(matchStep),
++                        `:=`(AreaLotSF = dtContempWithAH$ahLotSF[nn[i]],
++                             matchStep = "4_latlon_AH")]
++             }
++             message(sprintf("Step 4 (lat/lon → contemp → AH, <=20m): %d new matches", sum(close_enough)))
++           }
++         }
++       }
++     }
++ 
++     # ==========================================
++     # SUMMARY
++     # ==========================================
++     n_total <- nrow(dtPermit)
++     n_matched <- sum(!is.na(dtPermit$matchStep))
++     message(sprintf("\n=== MATCH SUMMARY for %s ===", cfg$city_name))
++     message(sprintf("Total matched: %d of %d (%.1f%%)", n_matched, n_total, n_matched/n_total*100))
++     cat("By step:\n")
++     print(dtPermit[, .N, by = matchStep][order(matchStep)])
++     message("")
 +   }
 + 
 +   # ------------------------------------------
@@ -274,23 +503,28 @@ Loading required package: DBI
 +   message("Permits in residential zones: ", nrow(dtAnalysis))
 + 
 +   # ------------------------------------------
-+   # 8b. DROP MANDATED MULTIPLEX LOTS (Portland)
++   # 8b. FLAG MANDATED MULTIPLEX LOTS (Portland)
 +   #     Lots above zone-specific thresholds MUST
-+   #     build multiplex, so no choice to estimate.
++   #     build multiplex -- flag rather than drop
++   #     so we can control for it in analysis.
 +   # ------------------------------------------
++   dtAnalysis[, isMandated := FALSE]
 +   if (!is.null(cfg$mandate_thresholds)) {
-+     n_before <- nrow(dtAnalysis)
-+     n_no_lotsize <- sum(is.na(dtAnalysis$AreaLotSF))
-+     message(sprintf("Permits missing lot size (kept for now): %d of %d", n_no_lotsize, n_before))
-+ 
 +     for (z in names(cfg$mandate_thresholds)) {
 +       thresh <- cfg$mandate_thresholds[[z]]
-+       mask <- dtAnalysis[[zone_col]] == z & !is.na(dtAnalysis$AreaLotSF) & dtAnalysis$AreaLotSF >= thresh
-+       n_drop <- sum(mask)
-+       message(sprintf("  Dropping %d mandated lots in %s (>= %d sqft)", n_drop, z, thresh))
-+       dtAnalysis <- dtAnalysis[!mask]
++       mask <- dtAnalysis[[zone_col]] == z & !is.na(dtAnalysis$AreaLotSF) & as.numeric(dtAnalysis$AreaLotSF) >= thresh
++       n_mandated <- sum(mask)
++       message(sprintf("  Flagging %d mandated lots in %s (>= %d sqft)", n_mandated, z, thresh))
++       dtAnalysis[mask, isMandated := TRUE]
 +     }
-+     message(sprintf("Permits after mandate filter: %d (dropped %d)", nrow(dtAnalysis), n_before - nrow(dtAnalysis)))
++     message(sprintf("Total mandated lots: %d of %d (%.1f%%)",
++                     sum(dtAnalysis$isMandated), nrow(dtAnalysis),
++                     mean(dtAnalysis$isMandated) * 100))
++     # Summary: mandate status by zone and plex
++     cat("\nMandate status by zone:\n")
++     print(dtAnalysis[, .(n = .N, n_plex = sum(isPlex, na.rm = TRUE),
++                          plex_share = round(mean(isPlex, na.rm = TRUE), 3)),
++                      by = .(zone = get(zone_col), isMandated)])
 +   }
 + 
 +   # ------------------------------------------
@@ -305,12 +539,22 @@ Loading required package: DBI
 +   lot_vars <- c(pid, "geo_id", zone_col, "geo_name")
 + 
 +   if (!"AreaLotSF" %in% names(dtAnalysis)) dtAnalysis[, AreaLotSF := NA_real_]
++   if (!"isMandated" %in% names(dtAnalysis)) dtAnalysis[, isMandated := FALSE]
++ 
++   # Create permit year (Portland: from issued date; Minneapolis: already has year)
++   if ("issued" %in% names(dtAnalysis)) {
++     dtAnalysis[, permit_year := as.integer(format(as.IDate(issued), "%Y"))]
++   } else if ("year" %in% names(dtAnalysis)) {
++     dtAnalysis[, permit_year := as.integer(year)]
++   }
 + 
 +   dtLots <- dtAnalysis[!is.na(geo_id) & !is.na(get(pid)), .(
 +     isPlexLot    = any(isPlex, na.rm = TRUE),
++     isMandated   = any(isMandated, na.rm = TRUE),
 +     total_units  = sum(get(cfg$units_field), na.rm = TRUE),
 +     distTopZone  = min(dist_to_topZone, na.rm = TRUE),
 +     AreaLotSF    = AreaLotSF[1],
++     permit_year  = min(permit_year, na.rm = TRUE),
 +     permit_count = .N,
 +     lon = lon[1],
 +     lat = lat[1]
@@ -405,6 +649,27 @@ Projected CRS: NAD83 / UTM zone 15N
 [21] "com_off_re" "acreage"    "sqf"        "pin"        "public_fun"
 [26] "permit_val" "community_" "notes"      "geometry"  
 Permits after filtering: 740
+=== 4-step ATTOM lot size cascade ===
+Loading AH file...
+AH: 178304 unique parcels for MINNEAPOLIS
+Step 1 (AH raw address): 518 matched
+Step 2 (AH normalized): 11 new matches
+Loading contemporary file for ATTOM ID bridge...
+Step 3 (contemp address → AH): 13 new matches
+Step 4: spatial nearest-neighbor match (shp)...
+Step 4 (lat/lon → contemp → AH, <=20m): 102 new matches
+
+=== MATCH SUMMARY for Minneapolis ===
+Total matched: 644 of 740 (87.0%)
+By step:
+           matchStep     N
+              <char> <int>
+1:          1_AH_raw   518
+2:         2_AH_norm    11
+3: 3_contemp_addr_AH    13
+4:       4_latlon_AH   102
+5:              <NA>    96
+
 Reading layer `Planning_Primary_Zoning' from data source 
   `/Volumes/Micron2TB/Dropbox/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp' 
   using driver `ESRI Shapefile'
@@ -429,38 +694,38 @@ Total Infill Lots: 217
 Overall Propensity: 0.4041 
          geo_id land_use_c             geo_name infill_lot_count
          <char>     <char>               <char>            <int>
- 1: 27053109800        UN1    Census Tract 1098                5
- 2: 27053104100        UN2    Census Tract 1041               15
+ 1: 27053104100        UN2    Census Tract 1041               15
+ 2: 27053109800        UN1    Census Tract 1098                5
  3: 27053111200        UN1    Census Tract 1112                2
- 4: 27053125700        UN2    Census Tract 1257                3
- 5: 27053101600        UN2    Census Tract 1016                1
+ 4: 27053101600        UN2    Census Tract 1016                1
+ 5: 27053125700        UN2    Census Tract 1257                3
  6: 27053109100        UN1    Census Tract 1091                2
  7: 27053003802        UN2   Census Tract 38.02               12
  8: 27053102100        UN2    Census Tract 1021                3
  9: 27053110500        UN1    Census Tract 1105                5
-10: 27053102000        UN2    Census Tract 1020                1
-11: 27053100900        UN1    Census Tract 1009                1
-12: 27053103900        UN2    Census Tract 1039               11
+10: 27053103900        UN2    Census Tract 1039               11
+11: 27053102000        UN2    Census Tract 1020                1
+12: 27053100900        UN1    Census Tract 1009                1
 13: 27053100800        UN1    Census Tract 1008                0
 14: 27053104001        UN2 Census Tract 1040.01                8
-15: 27053000601        UN1    Census Tract 6.01                4
+15: 27053104002        UN2 Census Tract 1040.02                8
     total_lots_active total_units propensity
                 <int>       <num>      <num>
- 1:                19          23 0.26315789
- 2:                19          24 0.78947368
+ 1:                19          24 0.78947368
+ 2:                19          23 0.26315789
  3:                18          22 0.11111111
- 4:                17         103 0.17647059
- 5:                17          18 0.05882353
+ 4:                17          18 0.05882353
+ 5:                17         103 0.17647059
  6:                15          16 0.13333333
  7:                14          29 0.85714286
  8:                13          16 0.23076923
  9:                13          18 0.38461538
-10:                11          11 0.09090909
-11:                11          12 0.09090909
-12:                11          34 1.00000000
+10:                11          34 1.00000000
+11:                11          11 0.09090909
+12:                11          12 0.09090909
 13:                10          10 0.00000000
 14:                 9          19 0.88888889
-15:                 8          14 0.50000000
+15:                 8          20 1.00000000
 
 ========== Processing: Portland ==========
 
@@ -476,8 +741,26 @@ Overall Propensity: 0.4041
 [25] "new_units"              "total_sqft"             "stories"               
 [28] "customer"              
 Permits after filtering: 5459
-Merging ATTOM lot size data...
-ATTOM address match rate: 45.7% (2497 of 5459)
+=== 4-step ATTOM lot size cascade ===
+Loading AH file...
+AH: 272240 unique parcels for PORTLAND
+Step 1 (AH raw address): 0 matched
+Step 2 (AH normalized): 1982 new matches
+Loading contemporary file for ATTOM ID bridge...
+Step 3 (contemp address → AH): 621 new matches
+Step 4: spatial nearest-neighbor match...
+Step 4 (lat/lon → contemp → AH, <=20m): 2594 new matches
+
+=== MATCH SUMMARY for Portland ===
+Total matched: 5198 of 5459 (95.2%)
+By step:
+           matchStep     N
+              <char> <int>
+1:         2_AH_norm  1982
+2: 3_contemp_addr_AH   621
+3:       4_latlon_AH  2595
+4:              <NA>   261
+
 Reading layer `Zoning' from data source 
   `/Volumes/Micron2TB/Dropbox/dataRaw/portlandZoning/Zoning.shp' 
   using driver `ESRI Shapefile'
@@ -492,53 +775,64 @@ Fetching census tracts...
     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
     0.00    30.57   275.00   721.46   728.61 23213.46 
 Permits in residential zones: 3896
-Permits missing lot size (kept for now): 1965 of 3896
-  Dropping 242 mandated lots in R7 (>= 14000 sqft)
-  Dropping 884 mandated lots in R5 (>= 10000 sqft)
-  Dropping 171 mandated lots in R2.5 (>= 5000 sqft)
-Permits after mandate filter: 2599 (dropped 1297)
-Total lots with permits: 1449
-Lots with plex permits: 376
+  Flagging 109 mandated lots in R7 (>= 14000 sqft)
+  Flagging 386 mandated lots in R5 (>= 10000 sqft)
+  Flagging 442 mandated lots in R2.5 (>= 5000 sqft)
+Total mandated lots: 937 of 3896 (24.1%)
+
+Mandate status by zone:
+     zone isMandated     n n_plex plex_share
+   <char>     <lgcl> <int>  <int>      <num>
+1:     R5      FALSE  1527    387      0.288
+2:    R10      FALSE   298     16      0.066
+3:     R7      FALSE   452     59      0.148
+4:     R5       TRUE   386     72      0.209
+5:    R20      FALSE   107      0      0.000
+6:   R2.5      FALSE   575    285      0.535
+7:   R2.5       TRUE   442    159      0.379
+8:     R7       TRUE   109     20      0.208
+Total lots with permits: 2555
+Lots with plex permits: 415
 Saved plot: text/permitLocationPortland.png
 
 === PORTLAND LOT-LEVEL SUMMARY BY TRACT ===
-Total Active Lots: 1449 
-Total Infill Lots: 376 
-Overall Propensity: 0.2595 
+Total Active Lots: 2555 
+Total Infill Lots: 415 
+Overall Propensity: 0.1624 
          geo_id   zone           geo_name infill_lot_count total_lots_active
          <char> <char>             <char>            <int>             <int>
  1: 41051008903    R10 Census Tract 89.03                4                65
- 2: 41051006300    R20    Census Tract 63                0                40
- 3: 41051007001    R10 Census Tract 70.01                0                23
- 4: 41051004003     R5 Census Tract 40.03                8                22
- 5: 41051004102   R2.5 Census Tract 41.02                5                22
- 6: 41051000402     R5  Census Tract 4.02                6                20
- 7: 41051008700   R2.5    Census Tract 87                6                19
- 8: 41051006402    R10 Census Tract 64.02                0                18
- 9: 41051006801    R10 Census Tract 68.01                0                18
-10: 41051000501   R2.5  Census Tract 5.01                4                17
-11: 41051004103     R5 Census Tract 41.03                9                16
-12: 41051005800    R10    Census Tract 58                0                16
-13: 41051006900    R20    Census Tract 69                0                15
-14: 41051003602     R5 Census Tract 36.02                4                15
-15: 41051000502   R2.5  Census Tract 5.02                6                15
+ 2: 41051000302     R5  Census Tract 3.02                5                50
+ 3: 41051004003     R5 Census Tract 40.03               11                46
+ 4: 41051006300    R20    Census Tract 63                0                40
+ 5: 41051003904     R5 Census Tract 39.04                9                40
+ 6: 41051003200     R5    Census Tract 32                2                39
+ 7: 41051001900     R5    Census Tract 19                3                35
+ 8: 41051008700     R5    Census Tract 87                1                35
+ 9: 41051000402     R5  Census Tract 4.02                6                31
+10: 41051006701     R7 Census Tract 67.01                1                30
+11: 41051000102     R5  Census Tract 1.02                4                27
+12: 41051004103     R5 Census Tract 41.03               10                26
+13: 41051003000     R5    Census Tract 30                4                26
+14: 41051000401     R5  Census Tract 4.01                3                26
+15: 41051001601     R5 Census Tract 16.01                1                25
     total_units propensity
           <int>      <num>
  1:          75 0.06153846
- 2:          14 0.00000000
- 3:          12 0.00000000
- 4:          50 0.36363636
- 5:          54 0.22727273
- 6:          61 0.30000000
- 7:          43 0.31578947
- 8:           7 0.00000000
- 9:          11 0.00000000
-10:          40 0.23529412
-11:          57 0.56250000
-12:           4 0.00000000
-13:           1 0.00000000
-14:          31 0.26666667
-15:          39 0.40000000
+ 2:          40 0.10000000
+ 3:          75 0.23913043
+ 4:          14 0.00000000
+ 5:          50 0.22500000
+ 6:          22 0.05128205
+ 7:          12 0.08571429
+ 8:          54 0.02857143
+ 9:          70 0.19354839
+10:          21 0.03333333
+11:          16 0.14814815
+12:          71 0.38461538
+13:          53 0.15384615
+14:          22 0.11538462
+15:           9 0.04000000
 > 
 > # ==========================================
 > # CLEANUP
@@ -547,4 +841,4 @@ Overall Propensity: 0.2595
 > 
 > proc.time()
    user  system elapsed 
-  6.446   0.314   6.035 
+ 51.520   1.573  44.381 

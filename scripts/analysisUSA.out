@@ -86,6 +86,13 @@ Type 'q()' to quit R.
 +   dt[AreaLotSF <= 0, AreaLotSF := NA_real_]
 +   dt[, logLotSF := log(AreaLotSF)]
 + 
++   # Ensure isMandated exists (FALSE for cities without mandates)
++   if (!"isMandated" %in% names(dt)) dt[, isMandated := FALSE]
++ 
++   # Permit year as factor for FE
++   dt[, permit_year := as.integer(permit_year)]
++   dt[, yr := factor(permit_year)]
++ 
 +   message("Lots with valid lot size: ", sum(!is.na(dt$logLotSF)), " of ", nrow(dt))
 + 
 +   message("Total lots: ", nrow(dt))
@@ -100,10 +107,33 @@ Type 'q()' to quit R.
 +     n_lots      = .N,
 +     n_plex      = sum(isPlexLot),
 +     plex_share  = mean(isPlexLot),
++     n_mandated  = sum(isMandated),
 +     mean_lotSF  = mean(AreaLotSF, na.rm = TRUE),
 +     med_lotSF   = median(AreaLotSF, na.rm = TRUE),
 +     pct_has_lot = mean(!is.na(AreaLotSF)) * 100
 +   ), by = zone])
++ 
++   # Mandate breakdown (if any mandated lots exist)
++   if (any(dt$isMandated)) {
++     cat("\n--- Mandate breakdown ---\n")
++     print(dt[!is.na(AreaLotSF), .(
++       n = .N,
++       n_plex = sum(isPlexLot),
++       plex_share = round(mean(isPlexLot), 3),
++       mean_lotSF = round(mean(AreaLotSF))
++     ), by = .(zone, isMandated)])
++ 
++     # Mandate × year for R2.5 and R5
++     cat("\n--- Plex share by zone × mandate × year ---\n")
++     for (z in c("R2.5", "R5")) {
++       cat(sprintf("\n  Zone: %s\n", z))
++       print(dt[zone == z & !is.na(permit_year), .(
++         n = .N,
++         n_plex = sum(isPlexLot),
++         plex_share = round(mean(isPlexLot), 3)
++       ), by = .(permit_year, isMandated)][order(permit_year, isMandated)])
++     }
++   }
 + 
 +   # ------------------------------------------
 +   # CITY-LEVEL LOGIT REGRESSIONS
@@ -127,11 +157,20 @@ Type 'q()' to quit R.
 + 
 +   if (length(zone_ok) < 2) {
 +     cat("  Only one usable zone, dropping zone from regressions\n")
-+     m2 <- glm(isPlexLot ~ logLotSF, family = binomial, data = dt_reg_full)
-+     m5 <- glm(isPlexLot ~ logLotSF + slope + lppsf, family = binomial, data = dt_reg_full)
++     m2 <- glm(isPlexLot ~ logLotSF + yr, family = binomial, data = dt_reg_full)
++     m5 <- glm(isPlexLot ~ logLotSF + slope + lppsf + yr, family = binomial, data = dt_reg_full)
 +   } else {
-+     m2 <- glm(isPlexLot ~ zone + logLotSF, family = binomial, data = dt_reg_full)
-+     m5 <- glm(isPlexLot ~ zone + logLotSF + slope + lppsf, family = binomial, data = dt_reg_full)
++     m2 <- glm(isPlexLot ~ zone + logLotSF + yr, family = binomial, data = dt_reg_full)
++     m5 <- glm(isPlexLot ~ zone + logLotSF + slope + lppsf + yr, family = binomial, data = dt_reg_full)
++   }
++ 
++   # With isMandated control (only meaningful for Portland)
++   if (any(dt_reg_full$isMandated)) {
++     cat("\n  --- With isMandated control ---\n")
++     m2m <- glm(isPlexLot ~ zone + logLotSF + isMandated + yr, family = binomial, data = dt_reg_full)
++     m5m <- glm(isPlexLot ~ zone + logLotSF + slope + lppsf + isMandated + yr, family = binomial, data = dt_reg_full)
++     print(summary(m2m))
++     print(summary(m5m))
 +   }
 + 
 +   if ("slopeGrossGross" %in% names(dt_reg_full) && length(zone_ok) >= 2) {
@@ -143,9 +182,9 @@ Type 'q()' to quit R.
 +   print(summary(m5))
 +   if (exists("m6")) { print(summary(m6)); rm(m6) }
 + 
-+   # Average marginal effects for the main spec
-+   cat("\n  Average marginal effects (M5):\n")
-+   print(avg_slopes(m5))
++   # Average marginal effects (uncomment when ready)
++   # cat("\n  Average marginal effects (M5):\n")
++   # print(avg_slopes(m5))
 + 
 +   # ------------------------------------------
 +   # BY-ZONE LOGIT
@@ -159,13 +198,13 @@ Type 'q()' to quit R.
 +     }
 +     cat(sprintf("\n  Zone: %s (n=%d, plex=%d)\n", z, nrow(dtz), sum(dtz$isPlexLot)))
 + 
-+     mz1 <- glm(isPlexLot ~ logLotSF, family = binomial, data = dtz)
-+     mz2 <- glm(isPlexLot ~ logLotSF + lppsf, family = binomial, data = dtz)
-+     mz3 <- glm(isPlexLot ~ logLotSF + slope, family = binomial, data = dtz)
++     mz1 <- glm(isPlexLot ~ logLotSF + yr, family = binomial, data = dtz)
++     mz2 <- glm(isPlexLot ~ logLotSF + lppsf + yr, family = binomial, data = dtz)
++     mz3 <- glm(isPlexLot ~ logLotSF + slope + yr, family = binomial, data = dtz)
 + 
 +     print(summary(mz2))
-+     cat("  AME:\n")
-+     print(avg_slopes(mz2))
++     # cat("  AME:\n")
++     # print(avg_slopes(mz2))
 +   }
 + 
 +   city_results[[CITY]] <- dt
@@ -173,75 +212,188 @@ Type 'q()' to quit R.
 
 ========== Portland ==========
 
-Lots with valid lot size: 495 of 1449
-Total lots: 1449
-Lots with lot size: 495
-Lots with slopes: 1435
+Lots with valid lot size: 2494 of 2555
+Total lots: 2555
+Lots with lot size: 2494
+Lots with slopes: 2536
 
 --- Zone summaries ---
-     zone n_lots n_plex plex_share mean_lotSF med_lotSF pct_has_lot
-   <char>  <int>  <int>      <num>      <num>     <num>       <num>
-1:   R2.5    420    179 0.42619048   3846.377    3316.5    34.76190
-2:     R5    503    156 0.31013917        NaN        NA     0.00000
-3:     R7    175     30 0.17142857  13058.839   11355.5    32.00000
-4:    R10    261     11 0.04214559  14123.946   10141.5    85.05747
-5:    R20     90      0 0.00000000  41216.028   30000.0    78.88889
+     zone n_lots n_plex plex_share n_mandated mean_lotSF med_lotSF pct_has_lot
+   <char>  <int>  <int>      <num>      <int>      <num>     <num>       <num>
+1:     R5   1253    186 0.14844374        177   7021.467      5227    98.56345
+2:   R2.5    557    181 0.32495512        194   5580.672      4792    97.48654
+3:     R7    394     37 0.09390863         63  11207.758      9148    95.43147
+4:    R10    261     11 0.04214559          0  14150.495     10454    96.16858
+5:    R20     90      0 0.00000000          0  37467.404     30056    98.88889
+
+--- Mandate breakdown ---
+     zone isMandated     n n_plex plex_share mean_lotSF
+   <char>     <lgcl> <int>  <int>      <num>      <num>
+1:     R5      FALSE  1058    156      0.147       5374
+2:   R2.5      FALSE   349    116      0.332       4207
+3:     R5       TRUE   177     23      0.130      16869
+4:   R2.5       TRUE   194     57      0.294       8051
+5:     R7       TRUE    63      5      0.079      25037
+6:     R7      FALSE   313     30      0.096       8424
+7:    R10      FALSE   251     10      0.040      14150
+8:    R20      FALSE    89      0      0.000      37467
+
+--- Plex share by zone × mandate × year ---
+
+  Zone: R2.5
+    permit_year isMandated     n n_plex plex_share
+          <int>     <lgcl> <int>  <int>      <num>
+ 1:        2021      FALSE    98     26      0.265
+ 2:        2021       TRUE    32      7      0.219
+ 3:        2022      FALSE    74     23      0.311
+ 4:        2022       TRUE    37      5      0.135
+ 5:        2023      FALSE    71     38      0.535
+ 6:        2023       TRUE    45     20      0.444
+ 7:        2024      FALSE    75     25      0.333
+ 8:        2024       TRUE    38     14      0.368
+ 9:        2025      FALSE    45     12      0.267
+10:        2025       TRUE    42     11      0.262
+
+  Zone: R5
+    permit_year isMandated     n n_plex plex_share
+          <int>     <lgcl> <int>  <int>      <num>
+ 1:        2021      FALSE   249     23      0.092
+ 2:        2021       TRUE    39      2      0.051
+ 3:        2022      FALSE   234     29      0.124
+ 4:        2022       TRUE    37      8      0.216
+ 5:        2023      FALSE   226     46      0.204
+ 6:        2023       TRUE    31      3      0.097
+ 7:        2024      FALSE   209     38      0.182
+ 8:        2024       TRUE    43      7      0.163
+ 9:        2025      FALSE   158     27      0.171
+10:        2025       TRUE    27      3      0.111
 
 --- City-level logit regressions ---
-  Regression sample: 420 lots (of 1359 in target zones)
+  Regression sample: 2386 lots (of 2465 in target zones)
   Zone distribution in regression sample:
      zone     n n_plex plex_share
    <char> <int>  <int>      <num>
-1:   R2.5   142     36      0.254
-2:     R7    56      1      0.018
-3:    R10   222      3      0.014
+1:     R5  1230    179      0.146
+2:   R2.5   529    167      0.316
+3:     R7   376     35      0.093
+4:    R10   251     10      0.040
+
+  --- With isMandated control ---
+
+Call:
+glm(formula = isPlexLot ~ zone + logLotSF + isMandated + yr, 
+    family = binomial, data = dt_reg_full)
+
+Coefficients:
+               Estimate Std. Error z value Pr(>|z|)    
+(Intercept)      1.0074     1.4262   0.706 0.479959    
+zoneR2.5         1.9812     0.3648   5.431 5.59e-08 ***
+zoneR5           1.0693     0.3461   3.090 0.002003 ** 
+zoneR7           0.8240     0.3738   2.204 0.027492 *  
+logLotSF        -0.5110     0.1545  -3.307 0.000945 ***
+isMandatedTRUE   0.1554     0.1909   0.814 0.415619    
+yr2022           0.3094     0.1920   1.612 0.107066    
+yr2023           0.9508     0.1795   5.297 1.17e-07 ***
+yr2024           0.7661     0.1862   4.114 3.89e-05 ***
+yr2025           0.6884     0.2004   3.434 0.000594 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 2128.5  on 2385  degrees of freedom
+Residual deviance: 1951.3  on 2376  degrees of freedom
+AIC: 1971.3
+
+Number of Fisher Scoring iterations: 5
+
+
+Call:
+glm(formula = isPlexLot ~ zone + logLotSF + slope + lppsf + isMandated + 
+    yr, family = binomial, data = dt_reg_full)
+
+Coefficients:
+               Estimate Std. Error z value Pr(>|z|)    
+(Intercept)     0.93393    1.46188   0.639 0.522917    
+zoneR2.5        2.23526    0.36968   6.046 1.48e-09 ***
+zoneR5          1.30484    0.34944   3.734 0.000188 ***
+zoneR7          0.80070    0.37456   2.138 0.032540 *  
+logLotSF       -0.52728    0.15805  -3.336 0.000850 ***
+slope          -0.26372    0.20923  -1.260 0.207502    
+lppsf          -1.36427    0.23525  -5.799 6.66e-09 ***
+isMandatedTRUE  0.06234    0.19556   0.319 0.749901    
+yr2022          0.32319    0.19362   1.669 0.095083 .  
+yr2023          0.97115    0.18136   5.355 8.56e-08 ***
+yr2024          0.79810    0.18815   4.242 2.22e-05 ***
+yr2025          0.70326    0.20263   3.471 0.000519 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 2128.5  on 2385  degrees of freedom
+Residual deviance: 1914.5  on 2374  degrees of freedom
+AIC: 1938.5
+
+Number of Fisher Scoring iterations: 6
+
 
   Model summaries:
 
 Call:
-glm(formula = isPlexLot ~ zone + logLotSF, family = binomial, 
+glm(formula = isPlexLot ~ zone + logLotSF + yr, family = binomial, 
     data = dt_reg_full)
 
 Coefficients:
             Estimate Std. Error z value Pr(>|z|)    
-(Intercept)  -0.8972     4.0671  -0.221 0.825403    
-zoneR2.5      2.7978     0.7753   3.609 0.000308 ***
-zoneR7        0.3271     1.1669   0.280 0.779228    
-logLotSF     -0.3669     0.4380  -0.838 0.402175    
+(Intercept)   0.3133     1.1550   0.271 0.786218    
+zoneR2.5      2.0752     0.3462   5.994 2.04e-09 ***
+zoneR5        1.1184     0.3404   3.285 0.001019 ** 
+zoneR7        0.8413     0.3719   2.262 0.023703 *  
+logLotSF     -0.4341     0.1230  -3.530 0.000415 ***
+yr2022        0.3091     0.1920   1.610 0.107349    
+yr2023        0.9513     0.1795   5.300 1.16e-07 ***
+yr2024        0.7617     0.1861   4.093 4.26e-05 ***
+yr2025        0.6868     0.2004   3.427 0.000609 ***
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 (Dispersion parameter for binomial family taken to be 1)
 
-    Null deviance: 264.17  on 419  degrees of freedom
-Residual deviance: 201.87  on 416  degrees of freedom
-AIC: 209.87
+    Null deviance: 2128.5  on 2385  degrees of freedom
+Residual deviance: 1951.9  on 2377  degrees of freedom
+AIC: 1969.9
 
-Number of Fisher Scoring iterations: 7
+Number of Fisher Scoring iterations: 5
 
 
 Call:
-glm(formula = isPlexLot ~ zone + logLotSF + slope + lppsf, family = binomial, 
-    data = dt_reg_full)
+glm(formula = isPlexLot ~ zone + logLotSF + slope + lppsf + yr, 
+    family = binomial, data = dt_reg_full)
 
 Coefficients:
             Estimate Std. Error z value Pr(>|z|)    
-(Intercept)   0.2994     4.1378   0.072 0.942313    
-zoneR2.5      2.8961     0.8213   3.526 0.000421 ***
-zoneR7        0.3733     1.1880   0.314 0.753347    
-logLotSF     -0.4495     0.4417  -1.018 0.308775    
-slope        -1.2693     0.4802  -2.643 0.008208 ** 
-lppsf        -0.1293     0.7813  -0.165 0.868555    
+(Intercept)   0.6501     1.1656   0.558 0.576988    
+zoneR2.5      2.2736     0.3498   6.500 8.04e-11 ***
+zoneR5        1.3250     0.3436   3.856 0.000115 ***
+zoneR7        0.8061     0.3737   2.157 0.031013 *  
+logLotSF     -0.4961     0.1245  -3.986 6.73e-05 ***
+slope        -0.2611     0.2090  -1.249 0.211707    
+lppsf        -1.3716     0.2342  -5.857 4.72e-09 ***
+yr2022        0.3230     0.1936   1.668 0.095232 .  
+yr2023        0.9708     0.1814   5.353 8.65e-08 ***
+yr2024        0.7963     0.1880   4.235 2.29e-05 ***
+yr2025        0.7023     0.2026   3.467 0.000527 ***
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 (Dispersion parameter for binomial family taken to be 1)
 
-    Null deviance: 264.17  on 419  degrees of freedom
-Residual deviance: 195.54  on 414  degrees of freedom
-AIC: 207.54
+    Null deviance: 2128.5  on 2385  degrees of freedom
+Residual deviance: 1914.6  on 2375  degrees of freedom
+AIC: 1936.6
 
-Number of Fisher Scoring iterations: 7
+Number of Fisher Scoring iterations: 5
 
 
 Call:
@@ -250,154 +402,586 @@ glm(formula = isPlexLot ~ zone + logLotSF + slopeGrossGross +
 
 Coefficients:
                 Estimate Std. Error z value Pr(>|z|)    
-(Intercept)      -0.8252     4.0815  -0.202 0.839773    
-zoneR2.5          2.8639     0.7998   3.581 0.000342 ***
-zoneR7            0.4041     1.1795   0.343 0.731927    
-logLotSF         -0.3633     0.4371  -0.831 0.405849    
-slopeGrossGross  -0.4530     0.3503  -1.293 0.195979    
-lppsf            -0.2059     0.8020  -0.257 0.797361    
+(Intercept)       0.2159     1.1522   0.187  0.85140    
+zoneR2.5          2.3809     0.3487   6.827 8.66e-12 ***
+zoneR5            1.4443     0.3420   4.223 2.42e-05 ***
+zoneR7            0.8767     0.3713   2.361  0.01823 *  
+logLotSF         -0.4022     0.1220  -3.296  0.00098 ***
+slopeGrossGross  -0.1001     0.1846  -0.542  0.58768    
+lppsf            -1.3216     0.2424  -5.451 5.00e-08 ***
 ---
 Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 (Dispersion parameter for binomial family taken to be 1)
 
-    Null deviance: 264.17  on 419  degrees of freedom
-Residual deviance: 200.35  on 414  degrees of freedom
-AIC: 212.35
+    Null deviance: 2128.5  on 2385  degrees of freedom
+Residual deviance: 1953.3  on 2379  degrees of freedom
+AIC: 1967.3
 
-Number of Fisher Scoring iterations: 7
-
-
-  Average marginal effects (M5):
-
-     Term   Contrast Estimate Std. Error      z Pr(>|z|)   S   2.5 %  97.5 %
- logLotSF dY/dX      -0.03205     0.0313 -1.022  0.30659 1.7 -0.0935  0.0294
- lppsf    dY/dX      -0.00922     0.0557 -0.165  0.86862 0.2 -0.1185  0.1000
- slope    dY/dX      -0.09050     0.0334 -2.708  0.00677 7.2 -0.1560 -0.0250
- zone     R2.5 - R10  0.18399     0.0584  3.150  0.00163 9.3  0.0695  0.2984
- zone     R7 - R10    0.00647     0.0227  0.285  0.77589 0.4 -0.0381  0.0510
-
-Type: response
+Number of Fisher Scoring iterations: 5
 
 
 --- By-zone logit regressions ---
 
-  Zone: R2.5 (n=146, plex=37)
+  Zone: R2.5 (n=543, plex=173)
 
 Call:
-glm(formula = isPlexLot ~ logLotSF + lppsf, family = binomial, 
+glm(formula = isPlexLot ~ logLotSF + lppsf + yr, family = binomial, 
     data = dtz)
 
 Coefficients:
-            Estimate Std. Error z value Pr(>|z|)
-(Intercept)  0.97862    3.83734   0.255    0.799
-logLotSF    -0.25209    0.47178  -0.534    0.593
-lppsf        0.09782    0.89114   0.110    0.913
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  5.96506    2.03306   2.934 0.003346 ** 
+logLotSF    -0.85297    0.24230  -3.520 0.000431 ***
+lppsf       -0.17608    0.44692  -0.394 0.693587    
+yr2022       0.06133    0.31519   0.195 0.845731    
+yr2023       1.27775    0.29312   4.359 1.31e-05 ***
+yr2024       0.68590    0.30173   2.273 0.023010 *  
+yr2025       0.41868    0.33907   1.235 0.216908    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 (Dispersion parameter for binomial family taken to be 1)
 
-    Null deviance: 160.79  on 141  degrees of freedom
-Residual deviance: 160.49  on 139  degrees of freedom
-  (4 observations deleted due to missingness)
-AIC: 166.49
+    Null deviance: 659.75  on 528  degrees of freedom
+Residual deviance: 623.15  on 522  degrees of freedom
+  (14 observations deleted due to missingness)
+AIC: 637.15
 
 Number of Fisher Scoring iterations: 4
 
-  AME:
 
-     Term Estimate Std. Error      z Pr(>|z|)   S  2.5 % 97.5 %
- logLotSF  -0.0476     0.0889 -0.536    0.592 0.8 -0.222  0.127
- lppsf      0.0185     0.1683  0.110    0.913 0.1 -0.311  0.348
-
-Type: response
-Comparison: dY/dX
-
-
-  Zone R5: only 0 obs with lot size, skipping
-
-  Zone: R7 (n=56, plex=1)
+  Zone: R5 (n=1235, plex=179)
 
 Call:
-glm(formula = isPlexLot ~ logLotSF + lppsf, family = binomial, 
+glm(formula = isPlexLot ~ logLotSF + lppsf + yr, family = binomial, 
     data = dtz)
 
 Coefficients:
-            Estimate Std. Error z value Pr(>|z|)
-(Intercept)  -29.970     62.450  -0.480    0.631
-logLotSF       2.099      6.015   0.349    0.727
-lppsf        -13.733     16.881  -0.814    0.416
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)   3.1538     1.6065   1.963 0.049624 *  
+logLotSF     -0.6629     0.1878  -3.530 0.000415 ***
+lppsf        -1.8757     0.3189  -5.883 4.04e-09 ***
+yr2022        0.5985     0.2799   2.138 0.032512 *  
+yr2023        0.9437     0.2706   3.487 0.000489 ***
+yr2024        0.8469     0.2786   3.039 0.002371 ** 
+yr2025        0.7756     0.2982   2.601 0.009303 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 (Dispersion parameter for binomial family taken to be 1)
 
-    Null deviance: 10.0327  on 55  degrees of freedom
-Residual deviance:  7.2723  on 53  degrees of freedom
-AIC: 13.272
+    Null deviance: 1020.59  on 1229  degrees of freedom
+Residual deviance:  964.67  on 1223  degrees of freedom
+  (5 observations deleted due to missingness)
+AIC: 978.67
 
-Number of Fisher Scoring iterations: 10
-
-  AME:
-
-     Term Estimate Std. Error      z Pr(>|z|)   S  2.5 % 97.5 %
- logLotSF   0.0343      0.102  0.338    0.735 0.4 -0.165  0.233
- lppsf     -0.2243      0.324 -0.693    0.488 1.0 -0.859  0.410
-
-Type: response
-Comparison: dY/dX
+Number of Fisher Scoring iterations: 5
 
 
-  Zone: R10 (n=222, plex=3)
+  Zone: R7 (n=376, plex=35)
 
 Call:
-glm(formula = isPlexLot ~ logLotSF + lppsf, family = binomial, 
+glm(formula = isPlexLot ~ logLotSF + lppsf + yr, family = binomial, 
     data = dtz)
 
 Coefficients:
-            Estimate Std. Error z value Pr(>|z|)
-(Intercept)   1.6833    12.4263   0.135    0.892
-logLotSF     -0.6895     1.3352  -0.516    0.606
-lppsf        -1.2016     2.1682  -0.554    0.579
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept) -4.13695    3.29920  -1.254 0.209868    
+logLotSF     0.06948    0.35972   0.193 0.846847    
+lppsf       -2.66863    0.80239  -3.326 0.000881 ***
+yr2022      -0.01978    0.65614  -0.030 0.975945    
+yr2023      -0.05579    0.65585  -0.085 0.932209    
+yr2024       0.80823    0.55477   1.457 0.145148    
+yr2025       1.19517    0.53215   2.246 0.024708 *  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
 
 (Dispersion parameter for binomial family taken to be 1)
 
-    Null deviance: 31.784  on 221  degrees of freedom
-Residual deviance: 30.660  on 219  degrees of freedom
-AIC: 36.66
+    Null deviance: 232.83  on 375  degrees of freedom
+Residual deviance: 210.33  on 369  degrees of freedom
+AIC: 224.33
 
-Number of Fisher Scoring iterations: 7
+Number of Fisher Scoring iterations: 6
 
-  AME:
 
-     Term Estimate Std. Error      z Pr(>|z|)   S   2.5 % 97.5 %
- logLotSF -0.00914     0.0184 -0.497    0.619 0.7 -0.0452 0.0269
- lppsf    -0.01593     0.0300 -0.531    0.595 0.7 -0.0747 0.0429
+  Zone: R10 (n=251, plex=10)
 
-Type: response
-Comparison: dY/dX
+Call:
+glm(formula = isPlexLot ~ logLotSF + lppsf + yr, family = binomial, 
+    data = dtz)
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)
+(Intercept)  -25.3620  2094.3857  -0.012    0.990
+logLotSF       0.4820     0.5178   0.931    0.352
+lppsf         -1.3337     1.1744  -1.136    0.256
+yr2022        17.3592  2094.3800   0.008    0.993
+yr2023        17.9902  2094.3800   0.009    0.993
+yr2024        17.8785  2094.3800   0.009    0.993
+yr2025        17.5105  2094.3802   0.008    0.993
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 84.054  on 250  degrees of freedom
+Residual deviance: 74.514  on 244  degrees of freedom
+AIC: 88.514
+
+Number of Fisher Scoring iterations: 19
 
 
 ========== Minneapolis ==========
 
-Lots with valid lot size: 0 of 537
+Lots with valid lot size: 496 of 537
 Total lots: 537
-Lots with lot size: 0
+Lots with lot size: 496
 Lots with slopes: 521
 
 --- Zone summaries ---
-     zone n_lots n_plex plex_share mean_lotSF med_lotSF pct_has_lot
-   <char>  <int>  <int>      <num>      <num>     <num>       <num>
-1:    UN1    189     43  0.2275132        NaN        NA           0
-2:    UN2    298    134  0.4496644        NaN        NA           0
-3:    UN3     50     40  0.8000000        NaN        NA           0
+     zone n_lots n_plex plex_share n_mandated mean_lotSF med_lotSF pct_has_lot
+   <char>  <int>  <int>      <num>      <int>      <num>     <num>       <num>
+1:    UN1    189     43  0.2275132          0   7178.414    5662.8    95.76720
+2:    UN2    298    134  0.4496644          0  32866.399    5662.8    92.28188
+3:    UN3     50     40  0.8000000          0  14021.503    7405.1    80.00000
 
 --- City-level logit regressions ---
-  Regression sample: 0 lots (of 537 in target zones)
+  Regression sample: 482 lots (of 537 in target zones)
   Zone distribution in regression sample:
-Empty data.table (0 rows and 4 cols): zone,n,n_plex,plex_share
-  Only one usable zone, dropping zone from regressions
-Error in family$linkfun(mustart) : 
-  Argument mu must be a nonempty numeric vector
-Calls: glm ... eval -> eval -> glm.fit -> %||% -> <Anonymous> -> .Call
-In addition: Warning messages:
-1: glm.fit: algorithm did not converge 
-2: glm.fit: fitted probabilities numerically 0 or 1 occurred 
-Execution halted
+     zone     n n_plex plex_share
+   <char> <int>  <int>      <num>
+1:    UN1   180     36      0.200
+2:    UN2   263    102      0.388
+3:    UN3    39     29      0.744
+
+  Model summaries:
+
+Call:
+glm(formula = isPlexLot ~ zone + logLotSF + yr, family = binomial, 
+    data = dt_reg_full)
+
+Coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  -2.5551     1.2686  -2.014    0.044 *  
+zoneUN2       0.9584     0.2276   4.210 2.55e-05 ***
+zoneUN3       2.4828     0.4199   5.913 3.36e-09 ***
+logLotSF      0.1537     0.1409   1.091    0.275    
+yr2021       -0.3230     0.3121  -1.035    0.301    
+yr2022        0.1038     0.3141   0.331    0.741    
+yr2023       -0.4343     0.3043  -1.427    0.154    
+yr2024       -0.3925     0.3181  -1.234    0.217    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 622.01  on 481  degrees of freedom
+Residual deviance: 569.75  on 474  degrees of freedom
+AIC: 585.75
+
+Number of Fisher Scoring iterations: 4
+
+
+Call:
+glm(formula = isPlexLot ~ zone + logLotSF + slope + lppsf + yr, 
+    family = binomial, data = dt_reg_full)
+
+Coefficients:
+            Estimate Std. Error z value Pr(>|z|)    
+(Intercept)  -2.8968     1.2824  -2.259  0.02389 *  
+zoneUN2       1.0844     0.2565   4.227 2.37e-05 ***
+zoneUN3       2.6798     0.4354   6.154 7.54e-10 ***
+logLotSF      0.1278     0.1436   0.890  0.37338    
+slope         0.6792     0.2102   3.232  0.00123 ** 
+lppsf         0.3279     0.3204   1.024  0.30601    
+yr2021       -0.2831     0.3171  -0.893  0.37211    
+yr2022        0.1298     0.3199   0.406  0.68498    
+yr2023       -0.4596     0.3167  -1.451  0.14667    
+yr2024       -0.4944     0.3270  -1.512  0.13055    
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 622.01  on 481  degrees of freedom
+Residual deviance: 550.65  on 472  degrees of freedom
+AIC: 570.65
+
+Number of Fisher Scoring iterations: 4
+
+
+Call:
+glm(formula = isPlexLot ~ zone + logLotSF + slopeGrossGross + 
+    lppsf, family = binomial, data = dt_reg_full)
+
+Coefficients:
+                Estimate Std. Error z value Pr(>|z|)    
+(Intercept)     -3.04306    1.26254  -2.410  0.01594 *  
+zoneUN2          1.08855    0.25542   4.262 2.03e-05 ***
+zoneUN3          2.59928    0.42740   6.082 1.19e-09 ***
+logLotSF         0.16233    0.14387   1.128  0.25919    
+slopeGrossGross -0.28291    0.09286  -3.047  0.00231 ** 
+lppsf            0.83019    0.30380   2.733  0.00628 ** 
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 622.01  on 481  degrees of freedom
+Residual deviance: 556.36  on 476  degrees of freedom
+AIC: 568.36
+
+Number of Fisher Scoring iterations: 4
+
+
+--- By-zone logit regressions ---
+
+  Zone: UN1 (n=181, plex=36)
+
+Call:
+glm(formula = isPlexLot ~ logLotSF + lppsf + yr, family = binomial, 
+    data = dtz)
+
+Coefficients:
+            Estimate Std. Error z value Pr(>|z|)  
+(Intercept)  -7.0533     4.1937  -1.682   0.0926 .
+logLotSF      0.6915     0.4830   1.432   0.1523  
+lppsf        -0.2560     0.5753  -0.445   0.6564  
+yr2021       -0.1288     0.5413  -0.238   0.8119  
+yr2022       -0.4551     0.5748  -0.792   0.4284  
+yr2023       -0.6511     0.6059  -1.075   0.2825  
+yr2024       -0.5131     0.5755  -0.892   0.3726  
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 180.14  on 179  degrees of freedom
+Residual deviance: 176.65  on 173  degrees of freedom
+  (1 observation deleted due to missingness)
+AIC: 190.65
+
+Number of Fisher Scoring iterations: 4
+
+
+  Zone: UN2 (n=275, plex=112)
+
+Call:
+glm(formula = isPlexLot ~ logLotSF + lppsf + yr, family = binomial, 
+    data = dtz)
+
+Coefficients:
+            Estimate Std. Error z value Pr(>|z|)   
+(Intercept) -0.33233    1.38772  -0.239  0.81074   
+logLotSF    -0.04349    0.15510  -0.280  0.77916   
+lppsf        1.19211    0.38562   3.091  0.00199 **
+yr2021      -0.03921    0.40859  -0.096  0.92355   
+yr2022       0.60304    0.41439   1.455  0.14560   
+yr2023       0.10921    0.39156   0.279  0.78032   
+yr2024      -0.13750    0.42728  -0.322  0.74760   
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 351.25  on 262  degrees of freedom
+Residual deviance: 337.58  on 256  degrees of freedom
+  (12 observations deleted due to missingness)
+AIC: 351.58
+
+Number of Fisher Scoring iterations: 4
+
+
+  Zone: UN3 (n=40, plex=30)
+
+Call:
+glm(formula = isPlexLot ~ logLotSF + lppsf + yr, family = binomial, 
+    data = dtz)
+
+Coefficients:
+             Estimate Std. Error z value Pr(>|z|)
+(Intercept)   10.0174  3111.8437   0.003    0.997
+logLotSF       1.0573     1.0754   0.983    0.326
+lppsf         -0.6736     1.4760  -0.456    0.648
+yr2021       -18.7624  3111.8291  -0.006    0.995
+yr2022        -0.6878  6809.8073   0.000    1.000
+yr2023       -19.0624  3111.8289  -0.006    0.995
+yr2024       -18.5801  3111.8289  -0.006    0.995
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 44.403  on 38  degrees of freedom
+Residual deviance: 32.113  on 32  degrees of freedom
+  (1 observation deleted due to missingness)
+AIC: 46.113
+
+Number of Fisher Scoring iterations: 18
+
+> 
+> # ==========================================
+> # POOLED CROSS-CITY ANALYSIS
+> # ==========================================
+> message("\n========== Pooled Cross-City ==========\n")
+
+========== Pooled Cross-City ==========
+
+> 
+> dtAll <- rbindlist(city_results, use.names = TRUE, fill = TRUE)
+> 
+> cat("Total lots:", nrow(dtAll), "\n")
+Total lots: 3092 
+> cat("By city:\n")
+By city:
+> print(dtAll[, .N, by = city])
+          city     N
+        <char> <int>
+1:    Portland  2555
+2: Minneapolis   537
+> 
+> # Core zones only
+> core_zones <- unlist(lapply(city_config, `[[`, "core_zones"))
+> dtCore <- dtAll[zone %in% core_zones]
+> 
+> cat("\nCore-zone lot counts:\n")
+
+Core-zone lot counts:
+> print(dtCore[, .(n = .N, n_plex = sum(isPlexLot), plex_share = mean(isPlexLot),
++                   pct_has_lot = mean(!is.na(AreaLotSF)) * 100), by = .(city, zone)])
+          city   zone     n n_plex plex_share pct_has_lot
+        <char> <char> <int>  <int>      <num>       <num>
+1:    Portland     R5  1253    186  0.1484437    98.56345
+2:    Portland   R2.5   557    181  0.3249551    97.48654
+3: Minneapolis    UN1   189     43  0.2275132    95.76720
+4: Minneapolis    UN2   298    134  0.4496644    92.28188
+> 
+> # ------------------------------------------
+> # POOLED LOGIT WITH CITY FE
+> # ------------------------------------------
+> cat("\n--- Pooled logit (core zones, city FE) ---\n")
+
+--- Pooled logit (core zones, city FE) ---
+> 
+> # feglm for logit with fixed effects (including permit year)
+> pc1 <- feglm(isPlexLot ~ logLotSF | city + yr, family = binomial, data = dtCore)
+NOTE: 63 observations removed because of NA values (RHS: 63).
+> pc2 <- feglm(isPlexLot ~ logLotSF | city + zone + yr, family = binomial, data = dtCore)
+NOTE: 63 observations removed because of NA values (RHS: 63).
+> pc3 <- feglm(isPlexLot ~ logLotSF + lppsf | city + zone + yr, family = binomial, data = dtCore)
+NOTE: 95 observations removed because of NA values (RHS: 95).
+> pc4 <- feglm(isPlexLot ~ logLotSF + slope | city + zone + yr, family = binomial, data = dtCore)
+NOTE: 95 observations removed because of NA values (RHS: 95).
+> pc5 <- feglm(isPlexLot ~ logLotSF + slope + lppsf | city + zone + yr, family = binomial, data = dtCore)
+NOTE: 95 observations removed because of NA values (RHS: 95).
+> 
+> # With isMandated control
+> pc2m <- feglm(isPlexLot ~ logLotSF + isMandated | city + zone + yr, family = binomial, data = dtCore)
+NOTE: 63 observations removed because of NA values (RHS: 63).
+> pc5m <- feglm(isPlexLot ~ logLotSF + slope + lppsf + isMandated | city + zone + yr, family = binomial, data = dtCore)
+NOTE: 95 observations removed because of NA values (RHS: 95).
+> 
+> cat("\n  Without mandate control:\n")
+
+  Without mandate control:
+> print(etable(pc1, pc2, pc3, pc4, pc5))
+                               pc1               pc2               pc3
+Dependent Var.:          isPlexLot         isPlexLot         isPlexLot
+                                                                      
+logLotSF        -0.3392** (0.1120) -0.2301* (0.1074) -0.2910* (0.1135)
+lppsf                                                -0.3528. (0.1938)
+slope                                                                 
+Fixed-Effects:  ------------------ ----------------- -----------------
+city                           Yes               Yes               Yes
+yr                             Yes               Yes               Yes
+zone                            No               Yes               Yes
+_______________ __________________ _________________ _________________
+S.E. type                      IID               IID               IID
+Observations                 2,234             2,234             2,202
+Squared Cor.               0.02577           0.06679           0.06142
+Pseudo R2                  0.02602           0.06172           0.05964
+BIC                        2,375.5           2,313.8           2,273.4
+
+                              pc4               pc5
+Dependent Var.:         isPlexLot         isPlexLot
+                                                   
+logLotSF        -0.2905* (0.1135) -0.2857* (0.1135)
+lppsf                             -0.4287* (0.1959)
+slope            0.3578* (0.1393) 0.3994** (0.1429)
+Fixed-Effects:  ----------------- -----------------
+city                          Yes               Yes
+yr                            Yes               Yes
+zone                          Yes               Yes
+_______________ _________________ _________________
+S.E. type                     IID               IID
+Observations                2,202             2,202
+Squared Cor.              0.06849           0.06817
+Pseudo R2                 0.06125           0.06333
+BIC                       2,269.7           2,272.6
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> cat("\n  With mandate control:\n")
+
+  With mandate control:
+> print(etable(pc2, pc2m, pc5, pc5m))
+                              pc2              pc2m               pc5
+Dependent Var.:         isPlexLot         isPlexLot         isPlexLot
+                                                                     
+logLotSF        -0.2301* (0.1074) -0.2196. (0.1256) -0.2857* (0.1135)
+isMandatedTRUE                     -0.0287 (0.1803)                  
+slope                                               0.3994** (0.1429)
+lppsf                                               -0.4287* (0.1959)
+Fixed-Effects:  ----------------- ----------------- -----------------
+city                          Yes               Yes               Yes
+zone                          Yes               Yes               Yes
+yr                            Yes               Yes               Yes
+_______________ _________________ _________________ _________________
+S.E. type                     IID               IID               IID
+Observations                2,234             2,234             2,202
+Squared Cor.              0.06679           0.06686           0.06817
+Pseudo R2                 0.06172           0.06173           0.06333
+BIC                       2,313.8           2,321.5           2,272.6
+
+                             pc5m
+Dependent Var.:         isPlexLot
+                                 
+logLotSF        -0.2609. (0.1348)
+isMandatedTRUE   -0.0620 (0.1878)
+slope           0.4010** (0.1430)
+lppsf           -0.4379* (0.1979)
+Fixed-Effects:  -----------------
+city                          Yes
+zone                          Yes
+yr                            Yes
+_______________ _________________
+S.E. type                     IID
+Observations                2,202
+Squared Cor.              0.06831
+Pseudo R2                 0.06338
+BIC                       2,280.2
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> # AME for main spec
+> cat("\nAverage marginal effects (pooled M5):\n")
+
+Average marginal effects (pooled M5):
+> # TODO: avg_slopes doesn't work with feglm fixed effects
+> # print(avg_slopes(pc5))
+> 
+> # ------------------------------------------
+> # ALL ZONES POOLED
+> # ------------------------------------------
+> cat("\n--- Pooled logit (all zones, city FE) ---\n")
+
+--- Pooled logit (all zones, city FE) ---
+> dtAllZones <- dtAll[zone %in% unlist(lapply(city_config, `[[`, "all_zones"))]
+> 
+> pa1 <- feglm(isPlexLot ~ logLotSF | city + zone + yr, family = binomial, data = dtAllZones)
+NOTE: 101 observations removed because of NA values (RHS: 101).
+> pa2 <- feglm(isPlexLot ~ logLotSF + lppsf | city + zone + yr, family = binomial, data = dtAllZones)
+NOTE: 134 observations removed because of NA values (RHS: 134).
+> pa3 <- feglm(isPlexLot ~ logLotSF + slope + lppsf | city + zone + yr, family = binomial, data = dtAllZones)
+NOTE: 134 observations removed because of NA values (RHS: 134).
+> pa3m <- feglm(isPlexLot ~ logLotSF + slope + lppsf + isMandated | city + zone + yr, family = binomial, data = dtAllZones)
+NOTE: 134 observations removed because of NA values (RHS: 134).
+> 
+> print(etable(pa1, pa2, pa3, pa3m))
+                             pa1                pa2                 pa3
+Dependent Var.:        isPlexLot          isPlexLot           isPlexLot
+                                                                       
+logLotSF        -0.1261 (0.0930)  -0.1666. (0.0967)   -0.1615. (0.0965)
+lppsf                            -0.5284** (0.1799) -0.6072*** (0.1823)
+slope                                                 0.3649** (0.1358)
+isMandatedTRUE                                                         
+Fixed-Effects:  ---------------- ------------------ -------------------
+city                         Yes                Yes                 Yes
+zone                         Yes                Yes                 Yes
+yr                           Yes                Yes                 Yes
+_______________ ________________ __________________ ___________________
+S.E. type                    IID                IID                 IID
+Observations               2,901              2,868               2,868
+Squared Cor.             0.10742            0.10152             0.10693
+Pseudo R2                0.10306            0.10211             0.10485
+BIC                      2,702.7            2,657.3             2,657.5
+
+                               pa3m
+Dependent Var.:           isPlexLot
+                                   
+logLotSF           -0.0912 (0.1111)
+lppsf           -0.6355*** (0.1841)
+slope             0.3707** (0.1360)
+isMandatedTRUE     -0.2089 (0.1741)
+Fixed-Effects:  -------------------
+city                            Yes
+zone                            Yes
+yr                              Yes
+_______________ ___________________
+S.E. type                       IID
+Observations                  2,868
+Squared Cor.                0.10759
+Pseudo R2                   0.10537
+BIC                         2,664.0
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> # ==========================================
+> # PLOTS
+> # ==========================================
+> 
+> # Plex share by lot size bin
+> dtCore[, lotBin := cut(AreaLotSF, breaks = c(0, 3000, 5000, 7000, 10000, 15000, Inf),
++                        labels = c("<3k", "3-5k", "5-7k", "7-10k", "10-15k", "15k+"))]
+> 
+> pLot <- ggplot(dtCore[!is.na(lotBin)],
++                aes(x = lotBin, fill = isPlexLot)) +
++   geom_bar(position = "fill") +
++   facet_wrap(~ city) +
++   scale_fill_manual(values = c("FALSE" = "grey70", "TRUE" = "tomato"),
++                     labels = c("Single-Family", "Plex"),
++                     name = "") +
++   labs(x = "Lot Size (sqft)", y = "Share of Permits",
++        title = "Plex Share by Lot Size and City") +
++   theme_minimal() +
++   theme(legend.position = "bottom")
+> 
+> ggsave("text/plex_by_lotsize.png", pLot, width = 10, height = 5, dpi = 300)
+> 
+> # Plex share by price level
+> pPrice <- ggplot(dtCore[!is.na(lppsf)],
++                  aes(x = lppsf, y = as.numeric(isPlexLot), color = city)) +
++   geom_point(alpha = 0.3, size = 1) +
++   geom_smooth(method = "glm", method.args = list(family = "binomial"),
++               se = TRUE, linewidth = 0.8) +
++   facet_wrap(~ city, scales = "free_x") +
++   labs(x = "Log Price Per Square Foot",
++        y = "Pr(Plex)",
++        title = "Plex Probability and Price Level by City") +
++   theme_minimal() +
++   theme(legend.position = "none")
+> 
+> ggsave("text/plex_by_price.png", pPrice, width = 10, height = 5, dpi = 300)
+`geom_smooth()` using formula = 'y ~ x'
+> 
+> # Plex share by slope
+> pSlope <- ggplot(dtCore[!is.na(slope)],
++                  aes(x = slope, y = as.numeric(isPlexLot), color = city)) +
++   geom_point(alpha = 0.3, size = 1) +
++   geom_smooth(method = "glm", method.args = list(family = "binomial"),
++               se = TRUE, linewidth = 0.8) +
++   facet_wrap(~ city, scales = "free_x") +
++   labs(x = "Price-Size Slope",
++        y = "Pr(Plex)",
++        title = "Plex Probability and Price-Size Gradient by City") +
++   theme_minimal() +
++   theme(legend.position = "none")
+> 
+> ggsave("text/plex_by_slope.png", pSlope, width = 10, height = 5, dpi = 300)
+`geom_smooth()` using formula = 'y ~ x'
+> 
+> # ==========================================
+> # SAVE
+> # ==========================================
+> saveRDS(dtAll, "~/DropboxExternal/dataProcessed/analysis_lot_level_pooled.rds")
+> 
+> proc.time()
+   user  system elapsed 
+  1.765   0.124   1.917 

@@ -67,6 +67,13 @@ for (CITY in CITIES) {
   dt[AreaLotSF <= 0, AreaLotSF := NA_real_]
   dt[, logLotSF := log(AreaLotSF)]
 
+  # Ensure isMandated exists (FALSE for cities without mandates)
+  if (!"isMandated" %in% names(dt)) dt[, isMandated := FALSE]
+
+  # Permit year as factor for FE
+  dt[, permit_year := as.integer(permit_year)]
+  dt[, yr := factor(permit_year)]
+
   message("Lots with valid lot size: ", sum(!is.na(dt$logLotSF)), " of ", nrow(dt))
 
   message("Total lots: ", nrow(dt))
@@ -81,10 +88,33 @@ for (CITY in CITIES) {
     n_lots      = .N,
     n_plex      = sum(isPlexLot),
     plex_share  = mean(isPlexLot),
+    n_mandated  = sum(isMandated),
     mean_lotSF  = mean(AreaLotSF, na.rm = TRUE),
     med_lotSF   = median(AreaLotSF, na.rm = TRUE),
     pct_has_lot = mean(!is.na(AreaLotSF)) * 100
   ), by = zone])
+
+  # Mandate breakdown (if any mandated lots exist)
+  if (any(dt$isMandated)) {
+    cat("\n--- Mandate breakdown ---\n")
+    print(dt[!is.na(AreaLotSF), .(
+      n = .N,
+      n_plex = sum(isPlexLot),
+      plex_share = round(mean(isPlexLot), 3),
+      mean_lotSF = round(mean(AreaLotSF))
+    ), by = .(zone, isMandated)])
+
+    # Mandate × year for R2.5 and R5
+    cat("\n--- Plex share by zone × mandate × year ---\n")
+    for (z in c("R2.5", "R5")) {
+      cat(sprintf("\n  Zone: %s\n", z))
+      print(dt[zone == z & !is.na(permit_year), .(
+        n = .N,
+        n_plex = sum(isPlexLot),
+        plex_share = round(mean(isPlexLot), 3)
+      ), by = .(permit_year, isMandated)][order(permit_year, isMandated)])
+    }
+  }
 
   # ------------------------------------------
   # CITY-LEVEL LOGIT REGRESSIONS
@@ -108,11 +138,20 @@ for (CITY in CITIES) {
 
   if (length(zone_ok) < 2) {
     cat("  Only one usable zone, dropping zone from regressions\n")
-    m2 <- glm(isPlexLot ~ logLotSF, family = binomial, data = dt_reg_full)
-    m5 <- glm(isPlexLot ~ logLotSF + slope + lppsf, family = binomial, data = dt_reg_full)
+    m2 <- glm(isPlexLot ~ logLotSF + yr, family = binomial, data = dt_reg_full)
+    m5 <- glm(isPlexLot ~ logLotSF + slope + lppsf + yr, family = binomial, data = dt_reg_full)
   } else {
-    m2 <- glm(isPlexLot ~ zone + logLotSF, family = binomial, data = dt_reg_full)
-    m5 <- glm(isPlexLot ~ zone + logLotSF + slope + lppsf, family = binomial, data = dt_reg_full)
+    m2 <- glm(isPlexLot ~ zone + logLotSF + yr, family = binomial, data = dt_reg_full)
+    m5 <- glm(isPlexLot ~ zone + logLotSF + slope + lppsf + yr, family = binomial, data = dt_reg_full)
+  }
+
+  # With isMandated control (only meaningful for Portland)
+  if (any(dt_reg_full$isMandated)) {
+    cat("\n  --- With isMandated control ---\n")
+    m2m <- glm(isPlexLot ~ zone + logLotSF + isMandated + yr, family = binomial, data = dt_reg_full)
+    m5m <- glm(isPlexLot ~ zone + logLotSF + slope + lppsf + isMandated + yr, family = binomial, data = dt_reg_full)
+    print(summary(m2m))
+    print(summary(m5m))
   }
 
   if ("slopeGrossGross" %in% names(dt_reg_full) && length(zone_ok) >= 2) {
@@ -124,9 +163,9 @@ for (CITY in CITIES) {
   print(summary(m5))
   if (exists("m6")) { print(summary(m6)); rm(m6) }
 
-  # Average marginal effects for the main spec
-  cat("\n  Average marginal effects (M5):\n")
-  print(avg_slopes(m5))
+  # Average marginal effects (uncomment when ready)
+  # cat("\n  Average marginal effects (M5):\n")
+  # print(avg_slopes(m5))
 
   # ------------------------------------------
   # BY-ZONE LOGIT
@@ -140,13 +179,13 @@ for (CITY in CITIES) {
     }
     cat(sprintf("\n  Zone: %s (n=%d, plex=%d)\n", z, nrow(dtz), sum(dtz$isPlexLot)))
 
-    mz1 <- glm(isPlexLot ~ logLotSF, family = binomial, data = dtz)
-    mz2 <- glm(isPlexLot ~ logLotSF + lppsf, family = binomial, data = dtz)
-    mz3 <- glm(isPlexLot ~ logLotSF + slope, family = binomial, data = dtz)
+    mz1 <- glm(isPlexLot ~ logLotSF + yr, family = binomial, data = dtz)
+    mz2 <- glm(isPlexLot ~ logLotSF + lppsf + yr, family = binomial, data = dtz)
+    mz3 <- glm(isPlexLot ~ logLotSF + slope + yr, family = binomial, data = dtz)
 
     print(summary(mz2))
-    cat("  AME:\n")
-    print(avg_slopes(mz2))
+    # cat("  AME:\n")
+    # print(avg_slopes(mz2))
   }
 
   city_results[[CITY]] <- dt
@@ -176,18 +215,26 @@ print(dtCore[, .(n = .N, n_plex = sum(isPlexLot), plex_share = mean(isPlexLot),
 # ------------------------------------------
 cat("\n--- Pooled logit (core zones, city FE) ---\n")
 
-# feglm for logit with fixed effects
-pc1 <- feglm(isPlexLot ~ logLotSF | city, family = binomial, data = dtCore)
-pc2 <- feglm(isPlexLot ~ logLotSF | city + zone, family = binomial, data = dtCore)
-pc3 <- feglm(isPlexLot ~ logLotSF + lppsf | city + zone, family = binomial, data = dtCore)
-pc4 <- feglm(isPlexLot ~ logLotSF + slope | city + zone, family = binomial, data = dtCore)
-pc5 <- feglm(isPlexLot ~ logLotSF + slope + lppsf | city + zone, family = binomial, data = dtCore)
+# feglm for logit with fixed effects (including permit year)
+pc1 <- feglm(isPlexLot ~ logLotSF | city + yr, family = binomial, data = dtCore)
+pc2 <- feglm(isPlexLot ~ logLotSF | city + zone + yr, family = binomial, data = dtCore)
+pc3 <- feglm(isPlexLot ~ logLotSF + lppsf | city + zone + yr, family = binomial, data = dtCore)
+pc4 <- feglm(isPlexLot ~ logLotSF + slope | city + zone + yr, family = binomial, data = dtCore)
+pc5 <- feglm(isPlexLot ~ logLotSF + slope + lppsf | city + zone + yr, family = binomial, data = dtCore)
 
+# With isMandated control
+pc2m <- feglm(isPlexLot ~ logLotSF + isMandated | city + zone + yr, family = binomial, data = dtCore)
+pc5m <- feglm(isPlexLot ~ logLotSF + slope + lppsf + isMandated | city + zone + yr, family = binomial, data = dtCore)
+
+cat("\n  Without mandate control:\n")
 print(etable(pc1, pc2, pc3, pc4, pc5))
+cat("\n  With mandate control:\n")
+print(etable(pc2, pc2m, pc5, pc5m))
 
 # AME for main spec
 cat("\nAverage marginal effects (pooled M5):\n")
-print(avg_slopes(pc5))
+# TODO: avg_slopes doesn't work with feglm fixed effects
+# print(avg_slopes(pc5))
 
 # ------------------------------------------
 # ALL ZONES POOLED
@@ -195,11 +242,12 @@ print(avg_slopes(pc5))
 cat("\n--- Pooled logit (all zones, city FE) ---\n")
 dtAllZones <- dtAll[zone %in% unlist(lapply(city_config, `[[`, "all_zones"))]
 
-pa1 <- feglm(isPlexLot ~ logLotSF | city + zone, family = binomial, data = dtAllZones)
-pa2 <- feglm(isPlexLot ~ logLotSF + lppsf | city + zone, family = binomial, data = dtAllZones)
-pa3 <- feglm(isPlexLot ~ logLotSF + slope + lppsf | city + zone, family = binomial, data = dtAllZones)
+pa1 <- feglm(isPlexLot ~ logLotSF | city + zone + yr, family = binomial, data = dtAllZones)
+pa2 <- feglm(isPlexLot ~ logLotSF + lppsf | city + zone + yr, family = binomial, data = dtAllZones)
+pa3 <- feglm(isPlexLot ~ logLotSF + slope + lppsf | city + zone + yr, family = binomial, data = dtAllZones)
+pa3m <- feglm(isPlexLot ~ logLotSF + slope + lppsf + isMandated | city + zone + yr, family = binomial, data = dtAllZones)
 
-print(etable(pa1, pa2, pa3))
+print(etable(pa1, pa2, pa3, pa3m))
 
 # ==========================================
 # PLOTS
