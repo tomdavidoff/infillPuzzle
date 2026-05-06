@@ -1,0 +1,2061 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # testSlopeIntercept.R
+> # R to see if they are negatively correlated in theory
+> # Tom Davidoff
+> # 04/17/26
+> 
+> library(data.table)
+> library(fixest)
+> 
+> trials <- 1000
+> betaSlopeIntercept <- NULL
+> G <- 50 # number of groups
+> N <- 200 # number of observations per group
+> 
+> for (i in 1:trials) {
++ 	x <- rnorm(N*G)
++ 	group <- rep(1:G, each=N)
++ 	trueBeta <- -1*group # want to find right correlation
++ 	y <- group + trueBeta*x + rnorm(N*G)
++ 	dt <- data.table(group=group, x=x, y=y)
++ 	reg <- feols(y ~ 0 + x*i(group),data=dt)
++ 	# make a data table with the group coefficients alone and the interactive slope coefficients
++ 	coefs <- coef(reg)
++ 	coefNames <- names(coefs)
++ 	# group only are the coefficients without x in the name
++ 	# split the name by ":" and take the last item as the group
++ 	groupCoefs <- coefs[!grepl("x", coefNames)]
++ 	slopeCoefs <- coefs[grepl("x:", coefNames)]
++ 	# get the group for each of groupCoefs and slopeCoefs by taking the last item after the last : in the word
++ 	groupCoefDT <- data.table(coefName=names(groupCoefs), coefValue=groupCoefs)
++ 	groupCoefDT[,groupID:=sub(".*:(.*)", "\\1", coefName)]
++ 	slopeCoefDT <- data.table(coefName=names(slopeCoefs), coefValue=slopeCoefs)
++ 	slopeCoefDT[,groupID:=sub("x:group::", "\\1", coefName)]
++ 	coef_dt <- merge(groupCoefDT, slopeCoefDT, by="groupID", suffixes=c("_intercept", "_slope"))
++ 	betaSlopeIntercept  <- c(betaSlopeIntercept, cov(coef_dt$coefValue_intercept, coef_dt$coefValue_slope)/var(coef_dt$coefValue_intercept))
++ }
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+The variable 'x:group::50' has been removed because of collinearity (see
+$collin.var).
+> print(summary(betaSlopeIntercept))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+-1.0025 -1.0007 -1.0000 -1.0000 -0.9993 -0.9971 
+> 
+> proc.time()
+   user  system elapsed 
+ 28.617   4.516  33.265 

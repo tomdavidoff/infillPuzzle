@@ -37,7 +37,7 @@ CITIES <- list(
   )
 )
 
-MIN_OBS <- 20
+MIN_OBS <- 15 # 20 if zip
 con <- dbConnect(duckdb())
 
 for (CITY_NAME in names(CITIES)) {
@@ -106,8 +106,8 @@ for (CITY_NAME in names(CITIES)) {
 	dt[, lsqft     := log(sqft)]
 	dt[, llotSize  := log(pmax(as.numeric(lotSize), 1))]
 	dt[, yearMonth := format(sale_date, "%Y-%m")]
-	dt[, zip_n     := .N, by = zip]
-	dt <- dt[zip_n >= MIN_OBS]
+	dt[, trat_n     := .N, by = zip] # redundant if do tract
+	dt <- dt[trat_n >= MIN_OBS]
 	# get quantiles of sqft#
 	print(quantile(dt[, sqft], probs = seq(0,1,.1)))
 	print("SQUARE FOOT WEIRD!")
@@ -134,12 +134,14 @@ for (CITY_NAME in names(CITIES)) {
 	#ml <- feols(ppsf ~ 0 + i(CensusTract) + i(CensusTract):sqft + llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
 	dt[,logGrossLessGarage := log(AreaGross - ParkingGarageArea)]
 	dt[,logGross := log(AreaGross)]
-	mtGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGrossLessGarage + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
-	mtGrossGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGross + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
+	#mtGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGrossLessGarage + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") # always worse than either other
+	mtGrossGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGross + i(CensusTract):llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
 	print(summary(feols(log(price) ~ log(AreaBuilding)+llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "CensusTract")))
 
-	#print(summary(mt))
-	#print(summary(ml))
+	print(CITY_NAME)
+	print("Mt, then mtGross, then mtGrossGross")
+	print(summary(mt))
+	print(summary(mtGrossGross))
 	# bigger Adj R2 at tract level and way bigger in logs
 
 	b <- coef(mt)
@@ -150,21 +152,40 @@ for (CITY_NAME in names(CITIES)) {
 		slope = unname(b[keep])
 	)
 	dtSlopes[,tract:=gsub("::","",tract)]
-	bG <- coef(mtGross)
-	keepG <- grepl(":logGrossLessGarage$", names(bG))
-	print(keepG)
-	dtSlopesG <- data.table(
-		tract = sub(":logGrossLessGarage$", "", sub("^CensusTract", "", names(bG)[keepG])),
-		slopeGross = unname(bG[keepG])
-		)
-	dtSlopesG[,tract:=gsub("::","",tract)]
+	if (0>1) {
+		bG <- coef(mtGross)
+		keepG <- grepl(":logGrossLessGarage$", names(bG))
+		print(keepG)
+		dtSlopesG <- data.table(
+			tract = sub(":logGrossLessGarage$", "", sub("^CensusTract", "", names(bG)[keepG])),
+			slopeGross = unname(bG[keepG])
+			)
+		dtSlopesG[,tract:=gsub("::","",tract)]
+		#setkey(dtSlopesG, tract)
+	}
 	bGG <- coef(mtGrossGross)
-	dtSlopesGG <- data.table(
-		tract = sub(":logGross$", "", sub("^CensusTract", "", names(bGG)[grepl(":logGross$", names(bGG))])),
-		slopeGrossGross = unname(bGG[grepl(":logGross$", names(bGG))])
+	# note bGG has interactions both with logGross and with llotSize, and we want to extract both sets of coefficients along with the simple intercepts
+	# strategy: if neither logGross nor llotSize in name, it's an intercept; if logGross in name, it's a slope for logGross; if llotSize in name, it's a slope for llotSize. Then merge on tract.
+	tractCoef <- bGG[!grepl(":logGross", names(bGG)) & !grepl(":llotSize", names(bGG))]
+	slopeCoef <- bGG[grepl(":logGross", names(bGG)) & !grepl(":llotSize", names(bGG))]
+	slopeCoefLot <- bGG[grepl(":llotSize", names(bGG)) & !grepl(":logGross", names(bGG))]
+	tractCoefDT <- data.table(
+		tract = sub("^CensusTract", "", names(tractCoef)),
+		intercept = unname(tractCoef)
 	)
-	dtSlopesGG[,tract:=gsub("::","",tract)]
-
+	slopeCoefDT <- data.table(
+		tract = sub(":logGross$", "", sub("^CensusTract", "", names(slopeCoef))),
+		slopeGross = unname(slopeCoef)
+	)
+	slopeCoefLotDT <- data.table(
+		tract = sub(":llotSize$", "", sub("^CensusTract", "", names(slopeCoefLot))),
+		slopeLot = unname(slopeCoefLot)
+	)
+	setkey(tractCoefDT, tract)
+	setkey(slopeCoefDT, tract)
+	setkey(slopeCoefLotDT, tract)
+	dtSlopesGG <- tractCoefDT[slopeCoefDT][slopeCoefLotDT]
+	dtSlopesGG[,tract := gsub("::","",tract)]
 
 
 	# get tract-specific coefficients from feols(lppsf ~ = +i(CensusTract) | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") for comparison
@@ -182,12 +203,56 @@ for (CITY_NAME in names(CITIES)) {
 	print(head(dtSlopes))
 	setkey(dtSlopes, tract)
 	setkey(dtP, tract)
-	setkey(dtSlopesG, tract)
 	setkey(dtCount, CensusTract)
 	setkey(dtSlopesGG, tract)
-	dtSlopes <- dtSlopes[dtP][dtSlopesG][dtSlopesGG][dtCount]
+	dtSlopes <- dtSlopes[dtP][dtSlopesGG][dtCount]
+	if (0>1) {
+		dtSlopes <- dtSlopes[dtSlopesG]
+	}
+	print(CITY_NAME)
+	print(summary(dtSlopesGG))
+	print(cor(dtSlopesGG[,.(intercept, slopeGross, slopeLot)], use = "complete.obs"))
+	print(head(dtSlopesGG))
+	print(head(dtP))
+	print(head(dtSlopes))
 
 	saveRDS(dtSlopes, sprintf("~/DropboxExternal/dataProcessed/%s_slopes.rds", CITY_NAME))
+
+	# --- Tract-by-tract OLS as diagnostic ---
+	dtCity <- dt[substring(zip,1,2)==cf$ZIP_START]
+	tractList <- dtCity[, .N, by=CensusTract][N >= MIN_OBS, CensusTract]
+	tractOLS <- rbindlist(lapply(tractList, function(tr) {
+		dd <- dtCity[CensusTract == tr]
+		m <- lm(log(price) ~ lsqft + llotSize, data = dd)
+		bc <- coef(m)
+		data.table(tract = as.character(tr),
+			interceptOLS = bc["(Intercept)"],
+			slopeOLS = bc["lsqft"],
+			slopeLotOLS = bc["llotSize"],
+			nOLS = nrow(dd))
+	}))
+	# also get tract-level mean lppsf from raw data for comparison
+	tractMeanPPSF <- dtCity[CensusTract %in% tractList, .(lppsf_raw = mean(lppsf, na.rm=TRUE), medianSqft = median(sqft)), by=CensusTract]
+	tractMeanPPSF[, tract := as.character(CensusTract)]
+	setkey(tractOLS, tract)
+	setkey(tractMeanPPSF, tract)
+	tractOLS <- tractOLS[tractMeanPPSF]
+
+	message("\n--- Tract-by-tract OLS diagnostics: ", toupper(CITY_NAME), " ---")
+	print(cor(tractOLS[, .(interceptOLS, slopeOLS, slopeLotOLS, lppsf_raw)], use = "complete.obs"))
+	print(summary(tractOLS))
+
+	# merge with pooled estimates for direct comparison
+	dtSlopes[, tract := as.character(tract)]
+	setkey(dtSlopes, tract)
+	dtComp <- dtSlopes[tractOLS, on = "tract"]
+	message("Pooled slope vs OLS slope correlation:")
+	print(cor(dtComp$slope, dtComp$slopeOLS, use = "complete.obs"))
+	message("Pooled intercept vs OLS intercept correlation:")
+	print(cor(dtComp$intercept, dtComp$interceptOLS, use = "complete.obs"))
+
+	saveRDS(tractOLS, sprintf("~/DropboxExternal/dataProcessed/%s_tractOLS.rds", CITY_NAME))
+
 	# do a loess fit of price per square foot against square feet
 	q99sf <- quantile(dt$sqft, 0.95, na.rm = TRUE)
 	q01sf <- quantile(dt$sqft, 0.05, na.rm = TRUE)

@@ -17,405 +17,2505 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
-> # permitsUSA.R
-> # Unified permit analysis for Portland and Minneapolis
+> # processAttom.R
 > # Tom Davidoff
-> # Consolidation by Claude, April 2026 -- April 15 cut mandatory multi lots in Portland
+> # Purpose: Pricing slopes by ZIP for Portland or Minneapolis
+> # Unified script with city toggle
 > 
 > library(data.table)
-> library(sf)
-Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
-> library(ggplot2)
-> library(tigris)
-To enable caching of data, set `options(tigris_use_cache = TRUE)`
-in your R script or .Rprofile.
 > library(duckdb)
 Loading required package: DBI
+> library(fixest)
+> library(ggplot2)
 > 
-> options(timeout = 600)
-> options(tigris_use_cache = TRUE)
-> 
-> # ==========================================
-> # TOGGLES
-> # ==========================================
-> GEOGRAPHY <- "tract"
-> CITIES <- c("minneapolis", "portland")  # run both, or subset
-> # ==========================================
-> 
-> # ==========================================
-> # DUCKDB CONNECTION (for ATTOM parquet reads)
-> # ==========================================
-> con <- dbConnect(duckdb())
-> 
-> # ==========================================
-> # CITY CONFIGURATIONS
-> # ==========================================
-> city_config <- list(
-+   minneapolis = list(
-+     city_name    = "Minneapolis",
-+     crs          = 26915,
-+     # --- permit data ---
-+     permit_file  = "~/DropboxExternal/dataRaw/shp_econ_residential_building_permts/ResidentialPermits.shp",
-+     permit_type  = "shp",
-+     # --- permit filters ---
-+     filter_permits = function(dt) {
-+       dt <- dt[year >= 2020 & year <= 2025]
-+       qmin <- quantile(dt[res_permit=="NU", permit_val], 0.2, na.rm = TRUE)
-+       dt <- dt[res_permit == "NU" | permit_val >= qmin]
-+       dt <- dt[ctu_name == "Minneapolis"]
-+       dt <- dt[(co_code == "053") | (co_code == 53)]
-+       dt
-+     },
-+     # --- plex logic ---
-+     flag_plex = function(dt) {
-+       dt[, isPlex := units >= 2 |
-+            !housing_ty %in% c("SFD") |
-+            grepl("duplex|triplex|fourplex|twinhome|townhouse",
-+                  housing__1, ignore.case = TRUE)]
-+     },
-+     # --- zoning ---
-+     zoning_file  = "~/DropboxExternal/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp",
-+     zone_field   = "land_use_c",
-+     zone_filter  = "UN1|UN2|UN3",
-+     zone_plot_values = c("UN1", "UN2", "UN3"),
-+     topZone = "UN3",
-+     zone_colors  = c("UN1" = "lightyellow", "UN2" = "lightblue", "UN3" = "lightgreen"),
-+     # --- parcel id ---
-+     parcel_id    = "address",
-+     # --- units field ---
-+     units_field  = "units",
-+     # --- geography ---
-+     tract_state  = "MN",
-+     tract_county = "Hennepin",
-+     zip_pattern  = "^55[34]",
-+     # --- ATTOM lot size (not needed for Minneapolis) ---
-+     attom_parquet = NULL,
-+     attom_city_filter = NULL,
-+     mandate_thresholds = NULL
-+   ),
-+ 
-+   portland = list(
-+     city_name    = "Portland",
-+     crs          = 3857,
-+     # --- permit data ---
-+     permit_file  = "~/DropboxExternal/dataRaw/portlandPermit-Search-Results.csv",
-+     permit_type  = "csv",
-+     csv_coords   = c("x_web_mercator", "y_web_mercator"),
-+     # --- permit filters ---
-+     filter_permits = function(dt) {
-+       dt <- dt[as.IDate(issued) >= "2021-01-01"]
-+       qmin <- quantile(dt[work == "New Construction", total_sqft], 0.2, na.rm = TRUE)
-+       dt <- dt[work == "New Construction" | total_sqft >= qmin]
-+       dt <- dt[!is.na(x_web_mercator)]
-+       dt
-+     },
-+     # --- plex logic ---
-+     flag_plex = function(dt) {
-+       dt[, isPlex := new_units >= 2 |
-+            grepl("duplex|triplex|fourplex", description, ignore.case = TRUE) |
-+            grepl("Townhouse", type, ignore.case = TRUE)]
-+     },
-+     # --- zoning ---
-+     zoning_file  = "~/DropboxExternal/dataRaw/portlandZoning",
-+     zoning_is_dir = TRUE,
-+     zone_field   = "zone",
-+     zone_filter  = "^R2.5|^R5|^R7|^R10|^R20",
-+     zone_plot_values = c("R2.5", "R5", "R7", "R10", "R20"),
-+     topZone = "R2.5",
-+     zone_colors  = c("R2.5" = "lightyellow", "R5" = "lightblue",
-+                       "R7" = "lightgreen", "R10" = "wheat", "R20" = "lavender"),
-+     # --- parcel id ---
-+     parcel_id    = "property_id",
-+     # --- units field ---
-+     units_field  = "new_units",
-+     # --- geography ---
-+     tract_state  = "OR",
-+     tract_county = "Multnomah",
-+     zip_pattern  = "^972",
-+     # --- ATTOM lot size ---
-+     attom_parquet = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_OR.parquet",
-+     attom_city_filter = "PORTLAND",
-+     attom_address_field = "PropertyAddressFull",
-+     permit_address_field = "address",  # Portland permit address column (after tolower)
-+     # --- mandate thresholds: lots >= this size MUST build multiplex, so drop them ---
-+     mandate_thresholds = list(
-+       "R7"  = 14000,
-+       "R5"  = 10000,
-+       "R2.5" = 5000
-+     )
+> NYEARS <- 10 # need better sample size for good estimates of slopes but very odd behaviour Portland over 5
+> CITIES <- list(
++ 	portland = list(
++ 		SALES_FILE = "~/DropboxExternal/dataProcessed/41051.txt",
++ 		ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_OR.parquet",
++ 		FLAT_ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_OR.parquet",
++ 		TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
++ 		FIPS_MUNI = "051",
++ 		LON_RANGE = c(-124.0, -121.0),
++ 		LAT_RANGE = c(44.0, 47.0),
++ 		LASTYEAR = 2021,
++ 		CITYNAME = "PORTLAND",
++ 		ZIP_START = "97",
++ 		MIN_SQFT = 1200),
++ 	minneapolis = list(
++ 		SALES_FILE = "~/DropboxExternal/dataProcessed/27053.txt",
++ 		ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/AH_state_MN.parquet",
++ 		FLAT_ASSESSOR_PARQUET = "~/DropboxExternal/dataProcessed/by_property_states/tax_assessor_state_MN.parquet",
++ 		TRACT_PARQUET = "~/DropboxExternal/dataProcessed/attomTract.parquet",
++ 		FIPS_MUNI = "053",
++ 		LON_RANGE = c(-95.5, -91.0),
++ 		LAT_RANGE = c(43.0, 47.0),
++ 		LASTYEAR = 2020,
++ 		CITYNAME = "MINNEAPOLIS",
++ 		ZIP_START = "55",
++ 		MIN_SQFT = 400
 +   )
 + )
 > 
-> # ==========================================
-> # MAIN LOOP
-> # ==========================================
-> results <- list()
+> MIN_OBS <- 20
+> con <- dbConnect(duckdb())
 > 
-> for (CITY in CITIES) {
-+   cfg <- city_config[[CITY]]
-+   message("\n========== Processing: ", cfg$city_name, " ==========\n")
+> for (CITY_NAME in names(CITIES)) {
++ 	cf <- CITIES[[CITY_NAME]]
++ 	cf$YEARS <- (cf$LASTYEAR - NYEARS + 1):cf$LASTYEAR
++ 	message("\n=== ", toupper(CITY_NAME), " ===")
 + 
-+   # ------------------------------------------
-+   # 1. READ PERMITS
-+   # ------------------------------------------
-+   if (cfg$permit_type == "shp") {
-+     sfPermit <- st_read(cfg$permit_file)
-+     names(sfPermit) <- tolower(names(sfPermit))
-+     sfPermit <- st_transform(sfPermit, cfg$crs)
-+     dtPermit <- as.data.table(sfPermit)
-+   } else {
-+     dtPermit <- fread(cfg$permit_file)
-+     setnames(dtPermit, tolower(names(dtPermit)))
-+   }
-+   print("HERE ARE THE PERMIT FIELDS")
-+   print(names(dtPermit))
++ 	# --- Sales: pipe-delimited text ---
++ 	raw <- readLines(cf$SALES_FILE, warn = FALSE, encoding = "latin1")
++ 	hdr <- make.names(tolower(unlist(strsplit(raw[1], "|", fixed = TRUE))))
++ 	dtS <- data.table(raw = raw[-1])[, tstrsplit(raw, "|", fixed = TRUE, fill = NA)]
++ 	setnames(dtS, seq_along(hdr), hdr)
++ 	dtS[, attom_id  := as.character(X.attom.id.)]
++ 	dtS[, price     := as.numeric(transferamount)]
++ 	dtS[, sale_date := as.IDate(transactiondate)]
++ 	dtS[, zip       := substr(gsub("[^0-9]", "", as.character(propertyaddresszip)), 1, 5)]
++ 	dtS <- dtS[price > 1e5 & year(sale_date) %in% cf$YEARS,
++ 	.(attom_id, price, sale_date, zip)]
 + 
-+   # ------------------------------------------
-+   # 2. FILTER PERMITS
-+   # ------------------------------------------
-+   dtPermit <- cfg$filter_permits(dtPermit)
++ 	# --- Assessor: filtered parquet read via DuckDB ---
++ 	dtA <- as.data.table(dbGetQuery(con, sprintf(
++ 		"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
++ 		SA_FIN_SQFT_1, SA_FIN_SQFT_2, SA_FIN_SQFT_3,SA_FIN_SQFT_4,
++ 		CAST(SA_FIN_SQFT_TOT AS DOUBLE) AS sqft, CAST(SA_LOTSIZE AS DOUBLE) AS lotSize,
++ 		ASSR_YEAR
++ 		FROM read_parquet('%s')
++ 		WHERE MM_FIPS_MUNI_CODE = '%s'
++ 		AND USE_CODE_STD = 'RSFR'
++ 		AND sqft > %d",
++ 		cf$ASSESSOR_PARQUET, cf$FIPS_MUNI, cf$MIN_SQFT
++ 	)))
 + 
-+   # ------------------------------------------
-+   # 3. FLAG PLEX
-+   # ------------------------------------------
-+   cfg$flag_plex(dtPermit)
++ 	# --- Tracts: filtered parquet read via DuckDB ---
++ 	dtT <- as.data.table(dbGetQuery(con, sprintf(
++ 		"SELECT CAST(\"[ATTOM ID]\" AS VARCHAR) AS attom_id,
++ 		CAST (PropertyLatitude AS DOUBLE) AS lat, CAST (PropertyLongitude AS DOUBLE) AS lon, CensusTract,
++ 		CAST (AreaBuilding AS DOUBLE) AS AreaBuilding, CAST (AreaGross AS DOUBLE) AS AreaGross, CAST(ParkingGarageArea AS DOUBLE) AS ParkingGarageArea,
++ 		ZonedCodeLocal, PropertyAddressCity,
++ 		FROM read_parquet('%s')
++ 		WHERE PropertyUseStandardized = '385'
++ 		AND ZonedCodeLocal LIKE 'R%%'
++ 		AND PropertyAddressCity = '%s'
++ 		AND lon BETWEEN %f AND %f
++ 		AND lat  BETWEEN %f AND %f",
++ 		cf$FLAT_ASSESSOR_PARQUET,
++ 		cf$CITYNAME,
++ 		cf$LON_RANGE[1], cf$LON_RANGE[2],
++ 		cf$LAT_RANGE[1], cf$LAT_RANGE[2]
++ 	)))
 + 
-+   message("Permits after filtering: ", nrow(dtPermit))
++ 	# --- Join in data.table ---
++ 	dtA[,year:=as.numeric(substr(ASSR_YEAR,1,4))]
++ 	dtA[,maxYear:=max(year,na.rm=TRUE),by=attom_id]
++ 	dtA <- dtA[year==maxYear]
++ 	dt <- dtS[dtA, on = "attom_id", nomatch = 0L ][dtT, on = "attom_id", nomatch = 0L]
++ 	print("TABLE ZONED")
++ 	print(table(dt[, ZonedCodeLocal]))
++ 	print(table(dt[,PropertyAddressCity]))
 + 
-+   # ------------------------------------------
-+   # 4. MERGE ATTOM LOT SIZE (if configured)
-+   # ------------------------------------------
-+   if (!is.null(cfg$attom_parquet)) {
-+     message("Merging ATTOM lot size data...")
-+     dtAttom <- as.data.table(dbGetQuery(con, sprintf(
-+       "SELECT PropertyAddressFull, AreaLotSF FROM read_parquet('%s') WHERE PropertyAddressCity = '%s'",
-+       cfg$attom_parquet, cfg$attom_city_filter
-+     )))
-+     dtAttom[, addrClean := toupper(trimws(gsub("\\s+", " ", PropertyAddressFull)))]
-+     # deduplicate ATTOM to one row per address (take first non-NA lot size)
-+     dtAttom <- dtAttom[!is.na(AreaLotSF)][order(-AreaLotSF)]
-+     dtAttom <- dtAttom[!duplicated(addrClean)]
++ 	if (nrow(dt) == 0L) { message("No records for ", CITY_NAME); next }
++ 	print(head(dtT))
++ 	print(head(dt))
 + 
-+     dtPermit[, addrClean := toupper(trimws(gsub("\\s+", " ", get(cfg$permit_address_field))))]
-+     dtPermit <- merge(dtPermit, dtAttom[, .(addrClean, AreaLotSF)],
-+                       by = "addrClean", all.x = TRUE)
++ 	dt[, lppsf     := log(price / sqft)]
++ 	dt[,ppsf     := price / AreaGross] # nb
++ 	dt[, lsqft     := log(sqft)]
++ 	dt[, llotSize  := log(pmax(as.numeric(lotSize), 1))]
++ 	dt[, yearMonth := format(sale_date, "%Y-%m")]
++ 	dt[, zip_n     := .N, by = zip]
++ 	dt <- dt[zip_n >= MIN_OBS]
++ 	# get quantiles of sqft#
++ 	print(quantile(dt[, sqft], probs = seq(0,1,.1)))
++ 	print("SQUARE FOOT WEIRD!")
++ 	print(dt[1:20,.(SA_FIN_SQFT_1, SA_FIN_SQFT_2, SA_FIN_SQFT_3,SA_FIN_SQFT_4, sqft)])
 + 
-+     match_rate <- mean(!is.na(dtPermit$AreaLotSF))
-+     message(sprintf("ATTOM address match rate: %.1f%% (%d of %d)",
-+                     match_rate * 100,
-+                     sum(!is.na(dtPermit$AreaLotSF)),
-+                     nrow(dtPermit)))
-+   }
++ 	qmaxppsf <- quantile(dt$ppsf, 0.97, na.rm = TRUE)
++ 	qminppsf <- quantile(dt$ppsf, 0.03, na.rm = TRUE)
++ 	# plot price per square foot against latitude
++ 	ggplot(dt[ppsf %between% c(qminppsf,qmaxppsf)],aes(x=lon,y=lat,color=ppsf)) +
++ 		geom_point(trans=log,size=1) +
++ 		scale_color_viridis_c() +
++ 		labs(title = paste("Price per Square Foot by Location in", toupper(CITY_NAME)),
++ 			 x = "Longitude",
++ 			 y = "Latitude",
++ 			 color = "Price per Sqft") +
++ 		theme_minimal()
++ 	ggsave(sprintf("text/%sPricePerSqftMap.png", CITY_NAME), width = 8, height = 6)
 + 
-+   # ------------------------------------------
-+   # 5. CONVERT TO SF
-+   # ------------------------------------------
-+   if (cfg$permit_type == "csv") {
-+     sfPermit <- st_as_sf(dtPermit,
-+                          coords = cfg$csv_coords,
-+                          crs = cfg$crs)
-+   } else {
-+     sfPermit <- st_as_sf(dtPermit)
-+     sfPermit <- st_transform(sfPermit, cfg$crs)
-+   }
++ 	# --- Regression ---
++ 	print(summary(dt))
++ 	print(nrow(dt))
++ 	#mz <- feols(lppsf ~ 0 + i(zip) + i(zip):lsqft + llotSize | yearMonth, data = dt[substring(zip, 1, 2) == cf$ZIP_START], cluster = "zip")
++ 	mt <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):lsqft + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") # not ppsf as denominator choice ungood
++ 	#ml <- feols(ppsf ~ 0 + i(CensusTract) + i(CensusTract):sqft + llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
++ 	dt[,logGrossLessGarage := log(AreaGross - ParkingGarageArea)]
++ 	dt[,logGross := log(AreaGross)]
++ 	#mtGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGrossLessGarage + llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") # always worse than either other
++ 	mtGrossGross <- feols(log(price) ~ 0 + i(CensusTract)+ i(CensusTract):logGross + i(CensusTract):llotSize | yearMonth , data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
++ 	print(summary(feols(log(price) ~ log(AreaBuilding)+llotSize | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "CensusTract")))
 + 
-+   # ------------------------------------------
-+   # 6. READ ZONING & SPATIAL JOIN
-+   # ------------------------------------------
-+   if (isTRUE(cfg$zoning_is_dir)) {
-+     shp_path <- list.files(cfg$zoning_file, pattern = "\\.shp$", full.names = TRUE)
-+     sfZoning <- st_read(shp_path)
-+   } else {
-+     sfZoning <- st_read(cfg$zoning_file)
-+   }
-+   names(sfZoning) <- tolower(names(sfZoning))
-+   sfZoning <- st_transform(sfZoning, cfg$crs)
++ 	print(CITY_NAME)
++ 	print("Mt, then mtGross, then mtGrossGross")
++ 	print(summary(mt))
++ 	print(summary(mtGrossGross))
++ 	# bigger Adj R2 at tract level and way bigger in logs
 + 
-+   message("Zoning fields: ", paste(names(sfZoning), collapse = ", "))
++ 	b <- coef(mt)
++ 	print(b)
++ 	keep <- grepl(":lsqft$", names(b))
++ 	dtSlopes <- data.table(
++ 		tract   = sub(":lsqft$", "", sub("^CensusTract", "", names(b)[keep])),
++ 		slope = unname(b[keep])
++ 	)
++ 	dtSlopes[,tract:=gsub("::","",tract)]
++ 	if (0>1) {
++ 		bG <- coef(mtGross)
++ 		keepG <- grepl(":logGrossLessGarage$", names(bG))
++ 		print(keepG)
++ 		dtSlopesG <- data.table(
++ 			tract = sub(":logGrossLessGarage$", "", sub("^CensusTract", "", names(bG)[keepG])),
++ 			slopeGross = unname(bG[keepG])
++ 			)
++ 		dtSlopesG[,tract:=gsub("::","",tract)]
++ 		#setkey(dtSlopesG, tract)
++ 	}
++ 	bGG <- coef(mtGrossGross)
++ 	# note bGG has interactions both with logGross and with llotSize, and we want to extract both sets of coefficients along with the simple intercepts
++ 	# strategy: if neither logGross nor llotSize in name, it's an intercept; if logGross in name, it's a slope for logGross; if llotSize in name, it's a slope for llotSize. Then merge on tract.
++ 	tractCoef <- bGG[!grepl(":logGross", names(bGG)) & !grepl(":llotSize", names(bGG))]
++ 	slopeCoef <- bGG[grepl(":logGross", names(bGG)) & !grepl(":llotSize", names(bGG))]
++ 	slopeCoefLot <- bGG[grepl(":llotSize", names(bGG)) & !grepl(":logGross", names(bGG))]
++ 	tractCoefDT <- data.table(
++ 		tract = sub("^CensusTract", "", names(tractCoef)),
++ 		intercept = unname(tractCoef)
++ 	)
++ 	slopeCoefDT <- data.table(
++ 		tract = sub(":logGross$", "", sub("^CensusTract", "", names(slopeCoef))),
++ 		slopeGross = unname(slopeCoef)
++ 	)
++ 	slopeCoefLotDT <- data.table(
++ 		tract = sub(":llotSize$", "", sub("^CensusTract", "", names(slopeCoefLot))),
++ 		slopeLot = unname(slopeCoefLot)
++ 	)
++ 	setkey(tractCoefDT, tract)
++ 	setkey(slopeCoefDT, tract)
++ 	setkey(slopeCoefLotDT, tract)
++ 	dtSlopesGG <- tractCoefDT[slopeCoefDT][slopeCoefLotDT]
++ 	dtSlopesGG[,tract := gsub("::","",tract)]
 + 
-+   sfPermitZoned <- st_join(sfPermit, sfZoning)
 + 
-+   # ------------------------------------------
-+   # 7. GEOGRAPHY JOIN (TRACT or ZIP)
-+   # ------------------------------------------
-+   if (GEOGRAPHY == "tract") {
-+     message("Fetching census tracts...")
-+     sfTracts <- tracts(state = cfg$tract_state, county = cfg$tract_county,
-+                        year = 2021, cb = TRUE)
-+     sfTracts <- st_transform(sfTracts, cfg$crs)
-+     sfFinal <- st_join(sfPermitZoned, sfTracts[, c("GEOID", "NAMELSAD")])
-+     sfTopZone <- st_union(sfZoning[sfZoning[[cfg$zone_field]] == cfg$topZone, ])
-+     sfFinal$dist_to_topZone <- as.numeric(st_distance(sfFinal, sfTopZone))
-+     print("TOPZONE")
-+     print(summary(sfFinal$dist_to_topZone))
-+     dtFinal <- as.data.table(sfFinal)
-+     setnames(dtFinal, c("GEOID", "NAMELSAD"), c("geo_id", "geo_name"),
-+              skip_absent = TRUE)
-+   } else {
-+     message("Fetching ZCTAs...")
-+     sfZips <- zctas(year = 2020, cb = TRUE)
-+     sfZips <- sfZips[grepl(cfg$zip_pattern, sfZips$ZCTA5CE20), ]
-+     sfZips <- st_transform(sfZips, cfg$crs)
-+     sfFinal <- st_join(sfPermitZoned, sfZips[, c("ZCTA5CE20")])
-+     sfTopZone <- st_union(sfZoning[sfZoning[[cfg$zone_field]] == cfg$topZone, ])
-+     sfFinal$dist_to_topZone <- as.numeric(st_distance(sfFinal, sfTopZone))
-+     print("TOPZONE")
-+     print(summary(sfFinal$dist_to_topZone))
-+     dtFinal <- as.data.table(sfFinal)
-+     setnames(dtFinal, "ZCTA5CE20", "geo_id", skip_absent = TRUE)
-+     dtFinal[, geo_name := paste("ZIP", geo_id)]
-+   }
++ 	# get tract-specific coefficients from feols(lppsf ~ = +i(CensusTract) | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip") for comparison
++ 	pReg <- feols(lppsf ~ 0 + i(CensusTract) | yearMonth, data = dt[substring(zip,1,2)==cf$ZIP_START], cluster = "zip")
++ 	pb <- coef(pReg)
++ 	keepP <- grepl("^CensusTract", names(pb))
++ 	dtP <- data.table(
++ 		tract = sub("^CensusTract", "", names(pb)[keepP]),
++ 		lppsf = unname(pb[keepP])
++ 	)
++ 	dtP[,tract := gsub("::","",tract)]
++ 	dtCount <- dt[, .(count=.N), by = CensusTract]
++ 	#meanLPPSF <- dt[,.(lppsf=mean(lppsf,na.rm=TRUE),count=.N,medianSqft=median(sqft)),by=CensusTract]
++ 	#meanLPPSF[,tract := as.character(CensusTract)]
++ 	print(head(dtSlopes))
++ 	setkey(dtSlopes, tract)
++ 	setkey(dtP, tract)
++ 	setkey(dtCount, CensusTract)
++ 	setkey(dtSlopesGG, tract)
++ 	dtSlopes <- dtSlopes[dtP][dtSlopesGG][dtCount]
++ 	if (0>1) {
++ 		dtSlopes <- dtSlopes[dtSlopesG]
++ 	}
++ 	print(CITY_NAME)
++ 	print(summary(dtSlopesGG))
++ 	print(cor(dtSlopesGG[,.(intercept, slopeGross, slopeLot)], use = "complete.obs"))
++ 	print(head(dtSlopesGG))
++ 	print(head(dtP))
++ 	print(head(dtSlopes))
 + 
-+   # ------------------------------------------
-+   # 8. FILTER TO RESIDENTIAL ZONES
-+   # ------------------------------------------
-+   zone_col <- cfg$zone_field
-+   dtAnalysis <- dtFinal[grepl(cfg$zone_filter, get(zone_col), ignore.case = TRUE)]
-+   message("Permits in residential zones: ", nrow(dtAnalysis))
++ 	saveRDS(dtSlopes, sprintf("~/DropboxExternal/dataProcessed/%s_slopes.rds", CITY_NAME))
 + 
-+   # ------------------------------------------
-+   # 8b. DROP MANDATED MULTIPLEX LOTS (Portland)
-+   #     Lots above zone-specific thresholds MUST
-+   #     build multiplex, so no choice to estimate.
-+   # ------------------------------------------
-+   if (!is.null(cfg$mandate_thresholds)) {
-+     n_before <- nrow(dtAnalysis)
-+     n_no_lotsize <- sum(is.na(dtAnalysis$AreaLotSF))
-+     message(sprintf("Permits missing lot size (kept for now): %d of %d", n_no_lotsize, n_before))
++ 	# --- Tract-by-tract OLS as diagnostic ---
++ 	dtCity <- dt[substring(zip,1,2)==cf$ZIP_START]
++ 	tractList <- dtCity[, .N, by=CensusTract][N >= MIN_OBS, CensusTract]
++ 	tractOLS <- rbindlist(lapply(tractList, function(tr) {
++ 		dd <- dtCity[CensusTract == tr]
++ 		m <- lm(log(price) ~ lsqft + llotSize, data = dd)
++ 		bc <- coef(m)
++ 		data.table(tract = as.character(tr),
++ 			interceptOLS = bc["(Intercept)"],
++ 			slopeOLS = bc["lsqft"],
++ 			slopeLotOLS = bc["llotSize"],
++ 			nOLS = nrow(dd))
++ 	}))
++ 	# also get tract-level mean lppsf from raw data for comparison
++ 	tractMeanPPSF <- dtCity[CensusTract %in% tractList, .(lppsf_raw = mean(lppsf, na.rm=TRUE), medianSqft = median(sqft)), by=CensusTract]
++ 	tractMeanPPSF[, tract := as.character(CensusTract)]
++ 	setkey(tractOLS, tract)
++ 	setkey(tractMeanPPSF, tract)
++ 	tractOLS <- tractOLS[tractMeanPPSF]
 + 
-+     for (z in names(cfg$mandate_thresholds)) {
-+       thresh <- cfg$mandate_thresholds[[z]]
-+       mask <- dtAnalysis[[zone_col]] == z & !is.na(dtAnalysis$AreaLotSF) & dtAnalysis$AreaLotSF >= thresh
-+       n_drop <- sum(mask)
-+       message(sprintf("  Dropping %d mandated lots in %s (>= %d sqft)", n_drop, z, thresh))
-+       dtAnalysis <- dtAnalysis[!mask]
-+     }
-+     message(sprintf("Permits after mandate filter: %d (dropped %d)", nrow(dtAnalysis), n_before - nrow(dtAnalysis)))
-+   }
++ 	message("\n--- Tract-by-tract OLS diagnostics: ", toupper(CITY_NAME), " ---")
++ 	print(cor(tractOLS[, .(interceptOLS, slopeOLS, slopeLotOLS, lppsf_raw)], use = "complete.obs"))
++ 	print(summary(tractOLS))
 + 
-+   # ------------------------------------------
-+   # 9. EXTRACT COORDINATES & COLLAPSE TO LOTS
-+   # ------------------------------------------
-+   dtAnalysis[, `:=`(
-+     lon = st_coordinates(geometry)[, 1],
-+     lat = st_coordinates(geometry)[, 2]
-+   )]
++ 	# merge with pooled estimates for direct comparison
++ 	dtSlopes[, tract := as.character(tract)]
++ 	setkey(dtSlopes, tract)
++ 	dtComp <- dtSlopes[tractOLS, on = "tract"]
++ 	message("Pooled slope vs OLS slope correlation:")
++ 	print(cor(dtComp$slope, dtComp$slopeOLS, use = "complete.obs"))
++ 	message("Pooled intercept vs OLS intercept correlation:")
++ 	print(cor(dtComp$intercept, dtComp$interceptOLS, use = "complete.obs"))
 + 
-+   pid <- cfg$parcel_id
-+   lot_vars <- c(pid, "geo_id", zone_col, "geo_name")
++ 	saveRDS(tractOLS, sprintf("~/DropboxExternal/dataProcessed/%s_tractOLS.rds", CITY_NAME))
 + 
-+   dtLots <- dtAnalysis[!is.na(geo_id) & !is.na(get(pid)), .(
-+     isPlexLot    = any(isPlex, na.rm = TRUE),
-+     total_units  = sum(get(cfg$units_field), na.rm = TRUE),
-+     distTopZone  = min(dist_to_topZone, na.rm = TRUE),
-+     AreaLotSF    = AreaLotSF[1],
-+     permit_count = .N,
-+     lon = lon[1],
-+     lat = lat[1]
-+   ), by = lot_vars]
-+   saveRDS(dtLots, sprintf("~/DropboxExternal/dataProcessed/%s_lot_level.rds", CITY))
-+ 
-+   sfLots <- st_as_sf(dtLots, coords = c("lon", "lat"), crs = cfg$crs)
-+ 
-+   message("Total lots with permits: ", nrow(dtLots))
-+   message("Lots with plex permits: ", sum(dtLots$isPlexLot))
-+ 
-+   # ------------------------------------------
-+   # 10. PLOT
-+   # ------------------------------------------
-+   sfZoningRes <- sfZoning[sfZoning[[zone_col]] %in% cfg$zone_plot_values, ]
-+ 
-+   p <- ggplot() +
-+     geom_sf(data = sfZoningRes,
-+             aes(fill = .data[[zone_col]]),
-+             alpha = 0.5, color = "grey50", linewidth = 0.1) +
-+     geom_sf(data = sfLots,
-+             aes(color = isPlexLot, size = isPlexLot), shape = 16) +
-+     scale_fill_manual(values = cfg$zone_colors, name = "Zone") +
-+     scale_color_manual(
-+       values = c("FALSE" = "grey50", "TRUE" = "red"),
-+       labels = c("FALSE" = "Non-Plex", "TRUE" = "Plex"),
-+       name = "Permit Type"
-+     ) +
-+     scale_size_manual(
-+       values = c("FALSE" = 1, "TRUE" = 1.5),
-+       labels = c("FALSE" = "Non-Plex", "TRUE" = "Plex"),
-+       name = "Permit Type"
-+     ) +
-+     labs(title = sprintf("%s New Construction Permits by Zoning District",
-+                          cfg$city_name)) +
-+     theme_minimal() +
-+     theme(legend.position = "bottom") +
-+     guides(
-+       fill = guide_legend(order = 1),
-+       color = guide_legend(order = 2, override.aes = list(size = 3)),
-+       size = "none"
-+     )
-+ 
-+   plot_file <- sprintf("text/permitLocation%s.png", cfg$city_name)
-+   ggsave(plot_file, p, width = 10, height = 8, dpi = 300)
-+   message("Saved plot: ", plot_file)
-+ 
-+   # ------------------------------------------
-+   # 11. GEOGRAPHY-LEVEL SUMMARY
-+   # ------------------------------------------
-+   dtGeo <- dtLots[, .(
-+     infill_lot_count  = sum(isPlexLot, na.rm = TRUE),
-+     total_lots_active = .N,
-+     total_units       = sum(total_units, na.rm = TRUE),
-+     propensity        = sum(isPlexLot, na.rm = TRUE) / .N
-+   ), by = c("geo_id", zone_col, "geo_name")]
-+ 
-+   setorder(dtGeo, -total_lots_active)
-+ 
-+   output_file <- sprintf("~/DropboxExternal/dataProcessed/%s_%s_propensity.rds",
-+                           CITY, GEOGRAPHY)
-+   saveRDS(dtGeo, output_file)
-+ 
-+   cat(sprintf("\n=== %s LOT-LEVEL SUMMARY BY %s ===\n",
-+               toupper(cfg$city_name), toupper(GEOGRAPHY)))
-+   cat("Total Active Lots:", nrow(dtLots), "\n")
-+   cat("Total Infill Lots:", sum(dtLots$isPlexLot), "\n")
-+   cat("Overall Propensity:",
-+       round(sum(dtGeo$infill_lot_count) / sum(dtGeo$total_lots_active), 4), "\n")
-+   print(head(dtGeo, 15))
-+ 
-+   # Store for cross-city comparison
-+   results[[CITY]] <- list(dtLots = dtLots, dtGeo = dtGeo,
-+                           sfLots = sfLots, sfZoning = sfZoning)
++ 	# do a loess fit of price per square foot against square feet
++ 	q99sf <- quantile(dt$sqft, 0.95, na.rm = TRUE)
++ 	q01sf <- quantile(dt$sqft, 0.05, na.rm = TRUE)
++ 	q99p <- quantile(dt$ppsf, 0.95, na.rm = TRUE)
++ 	q01p <- quantile(dt$ppsf, 0.05, na.rm = TRUE)
++ 	dt[,nZip:=.N,by=zip] # have to watch cross-zip big homes, big prices
++ 	ggplot(dt[nZip==max(nZip) & sqft %between% c(q01sf,q99sf) & ppsf %between% c(q01p,q99p)], aes(x = sqft, y = price/sqft)) +
++ 		geom_point(alpha = 0.1, size=.5,color="gray") +
++ 		geom_smooth(method = "loess",color="blue",se=FALSE) +
++ 		labs(title = paste("Price per Square Foot vs. Square Footage in", toupper(CITY_NAME)),
++ 			 x = "Square Footage ",
++ 			 y = "Price per Square Foot ") +
++ 		theme_minimal()
++ 	ggsave(sprintf("text/%sPriceSqftLoess.png", CITY_NAME), width = 8, height = 6)
 + }
 
-========== Processing: Minneapolis ==========
+=== PORTLAND ===
+[1] "TABLE ZONED"
 
-Reading layer `ResidentialPermits' from data source 
-  `/Volumes/Micron2TB/Dropbox/dataRaw/shp_econ_residential_building_permts/ResidentialPermits.shp' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 107370 features and 28 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: 420204.1 ymin: 4923165 xmax: 521207.2 ymax: 5028983
-Projected CRS: NAD83 / UTM zone 15N
-[1] "HERE ARE THE PERMIT FIELDS"
- [1] "sde_id"     "co_code"    "ctu_code"   "ctu_id"     "coctu_id"  
- [6] "ctu_name"   "year"       "tenure"     "housing_ty" "housing__1"
-[11] "res_permit" "address"    "zip_code"   "zip_plus_4" "name"      
-[16] "buildings"  "units"      "age_restri" "memory_car" "assisted"  
-[21] "com_off_re" "acreage"    "sqf"        "pin"        "public_fun"
-[26] "permit_val" "community_" "notes"      "geometry"  
-Permits after filtering: 740
-Reading layer `Planning_Primary_Zoning' from data source 
-  `/Volumes/Micron2TB/Dropbox/dataRaw/Planning_Primary_Zoning/Planning_Primary_Zoning.shp' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 1259 features and 6 fields
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: -10389350 ymin: 5604313 xmax: -10374400 ymax: 5629592
-Projected CRS: WGS 84 / Pseudo-Mercator
-Zoning fields: objectid, land_use, land_use_c, ruleid, shape__are, shape__len, geometry
-Fetching census tracts...
-[1] "TOPZONE"
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   0.00   64.44  151.86  234.52  318.88 1354.74 
-Permits in residential zones: 548
-Error: object 'AreaLotSF' not found
-Execution halted
+        R R-5_&_EG2      R.25        R1       R10  R10_R10C   R10_R5H      R10A 
+        2         2        10       827      9767        34        10        20 
+     R10C     R10CP      R10H      R10P      R10S       R1A      R1AD       R1D 
+       60        32        39         4         2       270        10        96 
+     R1DH      R1DN       R1H       R1M       R1R       R1S       R1T        R2 
+        1         2        28         2        20         1         2      2007 
+      R2.      R2.5     R2.5A    R2.5AD    R2.5AH     R2.5C     R2.5H       R20 
+      449      4085       494        53        28        12        26      1152 
+     R20C     R20CP      R20P       R25      R25A       R2A     R2ACD      R2AD 
+       35         1         2        47         1       888         1        30 
+     R2AH       R2D       R2H       R2O       R2R       R2S       R2T        R3 
+       37         8       140         1         1         3         3      1009 
+      R30       R3A       R3H      R3HX       R3T       R3X        R4        R5 
+       43        40        98         1         2        31         3     21534 
+     R5.A       R50       R5A  R5A,R10C      R5AH      R5AN      R5AS       R5C 
+       11         1      6059         1       121         1         3        53 
+      R5D       R5H       R5L       R5R       R5S       R5T        R7    R7_R7C 
+      126      1335        84         7        44         9     12845         9 
+  R7,OSDP       R75       R7A      R7AH       R7C     R7CHX       R7D       R7H 
+        1        97       752        13        73         1         2       732 
+     R7HX       R7S       R7X        RC        RF    RF_OSC       RFC      RFCF 
+        4         9        27         2       244         3        51         1 
+      RFF       RFH       RFP       RFR       RFS        RH       RHD      RHDH 
+        6         6        23        28        11       173        55         8 
+      RHS       RHT        RM        RR       RR/       RRC       RRF       RRS 
+        1         9        12       154         1         1         1         3 
+      RTC       RXD 
+        6        10 
+
+PORTLAND 
+   66735 
+    attom_id      lat       lon CensusTract AreaBuilding AreaGross
+      <char>    <num>     <num>      <char>        <num>     <num>
+1: 158603653 45.52679 -122.7750       30106         1543      1543
+2: 158603657 45.52682 -122.7744       30106         2034      2034
+3: 158603662 45.52699 -122.7736       30106         2263      2263
+4: 158603666 45.52707 -122.7718       30106         2335      2335
+5: 158603673 45.52761 -122.7713       30106         1543      1543
+6: 167924146 45.51418 -122.7752       30104         3299      3299
+   ParkingGarageArea ZonedCodeLocal PropertyAddressCity
+               <num>         <char>              <char>
+1:               397            R-9            PORTLAND
+2:               318            R-9            PORTLAND
+3:               351            R-9            PORTLAND
+4:              1075            R-9            PORTLAND
+5:               397            R-9            PORTLAND
+6:               816            R-5            PORTLAND
+    attom_id  price  sale_date    zip SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3
+      <char>  <num>     <IDat> <char>        <char>        <char>        <char>
+1: 158350086 249000 2014-01-22      0           724          1124             0
+2: 158295710 419010 2013-09-25      0           836           943             0
+3: 158519359 307154 2013-12-30  97202          1051           595             0
+4: 158519359 307154 2013-12-30  97202          1051           595             0
+5: 158519359 307154 2013-12-30  97202          1051           595             0
+6: 158519359 307154 2013-12-30  97202          1051           595             0
+   SA_FIN_SQFT_4  sqft lotSize ASSR_YEAR  year maxYear      lat       lon
+          <char> <num>   <num>    <char> <num>   <num>    <num>     <num>
+1:             0  1848    5972      2021  2021    2021 45.50218 -122.5318
+2:             0  1779    2475      2021  2021    2021 45.55960 -122.6441
+3:             0  1646    5000      2022  2022    2022 45.46033 -122.6553
+4:             0  1646    5000      2022  2022    2022 45.46033 -122.6553
+5:             0  1646    5000      2022  2022    2022 45.46033 -122.6553
+6:             0  1646    5000      2022  2022    2022 45.46033 -122.6553
+   CensusTract AreaBuilding AreaGross ParkingGarageArea ZonedCodeLocal
+        <char>        <num>     <num>             <num>         <char>
+1:        9002         1848      2248               400            R5A
+2:        3200         1779      1779                 0           R2.5
+3:         101         2990      2174               264         R2.5AD
+4:         101         2990      2174               264         R2.5AD
+5:         101         2990      2174               264         R2.5AD
+6:         101         2990      2174               264         R2.5AD
+   PropertyAddressCity
+                <char>
+1:            PORTLAND
+2:            PORTLAND
+3:            PORTLAND
+4:            PORTLAND
+5:            PORTLAND
+6:            PORTLAND
+    0%    10%    20%    30%    40%    50%    60%    70%    80%    90%   100% 
+1201.0 1265.0 1344.0 1432.0 1532.0 1646.0 1797.2 2010.0 2304.0 2763.0 8429.0 
+[1] "SQUARE FOOT WEIRD!"
+    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
+           <char>        <char>        <char>        <char> <num>
+ 1:           724          1124             0             0  1848
+ 2:           836           943             0             0  1779
+ 3:          1051           595             0             0  1646
+ 4:          1051           595             0             0  1646
+ 5:          1051           595             0             0  1646
+ 6:          1051           595             0             0  1646
+ 7:          1051           595             0             0  1646
+ 8:          1051           595             0             0  1646
+ 9:          1051           595             0             0  1646
+10:          1051           595             0             0  1646
+11:          1051           595             0             0  1646
+12:          1051           595             0             0  1646
+13:          1544             0             0             0  1544
+14:           731           908             0             0  1639
+15:          2426             0             0             0  2426
+16:          1354           972             0             0  2326
+17:          1235             0             0             0  1235
+18:           939           816             0             0  1755
+19:          1584             0             0             0  1584
+20:          1584             0             0             0  1584
+    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
+           <char>        <char>        <char>        <char> <num>
+   attom_id             price             sale_date              zip           
+ Length:46628       Min.   :   101000   Min.   :2012-01-01   Length:46628      
+ Class :character   1st Qu.:   340000   1st Qu.:2014-08-20   Class :character  
+ Mode  :character   Median :   470000   Median :2016-12-15   Mode  :character  
+                    Mean   :   539806   Mean   :2017-02-23                     
+                    3rd Qu.:   659000   3rd Qu.:2019-11-16                     
+                    Max.   :110000000   Max.   :2021-12-30                     
+ SA_FIN_SQFT_1      SA_FIN_SQFT_2      SA_FIN_SQFT_3      SA_FIN_SQFT_4     
+ Length:46628       Length:46628       Length:46628       Length:46628      
+ Class :character   Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+                                                                            
+                                                                            
+                                                                            
+      sqft         lotSize        ASSR_YEAR              year     
+ Min.   :1201   Min.   :     0   Length:46628       Min.   :2020  
+ 1st Qu.:1386   1st Qu.:  5000   Class :character   1st Qu.:2021  
+ Median :1646   Median :  6180   Mode  :character   Median :2022  
+ Mean   :1872   Mean   :  8699                      Mean   :2022  
+ 3rd Qu.:2147   3rd Qu.:  9400                      3rd Qu.:2022  
+ Max.   :8429   Max.   :887753                      Max.   :2022  
+    maxYear          lat             lon         CensusTract       
+ Min.   :2020   Min.   :45.43   Min.   :-122.9   Length:46628      
+ 1st Qu.:2021   1st Qu.:45.48   1st Qu.:-122.7   Class :character  
+ Median :2022   Median :45.52   Median :-122.6   Mode  :character  
+ Mean   :2022   Mean   :45.52   Mean   :-122.6                     
+ 3rd Qu.:2022   3rd Qu.:45.55   3rd Qu.:-122.6                     
+ Max.   :2022   Max.   :45.67   Max.   :-122.5                     
+  AreaBuilding    AreaGross     ParkingGarageArea ZonedCodeLocal    
+ Min.   : 243   Min.   :    0   Min.   :   0.0    Length:46628      
+ 1st Qu.:1598   1st Qu.: 1997   1st Qu.: 240.0    Class :character  
+ Median :2108   Median : 2625   Median : 399.0    Mode  :character  
+ Mean   :2292   Mean   : 2782   Mean   : 382.5                      
+ 3rd Qu.:2752   3rd Qu.: 3292   3rd Qu.: 484.0                      
+ Max.   :9955   Max.   :12130   Max.   :3552.0                      
+ PropertyAddressCity     lppsf             ppsf            lsqft      
+ Length:46628        Min.   : 3.075   Min.   : 11.94   Min.   :7.091  
+ Class :character    1st Qu.: 5.308   1st Qu.:143.31   1st Qu.:7.234  
+ Mode  :character    Median : 5.609   Median :188.38   Median :7.406  
+                     Mean   : 5.586   Mean   :   Inf   Mean   :7.481  
+                     3rd Qu.: 5.878   3rd Qu.:237.47   3rd Qu.:7.672  
+                     Max.   :10.933   Max.   :   Inf   Max.   :9.039  
+    llotSize       yearMonth             zip_n      
+ Min.   : 0.000   Length:46628       Min.   :   20  
+ 1st Qu.: 8.517   Class :character   1st Qu.:  950  
+ Median : 8.729   Mode  :character   Median : 4444  
+ Mean   : 8.824                      Mean   :11640  
+ 3rd Qu.: 9.148                      3rd Qu.:22498  
+ Max.   :13.696                      Max.   :22498  
+[1] 46628
+The variables 'CensusTract::4901:lsqft' and 'CensusTract::9604:lsqft' have been
+removed because of collinearity (see $collin.var).
+NOTE: 4 observations removed because of NA values (RHS: 4).
+The variables 'CensusTract::4901:logGross', 'CensusTract::9604:logGross',
+'CensusTract::4901:llotSize', 'CensusTract::5202:llotSize' and
+'CensusTract::9604:llotSize' have been removed because of collinearity (see
+$collin.var).
+OLS estimation, Dep. Var.: log(price)
+Observations: 17,384
+Fixed-effects: yearMonth: 120
+Standard-errors: Clustered (CensusTract) 
+                   Estimate Std. Error  t value  Pr(>|t|)    
+log(AreaBuilding)  0.798696   0.045459 17.56973 < 2.2e-16 ***
+llotSize          -0.035126   0.029966 -1.17220   0.24288    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.356801     Adj. R2: 0.475005
+                 Within R2: 0.378042
+[1] "portland"
+[1] "Mt, then mtGross, then mtGrossGross"
+OLS estimation, Dep. Var.: log(price)
+Observations: 17,384
+Fixed-effects: yearMonth: 120
+Standard-errors: Clustered (zip) 
+                           Estimate Std. Error    t value   Pr(>|t|)    
+CensusTract::101           2.680021   0.449027   5.968503 3.1238e-06 ***
+CensusTract::102           6.002335   0.287503  20.877456  < 2.2e-16 ***
+CensusTract::10200         2.380120   0.337285   7.056711 2.1375e-07 ***
+CensusTract::1101         -0.800053   0.760700  -1.051733 3.0298e-01    
+CensusTract::1102         -1.295418   0.929255  -1.394039 1.7557e-01    
+CensusTract::1202          3.867000   0.280694  13.776555 3.5269e-13 ***
+CensusTract::1203          0.189635   0.305182   0.621384 5.3997e-01    
+CensusTract::1204          4.087051   0.697109   5.862854 4.0799e-06 ***
+CensusTract::1301          3.729967   0.464318   8.033214 2.1786e-08 ***
+CensusTract::1302          2.994589   0.554499   5.400530 1.3269e-05 ***
+CensusTract::1400          1.479906   0.433958   3.410249 2.2097e-03 ** 
+CensusTract::1500          1.424362   0.457334   3.114490 4.5785e-03 ** 
+CensusTract::1601          2.611951   0.251641  10.379691 1.5035e-10 ***
+CensusTract::1602          3.003329   0.532402   5.641092 7.1687e-06 ***
+CensusTract::1702          6.300669   1.930748   3.263331 3.1804e-03 ** 
+CensusTract::1703          5.868017   0.628396   9.338089 1.2537e-09 ***
+CensusTract::1704          2.087863   1.714741   1.217597 2.3475e-01    
+CensusTract::1801          0.190889   0.427600   0.446421 6.5914e-01    
+CensusTract::1802          4.927518   0.261374  18.852357 2.7124e-16 ***
+CensusTract::1900          1.281111   0.447074   2.865547 8.3203e-03 ** 
+CensusTract::2001          1.781725   1.240050   1.436817 1.6317e-01    
+CensusTract::2002          3.917108   0.510790   7.668719 5.0355e-08 ***
+CensusTract::201           3.213579   0.501207   6.411684 1.0313e-06 ***
+CensusTract::202           3.542129   0.469711   7.541077 6.7805e-08 ***
+CensusTract::2102         10.041488   0.574656  17.473910 1.5911e-15 ***
+CensusTract::2203          7.813907   0.616166  12.681495 2.1783e-12 ***
+CensusTract::2303         -4.015242   0.748641  -5.363375 1.4598e-05 ***
+CensusTract::2401         -0.282949   0.386531  -0.732021 4.7096e-01    
+CensusTract::2402          1.568544   0.751949   2.085970 4.7343e-02 *  
+CensusTract::2501          0.060084   0.263211   0.228271 8.2129e-01    
+CensusTract::2502          2.839656   0.416085   6.824706 3.7434e-07 ***
+CensusTract::2600          2.313255   0.270526   8.550944 6.8312e-09 ***
+CensusTract::2701          2.735517   0.499203   5.479765 1.0829e-05 ***
+CensusTract::2702          4.553725   0.434928  10.470057 1.2587e-10 ***
+CensusTract::2801          4.678537   0.393964  11.875535 8.9790e-12 ***
+CensusTract::2802          3.897400   0.266874  14.603876 9.5861e-14 ***
+CensusTract::2901          5.743190   1.154376   4.975145 3.9747e-05 ***
+CensusTract::2902          3.928735   0.276517  14.207914 1.7749e-13 ***
+CensusTract::2903          2.230770   0.395488   5.640551 7.1786e-06 ***
+CensusTract::3000          2.451182   0.567013   4.322975 2.1541e-04 ***
+CensusTract::301           2.711556   0.440818   6.151190 1.9735e-06 ***
+CensusTract::302           3.017264   0.787720   3.830376 7.6494e-04 ***
+CensusTract::3100          3.093369   0.393622   7.858737 3.2464e-08 ***
+CensusTract::3200          4.814641   0.277365  17.358521 1.8550e-15 ***
+CensusTract::3301          0.387150   0.446197   0.867666 3.9383e-01    
+CensusTract::3302          4.004507   0.772472   5.184016 2.3168e-05 ***
+CensusTract::3401          3.083737   0.357690   8.621247 5.8519e-09 ***
+CensusTract::3402          2.346851   0.846679   2.771830 1.0372e-02 *  
+CensusTract::3501          5.200982   0.343843  15.126051 4.3408e-14 ***
+CensusTract::3502          4.482112   1.246400   3.596047 1.3866e-03 ** 
+CensusTract::3601          0.739793   0.246046   3.006725 5.9414e-03 ** 
+CensusTract::3602          2.045621   0.389076   5.257643 1.9163e-05 ***
+CensusTract::3603          4.767725   0.516894   9.223795 1.5956e-09 ***
+CensusTract::3701          1.723355   1.376615   1.251878 2.2220e-01    
+CensusTract::3702          4.384324   0.493059   8.892080 3.2438e-09 ***
+CensusTract::3801          2.781423   0.346767   8.021014 2.2399e-08 ***
+CensusTract::3802          1.870842   0.384621   4.864114 5.2987e-05 ***
+CensusTract::3803          3.844723   0.704678   5.456003 1.1509e-05 ***
+CensusTract::3902          3.269339   0.610308   5.356866 1.4845e-05 ***
+CensusTract::3903          0.159036   0.424601   0.374555 7.1115e-01    
+CensusTract::3904          3.148990   0.272478  11.556854 1.6022e-11 ***
+CensusTract::4002          3.139656   0.400967   7.830201 3.4666e-08 ***
+CensusTract::4003          3.578968   0.278934  12.830863 1.6877e-12 ***
+CensusTract::401           2.010687   1.164792   1.726221 9.6648e-02 .  
+CensusTract::402          -2.284982   0.452807  -5.046257 3.3068e-05 ***
+CensusTract::4102          0.856449   0.249170   3.437210 2.0659e-03 ** 
+CensusTract::4103          1.539534   0.289044   5.326292 1.6059e-05 ***
+CensusTract::4104          0.514407   0.359118   1.432417 1.6441e-01    
+CensusTract::4200          1.990840   0.464762   4.283565 2.3852e-04 ***
+CensusTract::4300          3.319677   0.337945   9.823139 4.5908e-10 ***
+CensusTract::4500         -2.801804   1.089589  -2.571432 1.6462e-02 *  
+CensusTract::4601         -1.662902   0.818748  -2.031030 5.3014e-02 .  
+CensusTract::4602          0.329262   0.299393   1.099767 2.8191e-01    
+CensusTract::4700          0.431154   0.413244   1.043339 3.0678e-01    
+CensusTract::4800         10.892554   0.579928  18.782607 2.9582e-16 ***
+CensusTract::4901          6.775637   0.229910  29.470788  < 2.2e-16 ***
+CensusTract::501           5.838207   0.330578  17.660577 1.2435e-15 ***
+CensusTract::502          -0.273683   0.987426  -0.277168 7.8393e-01    
+CensusTract::5202         23.993904   1.455477  16.485249 6.1008e-15 ***
+CensusTract::5500         23.927511   1.027722  23.282087  < 2.2e-16 ***
+CensusTract::5701         11.494855   2.511602   4.576703 1.1163e-04 ***
+CensusTract::5800          2.458498   0.473988   5.186841 2.3000e-05 ***
+CensusTract::5901          5.230690   0.689075   7.590888 6.0357e-08 ***
+CensusTract::5903          0.996527   0.611857   1.628693 1.1592e-01    
+CensusTract::6001         -1.347579   0.299559  -4.498548 1.3670e-04 ***
+CensusTract::6002          1.041479   0.920275   1.131703 2.6850e-01    
+CensusTract::601           0.176347   0.516456   0.341457 7.3561e-01    
+CensusTract::602          -0.009869   0.436761  -0.022597 9.8215e-01    
+CensusTract::6100          4.867384   0.394235  12.346416 3.8931e-12 ***
+CensusTract::6200          1.609253   0.428182   3.758336 9.1908e-04 ***
+CensusTract::6300          1.036560   0.213790   4.848494 5.5176e-05 ***
+CensusTract::6402          1.387818   0.203480   6.820422 3.7826e-07 ***
+CensusTract::6403          0.846783   0.277268   3.054020 5.3012e-03 ** 
+CensusTract::6404          2.778499   0.585098   4.748773 7.1451e-05 ***
+CensusTract::6501          2.329161   0.257335   9.051073 2.3046e-09 ***
+CensusTract::6502          1.972658   0.349369   5.646338 7.0734e-06 ***
+CensusTract::6601          3.237524   0.300614  10.769716 7.0328e-11 ***
+CensusTract::6602          2.320878   0.246513   9.414829 1.0673e-09 ***
+CensusTract::6701          5.048766   0.316514  15.951185 1.2973e-14 ***
+CensusTract::6702          1.792067   0.453018   3.955839 5.5490e-04 ***
+CensusTract::6801         -0.403229   0.299905  -1.344525 1.9085e-01    
+CensusTract::6802          3.053692   0.391912   7.791770 3.7875e-08 ***
+CensusTract::6900          2.472039   0.194152  12.732522 1.9960e-12 ***
+CensusTract::7001          0.549868   0.302869   1.815532 8.1457e-02 .  
+CensusTract::7002          1.482747   0.353980   4.188786 3.0470e-04 ***
+CensusTract::701           1.258429   0.906851   1.387692 1.7748e-01    
+CensusTract::702           0.896199   0.654449   1.369396 1.8305e-01    
+CensusTract::7100         -0.152847   0.836207  -0.182786 8.5644e-01    
+CensusTract::7201         -3.264508   0.867907  -3.761357 9.1205e-04 ***
+CensusTract::7202         -0.864302   0.538742  -1.604298 1.2121e-01    
+CensusTract::7300        -12.169090   2.525331  -4.818809 5.9588e-05 ***
+CensusTract::7400          0.126722   0.347915   0.364232 7.1875e-01    
+CensusTract::7500          2.973657   0.346760   8.575551 6.4706e-09 ***
+CensusTract::7600          3.228431   0.308634  10.460377 1.2829e-10 ***
+CensusTract::7700          1.128218   0.670377   1.682961 1.0483e-01    
+CensusTract::7800          6.289658   0.483084  13.019791 1.2260e-12 ***
+CensusTract::7900          5.649618   0.270964  20.850066  < 2.2e-16 ***
+CensusTract::8001          0.722976   0.591654   1.221957 2.3312e-01    
+CensusTract::8002          3.349298   0.385288   8.692964 5.0007e-09 ***
+CensusTract::801           3.034775   0.759620   3.995125 5.0169e-04 ***
+CensusTract::802          -0.290185   0.970319  -0.299062 7.6736e-01    
+CensusTract::8100          2.884951   0.344051   8.385238 9.8634e-09 ***
+CensusTract::8201          2.663184   0.384473   6.926838 2.9227e-07 ***
+CensusTract::8203          5.043173   0.449835  11.211164 3.0413e-11 ***
+CensusTract::8204          2.598224   0.428866   6.058354 2.4912e-06 ***
+CensusTract::8301          0.001917   0.502321   0.003816 9.9699e-01    
+CensusTract::8302          0.650025   0.283982   2.288967 3.0800e-02 *  
+CensusTract::8400          2.655547   0.264468  10.041107 2.9514e-10 ***
+CensusTract::8500         -0.645082   0.596699  -1.081085 2.8998e-01    
+CensusTract::8600          1.768937   0.370836   4.770136 6.7601e-05 ***
+CensusTract::8700          0.601048   0.292594   2.054206 5.0552e-02 .  
+CensusTract::8800          1.783523   0.422906   4.217303 2.8307e-04 ***
+CensusTract::8902          2.077437   0.291276   7.132194 1.7838e-07 ***
+CensusTract::8903          2.277513   0.281218   8.098734 1.8775e-08 ***
+CensusTract::8904          3.715047   1.091727   3.402908 2.2505e-03 ** 
+CensusTract::9001          0.882166   0.239453   3.684086 1.1098e-03 ** 
+CensusTract::9002          3.205457   0.314645  10.187551 2.2008e-10 ***
+CensusTract::901           2.995664   0.246074  12.173841 5.2739e-12 ***
+CensusTract::902           2.800207   0.436034   6.421993 1.0053e-06 ***
+CensusTract::9101          3.932742   0.338699  11.611308 1.4501e-11 ***
+CensusTract::9102          2.339001   0.288327   8.112320 1.8206e-08 ***
+CensusTract::9202          0.510932   0.478067   1.068745 2.9540e-01    
+CensusTract::9203         -0.906286   0.243443  -3.722782 1.0060e-03 ** 
+CensusTract::9204          1.260014   0.441127   2.856352 8.5032e-03 ** 
+CensusTract::9301          1.384782   2.188075   0.632877 5.3256e-01    
+CensusTract::9302          0.992211   0.482256   2.057438 5.0217e-02 .  
+CensusTract::9400          2.545594   0.235140  10.825874 6.3134e-11 ***
+CensusTract::9501          3.200147   0.339428   9.428069 1.0382e-09 ***
+CensusTract::9502          3.660799   0.448712   8.158462 1.6403e-08 ***
+CensusTract::9604          5.377861   0.230336  23.347882  < 2.2e-16 ***
+CensusTract::9605          9.730550   4.487811   2.168218 3.9863e-02 *  
+CensusTract::9606         26.360498   2.009752  13.116297 1.0427e-12 ***
+CensusTract::9701          4.871003   0.988565   4.927348 4.4982e-05 ***
+CensusTract::9703          6.927072   0.484650  14.292924 1.5532e-13 ***
+CensusTract::9704          0.471978   0.911167   0.517993 6.0902e-01    
+CensusTract::9803          4.417867   0.528105   8.365504 1.0307e-08 ***
+CensusTract::9804          4.314455   0.573627   7.521357 7.1008e-08 ***
+CensusTract::9903          4.246296   0.737668   5.756375 5.3452e-06 ***
+llotSize                   0.080363   0.019525   4.115945 3.6766e-04 ***
+CensusTract::1000:lsqft    0.840737   0.030502  27.563522  < 2.2e-16 ***
+CensusTract::101:lsqft     0.495635   0.049643   9.983960 3.3120e-10 ***
+CensusTract::102:lsqft     0.062064   0.027472   2.259142 3.2845e-02 *  
+CensusTract::10200:lsqft   0.453768   0.063288   7.169850 1.6303e-07 ***
+CensusTract::1101:lsqft    0.977152   0.093583  10.441567 1.3311e-10 ***
+CensusTract::1102:lsqft    1.064822   0.130026   8.189287 1.5301e-08 ***
+CensusTract::1202:lsqft    0.363849   0.032173  11.309103 2.5329e-11 ***
+CensusTract::1203:lsqft    0.837580   0.037596  22.278325  < 2.2e-16 ***
+CensusTract::1204:lsqft    0.306188   0.082418   3.715076 1.0259e-03 ** 
+CensusTract::1301:lsqft    0.365335   0.049209   7.424099 8.9226e-08 ***
+CensusTract::1302:lsqft    0.464650   0.057894   8.025921 2.2151e-08 ***
+CensusTract::1400:lsqft    0.669226   0.056112  11.926543 8.1926e-12 ***
+CensusTract::1500:lsqft    0.677472   0.051364  13.189504 9.2278e-13 ***
+CensusTract::1601:lsqft    0.497938   0.040556  12.277661 4.3919e-12 ***
+CensusTract::1602:lsqft    0.358586   0.067077   5.345861 1.5270e-05 ***
+CensusTract::1702:lsqft   -0.075709   0.265877  -0.284750 7.7818e-01    
+CensusTract::1703:lsqft    0.019669   0.070699   0.278213 7.8314e-01    
+CensusTract::1704:lsqft    0.546281   0.236523   2.309638 2.9452e-02 *  
+CensusTract::1801:lsqft    0.814342   0.063368  12.850970 1.6310e-12 ***
+CensusTract::1802:lsqft    0.188932   0.028810   6.557970 7.1869e-07 ***
+CensusTract::1900:lsqft    0.710731   0.053717  13.231083 8.6109e-13 ***
+CensusTract::2001:lsqft    0.613664   0.154644   3.968223 5.3755e-04 ***
+CensusTract::2002:lsqft    0.340866   0.071151   4.790760 6.4082e-05 ***
+CensusTract::201:lsqft     0.402991   0.060165   6.698145 5.0959e-07 ***
+CensusTract::202:lsqft     0.355431   0.069773   5.094116 2.9221e-05 ***
+CensusTract::2102:lsqft   -0.544276   0.082073  -6.631616 5.9975e-07 ***
+CensusTract::2203:lsqft   -0.217183   0.069036  -3.145914 4.2412e-03 ** 
+CensusTract::2303:lsqft    1.365537   0.087105  15.676879 1.9271e-14 ***
+CensusTract::2401:lsqft    0.912803   0.033086  27.588758  < 2.2e-16 ***
+CensusTract::2402:lsqft    0.654519   0.091462   7.156156 1.6845e-07 ***
+CensusTract::2501:lsqft    0.872765   0.019878  43.905895  < 2.2e-16 ***
+CensusTract::2502:lsqft    0.510426   0.047292  10.792988 6.7249e-11 ***
+CensusTract::2600:lsqft    0.568319   0.026249  21.650772  < 2.2e-16 ***
+CensusTract::2701:lsqft    0.513477   0.060742   8.453368 8.4770e-09 ***
+CensusTract::2702:lsqft    0.199141   0.063428   3.139611 4.3069e-03 ** 
+CensusTract::2801:lsqft    0.215376   0.028729   7.496898 7.5197e-08 ***
+CensusTract::2802:lsqft    0.319356   0.023885  13.370567 6.8355e-13 ***
+CensusTract::2901:lsqft    0.037643   0.150203   0.250616 8.0416e-01    
+CensusTract::2902:lsqft    0.284507   0.039400   7.220975 1.4432e-07 ***
+CensusTract::2903:lsqft    0.483006   0.051412   9.394736 1.1132e-09 ***
+CensusTract::3000:lsqft    0.524169   0.078727   6.658044 5.6213e-07 ***
+CensusTract::301:lsqft     0.475809   0.039003  12.199164 5.0431e-12 ***
+CensusTract::302:lsqft     0.465602   0.095466   4.877163 5.1226e-05 ***
+CensusTract::3100:lsqft    0.463536   0.030172  15.362979 3.0522e-14 ***
+CensusTract::3200:lsqft    0.208604   0.024962   8.356817 1.0509e-08 ***
+CensusTract::3301:lsqft    0.796534   0.043312  18.390408 4.8445e-16 ***
+CensusTract::3302:lsqft    0.307165   0.109940   2.793925 9.8491e-03 ** 
+CensusTract::3401:lsqft    0.434377   0.049939   8.698109 4.9448e-09 ***
+CensusTract::3402:lsqft    0.524227   0.109010   4.808995 6.1123e-05 ***
+CensusTract::3501:lsqft    0.130893   0.027768   4.713797 7.8234e-05 ***
+CensusTract::3502:lsqft    0.243592   0.173993   1.400006 1.7380e-01    
+CensusTract::3601:lsqft    0.728702   0.027928  26.092044  < 2.2e-16 ***
+CensusTract::3602:lsqft    0.558613   0.032343  17.271796 2.0830e-15 ***
+CensusTract::3603:lsqft    0.197976   0.057719   3.430016 2.1034e-03 ** 
+CensusTract::3701:lsqft    0.600965   0.191207   3.143017 4.2713e-03 ** 
+CensusTract::3702:lsqft    0.261459   0.053975   4.844025 5.5819e-05 ***
+CensusTract::3801:lsqft    0.434968   0.037666  11.547991 1.6285e-11 ***
+CensusTract::3802:lsqft    0.576343   0.040791  14.129142 2.0095e-13 ***
+CensusTract::3803:lsqft    0.300523   0.096457   3.115620 4.5659e-03 ** 
+CensusTract::3902:lsqft    0.380233   0.076145   4.993538 3.7899e-05 ***
+CensusTract::3903:lsqft    0.768335   0.042439  18.104601 6.9803e-16 ***
+CensusTract::3904:lsqft    0.372605   0.036536  10.198287 2.1542e-10 ***
+CensusTract::4002:lsqft    0.394860   0.038242  10.325213 1.6742e-10 ***
+CensusTract::4003:lsqft    0.306845   0.032027   9.580673 7.5572e-10 ***
+CensusTract::401:lsqft     0.562242   0.171214   3.283850 3.0235e-03 ** 
+CensusTract::402:lsqft     1.113517   0.053725  20.726047  < 2.2e-16 ***
+CensusTract::4102:lsqft    0.694950   0.033061  21.020046  < 2.2e-16 ***
+CensusTract::4103:lsqft    0.578326   0.032186  17.968484 8.3211e-16 ***
+CensusTract::4104:lsqft    0.731080   0.045785  15.967726 1.2670e-14 ***
+CensusTract::4200:lsqft    0.540459   0.056660   9.538717 8.2442e-10 ***
+CensusTract::4300:lsqft    0.383989   0.047795   8.034048 2.1745e-08 ***
+CensusTract::4500:lsqft    1.264064   0.121187  10.430682 1.3599e-10 ***
+CensusTract::4601:lsqft    1.108578   0.102243  10.842548 6.1148e-11 ***
+CensusTract::4602:lsqft    0.835914   0.020224  41.332118  < 2.2e-16 ***
+CensusTract::4700:lsqft    0.845893   0.049610  17.050918 2.8048e-15 ***
+CensusTract::4800:lsqft   -0.498069   0.063241  -7.875697 3.1224e-08 ***
+CensusTract::501:lsqft     0.014020   0.031827   0.440494 6.6336e-01    
+CensusTract::502:lsqft     0.847411   0.120724   7.019428 2.3378e-07 ***
+CensusTract::5202:lsqft   -2.072771   0.174273 -11.893846 8.6881e-12 ***
+CensusTract::5500:lsqft   -2.251174   0.130699 -17.224051 2.2208e-15 ***
+CensusTract::5701:lsqft   -0.768963   0.341415  -2.252280 3.3333e-02 *  
+CensusTract::5800:lsqft    0.540313   0.056903   9.495269 9.0237e-10 ***
+CensusTract::5901:lsqft    0.129468   0.093171   1.389582 1.7691e-01    
+CensusTract::5903:lsqft    0.706649   0.077192   9.154453 1.8485e-09 ***
+CensusTract::6001:lsqft    1.022642   0.044863  22.794660  < 2.2e-16 ***
+CensusTract::6002:lsqft    0.707112   0.134254   5.266985 1.8707e-05 ***
+CensusTract::601:lsqft     0.736680   0.053216  13.843272 3.1681e-13 ***
+CensusTract::602:lsqft     0.770836   0.049739  15.497583 2.5036e-14 ***
+CensusTract::6100:lsqft    0.193631   0.050111   3.864077 7.0185e-04 ***
+CensusTract::6200:lsqft    0.621879   0.035345  17.594456 1.3566e-15 ***
+CensusTract::6300:lsqft    0.704041   0.026110  26.964359  < 2.2e-16 ***
+CensusTract::6402:lsqft    0.623839   0.022200  28.100963  < 2.2e-16 ***
+CensusTract::6403:lsqft    0.692850   0.023908  28.979559  < 2.2e-16 ***
+CensusTract::6404:lsqft    0.440223   0.067902   6.483193 8.6416e-07 ***
+CensusTract::6501:lsqft    0.499826   0.016331  30.605884  < 2.2e-16 ***
+CensusTract::6502:lsqft    0.559867   0.039064  14.332101 1.4609e-13 ***
+CensusTract::6601:lsqft    0.385928   0.038654   9.984130 3.3108e-10 ***
+CensusTract::6602:lsqft    0.520226   0.019640  26.488181  < 2.2e-16 ***
+CensusTract::6701:lsqft    0.144482   0.022103   6.536710 7.5731e-07 ***
+CensusTract::6702:lsqft    0.588612   0.035814  16.435324 6.5410e-15 ***
+CensusTract::6801:lsqft    0.894234   0.019766  45.241850  < 2.2e-16 ***
+CensusTract::6802:lsqft    0.432507   0.031772  13.612655 4.5984e-13 ***
+CensusTract::6900:lsqft    0.539001   0.023023  23.411390  < 2.2e-16 ***
+CensusTract::7001:lsqft    0.762907   0.017693  43.118981  < 2.2e-16 ***
+CensusTract::7002:lsqft    0.653433   0.032152  20.323495  < 2.2e-16 ***
+CensusTract::701:lsqft     0.662736   0.104427   6.346387 1.2127e-06 ***
+CensusTract::702:lsqft     0.676183   0.069581   9.717880 5.6946e-10 ***
+CensusTract::7100:lsqft    0.827895   0.104755   7.903135 2.9320e-08 ***
+CensusTract::7201:lsqft    1.224200   0.102724  11.917410 8.3280e-12 ***
+CensusTract::7202:lsqft    0.892531   0.067482  13.226281 8.6799e-13 ***
+CensusTract::7300:lsqft    2.404745   0.335627   7.164943 1.6495e-07 ***
+CensusTract::7400:lsqft    0.768279   0.026878  28.584464  < 2.2e-16 ***
+CensusTract::7500:lsqft    0.397153   0.030427  13.052694 1.1600e-12 ***
+CensusTract::7600:lsqft    0.340370   0.036560   9.309869 1.3304e-09 ***
+CensusTract::7700:lsqft    0.614608   0.081918   7.502695 7.4182e-08 ***
+CensusTract::7800:lsqft   -0.052257   0.067761  -0.771199 4.4782e-01    
+CensusTract::7900:lsqft    0.010946   0.023872   0.458526 6.5054e-01    
+CensusTract::8001:lsqft    0.660035   0.064214  10.278651 1.8360e-10 ***
+CensusTract::8002:lsqft    0.304224   0.041386   7.350886 1.0605e-07 ***
+CensusTract::801:lsqft     0.425353   0.082571   5.151331 2.5207e-05 ***
+CensusTract::802:lsqft     0.847857   0.124169   6.828243 3.7114e-07 ***
+CensusTract::8100:lsqft    0.384860   0.035252  10.917278 5.3007e-11 ***
+CensusTract::8201:lsqft    0.433111   0.032700  13.245013 8.4139e-13 ***
+CensusTract::8203:lsqft    0.062970   0.079423   0.792837 4.3533e-01    
+CensusTract::8204:lsqft    0.406961   0.031880  12.765395 1.8869e-12 ***
+CensusTract::8301:lsqft    0.766147   0.063648  12.037172 6.7220e-12 ***
+CensusTract::8302:lsqft    0.673597   0.023086  29.177815  < 2.2e-16 ***
+CensusTract::8400:lsqft    0.394679   0.031299  12.609771 2.4642e-12 ***
+CensusTract::8500:lsqft    0.835892   0.083655   9.992124 3.2578e-10 ***
+CensusTract::8600:lsqft    0.520762   0.038104  13.666892 4.2108e-13 ***
+CensusTract::8700:lsqft    0.716439   0.023898  29.979668  < 2.2e-16 ***
+CensusTract::8800:lsqft    0.535278   0.056933   9.401871 1.0967e-09 ***
+CensusTract::8902:lsqft    0.486687   0.031086  15.656320 1.9855e-14 ***
+CensusTract::8903:lsqft    0.476936   0.019132  24.929147  < 2.2e-16 ***
+CensusTract::8904:lsqft    0.274900   0.159360   1.725017 9.6868e-02 .  
+CensusTract::9001:lsqft    0.631602   0.033174  19.038863  < 2.2e-16 ***
+CensusTract::9002:lsqft    0.322421   0.043759   7.368040 1.0184e-07 ***
+CensusTract::901:lsqft     0.453601   0.019153  23.683283  < 2.2e-16 ***
+CensusTract::902:lsqft     0.448689   0.060492   7.417294 9.0667e-08 ***
+CensusTract::9101:lsqft    0.213612   0.026292   8.124466 1.7713e-08 ***
+CensusTract::9102:lsqft    0.454082   0.023622  19.222791  < 2.2e-16 ***
+CensusTract::9202:lsqft    0.691619   0.046188  14.973920 5.4552e-14 ***
+CensusTract::9203:lsqft    0.871236   0.029411  29.622778  < 2.2e-16 ***
+CensusTract::9204:lsqft    0.580416   0.046128  12.582696 2.5820e-12 ***
+CensusTract::9301:lsqft    0.573518   0.293789   1.952144 6.2207e-02 .  
+CensusTract::9302:lsqft    0.629583   0.054655  11.519290 1.7167e-11 ***
+CensusTract::9400:lsqft    0.435231   0.023855  18.244923 5.8308e-16 ***
+CensusTract::9501:lsqft    0.341362   0.034342   9.939963 3.6203e-10 ***
+CensusTract::9502:lsqft    0.291692   0.051644   5.648167 7.0405e-06 ***
+CensusTract::9605:lsqft   -0.554325   0.609950  -0.908804 3.7213e-01    
+CensusTract::9606:lsqft   -2.899493   0.280158 -10.349475 1.5958e-10 ***
+CensusTract::9701:lsqft    0.074613   0.125873   0.592766 5.5866e-01    
+CensusTract::9703:lsqft   -0.191425   0.046216  -4.141961 3.4382e-04 ***
+CensusTract::9704:lsqft    0.684843   0.106178   6.449968 9.3811e-07 ***
+CensusTract::9803:lsqft    0.158956   0.075625   2.101893 4.5804e-02 *  
+CensusTract::9804:lsqft    0.165444   0.076483   2.163155 4.0290e-02 *  
+CensusTract::9903:lsqft    0.227664   0.097258   2.340833 2.7518e-02 *  
+... 2 variables were removed because of collinearity
+(CensusTract::4901:lsqft and CensusTract::9604:lsqft)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.240446     Adj. R2: 0.757166
+                 Within R2: 0.717549
+OLS estimation, Dep. Var.: log(price)
+Observations: 17,380
+Fixed-effects: yearMonth: 120
+Standard-errors: Clustered (zip) 
+                             Estimate Std. Error    t value   Pr(>|t|)    
+CensusTract::101             1.956700   0.611415   3.200283 3.7134e-03 ** 
+CensusTract::102             2.151598   0.567732   3.789814 8.4830e-04 ***
+CensusTract::10200           0.795975   0.534680   1.488694 1.4908e-01    
+CensusTract::1101            3.334312   1.514099   2.202176 3.7097e-02 *  
+CensusTract::1102            0.538339   1.070680   0.502801 6.1950e-01    
+CensusTract::1202            3.755811   0.394762   9.514115 8.6767e-10 ***
+CensusTract::1203           -1.200801   0.317412  -3.783097 8.6294e-04 ***
+CensusTract::1204            3.748027   0.603266   6.212895 1.6912e-06 ***
+CensusTract::1301            1.942985   0.510443   3.806472 8.1304e-04 ***
+CensusTract::1302            2.595313   0.748901   3.465494 1.9249e-03 ** 
+CensusTract::1400            2.511382   0.598402   4.196815 2.9845e-04 ***
+CensusTract::1500            0.299180   0.511841   0.584517 5.6411e-01    
+CensusTract::1601           -0.640169   0.364901  -1.754362 9.1620e-02 .  
+CensusTract::1602            2.702466   0.333252   8.109369 1.8328e-08 ***
+CensusTract::1702            3.169762   0.582336   5.443184 1.1893e-05 ***
+CensusTract::1703            1.054646   0.399096   2.642588 1.3993e-02 *  
+CensusTract::1704            1.679595   1.168787   1.437041 1.6310e-01    
+CensusTract::1801            0.175016   0.307387   0.569366 5.7419e-01    
+CensusTract::1802            1.135184   0.270570   4.195529 2.9944e-04 ***
+CensusTract::1900           -1.051359   0.580720  -1.810440 8.2264e-02 .  
+CensusTract::2001            2.029864   0.406217   4.996996 3.7562e-05 ***
+CensusTract::2002            3.119423   0.611987   5.097202 2.8989e-05 ***
+CensusTract::201            -1.972923   0.620906  -3.177492 3.9265e-03 ** 
+CensusTract::202             0.388166   0.725199   0.535254 5.9720e-01    
+CensusTract::2102            7.381691   0.450168  16.397621 6.8951e-15 ***
+CensusTract::2203            6.149636   0.400864  15.340949 3.1532e-14 ***
+CensusTract::2303            1.966420   0.405916   4.844403 5.5764e-05 ***
+CensusTract::2401           -3.496122   0.694079  -5.037064 3.3864e-05 ***
+CensusTract::2402           -1.143470   0.424679  -2.692551 1.2471e-02 *  
+CensusTract::2501           -4.732507   0.344240 -13.747712 3.6948e-13 ***
+CensusTract::2502           -2.416538   1.166880  -2.070939 4.8838e-02 *  
+CensusTract::2600           -4.459263   0.311094 -14.334147 1.4563e-13 ***
+CensusTract::2701           -1.418654   0.638550  -2.221679 3.5589e-02 *  
+CensusTract::2702            5.311660   2.018147   2.631948 1.4339e-02 *  
+CensusTract::2801            6.070754   0.750080   8.093478 1.9000e-08 ***
+CensusTract::2802           -1.040615   0.388495  -2.678581 1.2880e-02 *  
+CensusTract::2901            1.539334   0.248167   6.202805 1.7344e-06 ***
+CensusTract::2902            0.787245   0.315079   2.498566 1.9405e-02 *  
+CensusTract::2903            0.239268   0.327703   0.730136 4.7209e-01    
+CensusTract::3000            0.397514   0.484563   0.820355 4.1977e-01    
+CensusTract::301            -1.243948   0.261033  -4.765476 6.8423e-05 ***
+CensusTract::302            -2.994360   0.714801  -4.189080 3.0447e-04 ***
+CensusTract::3100           -1.958689   0.528077  -3.709097 1.0416e-03 ** 
+CensusTract::3200            3.131071   0.979413   3.196887 3.7444e-03 ** 
+CensusTract::3301            1.196472   0.443124   2.700083 1.2256e-02 *  
+CensusTract::3302            1.225966   0.901797   1.359470 1.8613e-01    
+CensusTract::3401            4.051698   0.304153  13.321234 7.4156e-13 ***
+CensusTract::3402            3.784580   0.803976   4.707330 7.9557e-05 ***
+CensusTract::3501            0.284550   0.356138   0.798989 4.3182e-01    
+CensusTract::3502            5.073530   0.963982   5.263097 1.8895e-05 ***
+CensusTract::3601            2.283854   0.410038   5.569856 8.5988e-06 ***
+CensusTract::3602            4.181369   0.290869  14.375419 1.3655e-13 ***
+CensusTract::3603            3.270536   0.331454   9.867246 4.1962e-10 ***
+CensusTract::3701            2.101034   0.596704   3.521063 1.6746e-03 ** 
+CensusTract::3702            1.458058   0.300387   4.853934 5.4404e-05 ***
+CensusTract::3801            0.813296   0.589725   1.379110 1.8008e-01    
+CensusTract::3802            1.895149   0.477897   3.965600 5.4118e-04 ***
+CensusTract::3803            1.282726   0.590743   2.171377 3.9598e-02 *  
+CensusTract::3902            6.584389   1.943469   3.387957 2.3358e-03 ** 
+CensusTract::3903            0.912233   0.431007   2.116513 4.4430e-02 *  
+CensusTract::3904            3.145532   0.284719  11.047862 4.1361e-11 ***
+CensusTract::4002            0.915956   0.299069   3.062695 5.1912e-03 ** 
+CensusTract::4003            1.825258   0.292879   6.232116 1.6119e-06 ***
+CensusTract::401             3.977795   0.605336   6.571216 6.9565e-07 ***
+CensusTract::402             3.043511   0.258676  11.765718 1.0948e-11 ***
+CensusTract::4102            0.837638   0.286857   2.920051 7.3107e-03 ** 
+CensusTract::4103            1.193257   0.233577   5.108634 2.8145e-05 ***
+CensusTract::4104           -1.094864   0.495624  -2.209060 3.6558e-02 *  
+CensusTract::4200            3.096383   0.284181  10.895798 5.5226e-11 ***
+CensusTract::4300            1.596305   0.298568   5.346530 1.5244e-05 ***
+CensusTract::4500           -0.346651   0.872636  -0.397246 6.9456e-01    
+CensusTract::4601           -3.674216   1.288974  -2.850497 8.6216e-03 ** 
+CensusTract::4602           -1.607675   0.261865  -6.139319 2.0331e-06 ***
+CensusTract::4700            0.824832   0.392279   2.102663 4.5730e-02 *  
+CensusTract::4800            9.322796   1.327324   7.023755 2.3136e-07 ***
+CensusTract::4901            5.570227   0.238976  23.308713  < 2.2e-16 ***
+CensusTract::501             4.560611   0.374434  12.180014 5.2166e-12 ***
+CensusTract::502             3.334600   0.365555   9.122025 1.9806e-09 ***
+CensusTract::5202           18.245254   1.165235  15.658005 1.9807e-14 ***
+CensusTract::5500           63.240648   5.500548  11.497155 1.7880e-11 ***
+CensusTract::5701            8.583114   1.325441   6.475668 8.8037e-07 ***
+CensusTract::5800            0.802595   0.818296   0.980812 3.3608e-01    
+CensusTract::5901            3.489053   0.368507   9.468071 9.5499e-10 ***
+CensusTract::5903            1.202576   1.352455   0.889180 3.8238e-01    
+CensusTract::6001           -3.188953   0.336668  -9.472105 9.4699e-10 ***
+CensusTract::6002           -1.098851   0.895456  -1.227141 2.3120e-01    
+CensusTract::601             3.736235   0.355444  10.511452 1.1607e-10 ***
+CensusTract::602             1.914416   0.331056   5.782752 4.9988e-06 ***
+CensusTract::6100           -1.890545   0.396217  -4.771487 6.7365e-05 ***
+CensusTract::6200            2.578751   0.362956   7.104854 1.9044e-07 ***
+CensusTract::6300           -2.225427   0.263188  -8.455660 8.4340e-09 ***
+CensusTract::6402           -0.372677   0.231594  -1.609184 1.2013e-01    
+CensusTract::6403            1.448684   0.283936   5.102142 2.8621e-05 ***
+CensusTract::6404           -0.171350   0.529048  -0.323884 7.4872e-01    
+CensusTract::6501            1.400332   0.262052   5.343710 1.5355e-05 ***
+CensusTract::6502            2.951489   0.353751   8.343404 1.0828e-08 ***
+CensusTract::6601            1.827093   0.327510   5.578743 8.4057e-06 ***
+CensusTract::6602            2.051947   0.317352   6.465833 9.0203e-07 ***
+CensusTract::6701            1.625789   0.337771   4.813283 6.0448e-05 ***
+CensusTract::6702            0.535254   0.535794   0.998992 3.2737e-01    
+CensusTract::6801            1.009883   0.341616   2.956189 6.7067e-03 ** 
+CensusTract::6802           -1.072047   0.234048  -4.580465 1.1055e-04 ***
+CensusTract::6900            0.278858   0.281106   0.992005 3.3070e-01    
+CensusTract::7001           -0.583049   0.352017  -1.656308 1.1016e-01    
+CensusTract::7002           -0.346421   1.432876  -0.241767 8.1093e-01    
+CensusTract::701             1.647340   0.245671   6.705481 5.0054e-07 ***
+CensusTract::702             1.138097   0.542676   2.097196 4.6253e-02 *  
+CensusTract::7100           15.170052   1.475045  10.284469 1.8149e-10 ***
+CensusTract::7201           -1.364726   1.112634  -1.226572 2.3141e-01    
+CensusTract::7202            2.383666   0.332123   7.177063 1.6025e-07 ***
+CensusTract::7300           22.644597   1.472532  15.378002 2.9852e-14 ***
+CensusTract::7400           -0.371676   0.319172  -1.164501 2.5521e-01    
+CensusTract::7500            1.792432   0.308705   5.806290 4.7089e-06 ***
+CensusTract::7600            1.871711   0.335043   5.586471 8.2414e-06 ***
+CensusTract::7700            0.791866   0.782010   1.012603 3.2095e-01    
+CensusTract::7800           -0.413939   0.354457  -1.167812 2.5390e-01    
+CensusTract::7900            2.110332   0.282991   7.457252 8.2532e-08 ***
+CensusTract::8001            1.627942   0.412726   3.944361 5.7147e-04 ***
+CensusTract::8002            1.180266   0.361545   3.264505 3.1712e-03 ** 
+CensusTract::801             1.409378   1.004271   1.403385 1.7280e-01    
+CensusTract::802             0.158581   0.575775   0.275422 7.8526e-01    
+CensusTract::8100            1.694451   0.322536   5.253523 1.9367e-05 ***
+CensusTract::8201           -0.531290   0.388955  -1.365943 1.8412e-01    
+CensusTract::8203            4.036428   0.361340  11.170717 3.2810e-11 ***
+CensusTract::8204            0.005755   0.442822   0.012997 9.8973e-01    
+CensusTract::8301            2.197101   0.366380   5.996780 2.9088e-06 ***
+CensusTract::8302           -0.427280   0.376446  -1.135035 2.6713e-01    
+CensusTract::8400            1.412875   0.216168   6.536007 7.5862e-07 ***
+CensusTract::8500            0.837008   0.417610   2.004279 5.5987e-02 .  
+CensusTract::8600            2.160872   0.292414   7.389768 9.6745e-08 ***
+CensusTract::8700           -1.142355   0.343554  -3.325106 2.7302e-03 ** 
+CensusTract::8800            1.608516   0.365471   4.401213 1.7592e-04 ***
+CensusTract::8902            1.810497   0.308083   5.876650 3.9399e-06 ***
+CensusTract::8903            0.339236   0.325511   1.042166 3.0731e-01    
+CensusTract::8904            0.622326   0.454911   1.368018 1.8348e-01    
+CensusTract::9001            0.119036   0.262454   0.453549 6.5407e-01    
+CensusTract::9002            2.404719   0.370234   6.495135 8.3906e-07 ***
+CensusTract::901             0.568339   0.390577   1.455126 1.5808e-01    
+CensusTract::902             2.896213   0.722287   4.009781 4.8315e-04 ***
+CensusTract::9101            1.982683   0.312489   6.344806 1.2175e-06 ***
+CensusTract::9102            1.446898   0.258559   5.596005 8.0431e-06 ***
+CensusTract::9202            1.361249   0.661638   2.057392 5.0221e-02 .  
+CensusTract::9203            1.051330   0.512350   2.051976 5.0784e-02 .  
+CensusTract::9204            1.569988   0.641121   2.448817 2.1688e-02 *  
+CensusTract::9301            3.696344   0.732520   5.046064 3.3085e-05 ***
+CensusTract::9302            1.714423   0.287049   5.972587 3.0918e-06 ***
+CensusTract::9400            1.928814   0.211661   9.112762 2.0201e-09 ***
+CensusTract::9501            1.313056   0.308646   4.254245 2.5730e-04 ***
+CensusTract::9502            0.539403   0.586079   0.920360 3.6618e-01    
+CensusTract::9604            4.228122   0.222724  18.983669 2.3053e-16 ***
+CensusTract::9605           -5.622044   3.380291  -1.663183 1.0876e-01    
+CensusTract::9606            4.824996   1.616613   2.984632 6.2651e-03 ** 
+CensusTract::9701            1.958211   0.675352   2.899539 7.6762e-03 ** 
+CensusTract::9703            4.419947   0.539651   8.190378 1.5263e-08 ***
+CensusTract::9704           -1.462070   0.847158  -1.725853 9.6715e-02 .  
+CensusTract::9803            2.554241   0.547321   4.666808 8.8371e-05 ***
+CensusTract::9804            0.220013   0.426900   0.515375 6.1082e-01    
+CensusTract::9903            8.851411   6.009134   1.472993 1.5323e-01    
+CensusTract::1000:logGross   0.535297   0.022960  23.314171  < 2.2e-16 ***
+CensusTract::101:logGross    0.444351   0.049036   9.061673 2.2529e-09 ***
+CensusTract::102:logGross    0.251087   0.037232   6.743932 4.5569e-07 ***
+CensusTract::10200:logGross  0.485652   0.083558   5.812180 4.6390e-06 ***
+CensusTract::1101:logGross   0.065966   0.216874   0.304168 7.6352e-01    
+CensusTract::1102:logGross   0.117930   0.056355   2.092632 4.6693e-02 *  
+CensusTract::1202:logGross   0.404140   0.038720  10.437471 1.3419e-10 ***
+CensusTract::1203:logGross   0.679221   0.042350  16.038172 1.1457e-14 ***
+CensusTract::1204:logGross  -0.345611   0.083833  -4.122629 3.6139e-04 ***
+CensusTract::1301:logGross  -0.068619   0.048580  -1.412514 1.7013e-01    
+CensusTract::1302:logGross   0.428582   0.085465   5.014721 3.5878e-05 ***
+CensusTract::1400:logGross   0.396621   0.120452   3.292780 2.9575e-03 ** 
+CensusTract::1500:logGross   0.428599   0.077802   5.508848 1.0051e-05 ***
+CensusTract::1601:logGross   0.711003   0.038429  18.501603 4.2084e-16 ***
+CensusTract::1602:logGross   0.503341   0.033240  15.142688 4.2341e-14 ***
+CensusTract::1702:logGross   0.245790   0.102916   2.388258 2.4800e-02 *  
+CensusTract::1703:logGross   0.542256   0.056531   9.592149 7.3798e-10 ***
+CensusTract::1704:logGross   0.342998   0.124779   2.748854 1.0943e-02 *  
+CensusTract::1801:logGross   0.502081   0.066848   7.510797 7.2786e-08 ***
+CensusTract::1802:logGross   0.460325   0.028553  16.121880 1.0171e-14 ***
+CensusTract::1900:logGross   0.844214   0.138983   6.074232 2.3938e-06 ***
+CensusTract::2001:logGross   0.496375   0.143182   3.466729 1.9190e-03 ** 
+CensusTract::2002:logGross   0.027400   0.072056   0.380253 7.0697e-01    
+CensusTract::201:logGross    0.418123   0.042392   9.863368 4.2295e-10 ***
+CensusTract::202:logGross    1.247998   0.096803  12.892121 1.5210e-12 ***
+CensusTract::2102:logGross  -0.678581   0.083178  -8.158144 1.6414e-08 ***
+CensusTract::2203:logGross  -0.140289   0.037439  -3.747155 9.4560e-04 ***
+CensusTract::2303:logGross   0.945335   0.053094  17.804794 1.0294e-15 ***
+CensusTract::2401:logGross   0.913855   0.043385  21.064025  < 2.2e-16 ***
+CensusTract::2402:logGross   0.807683   0.046351  17.425519 1.6967e-15 ***
+CensusTract::2501:logGross   1.201833   0.021968  54.707176  < 2.2e-16 ***
+CensusTract::2502:logGross   0.614855   0.221414   2.776951 1.0248e-02 *  
+CensusTract::2600:logGross   1.071167   0.043832  24.438039  < 2.2e-16 ***
+CensusTract::2701:logGross   0.837175   0.126060   6.641064 5.8602e-07 ***
+CensusTract::2702:logGross   0.058680   0.098323   0.596813 5.5600e-01    
+CensusTract::2801:logGross   0.322969   0.038354   8.420797 9.1129e-09 ***
+CensusTract::2802:logGross   0.919217   0.043958  20.911376  < 2.2e-16 ***
+CensusTract::2901:logGross   0.512680   0.063345   8.093505 1.8999e-08 ***
+CensusTract::2902:logGross   0.324824   0.027816  11.677475 1.2852e-11 ***
+CensusTract::2903:logGross   0.474881   0.024436  19.433730  < 2.2e-16 ***
+CensusTract::3000:logGross   0.618532   0.062359   9.918838 3.7786e-10 ***
+CensusTract::301:logGross    0.851899   0.040382  21.096189  < 2.2e-16 ***
+CensusTract::302:logGross    0.904025   0.094815   9.534600 8.3150e-10 ***
+CensusTract::3100:logGross   0.513624   0.132965   3.862849 7.0406e-04 ***
+CensusTract::3200:logGross   0.221196   0.115357   1.917494 6.6669e-02 .  
+CensusTract::3301:logGross   0.703522   0.043029  16.350029 7.3706e-15 ***
+CensusTract::3302:logGross   0.229515   0.104801   2.189995 3.8069e-02 *  
+CensusTract::3401:logGross   0.249586   0.110087   2.267173 3.2283e-02 *  
+CensusTract::3402:logGross   0.217395   0.192099   1.131686 2.6851e-01    
+CensusTract::3501:logGross   0.471975   0.033732  13.991802 2.4985e-13 ***
+CensusTract::3502:logGross   0.242157   0.085458   2.833619 8.9718e-03 ** 
+CensusTract::3601:logGross   0.598647   0.021691  27.599101  < 2.2e-16 ***
+CensusTract::3602:logGross   0.519670   0.022541  23.053986  < 2.2e-16 ***
+CensusTract::3603:logGross   0.104715   0.034296   3.053284 5.3107e-03 ** 
+CensusTract::3701:logGross   0.302390   0.063255   4.780490 6.5811e-05 ***
+CensusTract::3702:logGross   0.427392   0.054890   7.786390 3.8348e-08 ***
+CensusTract::3801:logGross   0.598314   0.050679  11.805932 1.0180e-11 ***
+CensusTract::3802:logGross   0.665384   0.032591  20.416056  < 2.2e-16 ***
+CensusTract::3803:logGross   0.507369   0.035935  14.119015 2.0419e-13 ***
+CensusTract::3902:logGross   0.299932   0.158397   1.893549 6.9914e-02 .  
+CensusTract::3903:logGross   0.634155   0.031761  19.966454  < 2.2e-16 ***
+CensusTract::3904:logGross   0.423489   0.039349  10.762402 7.1325e-11 ***
+CensusTract::4002:logGross   0.374214   0.030022  12.464645 3.1677e-12 ***
+CensusTract::4003:logGross   0.248845   0.024392  10.201735 2.1394e-10 ***
+CensusTract::401:logGross    0.337080   0.074793   4.506836 1.3380e-04 ***
+CensusTract::402:logGross    0.680941   0.029639  22.974331  < 2.2e-16 ***
+CensusTract::4102:logGross   0.482795   0.031778  15.192776 3.9291e-14 ***
+CensusTract::4103:logGross   0.449473   0.033132  13.566126 4.9604e-13 ***
+CensusTract::4104:logGross   0.737321   0.043079  17.115438 2.5705e-15 ***
+CensusTract::4200:logGross   0.310609   0.023642  13.137885 1.0058e-12 ***
+CensusTract::4300:logGross   0.099655   0.023548   4.231977 2.7254e-04 ***
+CensusTract::4500:logGross   0.906920   0.079041  11.474019 1.8659e-11 ***
+CensusTract::4601:logGross   1.252255   0.072492  17.274402 2.0758e-15 ***
+CensusTract::4602:logGross   0.817070   0.017960  45.494828  < 2.2e-16 ***
+CensusTract::4700:logGross   0.231242   0.044818   5.159615 2.4674e-05 ***
+CensusTract::4800:logGross  -0.554156   0.235583  -2.352279 2.6838e-02 *  
+CensusTract::501:logGross    0.174635   0.037439   4.664470 8.8909e-05 ***
+CensusTract::502:logGross    0.315216   0.033935   9.288832 1.3907e-09 ***
+CensusTract::5202:logGross  -1.394595   0.132586 -10.518423 1.1450e-10 ***
+CensusTract::5500:logGross  -7.411853   0.736794 -10.059600 2.8436e-10 ***
+CensusTract::5701:logGross  -0.377321   0.091441  -4.126408 3.5788e-04 ***
+CensusTract::5800:logGross   0.430102   0.058660   7.332150 1.1085e-07 ***
+CensusTract::5901:logGross   0.210123   0.055994   3.752624 9.3254e-04 ***
+CensusTract::5903:logGross   0.565962   0.238357   2.374429 2.5566e-02 *  
+CensusTract::6001:logGross   0.519369   0.056549   9.184444 1.7344e-09 ***
+CensusTract::6002:logGross   0.805960   0.276698   2.912777 7.4384e-03 ** 
+CensusTract::601:logGross    0.329698   0.031125  10.592635 9.9074e-11 ***
+CensusTract::602:logGross    0.426030   0.033253  12.811616 1.7439e-12 ***
+CensusTract::6100:logGross   0.670427   0.034323  19.532676  < 2.2e-16 ***
+CensusTract::6200:logGross   0.613085   0.022998  26.658162  < 2.2e-16 ***
+CensusTract::6300:logGross   0.541192   0.018181  29.767301  < 2.2e-16 ***
+CensusTract::6402:logGross   0.522039   0.026739  19.523139  < 2.2e-16 ***
+CensusTract::6403:logGross   0.524828   0.020888  25.126209  < 2.2e-16 ***
+CensusTract::6404:logGross   0.677088   0.068632   9.865514 4.2110e-10 ***
+CensusTract::6501:logGross   0.395468   0.016347  24.192384  < 2.2e-16 ***
+CensusTract::6502:logGross   0.286516   0.027559  10.396378 1.4548e-10 ***
+CensusTract::6601:logGross   0.354830   0.028886  12.283789 4.3449e-12 ***
+CensusTract::6602:logGross   0.410724   0.032128  12.783820 1.8285e-12 ***
+CensusTract::6701:logGross   0.298397   0.031941   9.342246 1.2428e-09 ***
+CensusTract::6702:logGross   0.517295   0.094843   5.454242 1.1561e-05 ***
+CensusTract::6801:logGross   0.674911   0.026935  25.056993  < 2.2e-16 ***
+CensusTract::6802:logGross   0.624865   0.023512  26.576564  < 2.2e-16 ***
+CensusTract::6900:logGross   0.469845   0.038783  12.114568 5.8576e-12 ***
+CensusTract::7001:logGross   0.750403   0.018301  41.003871  < 2.2e-16 ***
+CensusTract::7002:logGross   0.526867   0.188921   2.788826 9.9675e-03 ** 
+CensusTract::701:logGross    0.483114   0.033580  14.386935 1.3412e-13 ***
+CensusTract::702:logGross    0.532968   0.058029   9.184441 1.7344e-09 ***
+CensusTract::7100:logGross  -1.645051   0.218715  -7.521428 7.0996e-08 ***
+CensusTract::7201:logGross   0.960554   0.125852   7.632421 5.4789e-08 ***
+CensusTract::7202:logGross   0.338999   0.039439   8.595602 6.1912e-09 ***
+CensusTract::7300:logGross  -1.356581   0.162594  -8.343370 1.0829e-08 ***
+CensusTract::7400:logGross   0.727081   0.033244  21.871341  < 2.2e-16 ***
+CensusTract::7500:logGross   0.410323   0.026258  15.626603 2.0733e-14 ***
+CensusTract::7600:logGross   0.211203   0.021563   9.794654 4.8658e-10 ***
+CensusTract::7700:logGross   0.489321   0.090419   5.411713 1.2894e-05 ***
+CensusTract::7800:logGross   0.650348   0.053499  12.156325 5.4398e-12 ***
+CensusTract::7900:logGross   0.310923   0.019055  16.317542 7.7147e-15 ***
+CensusTract::8001:logGross   0.498334   0.053028   9.397560 1.1066e-09 ***
+CensusTract::8002:logGross   0.392055   0.018840  20.809718  < 2.2e-16 ***
+CensusTract::801:logGross    0.220155   0.050862   4.328469 2.1237e-04 ***
+CensusTract::802:logGross    0.456247   0.082470   5.532253 9.4669e-06 ***
+CensusTract::8100:logGross   0.258566   0.025466  10.153191 2.3571e-10 ***
+CensusTract::8201:logGross   0.623952   0.038992  16.001849 1.2066e-14 ***
+CensusTract::8203:logGross   0.182555   0.044130   4.136745 3.4847e-04 ***
+CensusTract::8204:logGross   0.490770   0.031258  15.700406 1.8623e-14 ***
+CensusTract::8301:logGross   0.485122   0.028672  16.919505 3.3532e-15 ***
+CensusTract::8302:logGross   0.669148   0.020764  32.226990  < 2.2e-16 ***
+CensusTract::8400:logGross   0.458779   0.025103  18.275873 5.6048e-16 ***
+CensusTract::8500:logGross   0.577267   0.047718  12.097538 6.0374e-12 ***
+CensusTract::8600:logGross   0.416858   0.035286  11.813590 1.0040e-11 ***
+CensusTract::8700:logGross   0.803626   0.032590  24.658337  < 2.2e-16 ***
+CensusTract::8800:logGross   0.525172   0.052217  10.057428 2.8561e-10 ***
+CensusTract::8902:logGross   0.531369   0.021675  24.514926  < 2.2e-16 ***
+CensusTract::8903:logGross   0.591317   0.018114  32.645040  < 2.2e-16 ***
+CensusTract::8904:logGross   0.524041   0.090053   5.819264 4.5564e-06 ***
+CensusTract::9001:logGross   0.562141   0.024721  22.739590  < 2.2e-16 ***
+CensusTract::9002:logGross   0.157120   0.023240   6.760764 4.3737e-07 ***
+CensusTract::901:logGross    0.590094   0.031906  18.494625 4.2457e-16 ***
+CensusTract::902:logGross    0.493281   0.050679   9.733395 5.5161e-10 ***
+CensusTract::9101:logGross   0.440210   0.037832  11.635829 1.3866e-11 ***
+CensusTract::9102:logGross   0.465069   0.024362  19.089667  < 2.2e-16 ***
+CensusTract::9202:logGross   0.511161   0.054042   9.458560 9.7413e-10 ***
+CensusTract::9203:logGross   0.654829   0.035985  18.197224 6.1977e-16 ***
+CensusTract::9204:logGross   0.481287   0.056299   8.548786 6.8638e-09 ***
+CensusTract::9301:logGross   0.121883   0.125495   0.971219 3.4074e-01    
+CensusTract::9302:logGross   0.380570   0.036888  10.316842 1.7022e-10 ***
+CensusTract::9400:logGross   0.349325   0.017405  20.070719  < 2.2e-16 ***
+CensusTract::9501:logGross   0.358053   0.018302  19.564137  < 2.2e-16 ***
+CensusTract::9502:logGross   0.291965   0.038144   7.654353 5.2065e-08 ***
+CensusTract::9605:logGross   0.571511   0.667788   0.855828 4.0022e-01    
+CensusTract::9606:logGross  -0.203531   0.070918  -2.869937 8.2343e-03 ** 
+CensusTract::9701:logGross   0.462814   0.063693   7.266302 1.2958e-07 ***
+CensusTract::9703:logGross   0.066289   0.053736   1.233617 2.2882e-01    
+CensusTract::9704:logGross   0.716541   0.114966   6.232613 1.6099e-06 ***
+CensusTract::9803:logGross   0.220217   0.055662   3.956359 5.5416e-04 ***
+CensusTract::9804:logGross   0.164514   0.036543   4.501873 1.3553e-04 ***
+CensusTract::9903:logGross   0.268938   0.104240   2.579997 1.6144e-02 *  
+CensusTract::1000:llotSize   0.105083   0.023062   4.556624 1.1760e-04 ***
+CensusTract::101:llotSize   -0.021582   0.032188  -0.670514 5.0868e-01    
+CensusTract::102:llotSize    0.133817   0.040353   3.316145 2.7915e-03 ** 
+CensusTract::10200:llotSize  0.003782   0.037488   0.100875 9.2045e-01    
+CensusTract::1101:llotSize   0.209019   0.071534   2.921954 7.2776e-03 ** 
+CensusTract::1102:llotSize   0.465999   0.101977   4.569654 1.1369e-04 ***
+CensusTract::1202:llotSize  -0.185916   0.048312  -3.848207 7.3090e-04 ***
+CensusTract::1203:llotSize   0.126512   0.034885   3.626599 1.2836e-03 ** 
+CensusTract::1204:llotSize   0.508966   0.040478  12.573993 2.6211e-12 ***
+CensusTract::1301:llotSize   0.465283   0.054000   8.616370 5.9149e-09 ***
+CensusTract::1302:llotSize  -0.086197   0.031241  -2.759126 1.0684e-02 *  
+CensusTract::1400:llotSize  -0.049844   0.064690  -0.770508 4.4822e-01    
+CensusTract::1500:llotSize   0.182634   0.074992   2.435396 2.2345e-02 *  
+CensusTract::1601:llotSize   0.019972   0.051093   0.390896 6.9919e-01    
+CensusTract::1602:llotSize  -0.240403   0.019213 -12.512667 2.9144e-12 ***
+CensusTract::1702:llotSize  -0.055897   0.032030  -1.745162 9.3239e-02 .  
+CensusTract::1703:llotSize  -0.043643   0.023684  -1.842753 7.7255e-02 .  
+CensusTract::1704:llotSize   0.069756   0.042206   1.652757 1.1089e-01    
+CensusTract::1801:llotSize   0.118712   0.068055   1.744369 9.3379e-02 .  
+CensusTract::1802:llotSize   0.044870   0.015422   2.909430 7.4978e-03 ** 
+CensusTract::1900:llotSize  -0.035010   0.166824  -0.209862 8.3548e-01    
+CensusTract::2001:llotSize  -0.081398   0.134317  -0.606017 5.4997e-01    
+CensusTract::2002:llotSize   0.235061   0.049973   4.703791 8.0290e-05 ***
+CensusTract::201:llotSize    0.453545   0.067373   6.731885 4.6928e-07 ***
+CensusTract::202:llotSize   -0.608190   0.085702  -7.096579 1.9425e-07 ***
+CensusTract::2102:llotSize   0.342817   0.053882   6.362321 1.1657e-06 ***
+CensusTract::2203:llotSize  -0.007931   0.020613  -0.384773 7.0366e-01    
+CensusTract::2303:llotSize  -0.528686   0.030710 -17.215232 2.2472e-15 ***
+CensusTract::2401:llotSize   0.177463   0.064587   2.747679 1.0973e-02 *  
+CensusTract::2402:llotSize  -0.005329   0.056803  -0.093809 9.2601e-01    
+CensusTract::2501:llotSize   0.058074   0.028375   2.046674 5.1341e-02 .  
+CensusTract::2502:llotSize   0.343687   0.095447   3.600825 1.3699e-03 ** 
+CensusTract::2600:llotSize   0.152449   0.031046   4.910343 4.7007e-05 ***
+CensusTract::2701:llotSize   0.019722   0.090417   0.218120 8.2911e-01    
+CensusTract::2702:llotSize  -0.109866   0.287602  -0.382008 7.0568e-01    
+CensusTract::2801:llotSize  -0.411276   0.054557  -7.538476 6.8219e-08 ***
+CensusTract::2802:llotSize  -0.129766   0.057592  -2.253188 3.3268e-02 *  
+CensusTract::2901:llotSize  -0.080562   0.049900  -1.614462 1.1898e-01    
+CensusTract::2902:llotSize   0.181939   0.024443   7.443237 8.5296e-08 ***
+CensusTract::2903:llotSize   0.086435   0.021650   3.992390 5.0522e-04 ***
+CensusTract::3000:llotSize  -0.009407   0.057297  -0.164175 8.7091e-01    
+CensusTract::301:llotSize   -0.041089   0.024506  -1.676709 1.0606e-01    
+CensusTract::302:llotSize    0.125898   0.021280   5.916260 3.5643e-06 ***
+CensusTract::3100:llotSize   0.380892   0.171431   2.221838 3.5577e-02 *  
+CensusTract::3200:llotSize   0.032384   0.036227   0.893926 3.7989e-01    
+CensusTract::3301:llotSize  -0.189855   0.038489  -4.932710 4.4362e-05 ***
+CensusTract::3302:llotSize   0.246797   0.027255   9.055177 2.2844e-09 ***
+CensusTract::3401:llotSize  -0.111101   0.099273  -1.119140 2.7372e-01    
+CensusTract::3402:llotSize  -0.053291   0.135313  -0.393836 6.9704e-01    
+CensusTract::3501:llotSize   0.114422   0.035014   3.267899 3.1448e-03 ** 
+CensusTract::3502:llotSize  -0.223751   0.049883  -4.485483 1.4141e-04 ***
+CensusTract::3601:llotSize  -0.232290   0.035133  -6.611698 6.2979e-07 ***
+CensusTract::3602:llotSize  -0.380859   0.020756 -18.349128 5.1054e-16 ***
+CensusTract::3603:llotSize   0.108166   0.025967   4.165546 3.2353e-04 ***
+CensusTract::3701:llotSize   0.063927   0.017660   3.619819 1.3058e-03 ** 
+CensusTract::3702:llotSize   0.030220   0.071793   0.420931 6.7740e-01    
+CensusTract::3801:llotSize  -0.074004   0.021036  -3.517981 1.6876e-03 ** 
+CensusTract::3802:llotSize  -0.248533   0.034207  -7.265503 1.2983e-07 ***
+CensusTract::3803:llotSize  -0.038722   0.053294  -0.726576 4.7423e-01    
+CensusTract::3902:llotSize  -0.466320   0.097740  -4.771040 6.7443e-05 ***
+CensusTract::3903:llotSize  -0.131477   0.027228  -4.828707 5.8079e-05 ***
+CensusTract::3904:llotSize  -0.202793   0.021521  -9.423209 1.0488e-09 ***
+CensusTract::4002:llotSize   0.126480   0.025592   4.942261 4.3278e-05 ***
+CensusTract::4003:llotSize   0.112875   0.013929   8.103511 1.8573e-08 ***
+CensusTract::401:llotSize   -0.189555   0.033123  -5.722777 5.8219e-06 ***
+CensusTract::402:llotSize   -0.399957   0.025997 -15.384880 2.9550e-14 ***
+CensusTract::4102:llotSize   0.031198   0.017033   1.831636 7.8948e-02 .  
+CensusTract::4103:llotSize   0.001617   0.027669   0.058427 9.5387e-01    
+CensusTract::4104:llotSize   0.027044   0.029676   0.911282 3.7085e-01    
+CensusTract::4200:llotSize  -0.083756   0.024050  -3.482570 1.8443e-03 ** 
+CensusTract::4300:llotSize   0.280252   0.014864  18.854751 2.7043e-16 ***
+CensusTract::4500:llotSize  -0.148171   0.015461  -9.583801 7.5084e-10 ***
+CensusTract::4601:llotSize  -0.101275   0.197873  -0.511816 6.1327e-01    
+CensusTract::4602:llotSize   0.054809   0.010078   5.438331 1.2042e-05 ***
+CensusTract::4700:llotSize   0.368583   0.026676  13.816909 3.3051e-13 ***
+CensusTract::4800:llotSize   0.123007   0.092466   1.330296 1.9543e-01    
+CensusTract::501:llotSize   -0.135875   0.019487  -6.972710 2.6163e-07 ***
+CensusTract::502:llotSize   -0.121869   0.022699  -5.369004 1.4389e-05 ***
+CensusTract::5500:llotSize   0.392310   0.077552   5.058666 3.2024e-05 ***
+CensusTract::5701:llotSize  -0.142436   0.092648  -1.537394 1.3676e-01    
+CensusTract::5800:llotSize   0.128135   0.137576   0.931377 3.6057e-01    
+CensusTract::5901:llotSize  -0.018971   0.026234  -0.723150 4.7630e-01    
+CensusTract::5903:llotSize  -0.065735   0.073456  -0.894887 3.7938e-01    
+CensusTract::6001:llotSize   0.479533   0.028605  16.764153 4.1476e-15 ***
+CensusTract::6002:llotSize  -0.029299   0.143491  -0.204183 8.3986e-01    
+CensusTract::601:llotSize   -0.211986   0.021814  -9.717849 5.6950e-10 ***
+CensusTract::602:llotSize   -0.084579   0.018128  -4.665596 8.8649e-05 ***
+CensusTract::6100:llotSize   0.188459   0.016850  11.184618 3.1965e-11 ***
+CensusTract::6200:llotSize  -0.264955   0.024591 -10.774381 6.9699e-11 ***
+CensusTract::6300:llotSize   0.336279   0.011086  30.333380  < 2.2e-16 ***
+CensusTract::6402:llotSize   0.132723   0.013655   9.719793 5.6723e-10 ***
+CensusTract::6403:llotSize  -0.075520   0.013009  -5.805178 4.7222e-06 ***
+CensusTract::6404:llotSize  -0.021119   0.022369  -0.944109 3.5415e-01    
+CensusTract::6501:llotSize   0.048281   0.013814   3.495211 1.7868e-03 ** 
+CensusTract::6502:llotSize  -0.030229   0.033296  -0.907887 3.7261e-01    
+CensusTract::6601:llotSize   0.045503   0.019067   2.386440 2.4899e-02 *  
+CensusTract::6602:llotSize  -0.026247   0.015410  -1.703235 1.0093e-01    
+CensusTract::6701:llotSize   0.112594   0.043831   2.568805 1.6560e-02 *  
+CensusTract::6702:llotSize   0.044325   0.094239   0.470350 6.4218e-01    
+CensusTract::6801:llotSize  -0.117670   0.024699  -4.764177 6.8654e-05 ***
+CensusTract::6802:llotSize   0.137655   0.013722  10.031905 3.0066e-10 ***
+CensusTract::6900:llotSize   0.147083   0.025989   5.659470 6.8405e-06 ***
+CensusTract::7001:llotSize  -0.011746   0.014429  -0.814094 4.2328e-01    
+CensusTract::7002:llotSize   0.151479   0.034701   4.365303 1.9306e-04 ***
+CensusTract::701:llotSize   -0.061155   0.027243  -2.244788 3.3873e-02 *  
+CensusTract::702:llotSize   -0.056827   0.023727  -2.395043 2.4432e-02 *  
+CensusTract::7100:llotSize   0.317188   0.042540   7.456203 8.2735e-08 ***
+CensusTract::7201:llotSize  -0.136367   0.068444  -1.992392 5.7355e-02 .  
+CensusTract::7202:llotSize  -0.031246   0.025073  -1.246230 2.2423e-01    
+CensusTract::7300:llotSize  -0.830880   0.040075 -20.733263  < 2.2e-16 ***
+CensusTract::7400:llotSize  -0.063462   0.017351  -3.657544 1.1870e-03 ** 
+CensusTract::7500:llotSize  -0.019424   0.015593  -1.245658 2.2444e-01    
+CensusTract::7600:llotSize   0.127800   0.021226   6.020901 2.7374e-06 ***
+CensusTract::7700:llotSize  -0.001348   0.065514  -0.020579 9.8374e-01    
+CensusTract::7800:llotSize   0.000168   0.038317   0.004375 9.9654e-01    
+CensusTract::7900:llotSize   0.005151   0.018738   0.274925 7.8563e-01    
+CensusTract::8001:llotSize  -0.113640   0.027454  -4.139266 3.4622e-04 ***
+CensusTract::8002:llotSize   0.027390   0.025019   1.094772 2.8405e-01    
+CensusTract::801:llotSize    0.219975   0.134056   1.640918 1.1334e-01    
+CensusTract::802:llotSize    0.125600   0.037095   3.385898 2.3478e-03 ** 
+CensusTract::8100:llotSize   0.097802   0.015143   6.458589 9.1832e-07 ***
+CensusTract::8201:llotSize   0.038462   0.047950   0.802115 4.3005e-01    
+CensusTract::8203:llotSize  -0.123631   0.014427  -8.569607 6.5559e-09 ***
+CensusTract::8204:llotSize   0.072132   0.042747   1.687409 1.0396e-01    
+CensusTract::8301:llotSize  -0.170271   0.028171  -6.044162 2.5817e-06 ***
+CensusTract::8302:llotSize  -0.020828   0.024556  -0.848167 4.0439e-01    
+CensusTract::8400:llotSize  -0.057213   0.007770  -7.363628 1.0290e-07 ***
+CensusTract::8500:llotSize  -0.098911   0.014142  -6.994257 2.4839e-07 ***
+CensusTract::8600:llotSize  -0.105148   0.018420  -5.708193 6.0421e-06 ***
+CensusTract::8700:llotSize  -0.030283   0.017478  -1.732622 9.5484e-02 .  
+CensusTract::8800:llotSize  -0.116870   0.024576  -4.755540 7.0208e-05 ***
+CensusTract::8902:llotSize  -0.149655   0.016222  -9.225459 1.5900e-09 ***
+CensusTract::8903:llotSize  -0.029251   0.011522  -2.538844 1.7723e-02 *  
+CensusTract::8904:llotSize  -0.011351   0.027267  -0.416290 6.8075e-01    
+CensusTract::9001:llotSize   0.003209   0.008561   0.374869 7.1092e-01    
+CensusTract::9002:llotSize   0.092000   0.030064   3.060188 5.2228e-03 ** 
+CensusTract::901:llotSize   -0.007459   0.017973  -0.414997 6.8168e-01    
+CensusTract::902:llotSize   -0.216755   0.032854  -6.597443 6.5222e-07 ***
+CensusTract::9101:llotSize  -0.105304   0.015005  -7.017950 2.3462e-07 ***
+CensusTract::9102:llotSize  -0.054368   0.009819  -5.536912 9.3547e-06 ***
+CensusTract::9202:llotSize  -0.089378   0.030573  -2.923459 7.2516e-03 ** 
+CensusTract::9203:llotSize  -0.186780   0.025258  -7.394829 9.5597e-08 ***
+CensusTract::9204:llotSize  -0.094931   0.027439  -3.459652 1.9532e-03 ** 
+CensusTract::9301:llotSize  -0.018765   0.029592  -0.634113 5.3177e-01    
+CensusTract::9302:llotSize  -0.016565   0.016764  -0.988146 3.3255e-01    
+CensusTract::9400:llotSize  -0.003444   0.014869  -0.231642 8.1870e-01    
+CensusTract::9501:llotSize   0.051045   0.024437   2.088856 4.7061e-02 *  
+CensusTract::9502:llotSize   0.202893   0.045160   4.492727 1.3878e-04 ***
+CensusTract::9605:llotSize   0.626511   0.805874   0.777431 4.4420e-01    
+CensusTract::9606:llotSize   0.123535   0.135587   0.911113 3.7094e-01    
+CensusTract::9701:llotSize  -0.128860   0.031894  -4.040279 4.4672e-04 ***
+CensusTract::9703:llotSize  -0.059544   0.036720  -1.621545 1.1745e-01    
+CensusTract::9704:llotSize   0.049074   0.048355   1.014861 3.1989e-01    
+CensusTract::9803:llotSize   0.022491   0.052756   0.426328 6.7352e-01    
+CensusTract::9804:llotSize   0.324517   0.036296   8.940779 2.9203e-09 ***
+CensusTract::9903:llotSize  -0.659770   0.633852  -1.040890 3.0789e-01    
+... 5 variables were removed because of collinearity
+(CensusTract::4901:logGross, CensusTract::9604:logGross and 3 others
+[full set in $collin.var])
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.231048     Adj. R2: 0.773687
+                 Within R2: 0.739109
+        CensusTract::101         CensusTract::102       CensusTract::10200 
+              2.68002137               6.00233495               2.38011966 
+       CensusTract::1101        CensusTract::1102        CensusTract::1202 
+             -0.80005270              -1.29541776               3.86700004 
+       CensusTract::1203        CensusTract::1204        CensusTract::1301 
+              0.18963534               4.08705088               3.72996703 
+       CensusTract::1302        CensusTract::1400        CensusTract::1500 
+              2.99458898               1.47990622               1.42436216 
+       CensusTract::1601        CensusTract::1602        CensusTract::1702 
+              2.61195136               3.00332864               6.30066893 
+       CensusTract::1703        CensusTract::1704        CensusTract::1801 
+              5.86801677               2.08786273               0.19088933 
+       CensusTract::1802        CensusTract::1900        CensusTract::2001 
+              4.92751842               1.28111109               1.78172495 
+       CensusTract::2002         CensusTract::201         CensusTract::202 
+              3.91710815               3.21357876               3.54212945 
+       CensusTract::2102        CensusTract::2203        CensusTract::2303 
+             10.04148822               7.81390679              -4.01524214 
+       CensusTract::2401        CensusTract::2402        CensusTract::2501 
+             -0.28294881               1.56854364               0.06008362 
+       CensusTract::2502        CensusTract::2600        CensusTract::2701 
+              2.83965563               2.31325547               2.73551725 
+       CensusTract::2702        CensusTract::2801        CensusTract::2802 
+              4.55372536               4.67853724               3.89739976 
+       CensusTract::2901        CensusTract::2902        CensusTract::2903 
+              5.74318975               3.92873478               2.23076964 
+       CensusTract::3000         CensusTract::301         CensusTract::302 
+              2.45118198               2.71155623               3.01726391 
+       CensusTract::3100        CensusTract::3200        CensusTract::3301 
+              3.09336899               4.81464080               0.38715021 
+       CensusTract::3302        CensusTract::3401        CensusTract::3402 
+              4.00450670               3.08373718               2.34685102 
+       CensusTract::3501        CensusTract::3502        CensusTract::3601 
+              5.20098179               4.48211246               0.73979282 
+       CensusTract::3602        CensusTract::3603        CensusTract::3701 
+              2.04562139               4.76772478               1.72335504 
+       CensusTract::3702        CensusTract::3801        CensusTract::3802 
+              4.38432404               2.78142289               1.87084207 
+       CensusTract::3803        CensusTract::3902        CensusTract::3903 
+              3.84472305               3.26933890               0.15903623 
+       CensusTract::3904        CensusTract::4002        CensusTract::4003 
+              3.14898986               3.13965623               3.57896777 
+        CensusTract::401         CensusTract::402        CensusTract::4102 
+              2.01068730              -2.28498184               0.85644917 
+       CensusTract::4103        CensusTract::4104        CensusTract::4200 
+              1.53953381               0.51440672               1.99084037 
+       CensusTract::4300        CensusTract::4500        CensusTract::4601 
+              3.31967683              -2.80180411              -1.66290247 
+       CensusTract::4602        CensusTract::4700        CensusTract::4800 
+              0.32926247               0.43115381              10.89255412 
+       CensusTract::4901         CensusTract::501         CensusTract::502 
+              6.77563677               5.83820710              -0.27368299 
+       CensusTract::5202        CensusTract::5500        CensusTract::5701 
+             23.99390410              23.92751122              11.49485483 
+       CensusTract::5800        CensusTract::5901        CensusTract::5903 
+              2.45849830               5.23069018               0.99652673 
+       CensusTract::6001        CensusTract::6002         CensusTract::601 
+             -1.34757936               1.04147866               0.17634725 
+        CensusTract::602        CensusTract::6100        CensusTract::6200 
+             -0.00986933               4.86738359               1.60925310 
+       CensusTract::6300        CensusTract::6402        CensusTract::6403 
+              1.03656042               1.38781785               0.84678343 
+       CensusTract::6404        CensusTract::6501        CensusTract::6502 
+              2.77849907               2.32916102               1.97265817 
+       CensusTract::6601        CensusTract::6602        CensusTract::6701 
+              3.23752359               2.32087785               5.04876571 
+       CensusTract::6702        CensusTract::6801        CensusTract::6802 
+              1.79206708              -0.40322922               3.05369153 
+       CensusTract::6900        CensusTract::7001        CensusTract::7002 
+              2.47203891               0.54986821               1.48274655 
+        CensusTract::701         CensusTract::702        CensusTract::7100 
+              1.25842924               0.89619914              -0.15284679 
+       CensusTract::7201        CensusTract::7202        CensusTract::7300 
+             -3.26450790              -0.86430216             -12.16908978 
+       CensusTract::7400        CensusTract::7500        CensusTract::7600 
+              0.12672182               2.97365660               3.22843079 
+       CensusTract::7700        CensusTract::7800        CensusTract::7900 
+              1.12821799               6.28965840               5.64961835 
+       CensusTract::8001        CensusTract::8002         CensusTract::801 
+              0.72297556               3.34929782               3.03477546 
+        CensusTract::802        CensusTract::8100        CensusTract::8201 
+             -0.29018545               2.88495150               2.66318409 
+       CensusTract::8203        CensusTract::8204        CensusTract::8301 
+              5.04317321               2.59822432               0.00191696 
+       CensusTract::8302        CensusTract::8400        CensusTract::8500 
+              0.65002521               2.65554744              -0.64508192 
+       CensusTract::8600        CensusTract::8700        CensusTract::8800 
+              1.76893707               0.60104814               1.78352256 
+       CensusTract::8902        CensusTract::8903        CensusTract::8904 
+              2.07743666               2.27751296               3.71504706 
+       CensusTract::9001        CensusTract::9002         CensusTract::901 
+              0.88216628               3.20545743               2.99566392 
+        CensusTract::902        CensusTract::9101        CensusTract::9102 
+              2.80020720               3.93274180               2.33900060 
+       CensusTract::9202        CensusTract::9203        CensusTract::9204 
+              0.51093171              -0.90628588               1.26001379 
+       CensusTract::9301        CensusTract::9302        CensusTract::9400 
+              1.38478225               0.99221125               2.54559383 
+       CensusTract::9501        CensusTract::9502        CensusTract::9604 
+              3.20014722               3.66079921               5.37786051 
+       CensusTract::9605        CensusTract::9606        CensusTract::9701 
+              9.73055028              26.36049758               4.87100312 
+       CensusTract::9703        CensusTract::9704        CensusTract::9803 
+              6.92707227               0.47197799               4.41786653 
+       CensusTract::9804        CensusTract::9903                 llotSize 
+              4.31445475               4.24629600               0.08036263 
+ CensusTract::1000:lsqft   CensusTract::101:lsqft   CensusTract::102:lsqft 
+              0.84073721               0.49563461               0.06206391 
+CensusTract::10200:lsqft  CensusTract::1101:lsqft  CensusTract::1102:lsqft 
+              0.45376771               0.97715237               1.06482246 
+ CensusTract::1202:lsqft  CensusTract::1203:lsqft  CensusTract::1204:lsqft 
+              0.36384850               0.83757953               0.30618781 
+ CensusTract::1301:lsqft  CensusTract::1302:lsqft  CensusTract::1400:lsqft 
+              0.36533492               0.46465001               0.66922630 
+ CensusTract::1500:lsqft  CensusTract::1601:lsqft  CensusTract::1602:lsqft 
+              0.67747200               0.49793776               0.35858608 
+ CensusTract::1702:lsqft  CensusTract::1703:lsqft  CensusTract::1704:lsqft 
+             -0.07570856               0.01966935               0.54628149 
+ CensusTract::1801:lsqft  CensusTract::1802:lsqft  CensusTract::1900:lsqft 
+              0.81434159               0.18893236               0.71073099 
+ CensusTract::2001:lsqft  CensusTract::2002:lsqft   CensusTract::201:lsqft 
+              0.61366381               0.34086568               0.40299096 
+  CensusTract::202:lsqft  CensusTract::2102:lsqft  CensusTract::2203:lsqft 
+              0.35543071              -0.54427601              -0.21718264 
+ CensusTract::2303:lsqft  CensusTract::2401:lsqft  CensusTract::2402:lsqft 
+              1.36553731               0.91280295               0.65451869 
+ CensusTract::2501:lsqft  CensusTract::2502:lsqft  CensusTract::2600:lsqft 
+              0.87276498               0.51042648               0.56831929 
+ CensusTract::2701:lsqft  CensusTract::2702:lsqft  CensusTract::2801:lsqft 
+              0.51347719               0.19914063               0.21537584 
+ CensusTract::2802:lsqft  CensusTract::2901:lsqft  CensusTract::2902:lsqft 
+              0.31935554               0.03764334               0.28450747 
+ CensusTract::2903:lsqft  CensusTract::3000:lsqft   CensusTract::301:lsqft 
+              0.48300563               0.52416930               0.47580916 
+  CensusTract::302:lsqft  CensusTract::3100:lsqft  CensusTract::3200:lsqft 
+              0.46560199               0.46353593               0.20860403 
+ CensusTract::3301:lsqft  CensusTract::3302:lsqft  CensusTract::3401:lsqft 
+              0.79653420               0.30716522               0.43437682 
+ CensusTract::3402:lsqft  CensusTract::3501:lsqft  CensusTract::3502:lsqft 
+              0.52422664               0.13089298               0.24359170 
+ CensusTract::3601:lsqft  CensusTract::3602:lsqft  CensusTract::3603:lsqft 
+              0.72870151               0.55861340               0.19797570 
+ CensusTract::3701:lsqft  CensusTract::3702:lsqft  CensusTract::3801:lsqft 
+              0.60096550               0.26145858               0.43496816 
+ CensusTract::3802:lsqft  CensusTract::3803:lsqft  CensusTract::3902:lsqft 
+              0.57634331               0.30052326               0.38023346 
+ CensusTract::3903:lsqft  CensusTract::3904:lsqft  CensusTract::4002:lsqft 
+              0.76833544               0.37260545               0.39486047 
+ CensusTract::4003:lsqft   CensusTract::401:lsqft   CensusTract::402:lsqft 
+              0.30684490               0.56224216               1.11351706 
+ CensusTract::4102:lsqft  CensusTract::4103:lsqft  CensusTract::4104:lsqft 
+              0.69495032               0.57832645               0.73108021 
+ CensusTract::4200:lsqft  CensusTract::4300:lsqft  CensusTract::4500:lsqft 
+              0.54045943               0.38398871               1.26406443 
+ CensusTract::4601:lsqft  CensusTract::4602:lsqft  CensusTract::4700:lsqft 
+              1.10857752               0.83591414               0.84589331 
+ CensusTract::4800:lsqft   CensusTract::501:lsqft   CensusTract::502:lsqft 
+             -0.49806869               0.01401977               0.84741088 
+ CensusTract::5202:lsqft  CensusTract::5500:lsqft  CensusTract::5701:lsqft 
+             -2.07277064              -2.25117393              -0.76896252 
+ CensusTract::5800:lsqft  CensusTract::5901:lsqft  CensusTract::5903:lsqft 
+              0.54031272               0.12946834               0.70664875 
+ CensusTract::6001:lsqft  CensusTract::6002:lsqft   CensusTract::601:lsqft 
+              1.02264236               0.70711230               0.73667954 
+  CensusTract::602:lsqft  CensusTract::6100:lsqft  CensusTract::6200:lsqft 
+              0.77083626               0.19363091               0.62187932 
+ CensusTract::6300:lsqft  CensusTract::6402:lsqft  CensusTract::6403:lsqft 
+              0.70404148               0.62383862               0.69285027 
+ CensusTract::6404:lsqft  CensusTract::6501:lsqft  CensusTract::6502:lsqft 
+              0.44022290               0.49982576               0.55986739 
+ CensusTract::6601:lsqft  CensusTract::6602:lsqft  CensusTract::6701:lsqft 
+              0.38592827               0.52022594               0.14448192 
+ CensusTract::6702:lsqft  CensusTract::6801:lsqft  CensusTract::6802:lsqft 
+              0.58861201               0.89423441               0.43250688 
+ CensusTract::6900:lsqft  CensusTract::7001:lsqft  CensusTract::7002:lsqft 
+              0.53900054               0.76290747               0.65343342 
+  CensusTract::701:lsqft   CensusTract::702:lsqft  CensusTract::7100:lsqft 
+              0.66273617               0.67618260               0.82789536 
+ CensusTract::7201:lsqft  CensusTract::7202:lsqft  CensusTract::7300:lsqft 
+              1.22420037               0.89253114               2.40474543 
+ CensusTract::7400:lsqft  CensusTract::7500:lsqft  CensusTract::7600:lsqft 
+              0.76827932               0.39715265               0.34037042 
+ CensusTract::7700:lsqft  CensusTract::7800:lsqft  CensusTract::7900:lsqft 
+              0.61460751              -0.05225704               0.01094613 
+ CensusTract::8001:lsqft  CensusTract::8002:lsqft   CensusTract::801:lsqft 
+              0.66003536               0.30422412               0.42535294 
+  CensusTract::802:lsqft  CensusTract::8100:lsqft  CensusTract::8201:lsqft 
+              0.84785651               0.38486017               0.43311079 
+ CensusTract::8203:lsqft  CensusTract::8204:lsqft  CensusTract::8301:lsqft 
+              0.06296990               0.40696090               0.76614698 
+ CensusTract::8302:lsqft  CensusTract::8400:lsqft  CensusTract::8500:lsqft 
+              0.67359729               0.39467935               0.83589210 
+ CensusTract::8600:lsqft  CensusTract::8700:lsqft  CensusTract::8800:lsqft 
+              0.52076191               0.71643919               0.53527797 
+ CensusTract::8902:lsqft  CensusTract::8903:lsqft  CensusTract::8904:lsqft 
+              0.48668698               0.47693643               0.27489955 
+ CensusTract::9001:lsqft  CensusTract::9002:lsqft   CensusTract::901:lsqft 
+              0.63160200               0.32242139               0.45360145 
+  CensusTract::902:lsqft  CensusTract::9101:lsqft  CensusTract::9102:lsqft 
+              0.44868900               0.21361222               0.45408157 
+ CensusTract::9202:lsqft  CensusTract::9203:lsqft  CensusTract::9204:lsqft 
+              0.69161910               0.87123615               0.58041602 
+ CensusTract::9301:lsqft  CensusTract::9302:lsqft  CensusTract::9400:lsqft 
+              0.57351824               0.62958348               0.43523135 
+ CensusTract::9501:lsqft  CensusTract::9502:lsqft  CensusTract::9605:lsqft 
+              0.34136170               0.29169171              -0.55432517 
+ CensusTract::9606:lsqft  CensusTract::9701:lsqft  CensusTract::9703:lsqft 
+             -2.89949262               0.07461295              -0.19142452 
+ CensusTract::9704:lsqft  CensusTract::9803:lsqft  CensusTract::9804:lsqft 
+              0.68484341               0.15895610               0.16544420 
+ CensusTract::9903:lsqft 
+              0.22766446 
+    tract      slope
+   <char>      <num>
+1:   1000 0.84073721
+2:    101 0.49563461
+3:    102 0.06206391
+4:  10200 0.45376771
+5:   1101 0.97715237
+6:   1102 1.06482246
+[1] "portland"
+    tract             intercept         slopeGross         slopeLot        
+ Length:156         Min.   :-5.6220   Min.   :-7.4119   Min.   :-0.830880  
+ Class :character   1st Qu.: 0.1975   1st Qu.: 0.2968   1st Qu.:-0.099502  
+ Mode  :character   Median : 1.4129   Median : 0.4675   Median :-0.010379  
+                    Mean   : 1.9749   Mean   : 0.3771   Mean   : 0.002371  
+                    3rd Qu.: 2.5665   3rd Qu.: 0.5984   3rd Qu.: 0.115494  
+                    Max.   :63.2406   Max.   : 1.2523   Max.   : 0.626511  
+                    NA's   :1                                              
+             intercept slopeGross    slopeLot
+intercept   1.00000000 -0.9540618 -0.09774472
+slopeGross -0.95406181  1.0000000 -0.19945582
+slopeLot   -0.09774472 -0.1994558  1.00000000
+Key: <tract>
+    tract intercept slopeGross     slopeLot
+   <char>     <num>      <num>        <num>
+1:   1000        NA 0.53529651  0.105083011
+2:    101 1.9566998 0.44435078 -0.021582221
+3:    102 2.1515981 0.25108736  0.133817276
+4:  10200 0.7959753 0.48565223  0.003781587
+5:   1101 3.3343123 0.06596604  0.209019060
+6:   1102 0.5383390 0.11792988  0.465998525
+Key: <tract>
+    tract       lppsf
+   <char>       <num>
+1:    101  0.09488393
+2:    102  0.14197979
+3:  10200 -0.53120439
+4:   1101  0.17560296
+5:   1102  0.35030106
+6:   1202  0.24681867
+Key: <tract>
+    tract      slope       lppsf intercept slopeGross     slopeLot count
+   <char>      <num>       <num>     <num>      <num>        <num> <int>
+1:   1000         NA          NA        NA 0.53529651  0.105083011   358
+2:    101 0.49563461  0.09488393 1.9566998 0.44435078 -0.021582221   182
+3:    102 0.06206391  0.14197979 2.1515981 0.25108736  0.133817276   200
+4:  10200 0.45376771 -0.53120439 0.7959753 0.48565223  0.003781587    63
+5:   1101 0.97715237  0.17560296 3.3343123 0.06596604  0.209019060    36
+6:   1102 1.06482246  0.35030106 0.5383390 0.11792988  0.465998525    99
+
+--- Tract-by-tract OLS diagnostics: PORTLAND ---
+             interceptOLS   slopeOLS slopeLotOLS  lppsf_raw
+interceptOLS    1.0000000 -0.4590754  -0.8614982 -0.1632355
+slopeOLS       -0.4590754  1.0000000  -0.0497198  0.1141035
+slopeLotOLS    -0.8614982 -0.0497198   1.0000000  0.1876995
+lppsf_raw      -0.1632355  0.1141035   0.1876995  1.0000000
+    tract            interceptOLS        slopeOLS        slopeLotOLS      
+ Length:144         Min.   :-0.9327   Min.   :-1.0700   Min.   :-4.70029  
+ Class :character   1st Qu.: 6.7698   1st Qu.: 0.2564   1st Qu.:-0.05370  
+ Mode  :character   Median : 8.8388   Median : 0.4284   Median : 0.06784  
+                    Mean   : 9.1416   Mean   : 0.4315   Mean   : 0.06083  
+                    3rd Qu.:10.7029   3rd Qu.: 0.6215   3rd Qu.: 0.20441  
+                    Max.   :55.1281   Max.   : 1.2670   Max.   : 1.87255  
+      nOLS        CensusTract          lppsf_raw       medianSqft  
+ Min.   : 23.00   Length:144         Min.   :4.894   Min.   :1303  
+ 1st Qu.: 67.75   Class :character   1st Qu.:5.214   1st Qu.:1482  
+ Median :105.50   Mode  :character   Median :5.485   Median :1575  
+ Mean   :119.84                      Mean   :5.439   Mean   :1678  
+ 3rd Qu.:155.50                      3rd Qu.:5.641   3rd Qu.:1721  
+ Max.   :655.00                      Max.   :6.095   Max.   :5308  
+Pooled slope vs OLS slope correlation:
+[1] 0.6812929
+Pooled intercept vs OLS intercept correlation:
+[1] 0.4682415
+`geom_smooth()` using formula = 'y ~ x'
+
+=== MINNEAPOLIS ===
+[1] "TABLE ZONED"
+
+   R1   R1A    R2   R2B    R3    R4    R5    R6 
+12262 38586   335  9559   159   776   542    88 
+
+MINNEAPOLIS 
+      62307 
+    attom_id      lat       lon CensusTract AreaBuilding AreaGross
+      <char>    <num>     <num>      <char>        <num>     <num>
+1: 188378044 45.03493 -93.30894         300         1260      2232
+2: 192842429 44.89905 -93.23784       12101         1050      1836
+3: 196263671 44.90872 -93.23191       11800         1092      1872
+4: 196284650 44.92294 -93.27187      110900         1023      1810
+5: 192642781 44.94244 -93.20603      107600          897      1626
+6: 192851041 44.94070 -93.29746      109200          964      1928
+   ParkingGarageArea ZonedCodeLocal PropertyAddressCity
+               <num>         <char>              <char>
+1:                 0            R1A         MINNEAPOLIS
+2:                 0            R1A         MINNEAPOLIS
+3:                 0            R1A         MINNEAPOLIS
+4:                 0            R1A         MINNEAPOLIS
+5:                 0            R1A         MINNEAPOLIS
+6:                 0            R2B         MINNEAPOLIS
+    attom_id  price  sale_date    zip SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3
+      <char>  <num>     <IDat> <char>        <char>        <char>        <char>
+1: 188378044 195000 2017-02-15  55412           972           288             0
+2: 192842429 100990 2013-12-17  55417           810           216             0
+3: 192842429 140000 2013-12-23  55417           810           216             0
+4: 196284650 201500 2016-01-29  55419           787           236             0
+5: 196284650 243000 2018-11-16                  787           236             0
+6: 192642781 145883 2016-04-29  55406           729           168             0
+   SA_FIN_SQFT_4  sqft lotSize ASSR_YEAR  year maxYear      lat       lon
+          <char> <num>   <num>    <char> <num>   <num>    <num>     <num>
+1:             0  1260    5663      2021  2021    2021 45.03493 -93.30894
+2:             0  1026    5227      2021  2021    2021 44.89905 -93.23784
+3:             0  1026    5227      2021  2021    2021 44.89905 -93.23784
+4:             0  1023    5227      2021  2021    2021 44.92294 -93.27187
+5:             0  1023    5227      2021  2021    2021 44.92294 -93.27187
+6:             0   897    4792      2021  2021    2021 44.94244 -93.20603
+   CensusTract AreaBuilding AreaGross ParkingGarageArea ZonedCodeLocal
+        <char>        <num>     <num>             <num>         <char>
+1:         300         1260      2232                 0            R1A
+2:       12101         1050      1836                 0            R1A
+3:       12101         1050      1836                 0            R1A
+4:      110900         1023      1810                 0            R1A
+5:      110900         1023      1810                 0            R1A
+6:      107600          897      1626                 0            R1A
+   PropertyAddressCity
+                <char>
+1:         MINNEAPOLIS
+2:         MINNEAPOLIS
+3:         MINNEAPOLIS
+4:         MINNEAPOLIS
+5:         MINNEAPOLIS
+6:         MINNEAPOLIS
+  0%  10%  20%  30%  40%  50%  60%  70%  80%  90% 100% 
+ 408  828  950 1042 1123 1200 1300 1416 1578 1825 8204 
+[1] "SQUARE FOOT WEIRD!"
+    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
+           <char>        <char>        <char>        <char> <num>
+ 1:           972           288             0             0  1260
+ 2:           810           216             0             0  1026
+ 3:           810           216             0             0  1026
+ 4:           787           236             0             0  1023
+ 5:           787           236             0             0  1023
+ 6:           729           168             0             0   897
+ 7:           964             0             0             0   964
+ 8:          1716          1140           350             0  3206
+ 9:           864             0             0             0   864
+10:           876           354             0             0  1230
+11:          1038             0             0             0  1038
+12:           816             0             0             0   816
+13:           432           389             0             0   821
+14:           432           389             0             0   821
+15:          1087           350             0             0  1437
+16:           894           546             0             0  1440
+17:           868             0             0             0   868
+18:          1023           640             0             0  1663
+19:          1023           640             0             0  1663
+20:          1022           306             0             0  1328
+    SA_FIN_SQFT_1 SA_FIN_SQFT_2 SA_FIN_SQFT_3 SA_FIN_SQFT_4  sqft
+           <char>        <char>        <char>        <char> <num>
+   attom_id             price           sale_date              zip           
+ Length:42975       Min.   : 100100   Min.   :2011-01-05   Length:42975      
+ Class :character   1st Qu.: 174500   1st Qu.:2014-01-31   Class :character  
+ Mode  :character   Median : 232000   Median :2016-07-14   Mode  :character  
+                    Mean   : 284134   Mean   :2016-06-23                     
+                    3rd Qu.: 325000   3rd Qu.:2019-01-16                     
+                    Max.   :7330941   Max.   :2020-12-31                     
+ SA_FIN_SQFT_1      SA_FIN_SQFT_2      SA_FIN_SQFT_3      SA_FIN_SQFT_4     
+ Length:42975       Length:42975       Length:42975       Length:42975      
+ Class :character   Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+                                                                            
+                                                                            
+                                                                            
+      sqft         lotSize       ASSR_YEAR              year     
+ Min.   : 408   Min.   :  871   Length:42975       Min.   :2019  
+ 1st Qu.:1002   1st Qu.: 5227   Class :character   1st Qu.:2021  
+ Median :1200   Median : 5227   Mode  :character   Median :2022  
+ Mean   :1308   Mean   : 5892                      Mean   :2022  
+ 3rd Qu.:1492   3rd Qu.: 6534                      3rd Qu.:2022  
+ Max.   :8204   Max.   :33977                      Max.   :2022  
+    maxYear          lat             lon         CensusTract       
+ Min.   :2019   Min.   :44.89   Min.   :-93.33   Length:42975      
+ 1st Qu.:2021   1st Qu.:44.91   1st Qu.:-93.30   Class :character  
+ Median :2022   Median :44.94   Median :-93.27   Mode  :character  
+ Mean   :2022   Mean   :44.95   Mean   :-93.27                     
+ 3rd Qu.:2022   3rd Qu.:45.01   3rd Qu.:-93.24                     
+ Max.   :2022   Max.   :45.05   Max.   :-93.20                     
+  AreaBuilding    AreaGross     ParkingGarageArea ZonedCodeLocal    
+ Min.   : 419   Min.   :  420   Min.   :0         Length:42975      
+ 1st Qu.:1024   1st Qu.: 1748   1st Qu.:0         Class :character  
+ Median :1232   Median : 2056   Median :0         Mode  :character  
+ Mean   :1346   Mean   : 2164   Mean   :0                           
+ 3rd Qu.:1550   3rd Qu.: 2424   3rd Qu.:0                           
+ Max.   :7075   Max.   :11375   Max.   :0                           
+ PropertyAddressCity     lppsf            ppsf            lsqft      
+ Length:42975        Min.   :3.830   Min.   :  30.1   Min.   :6.011  
+ Class :character    1st Qu.:5.031   1st Qu.:  90.8   1st Qu.:6.910  
+ Mode  :character    Median :5.317   Median : 119.4   Median :7.090  
+                     Mean   :5.295   Mean   : 129.9   Mean   :7.117  
+                     3rd Qu.:5.566   3rd Qu.: 154.7   3rd Qu.:7.308  
+                     Max.   :8.442   Max.   :2495.4   Max.   :9.012  
+    llotSize       yearMonth             zip_n     
+ Min.   : 6.770   Length:42975       Min.   :  20  
+ 1st Qu.: 8.562   Class :character   1st Qu.:1187  
+ Median : 8.562   Mode  :character   Median :3330  
+ Mean   : 8.648                      Mean   :2581  
+ 3rd Qu.: 8.785                      3rd Qu.:3530  
+ Max.   :10.433                      Max.   :4132  
+[1] 42975
+The variables 'CensusTract::105700:lsqft', 'CensusTract::23000:lsqft' and
+'CensusTract::980000:lsqft' have been removed because of collinearity (see
+$collin.var).
+The variables 'CensusTract::105700:logGross', 'CensusTract::23000:logGross',
+'CensusTract::980000:logGross', 'CensusTract::105700:llotSize',
+'CensusTract::23000:llotSize', 'CensusTract::3802:llotSize' and 2 others have
+been removed because of collinearity (see $collin.var).
+OLS estimation, Dep. Var.: log(price)
+Observations: 32,405
+Fixed-effects: yearMonth: 120
+Standard-errors: Clustered (CensusTract) 
+                  Estimate Std. Error  t value   Pr(>|t|)    
+log(AreaBuilding) 0.784751   0.064275 12.20934  < 2.2e-16 ***
+llotSize          0.178509   0.052416  3.40564 0.00092507 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.359505     Adj. R2: 0.388888
+                 Within R2: 0.35457 
+[1] "minneapolis"
+[1] "Mt, then mtGross, then mtGrossGross"
+OLS estimation, Dep. Var.: log(price)
+Observations: 32,405
+Fixed-effects: yearMonth: 120
+Standard-errors: Clustered (zip) 
+                            Estimate Std. Error    t value   Pr(>|t|)    
+CensusTract::100400         0.025669   0.124403   0.206334 8.3820e-01    
+CensusTract::100500        -0.767104   0.176176  -4.354204 1.9868e-04 ***
+CensusTract::100700        -1.797159   0.092223 -19.487178  < 2.2e-16 ***
+CensusTract::100800        -0.363205   0.132667  -2.737711 1.1231e-02 *  
+CensusTract::100900         0.490116   0.126447   3.876060 6.8068e-04 ***
+CensusTract::101           -0.636347   0.195213  -3.259752 3.2086e-03 ** 
+CensusTract::101200        -1.678553   0.112408 -14.932724 5.8053e-14 ***
+CensusTract::101300         0.701848   0.219487   3.197671 3.7372e-03 ** 
+CensusTract::101600         1.407853   0.209371   6.724207 4.7816e-07 ***
+CensusTract::101800        -0.475361   0.312428  -1.521506 1.4068e-01    
+CensusTract::101900        -3.290027   0.179843 -18.293930 5.4772e-16 ***
+CensusTract::102            0.204592   0.256899   0.796391 4.3330e-01    
+CensusTract::102000        -1.392374   0.203972  -6.826290 3.7291e-07 ***
+CensusTract::102100        -1.274747   0.104075 -12.248374 4.6241e-12 ***
+CensusTract::102500        -3.447497   1.269962  -2.714645 1.1849e-02 *  
+CensusTract::102600        -1.222691   0.377644  -3.237678 3.3877e-03 ** 
+CensusTract::102800         0.145051   0.211290   0.686499 4.9872e-01    
+CensusTract::103000        -2.279526   0.283014  -8.054471 2.0759e-08 ***
+CensusTract::103100         0.425278   0.210444   2.020859 5.4127e-02 .  
+CensusTract::103400        -3.635538   0.599883  -6.060415 2.4783e-06 ***
+CensusTract::103600         0.251709   0.160998   1.563427 1.3052e-01    
+CensusTract::103700        -3.917296   0.213372 -18.358957 5.0420e-16 ***
+CensusTract::104001        -1.533033   0.148894 -10.296112 1.7735e-10 ***
+CensusTract::104002        -3.208683   0.185806 -17.268963 2.0909e-15 ***
+CensusTract::104100         0.939694   0.186884   5.028211 3.4648e-05 ***
+CensusTract::104902         0.960551   0.538953   1.782254 8.6859e-02 .  
+CensusTract::105100        -1.716710   0.108341 -15.845380 1.5102e-14 ***
+CensusTract::105500        -1.985402   0.226419  -8.768695 4.2391e-09 ***
+CensusTract::105700         2.331275   0.119940  19.437057  < 2.2e-16 ***
+CensusTract::10600         -3.286042   0.119888 -27.409155  < 2.2e-16 ***
+CensusTract::106000        -0.041221   0.330217  -0.124829 9.0166e-01    
+CensusTract::106200        -0.818966   0.390748  -2.095891 4.6379e-02 *  
+CensusTract::106400        -6.287611   0.241306 -26.056535  < 2.2e-16 ***
+CensusTract::106500        -3.009309   0.732931  -4.105853 3.7735e-04 ***
+CensusTract::106600        -7.661618   0.598338 -12.804825 1.7642e-12 ***
+CensusTract::106700        -0.836668   0.231317  -3.616969 1.3152e-03 ** 
+CensusTract::106900        -0.519202   0.652483  -0.795733 4.3368e-01    
+CensusTract::10700         -4.092136   0.308427 -13.267771 8.1021e-13 ***
+CensusTract::107000        -1.600981   1.123024  -1.425598 1.6635e-01    
+CensusTract::107400         0.193873   0.348023   0.557069 5.8243e-01    
+CensusTract::107500         0.335364   0.164355   2.040487 5.1997e-02 .  
+CensusTract::107600        -2.807317   0.159551 -17.595104 1.3554e-15 ***
+CensusTract::108000        -4.221399   0.121815 -34.654278  < 2.2e-16 ***
+CensusTract::108600        -0.629544   0.123787  -5.085707 2.9862e-05 ***
+CensusTract::108700        -0.507650   0.249631  -2.033603 5.2735e-02 .  
+CensusTract::108800        -0.642471   0.123695  -5.193993 2.2579e-05 ***
+CensusTract::108900        -1.547599   0.164303  -9.419161 1.0577e-09 ***
+CensusTract::109000        -2.303418   0.151594 -15.194685 3.9179e-14 ***
+CensusTract::109100        -3.489912   0.198223 -17.606024 1.3361e-15 ***
+CensusTract::109200        -0.688233   0.957131  -0.719059 4.7877e-01    
+CensusTract::109300        -1.375287   1.761653  -0.780680 4.4232e-01    
+CensusTract::109400         0.778057   0.377642   2.060303 4.9921e-02 *  
+CensusTract::109700        -0.083305   0.093270  -0.893164 3.8029e-01    
+CensusTract::109800        -1.489013   0.434216  -3.429199 2.1076e-03 ** 
+CensusTract::109900        -1.579141   0.083249 -18.968800 2.3480e-16 ***
+CensusTract::1100          -0.233802   0.161555  -1.447199 1.6027e-01    
+CensusTract::11000         -0.815479   0.108344  -7.526722 7.0121e-08 ***
+CensusTract::110000        -0.392452   0.396291  -0.990314 3.3151e-01    
+CensusTract::110100         0.740384   0.192714   3.841871 7.4282e-04 ***
+CensusTract::110200        -0.605565   0.460850  -1.314017 2.0077e-01    
+CensusTract::110400        -0.729112   0.111049  -6.565656 7.0523e-07 ***
+CensusTract::110500        -2.230432   0.175010 -12.744593 1.9552e-12 ***
+CensusTract::110800        -1.653748   0.205495  -8.047637 2.1083e-08 ***
+CensusTract::110900        -2.020366   0.138223 -14.616727 9.3984e-14 ***
+CensusTract::111100        -1.773888   0.293126  -6.051626 2.5337e-06 ***
+CensusTract::111200        -1.350795   0.121879 -11.083068 3.8698e-11 ***
+CensusTract::111300        -1.793484   0.678834  -2.642006 1.4012e-02 *  
+CensusTract::111400        -2.721987   0.607748  -4.478812 1.4388e-04 ***
+CensusTract::111500        -3.524439   0.106429 -33.115355  < 2.2e-16 ***
+CensusTract::111600        -2.911553   0.313488  -9.287607 1.3943e-09 ***
+CensusTract::11703         -2.142372   0.111309 -19.247131  < 2.2e-16 ***
+CensusTract::11704          0.539976   1.019199   0.529804 6.0092e-01    
+CensusTract::11800         -2.467458   0.089830 -27.468032  < 2.2e-16 ***
+CensusTract::11998         -0.884451   0.096700  -9.146355 1.8806e-09 ***
+CensusTract::12001         -1.407542   0.175894  -8.002230 2.3378e-08 ***
+CensusTract::12003         -3.316901   0.502828  -6.596497 6.5374e-07 ***
+CensusTract::12101         -0.371143   0.115869  -3.203129 3.6876e-03 ** 
+CensusTract::12102         -0.993111   0.161041  -6.166819 1.8978e-06 ***
+CensusTract::125600        -3.333085   0.183046 -18.209044 6.1046e-16 ***
+CensusTract::125700         1.004696   0.148039   6.786683 4.1061e-07 ***
+CensusTract::125800         0.848867   0.207835   4.084322 3.9886e-04 ***
+CensusTract::125900         1.488600   0.859565   1.731806 9.5632e-02 .  
+CensusTract::126000        -0.412144   0.635722  -0.648308 5.2270e-01    
+CensusTract::126300         0.565963   0.177699   3.184945 3.8555e-03 ** 
+CensusTract::1700           0.638229   0.503745   1.266969 2.1684e-01    
+CensusTract::2200           1.516821   0.125058  12.128964 5.7100e-12 ***
+CensusTract::23000          2.439116   0.129325  18.860305 2.6857e-16 ***
+CensusTract::2400          -1.326474   0.221857  -5.978963 3.0425e-06 ***
+CensusTract::2700           0.701190   0.135856   5.161277 2.4568e-05 ***
+CensusTract::300           -2.027890   0.120037 -16.893938 3.4722e-15 ***
+CensusTract::3200          -0.745570   0.189171  -3.941248 5.7605e-04 ***
+CensusTract::3300           0.022811   0.221366   0.103047 9.1875e-01    
+CensusTract::3801          -2.789795   0.159878 -17.449470 1.6435e-15 ***
+CensusTract::3802         -25.106692   1.316277 -19.074021  < 2.2e-16 ***
+CensusTract::5901          -7.730100   0.518702 -14.902783 6.0743e-14 ***
+CensusTract::5902           1.407825   0.243558   5.780234 5.0308e-06 ***
+CensusTract::601           -0.626051   0.169817  -3.686611 1.1027e-03 ** 
+CensusTract::603           -1.943271   0.164564 -11.808624 1.0131e-11 ***
+CensusTract::6800          -0.201147   0.175967  -1.143096 2.6383e-01    
+CensusTract::7700          -1.572564   0.414827  -3.790892 8.4597e-04 ***
+CensusTract::7801           0.951670   1.544972   0.615979 5.4348e-01    
+CensusTract::8100           0.221959   0.152858   1.452054 1.5892e-01    
+CensusTract::8200          -0.160546   0.165700  -0.968899 3.4188e-01    
+CensusTract::8300          -1.113011   0.240090  -4.635807 9.5769e-05 ***
+CensusTract::8400          -1.597020   0.823769  -1.938674 6.3910e-02 .  
+CensusTract::8500          -0.163922   0.196591  -0.833823 4.1228e-01    
+CensusTract::9500          -1.425549   0.219776  -6.486387 8.5737e-07 ***
+CensusTract::9600          -0.311397   0.164946  -1.887872 7.0703e-02 .  
+CensusTract::980000         1.987510   0.130300  15.253294 3.5907e-14 ***
+llotSize                    0.134497   0.014546   9.246308 1.5214e-09 ***
+CensusTract::100200:lsqft   0.301251   0.016963  17.759475 1.0923e-15 ***
+CensusTract::100400:lsqft   0.280499   0.012231  22.932673  < 2.2e-16 ***
+CensusTract::100500:lsqft   0.441272   0.018878  23.375067  < 2.2e-16 ***
+CensusTract::100700:lsqft   0.557247   0.014633  38.080612  < 2.2e-16 ***
+CensusTract::100800:lsqft   0.335509   0.017228  19.475028  < 2.2e-16 ***
+CensusTract::100900:lsqft   0.210178   0.009587  21.923625  < 2.2e-16 ***
+CensusTract::101:lsqft      0.398359   0.021743  18.321634 5.2872e-16 ***
+CensusTract::101200:lsqft   0.595939   0.007964  74.825862  < 2.2e-16 ***
+CensusTract::101300:lsqft   0.196739   0.017236  11.414732 2.0818e-11 ***
+CensusTract::101600:lsqft   0.087456   0.019763   4.425174 1.6533e-04 ***
+CensusTract::101800:lsqft   0.398365   0.042483   9.376995 1.1554e-09 ***
+CensusTract::101900:lsqft   0.799532   0.020408  39.176495  < 2.2e-16 ***
+CensusTract::102:lsqft      0.265033   0.038756   6.838474 3.6203e-07 ***
+CensusTract::102000:lsqft   0.487575   0.017099  28.514040  < 2.2e-16 ***
+CensusTract::102100:lsqft   0.461094   0.018543  24.865651  < 2.2e-16 ***
+CensusTract::102500:lsqft   0.811499   0.170944   4.747174 7.1748e-05 ***
+CensusTract::102600:lsqft   0.505150   0.047715  10.586842 1.0020e-10 ***
+CensusTract::102800:lsqft   0.271889   0.023644  11.499314 1.7809e-11 ***
+CensusTract::103000:lsqft   0.686416   0.030459  22.536093  < 2.2e-16 ***
+CensusTract::103100:lsqft   0.290958   0.026718  10.890138 5.5826e-11 ***
+CensusTract::103400:lsqft   0.813396   0.080145  10.149015 2.3769e-10 ***
+CensusTract::103600:lsqft   0.328037   0.022024  14.894446 6.1514e-14 ***
+CensusTract::103700:lsqft   0.902434   0.029274  30.827573  < 2.2e-16 ***
+CensusTract::104001:lsqft   0.560440   0.024036  23.316868  < 2.2e-16 ***
+CensusTract::104002:lsqft   0.795364   0.011919  66.729670  < 2.2e-16 ***
+CensusTract::104100:lsqft   0.168640   0.020559   8.202832 1.4841e-08 ***
+CensusTract::104902:lsqft   0.234148   0.075729   3.091937 4.8362e-03 ** 
+CensusTract::105100:lsqft   0.643966   0.013717  46.945670  < 2.2e-16 ***
+CensusTract::105500:lsqft   0.716979   0.022790  31.459836  < 2.2e-16 ***
+CensusTract::10600:lsqft    0.892326   0.016023  55.691545  < 2.2e-16 ***
+CensusTract::106000:lsqft   0.318006   0.043354   7.335181 1.1006e-07 ***
+CensusTract::106200:lsqft   0.478445   0.050552   9.464408 9.6232e-10 ***
+CensusTract::106400:lsqft   1.254212   0.039764  31.541238  < 2.2e-16 ***
+CensusTract::106500:lsqft   0.855490   0.092468   9.251704 1.5041e-09 ***
+CensusTract::106600:lsqft   1.440531   0.076902  18.732074 3.1508e-16 ***
+CensusTract::106700:lsqft   0.513724   0.025325  20.284854  < 2.2e-16 ***
+CensusTract::106900:lsqft   0.436894   0.082612   5.288516 1.7698e-05 ***
+CensusTract::10700:lsqft    0.973481   0.036494  26.675327  < 2.2e-16 ***
+CensusTract::107000:lsqft   0.577389   0.153182   3.769289 8.9382e-04 ***
+CensusTract::107400:lsqft   0.305151   0.044659   6.832929 3.6694e-07 ***
+CensusTract::107500:lsqft   0.306696   0.018302  16.757470 4.1858e-15 ***
+CensusTract::107600:lsqft   0.769342   0.019783  38.888677  < 2.2e-16 ***
+CensusTract::108000:lsqft   1.016203   0.013248  76.704658  < 2.2e-16 ***
+CensusTract::108600:lsqft   0.411816   0.017548  23.467437  < 2.2e-16 ***
+CensusTract::108700:lsqft   0.404599   0.039052  10.360650 1.5610e-10 ***
+CensusTract::108800:lsqft   0.429192   0.009040  47.476313  < 2.2e-16 ***
+CensusTract::108900:lsqft   0.567846   0.015313  37.082754  < 2.2e-16 ***
+CensusTract::109000:lsqft   0.712351   0.009105  78.241234  < 2.2e-16 ***
+CensusTract::109100:lsqft   0.928852   0.020709  44.852930  < 2.2e-16 ***
+CensusTract::109200:lsqft   0.489336   0.140848   3.474219 1.8833e-03 ** 
+CensusTract::109300:lsqft   0.553658   0.245883   2.251719 3.3373e-02 *  
+CensusTract::109400:lsqft   0.215532   0.054687   3.941232 5.7607e-04 ***
+CensusTract::109700:lsqft   0.350345   0.013235  26.470629  < 2.2e-16 ***
+CensusTract::109800:lsqft   0.638856   0.067389   9.480128 9.3129e-10 ***
+CensusTract::109900:lsqft   0.607012   0.013576  44.711541  < 2.2e-16 ***
+CensusTract::1100:lsqft     0.372374   0.022171  16.795926 3.9705e-15 ***
+CensusTract::11000:lsqft    0.479289   0.010806  44.355143  < 2.2e-16 ***
+CensusTract::110000:lsqft   0.384021   0.050598   7.589662 6.0530e-08 ***
+CensusTract::110100:lsqft   0.244574   0.028052   8.718630 4.7280e-09 ***
+CensusTract::110200:lsqft   0.435859   0.072266   6.031305 2.6666e-06 ***
+CensusTract::110400:lsqft   0.448961   0.012363  36.315868  < 2.2e-16 ***
+CensusTract::110500:lsqft   0.679448   0.021999  30.884709  < 2.2e-16 ***
+CensusTract::110800:lsqft   0.607122   0.027814  21.827934  < 2.2e-16 ***
+CensusTract::110900:lsqft   0.640228   0.008870  72.181005  < 2.2e-16 ***
+CensusTract::111100:lsqft   0.615325   0.044605  13.795044 3.4234e-13 ***
+CensusTract::111200:lsqft   0.624402   0.011309  55.214592  < 2.2e-16 ***
+CensusTract::111300:lsqft   0.676407   0.089199   7.583131 6.1459e-08 ***
+CensusTract::111400:lsqft   0.796183   0.076007  10.475168 1.2462e-10 ***
+CensusTract::111500:lsqft   0.883806   0.012297  71.874624  < 2.2e-16 ***
+CensusTract::111600:lsqft   0.792030   0.033006  23.996882  < 2.2e-16 ***
+CensusTract::11703:lsqft    0.696903   0.018408  37.857894  < 2.2e-16 ***
+CensusTract::11704:lsqft    0.302513   0.140490   2.153274 4.1137e-02 *  
+CensusTract::11800:lsqft    0.710812   0.011346  62.650079  < 2.2e-16 ***
+CensusTract::11998:lsqft    0.479977   0.009032  53.139939  < 2.2e-16 ***
+CensusTract::12001:lsqft    0.583391   0.019569  29.812416  < 2.2e-16 ***
+CensusTract::12003:lsqft    0.830821   0.078034  10.646953 8.9152e-11 ***
+CensusTract::12101:lsqft    0.392611   0.014346  27.367511  < 2.2e-16 ***
+CensusTract::12102:lsqft    0.485350   0.013820  35.119402  < 2.2e-16 ***
+CensusTract::125600:lsqft   0.852570   0.016266  52.415578  < 2.2e-16 ***
+CensusTract::125700:lsqft   0.142817   0.017928   7.966211 2.5380e-08 ***
+CensusTract::125800:lsqft   0.184119   0.027873   6.605554 6.3936e-07 ***
+CensusTract::125900:lsqft   0.096261   0.115359   0.834447 4.1193e-01    
+CensusTract::126000:lsqft   0.358709   0.091916   3.902585 6.3602e-04 ***
+CensusTract::126300:lsqft   0.224186   0.019912  11.259021 2.7809e-11 ***
+CensusTract::1700:lsqft     0.243464   0.066013   3.688112 1.0985e-03 ** 
+CensusTract::2200:lsqft     0.061992   0.009831   6.305979 1.3409e-06 ***
+CensusTract::2400:lsqft     0.520540   0.034816  14.951319 5.6444e-14 ***
+CensusTract::2700:lsqft     0.199305   0.017466  11.410693 2.0975e-11 ***
+CensusTract::300:lsqft      0.606846   0.008433  71.957195  < 2.2e-16 ***
+CensusTract::3200:lsqft     0.407294   0.025783  15.796989 1.6194e-14 ***
+CensusTract::3300:lsqft     0.287921   0.033043   8.713517 4.7811e-09 ***
+CensusTract::3801:lsqft     0.775586   0.019302  40.181734  < 2.2e-16 ***
+CensusTract::3802:lsqft     3.880383   0.191674  20.244686  < 2.2e-16 ***
+CensusTract::5901:lsqft     1.373037   0.062482  21.974972  < 2.2e-16 ***
+CensusTract::5902:lsqft     0.077963   0.037826   2.061101 4.9839e-02 *  
+CensusTract::601:lsqft      0.425518   0.025379  16.766589 4.1337e-15 ***
+CensusTract::603:lsqft      0.629448   0.019053  33.037465  < 2.2e-16 ***
+CensusTract::6800:lsqft     0.400775   0.022955  17.458910 1.6230e-15 ***
+CensusTract::7700:lsqft     0.552541   0.052278  10.569369 1.0367e-10 ***
+CensusTract::7801:lsqft     0.210199   0.205119   1.024767 3.1529e-01    
+CensusTract::8100:lsqft     0.370875   0.024661  15.039167 4.9448e-14 ***
+CensusTract::8200:lsqft     0.387655   0.013398  28.934020  < 2.2e-16 ***
+CensusTract::8300:lsqft     0.477127   0.023621  20.199657  < 2.2e-16 ***
+CensusTract::8400:lsqft     0.531991   0.118402   4.493071 1.3866e-04 ***
+CensusTract::8500:lsqft     0.343607   0.017675  19.439991  < 2.2e-16 ***
+CensusTract::9500:lsqft     0.531190   0.018286  29.049233  < 2.2e-16 ***
+CensusTract::9600:lsqft     0.386215   0.015150  25.492201  < 2.2e-16 ***
+... 3 variables were removed because of collinearity
+(CensusTract::105700:lsqft, CensusTract::23000:lsqft and
+CensusTract::980000:lsqft)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.225106     Adj. R2: 0.758795
+                 Within R2: 0.746946
+OLS estimation, Dep. Var.: log(price)
+Observations: 32,405
+Fixed-effects: yearMonth: 120
+Standard-errors: Clustered (zip) 
+                               Estimate Std. Error    t value   Pr(>|t|)    
+CensusTract::100400           -0.014499   0.387640  -0.037404 9.7046e-01    
+CensusTract::100500            1.978879   0.425226   4.653708 9.1425e-05 ***
+CensusTract::100700           -3.774192   0.282964 -13.338075 7.2120e-13 ***
+CensusTract::100800           -1.337764   0.410091  -3.262116 3.1899e-03 ** 
+CensusTract::100900            2.815379   0.328676   8.565826 6.6107e-09 ***
+CensusTract::101               0.431047   0.559429   0.770513 4.4822e-01    
+CensusTract::101200           -1.459584   0.389092  -3.751257 9.3578e-04 ***
+CensusTract::101300            0.741182   0.420802   1.761355 9.0406e-02 .  
+CensusTract::101600            1.680008   0.381569   4.402900 1.7515e-04 ***
+CensusTract::101800           -0.826312   0.678189  -1.218410 2.3444e-01    
+CensusTract::101900           -1.393069   0.303482  -4.590284 1.0777e-04 ***
+CensusTract::102               0.972665   0.321879   3.021833 5.7292e-03 ** 
+CensusTract::102000           -0.295077   0.477103  -0.618477 5.4186e-01    
+CensusTract::102100           -1.555965   0.263123  -5.913454 3.5896e-06 ***
+CensusTract::102500            0.201888   0.631436   0.319728 7.5183e-01    
+CensusTract::102600           -1.297751   0.519974  -2.495802 1.9526e-02 *  
+CensusTract::102800            0.225760   0.348962   0.646946 5.2356e-01    
+CensusTract::103000           -6.622817   0.580535 -11.408117 2.1075e-11 ***
+CensusTract::103100           -0.571215   0.523293  -1.091577 2.8543e-01    
+CensusTract::103400           -4.718378   0.566991  -8.321783 1.1364e-08 ***
+CensusTract::103600           -2.106310   0.446437  -4.718047 7.7376e-05 ***
+CensusTract::103700           -6.977862   0.432305 -16.141067 9.8974e-15 ***
+CensusTract::104001           -3.245293   0.371370  -8.738695 4.5254e-09 ***
+CensusTract::104002           -4.730598   0.434216 -10.894585 5.5354e-11 ***
+CensusTract::104100            2.111874   0.446759   4.727100 7.5581e-05 ***
+CensusTract::104902            2.198901   0.610814   3.599953 1.3730e-03 ** 
+CensusTract::105100           -5.814293   0.604979  -9.610730 7.1015e-10 ***
+CensusTract::105500           -3.428632   0.845653  -4.054419 4.3077e-04 ***
+CensusTract::105700            3.374280   0.333507  10.117568 2.5313e-10 ***
+CensusTract::10600            -4.932332   0.831947  -5.928661 3.4543e-06 ***
+CensusTract::106000           -2.208862   0.453274  -4.873124 5.1765e-05 ***
+CensusTract::106200           -0.392917   1.668485  -0.235493 8.1574e-01    
+CensusTract::106400           -4.648524   0.364366 -12.757827 1.9115e-12 ***
+CensusTract::106500           -2.772006   0.515148  -5.380992 1.3952e-05 ***
+CensusTract::106600           -9.536013   1.001646  -9.520347 8.5650e-10 ***
+CensusTract::106700           -1.430527   0.474432  -3.015245 5.8208e-03 ** 
+CensusTract::106900          -61.286063   6.156215  -9.955153 3.5106e-10 ***
+CensusTract::10700            -6.083493   0.606902 -10.023846 3.0559e-10 ***
+CensusTract::107000           -2.706048   1.203546  -2.248397 3.3612e-02 *  
+CensusTract::107400           -0.449568   0.441430  -1.018435 3.1823e-01    
+CensusTract::107500           -1.817737   0.449561  -4.043363 4.4320e-04 ***
+CensusTract::107600           -5.022526   0.274387 -18.304562 5.4035e-16 ***
+CensusTract::108000           -5.609406   0.311729 -17.994480 8.0458e-16 ***
+CensusTract::108600           -0.419086   0.358518  -1.168940 2.5345e-01    
+CensusTract::108700           -1.243007   0.352752  -3.523739 1.6634e-03 ** 
+CensusTract::108800           -2.303909   0.344525  -6.687209 5.2341e-07 ***
+CensusTract::108900           -0.357573   0.373159  -0.958233 3.4712e-01    
+CensusTract::109000           -9.120416   0.385868 -23.636119  < 2.2e-16 ***
+CensusTract::109100           -3.533787   0.372192  -9.494534 9.0375e-10 ***
+CensusTract::109200            0.632254   1.777637   0.355671 7.2507e-01    
+CensusTract::109300           -2.789453   2.739204  -1.018344 3.1827e-01    
+CensusTract::109400           -0.087612   0.729588  -0.120085 9.0538e-01    
+CensusTract::109700           -2.072765   0.354322  -5.849952 4.2154e-06 ***
+CensusTract::109800           -2.838571   0.911834  -3.113036 4.5947e-03 ** 
+CensusTract::109900           -4.891807   0.325883 -15.010920 5.1594e-14 ***
+CensusTract::1100             -0.519908   0.344449  -1.509390 1.4374e-01    
+CensusTract::11000            -2.355961   0.372198  -6.329856 1.2636e-06 ***
+CensusTract::110000           -0.151421   0.804525  -0.188212 8.5223e-01    
+CensusTract::110100            1.501801   0.340792   4.406796 1.7339e-04 ***
+CensusTract::110200           -3.461486   1.459164  -2.372240 2.5689e-02 *  
+CensusTract::110400           -0.388340   0.238417  -1.628827 1.1589e-01    
+CensusTract::110500           -2.294555   0.316773  -7.243530 1.3678e-07 ***
+CensusTract::110800           -3.218754   0.475988  -6.762253 4.3578e-07 ***
+CensusTract::110900            0.229118   0.645182   0.355121 7.2548e-01    
+CensusTract::111100           -2.870442   0.330939  -8.673632 5.2168e-09 ***
+CensusTract::111200           -0.646514   0.373361  -1.731608 9.5668e-02 .  
+CensusTract::111300           -2.970144   1.935363  -1.534670 1.3742e-01    
+CensusTract::111400           -7.456036   0.819722  -9.095808 2.0945e-09 ***
+CensusTract::111500           -6.128471   0.359614 -17.041802 2.8397e-15 ***
+CensusTract::111600           -4.025873   1.220061  -3.299732 2.9071e-03 ** 
+CensusTract::11703            -3.353827   0.362990  -9.239451 1.5436e-09 ***
+CensusTract::11704             1.350896   4.483967   0.301272 7.6570e-01    
+CensusTract::11800            -3.005645   0.337204  -8.913430 3.0977e-09 ***
+CensusTract::11998            -0.471396   0.279863  -1.684382 1.0455e-01    
+CensusTract::12001            -1.089656   0.673208  -1.618602 1.1808e-01    
+CensusTract::12003            -4.398820   0.270848 -16.240920 8.5936e-15 ***
+CensusTract::12101             1.566113   0.522522   2.997218 6.0787e-03 ** 
+CensusTract::12102            -2.372553   0.563901  -4.207393 2.9041e-04 ***
+CensusTract::125600           -2.181326   0.373736  -5.836542 4.3611e-06 ***
+CensusTract::125700            2.781201   0.445388   6.244450 1.5631e-06 ***
+CensusTract::125800            0.601077   0.261627   2.297455 3.0240e-02 *  
+CensusTract::125900            1.887390   1.160284   1.626662 1.1635e-01    
+CensusTract::126000           -0.000860   3.589773  -0.000240 9.9981e-01    
+CensusTract::126300           -7.881959   0.371544 -21.214081  < 2.2e-16 ***
+CensusTract::1700             -0.191122   0.238196  -0.802374 4.2990e-01    
+CensusTract::2200              1.176949   0.384956   3.057362 5.2586e-03 ** 
+CensusTract::23000             3.529329   0.342692  10.298842 1.7639e-10 ***
+CensusTract::2400             -1.171481   0.394999  -2.965785 6.5545e-03 ** 
+CensusTract::2700             -4.107373   0.440764  -9.318765 1.3058e-09 ***
+CensusTract::300              -4.344480   0.377377 -11.512293 1.7389e-11 ***
+CensusTract::3200             -2.966389   0.481728  -6.157811 1.9410e-06 ***
+CensusTract::3300             -2.893343   0.384394  -7.527029 7.0071e-08 ***
+CensusTract::3801              9.370765   0.744854  12.580667 2.5911e-12 ***
+CensusTract::3802             60.311581   3.441192  17.526365 1.4842e-15 ***
+CensusTract::5901            -38.270337   2.770957 -13.811233 3.3354e-13 ***
+CensusTract::5902              0.423366   0.485501   0.872019 3.9150e-01    
+CensusTract::601              -1.768824   0.379921  -4.655769 9.0937e-05 ***
+CensusTract::603              -1.865661   0.372421  -5.009546 3.6362e-05 ***
+CensusTract::6800             -0.774862   0.351897  -2.201956 3.7115e-02 *  
+CensusTract::7700             -0.644401   0.349470  -1.843939 7.7076e-02 .  
+CensusTract::7801              0.767684   0.735719   1.043448 3.0673e-01    
+CensusTract::8100             -0.568558   0.379343  -1.498794 1.4645e-01    
+CensusTract::8200              0.347450   0.408982   0.849548 4.0364e-01    
+CensusTract::8300             -2.066255   0.478269  -4.320278 2.1692e-04 ***
+CensusTract::8400              3.150341   3.088548   1.020007 3.1750e-01    
+CensusTract::8500              0.406581   0.444825   0.914024 3.6944e-01    
+CensusTract::9500             -1.810155   0.335197  -5.400268 1.3278e-05 ***
+CensusTract::9600             -2.578852   0.408388  -6.314707 1.3121e-06 ***
+CensusTract::980000            3.019092   0.347531   8.687252 5.0636e-09 ***
+CensusTract::100200:logGross   0.362948   0.023730  15.294708 3.3766e-14 ***
+CensusTract::100400:logGross   0.256196   0.015448  16.584702 5.3132e-15 ***
+CensusTract::100500:logGross   0.399707   0.027971  14.289873 1.5607e-13 ***
+CensusTract::100700:logGross   0.544776   0.017093  31.871672  < 2.2e-16 ***
+CensusTract::100800:logGross   0.316608   0.017166  18.444049 4.5261e-16 ***
+CensusTract::100900:logGross   0.091722   0.008788  10.437601 1.3415e-10 ***
+CensusTract::101:logGross      0.494430   0.022650  21.829623  < 2.2e-16 ***
+CensusTract::101200:logGross   0.725449   0.009570  75.804519  < 2.2e-16 ***
+CensusTract::101300:logGross   0.029338   0.024230   1.210825 2.3729e-01    
+CensusTract::101600:logGross   0.075992   0.017537   4.333343 2.0971e-04 ***
+CensusTract::101800:logGross   0.453340   0.029422  15.408174 2.8553e-14 ***
+CensusTract::101900:logGross   0.721173   0.023370  30.858930  < 2.2e-16 ***
+CensusTract::102:logGross      0.211790   0.053984   3.923232 6.0327e-04 ***
+CensusTract::102000:logGross   0.462373   0.013145  35.175907  < 2.2e-16 ***
+CensusTract::102100:logGross   0.538901   0.023223  23.205916  < 2.2e-16 ***
+CensusTract::102500:logGross   0.822234   0.053888  15.258311 3.5640e-14 ***
+CensusTract::102600:logGross   0.428605   0.030988  13.831365 3.2292e-13 ***
+CensusTract::102800:logGross   0.090907   0.022629   4.017217 4.7401e-04 ***
+CensusTract::103000:logGross   0.599790   0.038142  15.725357 1.7962e-14 ***
+CensusTract::103100:logGross   0.460896   0.025060  18.391439 4.8382e-16 ***
+CensusTract::103400:logGross   1.537180   0.077391  19.862494  < 2.2e-16 ***
+CensusTract::103600:logGross   0.401998   0.040936   9.820148 4.6189e-10 ***
+CensusTract::103700:logGross   1.129741   0.042103  26.832698  < 2.2e-16 ***
+CensusTract::104001:logGross   0.779366   0.021912  35.567728  < 2.2e-16 ***
+CensusTract::104002:logGross   0.856143   0.056845  15.060953 4.7856e-14 ***
+CensusTract::104100:logGross   0.176748   0.028198   6.268128 1.4734e-06 ***
+CensusTract::104902:logGross  -0.007649   0.044096  -0.173457 8.6369e-01    
+CensusTract::105100:logGross   0.811900   0.012463  65.144590  < 2.2e-16 ***
+CensusTract::105500:logGross   0.383712   0.090515   4.239208 2.6750e-04 ***
+CensusTract::10600:logGross    0.894151   0.040019  22.343162  < 2.2e-16 ***
+CensusTract::106000:logGross   0.731682   0.053236  13.744106 3.7163e-13 ***
+CensusTract::106200:logGross   0.845732   0.230921   3.662438 1.1724e-03 ** 
+CensusTract::106400:logGross   1.358357   0.023055  58.918390  < 2.2e-16 ***
+CensusTract::106500:logGross   0.942486   0.022247  42.364772  < 2.2e-16 ***
+CensusTract::106600:logGross   1.434309   0.090288  15.885861 1.4248e-14 ***
+CensusTract::106700:logGross   0.676249   0.030646  22.066724  < 2.2e-16 ***
+CensusTract::106900:logGross   5.465971   0.528993  10.332787 1.6493e-10 ***
+CensusTract::10700:logGross    1.046508   0.045720  22.889527  < 2.2e-16 ***
+CensusTract::107000:logGross   0.395490   0.136579   2.895682 7.7468e-03 ** 
+CensusTract::107400:logGross   0.438964   0.035097  12.506997 2.9432e-12 ***
+CensusTract::107500:logGross   0.374518   0.020303  18.446590 4.5115e-16 ***
+CensusTract::107600:logGross   0.839753   0.028162  29.818858  < 2.2e-16 ***
+CensusTract::108000:logGross   1.169508   0.028246  41.403870  < 2.2e-16 ***
+CensusTract::108600:logGross   0.364521   0.016813  21.680984  < 2.2e-16 ***
+CensusTract::108700:logGross   0.453676   0.023451  19.346028  < 2.2e-16 ***
+CensusTract::108800:logGross   0.508421   0.011968  42.479972  < 2.2e-16 ***
+CensusTract::108900:logGross   0.521377   0.015565  33.496419  < 2.2e-16 ***
+CensusTract::109000:logGross   0.778277   0.015360  50.668687  < 2.2e-16 ***
+CensusTract::109100:logGross   0.885484   0.015044  58.859255  < 2.2e-16 ***
+CensusTract::109200:logGross   0.537251   0.135526   3.964177 5.4316e-04 ***
+CensusTract::109300:logGross   0.596725   0.258757   2.306124 2.9677e-02 *  
+CensusTract::109400:logGross   0.295165   0.067812   4.352717 1.9945e-04 ***
+CensusTract::109700:logGross   0.479554   0.018782  25.532352  < 2.2e-16 ***
+CensusTract::109800:logGross   0.720280   0.043758  16.460434 6.3156e-15 ***
+CensusTract::109900:logGross   0.647562   0.013910  46.553408  < 2.2e-16 ***
+CensusTract::1100:logGross     0.385163   0.024701  15.593136 2.1770e-14 ***
+CensusTract::11000:logGross    0.577826   0.012457  46.385673  < 2.2e-16 ***
+CensusTract::110000:logGross   0.503339   0.071548   7.034952 2.2522e-07 ***
+CensusTract::110100:logGross   0.268366   0.028203   9.515583 8.6502e-10 ***
+CensusTract::110200:logGross   0.448126   0.081971   5.466886 1.1192e-05 ***
+CensusTract::110400:logGross   0.352980   0.011119  31.746409  < 2.2e-16 ***
+CensusTract::110500:logGross   0.696696   0.023181  30.054155  < 2.2e-16 ***
+CensusTract::110800:logGross   0.628646   0.113701   5.528960 9.5470e-06 ***
+CensusTract::110900:logGross   0.637054   0.048562  13.118389 1.0391e-12 ***
+CensusTract::111100:logGross   0.763461   0.020052  38.073795  < 2.2e-16 ***
+CensusTract::111200:logGross   0.720210   0.014367  50.129129  < 2.2e-16 ***
+CensusTract::111300:logGross   0.715013   0.106372   6.721834 4.8094e-07 ***
+CensusTract::111400:logGross   0.984511   0.089174  11.040292 4.1958e-11 ***
+CensusTract::111500:logGross   0.938653   0.016679  56.276299  < 2.2e-16 ***
+CensusTract::111600:logGross   0.922718   0.133493   6.912105 3.0287e-07 ***
+CensusTract::11703:logGross    0.775054   0.019101  40.575590  < 2.2e-16 ***
+CensusTract::11704:logGross   -0.003604   0.136037  -0.026496 9.7907e-01    
+CensusTract::11800:logGross    0.663692   0.010444  63.547336  < 2.2e-16 ***
+CensusTract::11998:logGross    0.636923   0.009588  66.428581  < 2.2e-16 ***
+CensusTract::12001:logGross    0.712666   0.019058  37.395317  < 2.2e-16 ***
+CensusTract::12003:logGross    0.969315   0.133448   7.263599 1.3041e-07 ***
+CensusTract::12101:logGross    0.437013   0.015354  28.462761  < 2.2e-16 ***
+CensusTract::12102:logGross    0.571915   0.014587  39.206814  < 2.2e-16 ***
+CensusTract::125600:logGross   0.355619   0.037917   9.378906 1.1508e-09 ***
+CensusTract::125700:logGross   0.130661   0.021954   5.951482 3.2609e-06 ***
+CensusTract::125800:logGross   0.206768   0.031350   6.595565 6.5524e-07 ***
+CensusTract::125900:logGross   0.510989   0.254449   2.008216 5.5540e-02 .  
+CensusTract::126000:logGross   0.429098   0.077336   5.548460 9.0824e-06 ***
+CensusTract::126300:logGross   1.067021   0.024495  43.560234  < 2.2e-16 ***
+CensusTract::1700:logGross     0.296602   0.028622  10.362868 1.5542e-10 ***
+CensusTract::2200:logGross     0.331282   0.013944  23.757260  < 2.2e-16 ***
+CensusTract::2400:logGross     0.203908   0.028637   7.120466 1.8345e-07 ***
+CensusTract::2700:logGross     0.081105   0.021983   3.689507 1.0947e-03 ** 
+CensusTract::300:logGross      0.730119   0.010293  70.933985  < 2.2e-16 ***
+CensusTract::3200:logGross     0.494811   0.039800  12.432297 3.3511e-12 ***
+CensusTract::3300:logGross     0.471874   0.046068  10.242892 1.9711e-10 ***
+CensusTract::3801:logGross     1.048826   0.029785  35.213623  < 2.2e-16 ***
+CensusTract::3802:logGross    -7.432482   0.416329 -17.852406 9.6749e-16 ***
+CensusTract::5901:logGross     5.363688   0.350632  15.297187 3.3642e-14 ***
+CensusTract::5902:logGross    -0.212961   0.065070  -3.272814 3.1069e-03 ** 
+CensusTract::601:logGross      0.533922   0.024486  21.805468  < 2.2e-16 ***
+CensusTract::603:logGross      0.657271   0.018234  36.047231  < 2.2e-16 ***
+CensusTract::6800:logGross     0.522275   0.060236   8.670437 5.2534e-09 ***
+CensusTract::7700:logGross     0.999169   0.060331  16.561352 5.4881e-15 ***
+CensusTract::7801:logGross     0.190045   0.142311   1.335421 1.9377e-01    
+CensusTract::8100:logGross     0.403409   0.038760  10.407862 1.4223e-10 ***
+CensusTract::8200:logGross     0.696184   0.024869  27.994021  < 2.2e-16 ***
+CensusTract::8300:logGross     0.286372   0.030679   9.334470 1.2633e-09 ***
+CensusTract::8400:logGross     0.549020   0.038638  14.209295 1.7710e-13 ***
+CensusTract::8500:logGross     0.236065   0.010287  22.947215  < 2.2e-16 ***
+CensusTract::9500:logGross     0.687683   0.024595  27.959906  < 2.2e-16 ***
+CensusTract::9600:logGross     0.532446   0.019327  27.549671  < 2.2e-16 ***
+CensusTract::100200:llotSize   0.045299   0.025563   1.772019 8.8581e-02 .  
+CensusTract::100400:llotSize   0.129219   0.016020   8.066288 2.0209e-08 ***
+CensusTract::100500:llotSize  -0.192721   0.018901 -10.196525 2.1617e-10 ***
+CensusTract::100700:llotSize   0.323295   0.016624  19.447649  < 2.2e-16 ***
+CensusTract::100800:llotSize   0.228507   0.025251   9.049315 2.3133e-09 ***
+CensusTract::100900:llotSize  -0.059899   0.033489  -1.788629 8.5801e-02 .  
+CensusTract::101:llotSize     -0.113846   0.028502  -3.994387 5.0264e-04 ***
+CensusTract::101200:llotSize  -0.060108   0.016818  -3.574092 1.4655e-03 ** 
+CensusTract::101300:llotSize   0.249104   0.022331  11.154886 3.3801e-11 ***
+CensusTract::101600:llotSize   0.094454   0.014380   6.568299 7.0066e-07 ***
+CensusTract::101800:llotSize   0.089416   0.099565   0.898073 3.7771e-01    
+CensusTract::101900:llotSize  -0.071157   0.010374  -6.859001 3.4444e-07 ***
+CensusTract::102:llotSize      0.059655   0.045064   1.323803 1.9755e-01    
+CensusTract::102000:llotSize  -0.013983   0.020111  -0.695278 4.9329e-01    
+CensusTract::102100:llotSize   0.059259   0.012713   4.661307 8.9641e-05 ***
+CensusTract::102500:llotSize  -0.348916   0.111299  -3.134949 4.3561e-03 ** 
+CensusTract::102600:llotSize   0.163517   0.032317   5.059708 3.1938e-05 ***
+CensusTract::102800:llotSize   0.256180   0.023847  10.742602 7.4099e-11 ***
+CensusTract::103000:llotSize   0.658995   0.029770  22.136240  < 2.2e-16 ***
+CensusTract::103100:llotSize   0.066527   0.048917   1.360002 1.8597e-01    
+CensusTract::103400:llotSize  -0.454850   0.060044  -7.575324 6.2589e-08 ***
+CensusTract::103600:llotSize   0.297426   0.020824  14.282657 1.5784e-13 ***
+CensusTract::103700:llotSize   0.217748   0.038072   5.719366 5.8727e-06 ***
+CensusTract::104001:llotSize   0.092291   0.022659   4.072962 4.1070e-04 ***
+CensusTract::104002:llotSize   0.195888   0.053379   3.669733 1.1509e-03 ** 
+CensusTract::104100:llotSize  -0.034750   0.017559  -1.979083 5.8921e-02 .  
+CensusTract::104902:llotSize   0.176720   0.050058   3.530317 1.6361e-03 ** 
+CensusTract::105100:llotSize   0.401577   0.073292   5.479110 1.0847e-05 ***
+CensusTract::105500:llotSize   0.561371   0.156448   3.588229 1.4142e-03 ** 
+CensusTract::10600:llotSize    0.257047   0.065512   3.923652 6.0262e-04 ***
+CensusTract::106000:llotSize  -0.017259   0.019492  -0.885408 3.8437e-01    
+CensusTract::106200:llotSize  -0.292788   0.019677 -14.879880 6.2887e-14 ***
+CensusTract::106400:llotSize  -0.235318   0.029240  -8.047748 2.1078e-08 ***
+CensusTract::106500:llotSize  -0.027095   0.028756  -0.942219 3.5510e-01    
+CensusTract::106600:llotSize   0.271783   0.148132   1.834735 7.8473e-02 .  
+CensusTract::106700:llotSize   0.013715   0.029851   0.459457 6.4988e-01    
+CensusTract::106900:llotSize   2.697465   0.237134  11.375257 2.2398e-11 ***
+CensusTract::10700:llotSize    0.230059   0.027358   8.409255 9.3499e-09 ***
+CensusTract::107000:llotSize   0.388130   0.031593  12.285300 4.3334e-12 ***
+CensusTract::107400:llotSize   0.060716   0.020038   3.030039 5.6171e-03 ** 
+CensusTract::107500:llotSize   0.292716   0.023833  12.282225 4.3569e-12 ***
+CensusTract::107600:llotSize   0.266647   0.024772  10.763833 7.1129e-11 ***
+CensusTract::108000:llotSize   0.090771   0.028155   3.223963 3.5038e-03 ** 
+CensusTract::108600:llotSize   0.116593   0.019304   6.039688 2.6110e-06 ***
+CensusTract::108700:llotSize   0.136708   0.019198   7.120774 1.8332e-07 ***
+CensusTract::108800:llotSize   0.216557   0.027811   7.786632 3.8327e-08 ***
+CensusTract::108900:llotSize  -0.017619   0.026343  -0.668823 5.0974e-01    
+CensusTract::109000:llotSize   0.806096   0.015626  51.587523  < 2.2e-16 ***
+CensusTract::109100:llotSize   0.116270   0.017246   6.741812 4.5805e-07 ***
+CensusTract::109200:llotSize  -0.104307   0.091900  -1.135005 2.6714e-01    
+CensusTract::109300:llotSize   0.216641   0.090144   2.403270 2.3992e-02 *  
+CensusTract::109400:llotSize   0.137263   0.113510   1.209262 2.3787e-01    
+CensusTract::109700:llotSize   0.216172   0.031614   6.837917 3.6252e-07 ***
+CensusTract::109800:llotSize   0.165007   0.068220   2.418748 2.3185e-02 *  
+CensusTract::109900:llotSize   0.438671   0.018459  23.764337  < 2.2e-16 ***
+CensusTract::1100:llotSize     0.120315   0.021266   5.657651 6.8723e-06 ***
+CensusTract::11000:llotSize    0.180444   0.021598   8.354744 1.0557e-08 ***
+CensusTract::110000:llotSize  -0.038973   0.042140  -0.924830 3.6390e-01    
+CensusTract::110100:llotSize  -0.006617   0.018521  -0.357263 7.2389e-01    
+CensusTract::110200:llotSize   0.413806   0.108626   3.809440 8.0691e-04 ***
+CensusTract::110400:llotSize   0.134628   0.022400   6.010135 2.8126e-06 ***
+CensusTract::110500:llotSize   0.066607   0.019156   3.477170 1.8695e-03 ** 
+CensusTract::110800:llotSize   0.248391   0.078424   3.167264 4.0259e-03 ** 
+CensusTract::110900:llotSize  -0.184051   0.064979  -2.832454 8.9964e-03 ** 
+CensusTract::111100:llotSize   0.077756   0.030959   2.511569 1.8847e-02 *  
+CensusTract::111200:llotSize  -0.089057   0.019941  -4.465933 1.4876e-04 ***
+CensusTract::111300:llotSize   0.178498   0.134361   1.328500 1.9601e-01    
+CensusTract::111400:llotSize   0.447843   0.108801   4.116179 3.6744e-04 ***
+CensusTract::111500:llotSize   0.316543   0.017808  17.775749 1.0693e-15 ***
+CensusTract::111600:llotSize   0.083717   0.014141   5.920037 3.5304e-06 ***
+CensusTract::11703:llotSize    0.146411   0.016254   9.007636 2.5293e-09 ***
+CensusTract::11704:llotSize    0.276628   0.403788   0.685083 4.9959e-01    
+CensusTract::11800:llotSize    0.177688   0.013385  13.275085 8.0044e-13 ***
+CensusTract::11998:llotSize   -0.097130   0.013531  -7.178153 1.5983e-07 ***
+CensusTract::12001:llotSize   -0.069350   0.083392  -0.831619 4.1350e-01    
+CensusTract::12003:llotSize    0.066322   0.108075   0.613669 5.4498e-01    
+CensusTract::12101:llotSize   -0.169601   0.052125  -3.253717 3.2566e-03 ** 
+CensusTract::12102:llotSize    0.170260   0.060306   2.823281 9.1929e-03 ** 
+CensusTract::125600:llotSize   0.385330   0.021962  17.545333 1.4475e-15 ***
+CensusTract::125700:llotSize  -0.084694   0.027170  -3.117242 4.5480e-03 ** 
+CensusTract::125800:llotSize   0.120030   0.042777   2.805927 9.5756e-03 ** 
+CensusTract::125900:llotSize  -0.299918   0.359418  -0.834455 4.1193e-01    
+CensusTract::126000:llotSize  -0.012678   0.420728  -0.030133 9.7620e-01    
+CensusTract::126300:llotSize   0.320325   0.021707  14.757045 7.5806e-14 ***
+CensusTract::1700:llotSize     0.156610   0.024037   6.515310 7.9832e-07 ***
+CensusTract::2200:llotSize    -0.080247   0.021261  -3.774395 8.8227e-04 ***
+CensusTract::2400:llotSize     0.354607   0.011603  30.562924  < 2.2e-16 ***
+CensusTract::2700:llotSize     0.770903   0.043390  17.766682 1.0820e-15 ***
+CensusTract::300:llotSize      0.238815   0.023412  10.200441 2.1449e-10 ***
+CensusTract::3200:llotSize     0.269337   0.030381   8.865392 3.4365e-09 ***
+CensusTract::3300:llotSize     0.274168   0.017053  16.077452 1.0833e-14 ***
+CensusTract::3801:llotSize    -1.584745   0.057610 -27.508011  < 2.2e-16 ***
+CensusTract::5902:llotSize     0.491141   0.053656   9.153545 1.8521e-09 ***
+CensusTract::601:llotSize      0.127702   0.020806   6.137683 2.0414e-06 ***
+CensusTract::603:llotSize      0.042436   0.011867   3.575999 1.4585e-03 ** 
+CensusTract::6800:llotSize     0.053406   0.046997   1.136371 2.6658e-01    
+CensusTract::7700:llotSize    -0.413732   0.052416  -7.893285 2.9989e-08 ***
+CensusTract::7801:llotSize     0.147839   0.052471   2.817517 9.3184e-03 ** 
+CensusTract::8100:llotSize     0.163206   0.026369   6.189204 1.7944e-06 ***
+CensusTract::8200:llotSize    -0.239729   0.019832 -12.087927 6.1414e-12 ***
+CensusTract::8300:llotSize     0.384694   0.034770  11.064092 4.0111e-11 ***
+CensusTract::8400:llotSize    -0.479802   0.342515  -1.400820 1.7356e-01    
+CensusTract::8500:llotSize     0.132324   0.021594   6.127962 2.0918e-06 ***
+CensusTract::9500:llotSize    -0.006648   0.023790  -0.279440 7.8221e-01    
+CensusTract::9600:llotSize     0.231310   0.018663  12.394073 3.5820e-12 ***
+... 8 variables were removed because of collinearity
+(CensusTract::105700:logGross, CensusTract::23000:logGross and 6 others
+[full set in $collin.var])
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.226073     Adj. R2: 0.755927
+                 Within R2: 0.744767
+      CensusTract::100400       CensusTract::100500       CensusTract::100700 
+               0.02566856               -0.76710410               -1.79715921 
+      CensusTract::100800       CensusTract::100900          CensusTract::101 
+              -0.36320470                0.49011644               -0.63634659 
+      CensusTract::101200       CensusTract::101300       CensusTract::101600 
+              -1.67855271                0.70184810                1.40785255 
+      CensusTract::101800       CensusTract::101900          CensusTract::102 
+              -0.47536110               -3.29002701                0.20459196 
+      CensusTract::102000       CensusTract::102100       CensusTract::102500 
+              -1.39237381               -1.27474681               -3.44749668 
+      CensusTract::102600       CensusTract::102800       CensusTract::103000 
+              -1.22269089                0.14505053               -2.27952568 
+      CensusTract::103100       CensusTract::103400       CensusTract::103600 
+               0.42527848               -3.63553769                0.25170851 
+      CensusTract::103700       CensusTract::104001       CensusTract::104002 
+              -3.91729628               -1.53303306               -3.20868270 
+      CensusTract::104100       CensusTract::104902       CensusTract::105100 
+               0.93969430                0.96055099               -1.71671045 
+      CensusTract::105500       CensusTract::105700        CensusTract::10600 
+              -1.98540151                2.33127538               -3.28604199 
+      CensusTract::106000       CensusTract::106200       CensusTract::106400 
+              -0.04122074               -0.81896587               -6.28761081 
+      CensusTract::106500       CensusTract::106600       CensusTract::106700 
+              -3.00930883               -7.66161836               -0.83666784 
+      CensusTract::106900        CensusTract::10700       CensusTract::107000 
+              -0.51920210               -4.09213644               -1.60098148 
+      CensusTract::107400       CensusTract::107500       CensusTract::107600 
+               0.19387275                0.33536420               -2.80731670 
+      CensusTract::108000       CensusTract::108600       CensusTract::108700 
+              -4.22139858               -0.62954425               -0.50764974 
+      CensusTract::108800       CensusTract::108900       CensusTract::109000 
+              -0.64247099               -1.54759872               -2.30341755 
+      CensusTract::109100       CensusTract::109200       CensusTract::109300 
+              -3.48991235               -0.68823331               -1.37528692 
+      CensusTract::109400       CensusTract::109700       CensusTract::109800 
+               0.77805665               -0.08330527               -1.48901338 
+      CensusTract::109900         CensusTract::1100        CensusTract::11000 
+              -1.57914107               -0.23380203               -0.81547864 
+      CensusTract::110000       CensusTract::110100       CensusTract::110200 
+              -0.39245198                0.74038362               -0.60556476 
+      CensusTract::110400       CensusTract::110500       CensusTract::110800 
+              -0.72911195               -2.23043229               -1.65374774 
+      CensusTract::110900       CensusTract::111100       CensusTract::111200 
+              -2.02036593               -1.77388764               -1.35079460 
+      CensusTract::111300       CensusTract::111400       CensusTract::111500 
+              -1.79348435               -2.72198687               -3.52443947 
+      CensusTract::111600        CensusTract::11703        CensusTract::11704 
+              -2.91155259               -2.14237229                0.53997569 
+       CensusTract::11800        CensusTract::11998        CensusTract::12001 
+              -2.46745752               -0.88445097               -1.40754209 
+       CensusTract::12003        CensusTract::12101        CensusTract::12102 
+              -3.31690127               -0.37114292               -0.99311082 
+      CensusTract::125600       CensusTract::125700       CensusTract::125800 
+              -3.33308496                1.00469560                0.84886687 
+      CensusTract::125900       CensusTract::126000       CensusTract::126300 
+               1.48859953               -0.41214408                0.56596288 
+        CensusTract::1700         CensusTract::2200        CensusTract::23000 
+               0.63822916                1.51682067                2.43911591 
+        CensusTract::2400         CensusTract::2700          CensusTract::300 
+              -1.32647425                0.70119039               -2.02788960 
+        CensusTract::3200         CensusTract::3300         CensusTract::3801 
+              -0.74556974                0.02281117               -2.78979486 
+        CensusTract::3802         CensusTract::5901         CensusTract::5902 
+             -25.10669210               -7.73009968                1.40782511 
+         CensusTract::601          CensusTract::603         CensusTract::6800 
+              -0.62605102               -1.94327086               -0.20114667 
+        CensusTract::7700         CensusTract::7801         CensusTract::8100 
+              -1.57256430                0.95166970                0.22195875 
+        CensusTract::8200         CensusTract::8300         CensusTract::8400 
+              -0.16054637               -1.11301055               -1.59701989 
+        CensusTract::8500         CensusTract::9500         CensusTract::9600 
+              -0.16392195               -1.42554915               -0.31139739 
+      CensusTract::980000                  llotSize CensusTract::100200:lsqft 
+               1.98750958                0.13449730                0.30125092 
+CensusTract::100400:lsqft CensusTract::100500:lsqft CensusTract::100700:lsqft 
+               0.28049896                0.44127203                0.55724692 
+CensusTract::100800:lsqft CensusTract::100900:lsqft    CensusTract::101:lsqft 
+               0.33550949                0.21017813                0.39835889 
+CensusTract::101200:lsqft CensusTract::101300:lsqft CensusTract::101600:lsqft 
+               0.59593865                0.19673864                0.08745564 
+CensusTract::101800:lsqft CensusTract::101900:lsqft    CensusTract::102:lsqft 
+               0.39836527                0.79953243                0.26503289 
+CensusTract::102000:lsqft CensusTract::102100:lsqft CensusTract::102500:lsqft 
+               0.48757455                0.46109400                0.81149896 
+CensusTract::102600:lsqft CensusTract::102800:lsqft CensusTract::103000:lsqft 
+               0.50514964                0.27188920                0.68641647 
+CensusTract::103100:lsqft CensusTract::103400:lsqft CensusTract::103600:lsqft 
+               0.29095843                0.81339573                0.32803688 
+CensusTract::103700:lsqft CensusTract::104001:lsqft CensusTract::104002:lsqft 
+               0.90243421                0.56044005                0.79536427 
+CensusTract::104100:lsqft CensusTract::104902:lsqft CensusTract::105100:lsqft 
+               0.16863987                0.23414787                0.64396566 
+CensusTract::105500:lsqft  CensusTract::10600:lsqft CensusTract::106000:lsqft 
+               0.71697921                0.89232636                0.31800597 
+CensusTract::106200:lsqft CensusTract::106400:lsqft CensusTract::106500:lsqft 
+               0.47844533                1.25421196                0.85548996 
+CensusTract::106600:lsqft CensusTract::106700:lsqft CensusTract::106900:lsqft 
+               1.44053136                0.51372367                0.43689369 
+ CensusTract::10700:lsqft CensusTract::107000:lsqft CensusTract::107400:lsqft 
+               0.97348099                0.57738904                0.30515054 
+CensusTract::107500:lsqft CensusTract::107600:lsqft CensusTract::108000:lsqft 
+               0.30669583                0.76934205                1.01620300 
+CensusTract::108600:lsqft CensusTract::108700:lsqft CensusTract::108800:lsqft 
+               0.41181636                0.40459924                0.42919180 
+CensusTract::108900:lsqft CensusTract::109000:lsqft CensusTract::109100:lsqft 
+               0.56784637                0.71235055                0.92885168 
+CensusTract::109200:lsqft CensusTract::109300:lsqft CensusTract::109400:lsqft 
+               0.48933620                0.55365824                0.21553239 
+CensusTract::109700:lsqft CensusTract::109800:lsqft CensusTract::109900:lsqft 
+               0.35034543                0.63885644                0.60701214 
+  CensusTract::1100:lsqft  CensusTract::11000:lsqft CensusTract::110000:lsqft 
+               0.37237430                0.47928896                0.38402082 
+CensusTract::110100:lsqft CensusTract::110200:lsqft CensusTract::110400:lsqft 
+               0.24457395                0.43585877                0.44896068 
+CensusTract::110500:lsqft CensusTract::110800:lsqft CensusTract::110900:lsqft 
+               0.67944791                0.60712190                0.64022849 
+CensusTract::111100:lsqft CensusTract::111200:lsqft CensusTract::111300:lsqft 
+               0.61532466                0.62440158                0.67640705 
+CensusTract::111400:lsqft CensusTract::111500:lsqft CensusTract::111600:lsqft 
+               0.79618265                0.88380650                0.79202986 
+ CensusTract::11703:lsqft  CensusTract::11704:lsqft  CensusTract::11800:lsqft 
+               0.69690299                0.30251260                0.71081162 
+ CensusTract::11998:lsqft  CensusTract::12001:lsqft  CensusTract::12003:lsqft 
+               0.47997671                0.58339127                0.83082051 
+ CensusTract::12101:lsqft  CensusTract::12102:lsqft CensusTract::125600:lsqft 
+               0.39261091                0.48535038                0.85257006 
+CensusTract::125700:lsqft CensusTract::125800:lsqft CensusTract::125900:lsqft 
+               0.14281680                0.18411870                0.09626134 
+CensusTract::126000:lsqft CensusTract::126300:lsqft   CensusTract::1700:lsqft 
+               0.35870939                0.22418575                0.24346437 
+  CensusTract::2200:lsqft   CensusTract::2400:lsqft   CensusTract::2700:lsqft 
+               0.06199198                0.52054017                0.19930454 
+   CensusTract::300:lsqft   CensusTract::3200:lsqft   CensusTract::3300:lsqft 
+               0.60684627                0.40729399                0.28792119 
+  CensusTract::3801:lsqft   CensusTract::3802:lsqft   CensusTract::5901:lsqft 
+               0.77558603                3.88038304                1.37303692 
+  CensusTract::5902:lsqft    CensusTract::601:lsqft    CensusTract::603:lsqft 
+               0.07796263                0.42551761                0.62944838 
+  CensusTract::6800:lsqft   CensusTract::7700:lsqft   CensusTract::7801:lsqft 
+               0.40077506                0.55254119                0.21019928 
+  CensusTract::8100:lsqft   CensusTract::8200:lsqft   CensusTract::8300:lsqft 
+               0.37087498                0.38765518                0.47712660 
+  CensusTract::8400:lsqft   CensusTract::8500:lsqft   CensusTract::9500:lsqft 
+               0.53199071                0.34360682                0.53118959 
+  CensusTract::9600:lsqft 
+               0.38621492 
+    tract     slope
+   <char>     <num>
+1: 100200 0.3012509
+2: 100400 0.2804990
+3: 100500 0.4412720
+4: 100700 0.5572469
+5: 100800 0.3355095
+6: 100900 0.2101781
+[1] "minneapolis"
+    tract             intercept           slopeGross         slopeLot       
+ Length:105         Min.   :-61.28606   Min.   :-0.2130   Min.   :-1.58474  
+ Class :character   1st Qu.: -3.27243   1st Qu.: 0.3745   1st Qu.:-0.01726  
+ Mode  :character   Median : -1.50777   Median : 0.5339   Median : 0.12922  
+                    Mean   : -2.29008   Mean   : 0.6124   Mean   : 0.12733  
+                    3rd Qu.: -0.01109   3rd Qu.: 0.7317   3rd Qu.: 0.24910  
+                    Max.   :  9.37077   Max.   : 5.4660   Max.   : 2.69746  
+                    NA's   :1                                               
+            intercept slopeGross   slopeLot
+intercept   1.0000000 -0.8913408 -0.8060139
+slopeGross -0.8913408  1.0000000  0.4530778
+slopeLot   -0.8060139  0.4530778  1.0000000
+Key: <tract>
+    tract   intercept slopeGross    slopeLot
+   <char>       <num>      <num>       <num>
+1: 100200          NA 0.36294777  0.04529878
+2: 100400 -0.01449928 0.25619601  0.12921911
+3: 100500  1.97887869 0.39970653 -0.19272149
+4: 100700 -3.77419178 0.54477599  0.32329515
+5: 100800 -1.33776377 0.31660849  0.22850725
+6: 100900  2.81537946 0.09172216 -0.05989905
+Key: <tract>
+    tract       lppsf
+   <char>       <num>
+1: 100400 -0.17810059
+2: 100500  0.21944052
+3: 100700 -0.03279726
+4: 100800 -0.17571984
+5: 100900 -0.17250005
+6:    101  0.05587709
+Key: <tract>
+    tract     slope       lppsf   intercept slopeGross    slopeLot count
+   <char>     <num>       <num>       <num>      <num>       <num> <int>
+1: 100200        NA          NA          NA 0.36294777  0.04529878   761
+2: 100400 0.2804990 -0.17810059 -0.01449928 0.25619601  0.12921911   520
+3: 100500 0.4412720  0.21944052  1.97887869 0.39970653 -0.19272149   362
+4: 100700 0.5572469 -0.03279726 -3.77419178 0.54477599  0.32329515   732
+5: 100800 0.3355095 -0.17571984 -1.33776377 0.31660849  0.22850725   706
+6: 100900 0.2101781 -0.17250005  2.81537946 0.09172216 -0.05989905   657
+
+--- Tract-by-tract OLS diagnostics: MINNEAPOLIS ---
+             interceptOLS   slopeOLS slopeLotOLS  lppsf_raw
+interceptOLS    1.0000000 -0.5687276  -0.6996073 -0.3831577
+slopeOLS       -0.5687276  1.0000000  -0.1836192  0.4951866
+slopeLotOLS    -0.6996073 -0.1836192   1.0000000  0.1110349
+lppsf_raw      -0.3831577  0.4951866   0.1110349  1.0000000
+    tract            interceptOLS        slopeOLS         slopeLotOLS      
+ Length:99          Min.   : 0.5542   Min.   :-0.06587   Min.   :-0.76684  
+ Class :character   1st Qu.: 6.4983   1st Qu.: 0.25812   1st Qu.:-0.06164  
+ Mode  :character   Median : 8.3930   Median : 0.43761   Median : 0.07411  
+                    Mean   : 8.2501   Mean   : 0.45580   Mean   : 0.09221  
+                    3rd Qu.:10.2305   3rd Qu.: 0.60032   3rd Qu.: 0.21318  
+                    Max.   :15.0737   Max.   : 1.63624   Max.   : 0.76291  
+      nOLS        CensusTract          lppsf_raw       medianSqft  
+ Min.   :  22.0   Length:99          Min.   :4.589   Min.   : 936  
+ 1st Qu.: 131.0   Class :character   1st Qu.:4.996   1st Qu.:1112  
+ Median : 252.0   Mode  :character   Median :5.194   Median :1224  
+ Mean   : 326.6                      Mean   :5.178   Mean   :1320  
+ 3rd Qu.: 495.5                      3rd Qu.:5.337   3rd Qu.:1416  
+ Max.   :1125.0                      Max.   :5.788   Max.   :3180  
+Pooled slope vs OLS slope correlation:
+[1] 0.8344131
+Pooled intercept vs OLS intercept correlation:
+[1] 0.8224179
+`geom_smooth()` using formula = 'y ~ x'
+Warning messages:
+1: In geom_point(trans = log, size = 1) :
+  Ignoring unknown parameters: `trans`
+2: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+3: In log(AreaGross - ParkingGarageArea) : NaNs produced
+4: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+5: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+6: In geom_point(trans = log, size = 1) :
+  Ignoring unknown parameters: `trans`
+7: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+8: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+9: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+> 
+> dbDisconnect(con)
+> 
+> q("no")
+> proc.time()
+   user  system elapsed 
+ 36.965   1.623  35.089 

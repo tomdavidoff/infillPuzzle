@@ -1,0 +1,510 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # vancouverLotPlex.R
+> # R code to see if 33 vs 50 price gap explains duplex takeup
+> # And correlation with price per square foot
+> # And Conley stuff
+> # Tom Davidoff 
+> # 05/05/26
+> 
+> library(data.table)
+> library(fixest)
+> library(ggplot2)
+> library(duckdb)
+Loading required package: DBI
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> # Strategy: get single family and duplex transactions, get 33 vs 50 price delta pre-2016, then duplex premiums and permitting...
+> # permit data
+> permitFile <- "~/DropboxExternal/dataRaw/issued-building-permits.csv"
+> dtPermit <- fread(permitFile,select=c("PermitNumber","PermitNumberCreatedDate","ProjectValue","TypeOfWork","Address","Applicant","PropertyUse","SpecificUseCategory","BuildingContractor","GeoLocalArea","geo_point_2d","YearMonth"))
+> print(head(dtPermit))
+    PermitNumber PermitNumberCreatedDate ProjectValue
+          <char>                  <IDat>        <num>
+1: BP-2024-04498              2024-11-15     40000.00
+2: BP-2024-03332              2024-08-30         0.00
+3: DB-2025-02786              2025-06-19   2500000.00
+4: BP-2024-03294              2024-08-27     68000.00
+5: DB-2024-04972              2024-12-11     40000.00
+6: BP-2024-04506              2024-11-15     17909.85
+                    TypeOfWork                                      Address
+                        <char>                                       <char>
+1: Demolition / Deconstruction    1922 W 33RD AVENUE, Vancouver, BC V6M 1B4
+2:       Salvage and Abatement      4670 TODD STREET, Vancouver, BC V5R 3P8
+3:       Addition / Alteration 1128 W GEORGIA STREET, Vancouver, BC V6E 0A8
+4: Demolition / Deconstruction      2891 ETON STREET, Vancouver, BC V5K 1K4
+5: Demolition / Deconstruction    1636 E 37TH AVENUE, Vancouver, BC V5P 1E5
+6:       Addition / Alteration   4550 BELLEVUE DRIVE, Vancouver, BC V6R 1E5
+                                 Applicant   PropertyUse   SpecificUseCategory
+                                    <char>        <char>                <char>
+1: Rom Rono DBA: Robert Blaney Design Inc. Dwelling Uses Single Detached House
+2:                            Sona  Jassal Dwelling Uses Single Detached House
+3:              Albert Hong DBA: Architect   Retail Uses          Retail Store
+4:                            JIANCHENG LU Dwelling Uses Single Detached House
+5:                            JIANCHENG LU Dwelling Uses Single Detached House
+6:                         Gordon Chambers Dwelling Uses Single Detached House
+                     BuildingContractor             GeoLocalArea
+                                 <char>                   <char>
+1:  Hans Demolition and Excavating Ltd.            Arbutus Ridge
+2:     San Contracting & Excavating Ltd      Renfrew-Collingwood
+3:                                                      West End
+4: Apollo Excavating & Civil Works Ltd.         Hastings-Sunrise
+5:               CANTON EXCAVATING LTD. Kensington-Cedar Cottage
+6:                                               West Point Grey
+               geo_point_2d YearMonth
+                     <char>    <char>
+1: 49.2417748, -123.1500039   2025-07
+2: 49.2418637, -123.0458448   2024-09
+3: 49.2859454, -123.1241574   2025-07
+4: 49.2880092, -123.0444853   2024-12
+5: 49.2365493, -123.0722842   2025-11
+6: 49.2704922, -123.2100666   2024-12
+> dtPermit <- dtPermit[PropertyUse=="Dwelling Uses"]
+> print(table(dtPermit[,TypeOfWork]))
+
+               Addition / Alteration          Demolition / Deconstruction 
+                               11516                                 6396 
+                        New Building Outdoor Uses (No Buildings Proposed) 
+                               11061                                   24 
+               Salvage and Abatement       Temporary Building / Structure 
+                                6303                                   11 
+> dtPermit <- dtPermit[TypeOfWork %in% c("New Building","Addition / Alteration")]
+> print(dtPermit[,summary(ProjectValue),by="TypeOfWork"])
+               TypeOfWork               V1
+                   <char> <summaryDefault>
+ 1: Addition / Alteration                0
+ 2: Addition / Alteration            15000
+ 3: Addition / Alteration            46000
+ 4: Addition / Alteration           179254
+ 5: Addition / Alteration           130000
+ 6: Addition / Alteration         38200000
+ 7:          New Building                0
+ 8:          New Building           204750
+ 9:          New Building           613250
+10:          New Building          1075743
+11:          New Building           873000
+12:          New Building        300000000
+> print(dtPermit[ProjectValue>0 & SpecificUseCategory %in% c("Duplex","Single Detached House","Laneway House"),quantile(ProjectValue,c(.01,.05,.1,.5,.75,.9,.95)),by=c("TypeOfWork","SpecificUseCategory")])
+               TypeOfWork   SpecificUseCategory        V1
+                   <char>                <char>     <num>
+ 1: Addition / Alteration Single Detached House    1000.0
+ 2: Addition / Alteration Single Detached House    2500.0
+ 3: Addition / Alteration Single Detached House    4500.0
+ 4: Addition / Alteration Single Detached House   50000.0
+ 5: Addition / Alteration Single Detached House  150000.0
+ 6: Addition / Alteration Single Detached House  350000.0
+ 7: Addition / Alteration Single Detached House  600000.0
+ 8:          New Building                Duplex  483400.0
+ 9:          New Building                Duplex  578000.0
+10:          New Building                Duplex  608325.0
+11:          New Building                Duplex  754847.0
+12:          New Building                Duplex  850000.0
+13:          New Building                Duplex  990000.0
+14:          New Building                Duplex 1104250.0
+15:          New Building Single Detached House   25000.0
+16:          New Building Single Detached House  222971.0
+17:          New Building Single Detached House  509874.5
+18:          New Building Single Detached House  969625.0
+19:          New Building Single Detached House 1200000.0
+20:          New Building Single Detached House 1522294.0
+21:          New Building Single Detached House 2000000.0
+22:          New Building         Laneway House  119773.4
+23:          New Building         Laneway House  142993.8
+24:          New Building         Laneway House  151450.0
+25:          New Building         Laneway House  207000.0
+26:          New Building         Laneway House  235000.0
+27:          New Building         Laneway House  319897.5
+28:          New Building         Laneway House  400000.0
+29: Addition / Alteration         Laneway House     200.0
+30: Addition / Alteration         Laneway House     850.0
+31: Addition / Alteration         Laneway House    2000.0
+32: Addition / Alteration         Laneway House   12938.5
+33: Addition / Alteration         Laneway House   60625.0
+34: Addition / Alteration         Laneway House  141500.0
+35: Addition / Alteration         Laneway House  249300.0
+36: Addition / Alteration                Duplex     608.0
+37: Addition / Alteration                Duplex    2000.0
+38: Addition / Alteration                Duplex    3500.0
+39: Addition / Alteration                Duplex   50000.0
+40: Addition / Alteration                Duplex  150000.0
+41: Addition / Alteration                Duplex  483000.0
+42: Addition / Alteration                Duplex  750000.0
+               TypeOfWork   SpecificUseCategory        V1
+                   <char>                <char>     <num>
+> CRITQUANT <- .25
+> qCrit <- quantile(dtPermit[TypeOfWork=="New Building" & SpecificUseCategory %in% c("Duplex","Single Detached House") & ProjectValue>0,ProjectValue],CRITQUANT)
+> dtPermit <- dtPermit[TypeOfWork=="New Building" | ProjectValue<=qCrit]
+> # order by count
+> dtPermit[,nCat:=.N,by=SpecificUseCategory]
+> # doesn't work dtPermit <- dtPermit[grepl("Duplex"|"Single Detached House"| "Laneway House",SpecificUseCategory)]
+> dtPermit <- dtPermit[grepl("Duplex",SpecificUseCategory) | grepl("Single Detached House",SpecificUseCategory) | grepl("Laneway House",SpecificUseCategory) | grepl("Multiple Dwelling",SpecificUseCategory)]
+> # categorize by first word
+> dtPermit[,useCat:=tstrsplit(SpecificUseCategory," ")[[1]]]
+> dtPermit[,useCat:=tstrsplit(useCat,",")[[1]]]
+> print(table(dtPermit[,useCat]))
+
+     Duplex    Dwelling      Infill     Laneway        Lock    Multiple 
+       2099           3         216        4126          18        6062 
+Residential   Secondary      Single 
+          1          55        8130 
+> 
+> # limit to R zones in Vancouver
+> dZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson")
+Reading layer `vancouver_zoning' from data source 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/vancouver_zoning.geojson' 
+  using driver `GeoJSON'
+Simple feature collection with 1590 features and 6 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -123.2248 ymin: 49.19952 xmax: -123.0233 ymax: 49.31617
+Geodetic CRS:  WGS 84
+> print(table(dZ$zoning_district))
+
+     BCPED        C-1        C-2       C-2B       C-2C      C-2C1       C-3A 
+         7         65         65          7         15         10          3 
+       C-5       C-5A        C-6        C-7        C-8   CD-1 (1)  CD-1 (10) 
+         3          2          1          4          1          1          1 
+CD-1 (100) CD-1 (103) CD-1 (106) CD-1 (109) CD-1 (110) CD-1 (111) CD-1 (113) 
+         1          1          1          1          1          1          1 
+CD-1 (115) CD-1 (117) CD-1 (118) CD-1 (119) CD-1 (11A) CD-1 (11B)  CD-1 (12) 
+         1          1          1          1          1          1          1 
+CD-1 (120) CD-1 (121) CD-1 (123) CD-1 (125) CD-1 (126) CD-1 (128) CD-1 (129) 
+         1          1          2          1          1          1          1 
+CD-1 (130) CD-1 (131) CD-1 (132) CD-1 (134) CD-1 (136) CD-1 (137) CD-1 (138) 
+         1          1          1          1          1          2          1 
+CD-1 (139) CD-1 (13A) CD-1 (13B)  CD-1 (14) CD-1 (141) CD-1 (142) CD-1 (143) 
+         1          1          1          1          1          1          1 
+CD-1 (144) CD-1 (145) CD-1 (146) CD-1 (148) CD-1 (151) CD-1 (152) CD-1 (153) 
+         1          1          1          1          2          1          1 
+CD-1 (156) CD-1 (157) CD-1 (158) CD-1 (159) CD-1 (15A) CD-1 (15B)  CD-1 (16) 
+         1          1          1          1          1          1          1 
+CD-1 (161) CD-1 (162) CD-1 (163) CD-1 (164) CD-1 (165) CD-1 (167) CD-1 (168) 
+         1          1          1          1          1          1          1 
+CD-1 (169)  CD-1 (17) CD-1 (170) CD-1 (171) CD-1 (172) CD-1 (173) CD-1 (174) 
+         1          1          1          1          1          1          1 
+CD-1 (175) CD-1 (176) CD-1 (177) CD-1 (178) CD-1 (179)  CD-1 (18) CD-1 (180) 
+         1          1          1          1          1          1          1 
+CD-1 (181) CD-1 (182) CD-1 (183) CD-1 (184) CD-1 (186) CD-1 (187) CD-1 (188) 
+         1          1          1          1          1          1          1 
+CD-1 (189)  CD-1 (19) CD-1 (190) CD-1 (191) CD-1 (192) CD-1 (194) CD-1 (195) 
+         1          1          1          1          1          1          1 
+CD-1 (196) CD-1 (197) CD-1 (198) CD-1 (199)   CD-1 (2) CD-1 (200) CD-1 (202) 
+         1          1          1          1          1          1          1 
+CD-1 (203) CD-1 (204) CD-1 (205) CD-1 (206) CD-1 (207) CD-1 (209) CD-1 (210) 
+         1          1          1          1          1          1          1 
+CD-1 (211) CD-1 (212) CD-1 (213) CD-1 (214) CD-1 (215) CD-1 (216) CD-1 (217) 
+         1          1          1          1          1          1          1 
+CD-1 (218) CD-1 (219)  CD-1 (22) CD-1 (222) CD-1 (223) CD-1 (225) CD-1 (227) 
+         1          2          1          1          1          2          1 
+CD-1 (228) CD-1 (229)  CD-1 (23) CD-1 (230) CD-1 (231) CD-1 (232) CD-1 (233) 
+         1          1          1          1          1          1          1 
+CD-1 (234) CD-1 (235) CD-1 (236) CD-1 (237) CD-1 (238) CD-1 (239) CD-1 (240) 
+         1          1          1          1          1          1          1 
+CD-1 (241) CD-1 (242) CD-1 (243) CD-1 (244) CD-1 (245) CD-1 (246) CD-1 (247) 
+         1          1          1          1          1          1          2 
+CD-1 (248) CD-1 (249)  CD-1 (25) CD-1 (250) CD-1 (251) CD-1 (252) CD-1 (253) 
+         1          2          1          1          1          1          1 
+CD-1 (254) CD-1 (255) CD-1 (256) CD-1 (257) CD-1 (258) CD-1 (259)  CD-1 (26) 
+         1          1          1          1          1          1          1 
+CD-1 (260) CD-1 (261) CD-1 (262) CD-1 (263) CD-1 (264) CD-1 (265) CD-1 (266) 
+         1          1          1          1          1          1          1 
+CD-1 (267) CD-1 (268) CD-1 (269)  CD-1 (27) CD-1 (270) CD-1 (271) CD-1 (272) 
+         1          1          1          1          1          1          1 
+CD-1 (273) CD-1 (274) CD-1 (275) CD-1 (276) CD-1 (277) CD-1 (278) CD-1 (279) 
+         1          1          1          1          1          1          1 
+ CD-1 (28) CD-1 (280) CD-1 (281) CD-1 (282) CD-1 (283) CD-1 (284) CD-1 (285) 
+         1          1          1          1          1          1          1 
+CD-1 (286) CD-1 (287) CD-1 (288) CD-1 (289)  CD-1 (29) CD-1 (290) CD-1 (291) 
+         1          1          1          1          1          1          1 
+CD-1 (292) CD-1 (294) CD-1 (295) CD-1 (296) CD-1 (297) CD-1 (298) CD-1 (299) 
+         1          1          1          1          1          1          1 
+ CD-1 (30) CD-1 (300) CD-1 (301) CD-1 (302) CD-1 (303) CD-1 (304) CD-1 (305) 
+         1          1          1          1          1          1          1 
+CD-1 (306) CD-1 (308) CD-1 (309)  CD-1 (31) CD-1 (310) CD-1 (311) CD-1 (312) 
+         1          1          1          1          1          1          1 
+CD-1 (313) CD-1 (314) CD-1 (315) CD-1 (316) CD-1 (317) CD-1 (318) CD-1 (319) 
+         1          1          1          1          1          1          1 
+ CD-1 (32) CD-1 (320) CD-1 (321) CD-1 (322) CD-1 (323) CD-1 (324) CD-1 (326) 
+         1          1          1          1          1          1          1 
+CD-1 (327) CD-1 (328) CD-1 (329)  CD-1 (33) CD-1 (330) CD-1 (331) CD-1 (332) 
+         1          1          1          1          1          1          1 
+CD-1 (333) CD-1 (334) CD-1 (335) CD-1 (337) CD-1 (338) CD-1 (339)  CD-1 (34) 
+         1          1          1          1          1          1          1 
+CD-1 (340) CD-1 (341) CD-1 (342) CD-1 (343) CD-1 (344) CD-1 (345) CD-1 (346) 
+         1          2          1          1          1          1          1 
+CD-1 (347) CD-1 (348) CD-1 (349)  CD-1 (35) CD-1 (350) CD-1 (351) CD-1 (352) 
+         1          1          1          1          1          1          1 
+CD-1 (353) CD-1 (354) CD-1 (355) CD-1 (356) CD-1 (357) CD-1 (358) CD-1 (359) 
+         1          1          1          1          1          1          1 
+ CD-1 (36) CD-1 (360) CD-1 (361) CD-1 (362) CD-1 (363) CD-1 (364) CD-1 (365) 
+         1          1          1          1          1          1          1 
+CD-1 (366) CD-1 (367) CD-1 (368) CD-1 (369)  CD-1 (37) CD-1 (370) CD-1 (371) 
+         1          1          1          1          1          1          1 
+CD-1 (372) CD-1 (373) CD-1 (374) CD-1 (375) CD-1 (376) CD-1 (377) CD-1 (378) 
+         1          1          1          1          1          1          1 
+CD-1 (379) CD-1 (380) CD-1 (381) CD-1 (382) CD-1 (383) CD-1 (384) CD-1 (385) 
+         1          3          1          1          1          1          1 
+CD-1 (386) CD-1 (387) CD-1 (388) CD-1 (389)  CD-1 (39) CD-1 (390) CD-1 (391) 
+         1          1          1          1          1          1          1 
+CD-1 (392) CD-1 (393) CD-1 (394) CD-1 (395) CD-1 (396) CD-1 (397) CD-1 (398) 
+         1          1          1          1          1          1          1 
+ CD-1 (3A)  CD-1 (3B)   CD-1 (4)  CD-1 (40) CD-1 (400) CD-1 (401) CD-1 (402) 
+         1          1          1          1          1          1          1 
+CD-1 (403) CD-1 (404) CD-1 (405) CD-1 (406) CD-1 (407) CD-1 (408) CD-1 (409) 
+         1          1          1          1          1          1          1 
+CD-1 (410) CD-1 (411) CD-1 (412) CD-1 (413) CD-1 (414) CD-1 (415) CD-1 (416) 
+         1          1          1          1          1          1          1 
+CD-1 (417) CD-1 (418) CD-1 (419) CD-1 (41A) CD-1 (41B) CD-1 (41C) CD-1 (41D) 
+         1          1          1          1          1          1          1 
+ CD-1 (42) CD-1 (420) CD-1 (421) CD-1 (422) CD-1 (423) CD-1 (424) CD-1 (425) 
+         1          1          1          1          1          1          1 
+CD-1 (426) CD-1 (427) CD-1 (428) CD-1 (429)  CD-1 (43) CD-1 (430) CD-1 (431) 
+         1          1          1          1          1          1          1 
+CD-1 (432) CD-1 (433) CD-1 (434) CD-1 (435) CD-1 (436) CD-1 (437) CD-1 (438) 
+         1          1          1          1          1          1          1 
+CD-1 (439)  CD-1 (44) CD-1 (440) CD-1 (441) CD-1 (442) CD-1 (443) CD-1 (444) 
+         1          1          1          1          1          1          1 
+CD-1 (445) CD-1 (446) CD-1 (447) CD-1 (448) CD-1 (449) CD-1 (450) CD-1 (451) 
+         1          1          1          1          1          1          1 
+CD-1 (452) CD-1 (453) CD-1 (454) CD-1 (455) CD-1 (456) CD-1 (457) CD-1 (458) 
+         1          1          1          1          1          1          1 
+CD-1 (459)  CD-1 (46) CD-1 (460) CD-1 (461) CD-1 (462) CD-1 (463) CD-1 (464) 
+         1          1          1          1          1          1          1 
+CD-1 (465) CD-1 (466) CD-1 (467) CD-1 (468) CD-1 (469)  CD-1 (47) CD-1 (470) 
+         1          1          1          1          1          1          1 
+CD-1 (471) CD-1 (473) CD-1 (474) CD-1 (475) CD-1 (476) CD-1 (477) CD-1 (478) 
+         1          2          1          1          1          1          1 
+CD-1 (479) CD-1 (480) CD-1 (481) CD-1 (482) CD-1 (483) CD-1 (484) CD-1 (485) 
+         1          1          1          1          1          1          1 
+CD-1 (486) CD-1 (487) CD-1 (488) CD-1 (489)  CD-1 (49) CD-1 (490) CD-1 (491) 
+         1          1          1          1          1          1          1 
+CD-1 (492) CD-1 (493) CD-1 (494) CD-1 (495) CD-1 (496) CD-1 (497) CD-1 (498) 
+         1          1          1          1          1          1          1 
+CD-1 (499)   CD-1 (5)  CD-1 (50) CD-1 (500) CD-1 (501) CD-1 (502) CD-1 (503) 
+         1          1          1          1          1          1          1 
+CD-1 (504) CD-1 (505) CD-1 (506) CD-1 (507) CD-1 (508) CD-1 (509)  CD-1 (51) 
+         1          1          2          1          1          1          1 
+CD-1 (510) CD-1 (511) CD-1 (512) CD-1 (513) CD-1 (514) CD-1 (515) CD-1 (516) 
+         1          1          1          1          1          1          1 
+CD-1 (517) CD-1 (518) CD-1 (519) CD-1 (520) CD-1 (521) CD-1 (522) CD-1 (523) 
+         1          1          1          1          1          1          1 
+CD-1 (524) CD-1 (525) CD-1 (526) CD-1 (527) CD-1 (528) CD-1 (529) CD-1 (52B) 
+         1          1          1          1          1          1          1 
+CD-1 (530) CD-1 (531) CD-1 (532) CD-1 (533) CD-1 (534) CD-1 (535) CD-1 (536) 
+         1          1          1          1          1          1          1 
+CD-1 (537) CD-1 (538) CD-1 (539)  CD-1 (54) CD-1 (540) CD-1 (541) CD-1 (542) 
+         1          1          1          1          1          1          1 
+CD-1 (543) CD-1 (544) CD-1 (545) CD-1 (546) CD-1 (547) CD-1 (548) CD-1 (549) 
+         1          1          1          1          1          1          1 
+ CD-1 (55) CD-1 (550) CD-1 (551) CD-1 (552) CD-1 (553) CD-1 (554) CD-1 (555) 
+         1          1          1          1          1          1          1 
+CD-1 (556) CD-1 (557) CD-1 (558) CD-1 (559) CD-1 (560) CD-1 (561) CD-1 (563) 
+         1          1          1          1          1          1          1 
+CD-1 (564) CD-1 (565) CD-1 (566) CD-1 (567) CD-1 (568) CD-1 (569) CD-1 (56A) 
+         1          1          1          1          1          1          1 
+CD-1 (56B) CD-1 (56C)  CD-1 (57) CD-1 (570) CD-1 (571) CD-1 (572) CD-1 (573) 
+         1          1          1          1          1          1          1 
+CD-1 (574) CD-1 (575) CD-1 (576) CD-1 (577) CD-1 (578) CD-1 (579)  CD-1 (58) 
+         1          1          1          1          1          1          1 
+CD-1 (580) CD-1 (581) CD-1 (582) CD-1 (583) CD-1 (584) CD-1 (585) CD-1 (586) 
+         1          1          1          1          1          1          1 
+CD-1 (587) CD-1 (588) CD-1 (589)  CD-1 (59) CD-1 (590) CD-1 (591) CD-1 (592) 
+         1          1          1          1          1          1          1 
+CD-1 (593) CD-1 (594) CD-1 (595) CD-1 (596) CD-1 (597) CD-1 (598) CD-1 (599) 
+         1          1          1          1          1          1          1 
+ CD-1 (60) CD-1 (600) CD-1 (601) CD-1 (602) CD-1 (603) CD-1 (604) CD-1 (605) 
+         1          1          1          1          1          1          1 
+CD-1 (606) CD-1 (607) CD-1 (608) CD-1 (609) CD-1 (610) CD-1 (611) CD-1 (612) 
+         1          1          1          1          1          1          1 
+CD-1 (613) CD-1 (614) CD-1 (615) CD-1 (616) CD-1 (617) CD-1 (618) CD-1 (619) 
+         1          1          1          1          1          1          1 
+ CD-1 (62) CD-1 (620) CD-1 (621) CD-1 (622) CD-1 (623) CD-1 (624) CD-1 (625) 
+         1          1          1          1          1          1          1 
+CD-1 (626) CD-1 (627) CD-1 (628) CD-1 (629)  CD-1 (63) CD-1 (630) CD-1 (631) 
+         1          1          1          1          1          1          1 
+CD-1 (632) CD-1 (633) CD-1 (634) CD-1 (635) CD-1 (636) CD-1 (637) CD-1 (638) 
+         1          1          1          1          1          1          1 
+CD-1 (639)  CD-1 (64) CD-1 (640) CD-1 (641) CD-1 (642) CD-1 (643) CD-1 (644) 
+         1          1          1          1          1          1          1 
+CD-1 (645) CD-1 (646) CD-1 (647) CD-1 (648) CD-1 (649)  CD-1 (65) CD-1 (650) 
+         1          1          1          1          1          1          1 
+CD-1 (651) CD-1 (652) CD-1 (653) CD-1 (654) CD-1 (655) CD-1 (656) CD-1 (657) 
+         1          1          1          1          1          1          1 
+CD-1 (658) CD-1 (659)  CD-1 (66) CD-1 (660) CD-1 (661) CD-1 (662) CD-1 (663) 
+         1          1          1          1          1          1          1 
+CD-1 (664) CD-1 (665) CD-1 (666) CD-1 (667) CD-1 (668) CD-1 (669)  CD-1 (67) 
+         1          1          1          1          1          1          1 
+CD-1 (670) CD-1 (671) CD-1 (672) CD-1 (673) CD-1 (674) CD-1 (675) CD-1 (677) 
+         1          1          1          1          1          1          1 
+CD-1 (678) CD-1 (679)  CD-1 (68) CD-1 (680) CD-1 (681) CD-1 (682) CD-1 (683) 
+         1          1          1          1          1          1          1 
+CD-1 (684) CD-1 (685) CD-1 (686) CD-1 (687) CD-1 (688) CD-1 (689)  CD-1 (69) 
+         1          1          1          1          1          1          1 
+CD-1 (690) CD-1 (691) CD-1 (692) CD-1 (693) CD-1 (694) CD-1 (695) CD-1 (696) 
+         1          1          1          1          1          1          1 
+CD-1 (697) CD-1 (698) CD-1 (699)  CD-1 (70) CD-1 (700) CD-1 (701) CD-1 (702) 
+         1          1          1          1          1          1          1 
+CD-1 (703) CD-1 (704) CD-1 (705) CD-1 (706) CD-1 (707) CD-1 (708) CD-1 (709) 
+         1          1          1          1          1          1          1 
+ CD-1 (71) CD-1 (710) CD-1 (711) CD-1 (712) CD-1 (713) CD-1 (714) CD-1 (715) 
+         1          1          1          1          2          1          1 
+CD-1 (716) CD-1 (717) CD-1 (718) CD-1 (719)  CD-1 (72) CD-1 (720) CD-1 (721) 
+         1          1          1          1          1          1          1 
+CD-1 (722) CD-1 (723) CD-1 (724) CD-1 (725) CD-1 (726) CD-1 (727) CD-1 (728) 
+         1          1          1          1          1          1          1 
+CD-1 (729)  CD-1 (73) CD-1 (730) CD-1 (731) CD-1 (732) CD-1 (733) CD-1 (734) 
+         1          1          1          1          1          1          1 
+CD-1 (735) CD-1 (736) CD-1 (737) CD-1 (738) CD-1 (739) CD-1 (740) CD-1 (741) 
+         1          1          1          1          1          1          1 
+CD-1 (742) CD-1 (743) CD-1 (744) CD-1 (745) CD-1 (746) CD-1 (747) CD-1 (748) 
+         1          1          1          1          1          1          1 
+CD-1 (749)  CD-1 (75) CD-1 (750) CD-1 (751) CD-1 (752) CD-1 (753) CD-1 (754) 
+         1          1          1          1          1          1          1 
+CD-1 (755) CD-1 (756) CD-1 (757) CD-1 (758) CD-1 (759)  CD-1 (76) CD-1 (760) 
+         1          1          1          1          1          1          1 
+CD-1 (761) CD-1 (762) CD-1 (763) CD-1 (764) CD-1 (765) CD-1 (766) CD-1 (767) 
+         1          1          1          1          1          1          1 
+CD-1 (768) CD-1 (769)  CD-1 (77) CD-1 (770) CD-1 (771) CD-1 (772) CD-1 (773) 
+         1          1          1          1          1          1          1 
+CD-1 (774) CD-1 (775) CD-1 (776) CD-1 (777) CD-1 (778) CD-1 (779)  CD-1 (78) 
+         1          1          1          1          1          1          1 
+CD-1 (780) CD-1 (781) CD-1 (782) CD-1 (783) CD-1 (784) CD-1 (785) CD-1 (786) 
+         1          1          1          1          1          1          1 
+CD-1 (787) CD-1 (788) CD-1 (789)  CD-1 (79) CD-1 (790) CD-1 (791) CD-1 (792) 
+         1          1          1          1          1          1          1 
+CD-1 (793) CD-1 (794) CD-1 (795) CD-1 (796) CD-1 (797) CD-1 (798) CD-1 (799) 
+         1          1          1          1          1          1          1 
+ CD-1 (7A)  CD-1 (7B)   CD-1 (8)  CD-1 (80) CD-1 (800) CD-1 (801) CD-1 (802) 
+         1          1          1          1          1          1          1 
+CD-1 (803) CD-1 (804) CD-1 (805) CD-1 (806) CD-1 (807) CD-1 (808) CD-1 (809) 
+         1          1          1          1          1          1          1 
+ CD-1 (81) CD-1 (810) CD-1 (811) CD-1 (812) CD-1 (813) CD-1 (814) CD-1 (815) 
+         1          1          1          1          1          1          1 
+CD-1 (816) CD-1 (817) CD-1 (818) CD-1 (819)  CD-1 (82) CD-1 (820) CD-1 (821) 
+         1          1          1          1          1          1          1 
+CD-1 (822) CD-1 (823) CD-1 (824) CD-1 (825) CD-1 (826) CD-1 (827) CD-1 (828) 
+         1          1          1          1          1          1          1 
+CD-1 (829)  CD-1 (83) CD-1 (830) CD-1 (831) CD-1 (832) CD-1 (833) CD-1 (834) 
+         1          1          1          1          1          1          1 
+CD-1 (835) CD-1 (836) CD-1 (837) CD-1 (838) CD-1 (839)  CD-1 (84) CD-1 (840) 
+         1          1          1          1          1          1          1 
+CD-1 (841) CD-1 (842) CD-1 (843) CD-1 (844) CD-1 (845) CD-1 (846) CD-1 (847) 
+         1          1          1          1          1          1          1 
+CD-1 (849) CD-1 (850) CD-1 (851) CD-1 (852) CD-1 (853) CD-1 (854) CD-1 (855) 
+         1          1          1          1          1          1          1 
+CD-1 (856) CD-1 (857) CD-1 (858) CD-1 (859)  CD-1 (86) CD-1 (860) CD-1 (861) 
+         1          1          1          1          1          1          1 
+CD-1 (862) CD-1 (863) CD-1 (864) CD-1 (865) CD-1 (866) CD-1 (867) CD-1 (868) 
+         1          1          1          1          1          1          1 
+CD-1 (869)  CD-1 (87) CD-1 (870) CD-1 (871) CD-1 (872) CD-1 (873) CD-1 (874) 
+         1          1          1          1          1          1          1 
+CD-1 (875) CD-1 (876) CD-1 (877) CD-1 (878) CD-1 (879)  CD-1 (88) CD-1 (880) 
+         1          1          1          1          1          1          1 
+CD-1 (881) CD-1 (882) CD-1 (883) CD-1 (884) CD-1 (885) CD-1 (886) CD-1 (887) 
+         1          1          1          1          1          1          1 
+CD-1 (888) CD-1 (889) CD-1 (890) CD-1 (891) CD-1 (892) CD-1 (893) CD-1 (894) 
+         1          1          1          1          1          1          1 
+CD-1 (895) CD-1 (896) CD-1 (897) CD-1 (898) CD-1 (899)   CD-1 (9)  CD-1 (90) 
+         1          1          1          1          1          1          1 
+CD-1 (900) CD-1 (901) CD-1 (902) CD-1 (903) CD-1 (904) CD-1 (905) CD-1 (906) 
+         1          1          1          1          1          1          1 
+CD-1 (907) CD-1 (908) CD-1 (909) CD-1 (910) CD-1 (911) CD-1 (912)  CD-1 (93) 
+         1          1          1          1          1          1          1 
+ CD-1 (94)  CD-1 (97)  CD-1 (99)        CWD         DD       DEOD       FC-1 
+         1          1          1          1          7          1          2 
+      FC-2      FCCDD       FM-1        FSD       HA-1      HA-1A       HA-2 
+         1          3          2          1          1          2          1 
+      HA-3        I-1       I-1A       I-1B       I-1C        I-2        I-3 
+         1          2          1          1          1         18          6 
+       I-4       IC-1       IC-2       IC-3        M-1       M-1A       M-1B 
+         2          3          2          1         11          1          2 
+       M-2       MC-1       MC-2       R1-1       R3-2       R3-3       R4-1 
+        13          4          1         81          7         14          3 
+      R5-1       R5-2       R5-3       R5-4       RA-1       RM-1      RM-10 
+         4          8         14         10          2          8          1 
+     RM-11      RM-12       RM-2       RM-3      RM-3A       RM-4       RM-5 
+         6          5          4         10         22         30          1 
+     RM-5A      RM-5B      RM-5C      RM-5D       RM-6       RM-7      RM-7A 
+         2          2          1          1          2          5          3 
+      RM-8      RM-8A       RM-9      RM-9A      RM-9B      RR-2A      RR-2B 
+         5         45          2         10          7          1         15 
+     RR-3B       RT-1      RT-10      RT-11       RT-2       RT-3       RT-4 
+         4          4          4          4         56          4          1 
+     RT-4A       RT-5       RT-7       RT-8       RT-9 
+         2         16          2          7          1 
+> dZ <- dZ[dZ$zoning_district=="R1-1",]
+> print(head(dZ))
+Simple feature collection with 6 features and 6 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -123.1712 ymin: 49.20618 xmax: -123.0236 ymax: 49.28674
+Geodetic CRS:  WGS 84
+    object_id zoning_classification zoning_category zoning_district cd_1_number
+17     440048 Residential Inclusive              R1            R1-1        <NA>
+18     440052 Residential Inclusive              R1            R1-1        <NA>
+98     439862 Residential Inclusive              R1            R1-1        <NA>
+99     439864 Residential Inclusive              R1            R1-1        <NA>
+106    439880 Residential Inclusive              R1            R1-1        <NA>
+146    440043 Residential Inclusive              R1            R1-1        <NA>
+                                                 geo_point_2d
+17  { "lon": -123.06668029570508, "lat": 49.271692342538294 }
+18  { "lon": -123.12926387861327, "lat": 49.206549285648336 }
+98  { "lon": -123.06209809553374, "lat": 49.285907173257471 }
+99  { "lon": -123.07479791756992, "lat": 49.247482242368577 }
+106   { "lon": -123.17045225504741, "lat": 49.2660266146951 }
+146 { "lon": -123.02791700810278, "lat": 49.220606418181134 }
+                          geometry
+17  POLYGON ((-123.0657 49.2721...
+18  POLYGON ((-123.1297 49.2062...
+98  POLYGON ((-123.0626 49.2856...
+99  POLYGON ((-123.0734 49.2480...
+106 POLYGON ((-123.1711 49.2666...
+146 POLYGON ((-123.0265 49.2223...
+> 
+> # convert dtPermit to sf
+> print(dtPermit[1:5,geo_point_2d])
+[1] "49.2704922, -123.2100666" "49.2402197, -123.1899453"
+[3] "49.2263643, -123.1221317" "49.2200871, -123.0847553"
+[5] "49.2706651, -123.1858476"
+> #] "49.2704922, -123.2100666" "49.2402197, -123.1899453" [3] "49.2263643, -123.1221317" "49.2200871, -123.0847553" [5] "49.2706651, -123.1858476"
+> dtPermit[,c("lat","lon"):=tstrsplit(geo_point_2d,", ")]
+> dtPermit[,lat:=as.numeric(lat)]
+> dtPermit[,lon:=as.numeric(lon)]
+> dtPermit <- dtPermit[!is.na(lat) & !is.na(lon)]
+> dtPermitSF <- st_as_sf(dtPermit,coords=c("lon","lat"),crs=4326)
+> 
+> # intersect with zoning
+> dtPermitSF <- st_transform(dtPermitSF,st_crs(dZ))
+> dtPermitSF <- st_join(dtPermitSF,dZ,join=st_intersects)
+> print(table(dtPermitSF$zoning_district))
+
+ R1-1 
+12838 
+> print(nrow(dtPermitSF))
+[1] 20477
+> print(nrow(dtPermit))
+[1] 20477
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  1.203   0.109   1.304 
