@@ -24,11 +24,12 @@ Type 'q()' to quit R.
 > # Tom Davidoff 
 > # 05/05/26
 > 
+> library(DBI)
+> library(RSQLite)
 > library(data.table)
 > library(fixest)
 > library(ggplot2)
 > library(duckdb)
-Loading required package: DBI
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > 
@@ -502,9 +503,296 @@ Geodetic CRS:  WGS 84
 [1] 20477
 > print(nrow(dtPermit))
 [1] 20477
+> print(summary(is.na(dtPermitSF$zoning_district)))
+   Mode   FALSE    TRUE 
+logical   12838    7639 
+> dtPermitSF <- dtPermitSF[!is.na(dtPermitSF$zoning_district),]
+> 
+> # Now get sales, etc from BC Assessment, use 2019 so as complete as feasible. Can get appx lat-lon from pccf at 6-digit postal code
+> library(DBI); library(RSQLite); library(data.table)
+> 
+> con <- dbConnect(SQLite(), "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3")
+> 
+> # --- Read each table, filter where cheap ---
+> 
+> dtFolio <- dbGetQuery(con, "
++   SELECT folioID, rollNumber, jurisdictionCode, assessmentAreaCode
++   FROM folio WHERE jurisdictionCode = '200'
++ ") |> setDT()
+> 
+> dtFolioDesc <- dbGetQuery(con, "
++   SELECT folioID, neighbourhoodDescription, actualUseDescription,
++          landWidth, landDepth
++   FROM folioDescription
++ ") |> setDT()
+> 
+> dtResInv <- dbGetQuery(con, "
++   SELECT roll_number, jurisdiction, area,
++          MB_effective_year, MB_year_built, MB_total_finished_area,
++          zoning, num_full_baths, land_width, land_depth
++   FROM residentialInventory WHERE jurisdiction = '200'
++ ") |> setDT()
+> 
+> dtAddress <- dbGetQuery(con, "
++   SELECT folioID, postalCode, primaryFlag, streetNumber, streetName
++   FROM address WHERE primaryFlag = 'true'
++ ") |> setDT()
 > 
 > 
+> # --- Cast roll numbers to numeric for clean joining ---
+> dtFolio[,  rollNumber_n := as.numeric(rollNumber)]
+> dtResInv[, rollNumber_n := as.numeric(roll_number)]
+> 
+> # Sanity: any NAs introduced by coercion? (non-numeric roll numbers)
+> cat("Folio roll NAs:",  sum(is.na(dtFolio$rollNumber_n)), "/", nrow(dtFolio), "\n")
+Folio roll NAs: 0 / 208724 
+> cat("ResInv roll NAs:", sum(is.na(dtResInv$rollNumber_n)), "/", nrow(dtResInv), "\n")
+ResInv roll NAs: 0 / 191899 
+> 
+> # --- Cast numeric inventory fields ---
+> num_cols <- c("MB_effective_year","MB_year_built","MB_total_finished_area",
++               "num_full_baths","land_width","land_depth")
+> dtResInv[, (num_cols) := lapply(.SD, as.numeric), .SDcols = num_cols]
+> 
+> dtFolioDesc[, `:=`(landWidth = as.numeric(landWidth),
++                    landDepth = as.numeric(landDepth))]
+> 
+> # --- Merges ---
+> 
+> # 1. folio + folioDescription on folioID
+> setkey(dtFolio,     folioID)
+> setkey(dtFolioDesc, folioID)
+> dtH <- dtFolioDesc[dtFolio]   # right join: keeps all Vancouver folios
+> 
+> cat("After folioDesc merge:", nrow(dtH), "\n")
+After folioDesc merge: 208724 
+> 
+> # 2. add residentialInventory on (rollNumber_n, jurisdiction, area)
+> dtH <- merge(dtH, dtResInv,
++              by.x = c("rollNumber_n","jurisdictionCode","assessmentAreaCode"),
++              by.y = c("rollNumber_n","jurisdiction","area"),
++              all.x = TRUE)
+> 
+> cat("After resInv merge:", nrow(dtH),
++     " | with MB_total:", sum(!is.na(dtH$MB_total_finished_area)), "\n")
+After resInv merge: 208724  | with MB_total: 186416 
+> 
+> # 3. add address on folioID
+> setkey(dtH, folioID)
+> setkey(dtAddress, folioID)
+> dtH <- dtAddress[, .(folioID, postalCode, streetNumber, streetName)][dtH, on = "folioID"]
+> 
+> cat("After address merge:", nrow(dtH),
++     " | with postalCode:", sum(!is.na(dtH$postalCode) & dtH$postalCode != ""), "\n")
+After address merge: 208724  | with postalCode: 204574 
+> 
+> # --- Filter to RS hedonic sample ---
+> dtHedonic19 <- dtH[!is.na(MB_effective_year) &
++                    !is.na(MB_year_built) &
++                    !is.na(MB_total_finished_area) &
++                    grepl("RS", zoning)]
+> 
+> # Normalize postal code for PCCF merge
+> dtHedonic19[, postalCode := toupper(gsub("\\s+", "", postalCode))]
+> 
+> cat("Final dtHedonic19:", nrow(dtHedonic19),
++     " | with postalCode:", sum(!is.na(dtHedonic19$postalCode) & dtHedonic19$postalCode != ""), "\n")
+Final dtHedonic19: 65456  | with postalCode: 65387 
+> 
+> # sales
+> dtSales <- dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice, conveyanceTypeDescription FROM sales ") |> setDT()
+> dbDisconnect(con)
+> print(head(dtSales))
+      folioID conveyanceDate conveyancePrice
+       <char>         <char>          <char>
+1: A0000HN06W     2001-03-07          800000
+2: A0000HN06W     1975-01-15          230000
+3: A0000HN06W     1971-10-15           18000
+4: A0000HN06Y     2001-03-30          915000
+5: A0000HN06Y     1998-09-10          915000
+6: A0000HN06Y     1991-06-12         1576000
+                  conveyanceTypeDescription
+                                     <char>
+1:     Improved Single Property Transaction
+2:     Improved Single Property Transaction
+3:     Improved Single Property Transaction
+4: Reject - Not Suitable for Sales Analysis
+5:     Improved Single Property Transaction
+6:            Multiple Property Transaction
+> 
+> setkey(dtHedonic19, folioID)
+> setkey(dtSales, folioID)
+> dtSales <- dtSales[dtHedonic19]
+> print(head(dtSales))
+Key: <folioID>
+      folioID conveyanceDate conveyancePrice
+       <char>         <char>          <char>
+1: A000000009     2019-04-05        17309000
+2: A000000009     2014-06-16         9450000
+3: A000000009     2014-06-05               1
+4: A00000000A     2013-02-08         8800000
+5: A00000000A     1991-07-09         1700000
+6: A00000000B     2006-12-04         3850000
+                  conveyanceTypeDescription postalCode streetNumber streetName
+                                     <char>     <char>       <char>     <char>
+1: Reject - Not Suitable for Sales Analysis     V6T1A9         4888    BELMONT
+2:     Improved Single Property Transaction     V6T1A9         4888    BELMONT
+3: Reject - Not Suitable for Sales Analysis     V6T1A9         4888    BELMONT
+4:     Improved Single Property Transaction     V6T1B2         4898     FANNIN
+5:     Improved Single Property Transaction     V6T1B2         4898     FANNIN
+6:     Improved Single Property Transaction     V6T1B2         4874     FANNIN
+   rollNumber_n jurisdictionCode assessmentAreaCode neighbourhoodDescription
+          <num>           <char>             <char>                   <char>
+1: 1.019632e+12              200                 09               POINT GREY
+2: 1.019632e+12              200                 09               POINT GREY
+3: 1.019632e+12              200                 09               POINT GREY
+4: 1.019632e+12              200                 09               POINT GREY
+5: 1.019632e+12              200                 09               POINT GREY
+6: 1.019632e+12              200                 09               POINT GREY
+     actualUseDescription landWidth landDepth      rollNumber     roll_number
+                   <char>     <num>     <num>          <char>          <char>
+1: Single Family Dwelling        NA        NA 001019632060000 001019632060000
+2: Single Family Dwelling        NA        NA 001019632060000 001019632060000
+3: Single Family Dwelling        NA        NA 001019632060000 001019632060000
+4: Single Family Dwelling        NA        NA 001019632290000 001019632290000
+5: Single Family Dwelling        NA        NA 001019632290000 001019632290000
+6: Single Family Dwelling        NA        NA 001019632450000 001019632450000
+   MB_effective_year MB_year_built MB_total_finished_area zoning num_full_baths
+               <num>         <num>                  <num> <char>          <num>
+1:              2019          2018                  11895    RS1              3
+2:              2019          2018                  11895    RS1              3
+3:              2019          2018                  11895    RS1              3
+4:              1997          1915                   7760    RS1              5
+5:              1997          1915                   7760    RS1              5
+6:              1945          1945                   3215    RS1              3
+   land_width land_depth
+        <num>      <num>
+1:         NA         NA
+2:         NA         NA
+3:         NA         NA
+4:        195      251.9
+5:        195      251.9
+6:        150      250.0
+> 
+> print(summary(dtSales[,.(landWidth,landDepth)]))
+   landWidth        landDepth    
+ Min.   : 16.00   Min.   : 30.6  
+ 1st Qu.: 33.00   1st Qu.:112.9  
+ Median : 33.10   Median :122.0  
+ Mean   : 41.35   Mean   :122.4  
+ 3rd Qu.: 49.50   3rd Qu.:127.0  
+ Max.   :240.00   Max.   :794.4  
+ NA's   :12077    NA's   :12077  
+> dtSales[is.na(landWidth),landWidth:=land_width]
+> dtSales[is.na(landDepth),landDepth:=land_depth]
+> print(summary(dtSales[,.(landWidth,landDepth)]))
+   landWidth        landDepth    
+ Min.   : 13.00   Min.   : 30.0  
+ 1st Qu.: 33.00   1st Qu.:112.5  
+ Median : 33.50   Median :122.0  
+ Mean   : 41.96   Mean   :122.6  
+ 3rd Qu.: 49.50   3rd Qu.:127.0  
+ Max.   :372.00   Max.   :794.4  
+ NA's   :88       NA's   :88     
+> dtSales <- dtSales[!is.na(landWidth) & !is.na(landDepth)]
+> 
+> # get lat and lon from pccf
+> pccfFile <- "~/DropboxExternal/dataRaw/pccfNat_fccpNat_062017.txt"
+> # grab postal code and lat-lon, note fixed width per below
+> #A0A1A0A0A1010011001144Aquaforte                                                             T  21499979910.001099101000100009100107450003  47.011133   -52.93662115AQUAFORTE                     WW19830801190000012BNN30
+> #A0A1B0A0A1010011001464Avondale                                                              T  47299649910.001099101000100009100105620003  47.400311   -53.22148513AVONDALE                      WW19830401190000012BNN30
+> # read as fixed width
+> library(readr); library(data.table)
+> 
+> pccfFile <- "~/DropboxExternal/dataRaw/pccfNat_fccpNat_062017.txt"
+> 
+> # PCCF Reference Guide column positions (1-indexed, inclusive)
+> # Pulling just what you need for postal → CT/DA/lat-lon merge
+> pccf_cols <- fwf_cols(
++   postalCode = c(1,   6),    # 6-char postal
++   fsa        = c(7,   9),    # forward sortation area  
++   pr         = c(10, 11),    # province
++   cdUid      = c(12, 15),    # census division
++   csdUid     = c(16, 22),    # census subdivision
++   csdName    = c(23, 92),    # CSD name (70 chars, padded)
++   csdType    = c(93, 95),
++   ccsCode    = c(96, 98),
++   saCode     = c(99,101),
++   edUid      = c(102,104),
++   ed_year    = c(105,108),
++   daUid      = c(109,116),   # dissemination area (8-digit)
++   dmt        = c(117,117),
++   demoCode   = c(118,121),
++   ctUid      = c(122,128),   # census tract (7-char, fmt: CMA + 4-digit base + 2-digit decimal)
++   pcType     = c(129,129),
++   lat        = c(130,140),
++   lon        = c(141,152),
++   sli        = c(153,153),   # single link indicator — KEY for dedup
++   pcAssign   = c(154,156),
++   cmaPuid    = c(157,159),
++   birthDate  = c(160,167),
++   retireDate = c(168,175),
++   pos        = c(176,177),   # 'WP' weighted, etc.
++   comm_name  = c(178,207),
++   dmtName    = c(208,208),
++   hLevel     = c(209,210),
++   qi         = c(211,212)
++ )
+> 
+> dtPCCF <- read_fwf(pccfFile, pccf_cols, 
++                    col_types = cols(.default = "c"),
++                    trim_ws = TRUE) |> setDT()
+> 
+> cat("PCCF rows:", nrow(dtPCCF), "\n")
+PCCF rows: 1873754 
+> 
+> # Keep only single-link records — gives you 1:1 postal → geography
+> dtPCCFlink <- dtPCCF[sli == "1"]
+> 
+> # BC only, since you're merging to Vancouver
+> dtPCCFlink <- dtPCCFlink[pr == "59"]   # 59 = BC
+> 
+> # Cast lat/lon
+> dtPCCFlink[, `:=`(lat = as.numeric(lat), lon = as.numeric(lon))]
+Warning messages:
+1: In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+2: In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+> 
+> # Verify uniqueness
+> dtPCCFlink[, .N, by = postalCode][N > 1]   # should be empty (or near-empty)
+      postalCode     N
+          <char> <int>
+   1:     V0A1B0     3
+   2:     V0A1E0     4
+   3:     V0A1G0     6
+   4:     V0A1H0     2
+   5:     V0A1H1    48
+  ---                 
+5424:     V4V2S9     2
+5425:     V4V2T2     4
+5426:     V4V2T4    12
+5427:     V4V2T9     2
+5428:     V4V2W3     6
+> 
+> cat("BC SLI records:", nrow(dtPCCFlink),
++     " | unique postals:", uniqueN(dtPCCFlink$postalCode), "\n")
+BC SLI records: 37875  | unique postals: 13408 
+> 
+> # Postal codes already normalized in dtHedonic19 (toupper + no spaces)
+> # PCCF stores them the same way — but verify:
+> head(dtPCCFlink$postalCode, 3)
+[1] "V0A0A0" "V0A1B0" "V0A1B0"
+> 
+> dtHedonic19 <- merge(
++   dtHedonic19,
++   dtPCCFlink[, .(postalCode, ctUid, daUid, lat_pccf = lat, lon_pccf = lon)],
++   by = "postalCode",
++   all.x = TRUE
++ )
+> 
+> cat("With CT:", sum(!is.na(dtHedonic19$ctUid)), "/", nrow(dtHedonic19), "\n")
+With CT: 0 / 65456 
 > 
 > proc.time()
    user  system elapsed 
-  1.203   0.109   1.304 
+ 26.212   1.040  19.496 
