@@ -149,17 +149,6 @@ dtSales <- dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice, con
 dbDisconnect(con)
 print(head(dtSales))
 
-setkey(dtHedonic19, folioID)
-setkey(dtSales, folioID)
-dtSales <- dtSales[dtHedonic19]
-print(head(dtSales))
-
-print(summary(dtSales[,.(landWidth,landDepth)]))
-dtSales[is.na(landWidth),landWidth:=land_width]
-dtSales[is.na(landDepth),landDepth:=land_depth]
-print(summary(dtSales[,.(landWidth,landDepth)]))
-dtSales <- dtSales[!is.na(landWidth) & !is.na(landDepth)]
-
 # get lat and lon from pccf
 pccfFile <- "~/DropboxExternal/dataRaw/pccfNat_fccpNat_062017.txt"
 # grab postal code and lat-lon, note fixed width per below
@@ -172,52 +161,23 @@ pccfFile <- "~/DropboxExternal/dataRaw/pccfNat_fccpNat_062017.txt"
 
 # PCCF Reference Guide column positions (1-indexed, inclusive)
 # Pulling just what you need for postal → CT/DA/lat-lon merge
-pccf_cols <- fwf_cols(
-  postalCode = c(1,   6),    # 6-char postal
-  fsa        = c(7,   9),    # forward sortation area  
-  pr         = c(10, 11),    # province
-  cdUid      = c(12, 15),    # census division
-  csdUid     = c(16, 22),    # census subdivision
-  csdName    = c(23, 92),    # CSD name (70 chars, padded)
-  csdType    = c(93, 95),
-  ccsCode    = c(96, 98),
-  saCode     = c(99,101),
-  edUid      = c(102,104),
-  ed_year    = c(105,108),
-  daUid      = c(109,116),   # dissemination area (8-digit)
-  dmt        = c(117,117),
-  demoCode   = c(118,121),
-  ctUid      = c(122,128),   # census tract (7-char, fmt: CMA + 4-digit base + 2-digit decimal)
-  pcType     = c(129,129),
-  lat        = c(130,140),
-  lon        = c(141,152),
-  sli        = c(153,153),   # single link indicator — KEY for dedup
-  pcAssign   = c(154,156),
-  cmaPuid    = c(157,159),
-  birthDate  = c(160,167),
-  retireDate = c(168,175),
-  pos        = c(176,177),   # 'WP' weighted, etc.
-  comm_name  = c(178,207),
-  dmtName    = c(208,208),
-  hLevel     = c(209,210),
-  qi         = c(211,212)
-)
-
-dtPCCF <- read_fwf(pccfFile, pccf_cols, 
-                   col_types = cols(.default = "c"),
-                   trim_ws = TRUE) |> setDT()
-
-cat("PCCF rows:", nrow(dtPCCF), "\n")
-
-# Keep only single-link records — gives you 1:1 postal → geography
-dtPCCFlink <- dtPCCF[sli == "1"]
-
-# BC only, since you're merging to Vancouver
-dtPCCFlink <- dtPCCFlink[pr == "59"]   # 59 = BC
-
-# Cast lat/lon
-dtPCCFlink[, `:=`(lat = as.numeric(lat), lon = as.numeric(lon))]
-
+# Prepare PCCF crosswalk
+PCCF_RDS <- "~/DropboxExternal/dataProcessed/pccf_vancouver.rds"
+PCCF_RAW <- "~/DropboxExternal/dataRaw/pccfNat_fccpNat_062017.txt"
+if (!file.exists(PCCF_RDS)) {
+    dtPccf <- fread(PCCF_RAW, sep = "\n", header = FALSE, encoding = "Latin-1")
+    Encoding(dtPccf$V1) <- "latin1"
+    dtPccf[, `:=`(
+        postalCode  = substr(V1, 1, 6),
+        cma         = substr(V1, 99, 101),
+        censusTract = substr(V1, 103, 109),
+	lat	 = as.numeric(substr(V1, 129, 139)),
+	lon	 = as.numeric(substr(V1, 140, 151)),
+        sli         = substr(V1, 162, 162) # 
+    )]
+    saveRDS(dtPccf[cma == "933" & sli == "1"],PCCF_RDS)
+}
+dtPCCFlink <- readRDS(PCCF_RDS)
 # Verify uniqueness
 dtPCCFlink[, .N, by = postalCode][N > 1]   # should be empty (or near-empty)
 
@@ -228,11 +188,20 @@ cat("BC SLI records:", nrow(dtPCCFlink),
 # PCCF stores them the same way — but verify:
 head(dtPCCFlink$postalCode, 3)
 
-dtHedonic19 <- merge(
-  dtHedonic19,
-  dtPCCFlink[, .(postalCode, ctUid, daUid, lat_pccf = lat, lon_pccf = lon)],
-  by = "postalCode",
-  all.x = TRUE
-)
+print(head(dtHedonic19$postalCode ))
+dtHedonic19 <- merge( dtHedonic19, dtPCCFlink, by = "postalCode", all.x = TRUE)
 
-cat("With CT:", sum(!is.na(dtHedonic19$ctUid)), "/", nrow(dtHedonic19), "\n")
+cat("With CT:", sum(!is.na(dtHedonic19$censusTract)), "/", nrow(dtHedonic19), "\n")
+
+setkey(dtHedonic19, folioID)
+setkey(dtSales, folioID)
+dtSales <- dtSales[dtHedonic19]
+print(head(dtSales))
+
+print(summary(dtSales[,.(landWidth,landDepth)]))
+dtSales[is.na(landWidth),landWidth:=land_width]
+dtSales[is.na(landDepth),landDepth:=land_depth]
+print(summary(dtSales[,.(landWidth,landDepth)]))
+dtSales <- dtSales[!is.na(landWidth) & !is.na(landDepth)]
+
+
