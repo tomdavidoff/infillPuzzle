@@ -58,6 +58,7 @@ print(nrow(dtPermitSF))
 print(nrow(dtPermit))
 print(summary(is.na(dtPermitSF$zoning_district)))
 dtPermitSF <- dtPermitSF[!is.na(dtPermitSF$zoning_district),]
+print(table(dtPermitSF$zoning_district))
 
 # Now get sales, etc from BC Assessment, use 2019 so as complete as feasible. Can get appx lat-lon from pccf at 6-digit postal code
 library(DBI); library(RSQLite); library(data.table)
@@ -203,5 +204,36 @@ dtSales[is.na(landWidth),landWidth:=land_width]
 dtSales[is.na(landDepth),landDepth:=land_depth]
 print(summary(dtSales[,.(landWidth,landDepth)]))
 dtSales <- dtSales[!is.na(landWidth) & !is.na(landDepth)]
+dtSales[,roundWidth:=round(landWidth)]
+print(table(dtSales[roundWidth<75,roundWidth]))
+dtSales <- dtSales[roundWidth==33 | roundWidth==50]
+# collect census Tract coefficients from reg price on MB_effective_year, square feet of structure and dummy for 50 foot lot
+dtSales <- dtSales[!is.na(censusTract)]
+dtSales[,logPrice:=log(as.numeric(conveyancePrice))]
+dtSales[,logSqft:=log(MB_total_finished_area)]
+dtSales[,w50:=as.integer(roundWidth==50)]
 
+# get rid of weird nbhds
+dtSales <- dtSales[neighbourhoodDescription %in% c("SOUTHLANDS","SHAUGHNESSY")==FALSE]
+hedReg <- feols(logPrice ~  logSqft + i(neighbourhoodDescription,w50)+i(neighbourhoodDescription)+MB_effective_year, data=dtSales)
+print(etable(hedReg))
 
+# back to permits, get census tract shapefile and merge
+stShp <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
+print(head(stShp))
+# convert to projection of permits
+stShp <- st_transform(stShp,st_crs(dtPermitSF))
+# intersect with permits
+# dtPermitSF <- st_join(dtPermitSF,stShp,join=st_intersects) Error in wk_handle.wk_wkb(wkb, s2_geography_writer(oriented = oriented,  : Loop 0 is not valid: Edge 383 has duplicate vertex with edge 841
+stShp <- st_make_valid(stShp)
+dtPermitSF <- st_make_valid(dtPermitSF)
+print(nrow(dtPermitSF))
+dtPermitSF <- st_join(dtPermitSF,stShp,join=st_intersects)
+print(nrow(dtPermitSF))
+print(head(dtPermitSF))
+
+dtPermit <- as.data.table(dtPermitSF)
+for (k in unique(dtPermit[,GeoLocalArea])) {
+	print(k)
+	print(dtPermit[as.numeric(substring(YearMonth,1,4))>2018 & as.numeric(substring(YearMonth,1,4))<2024 & GeoLocalArea==k,table(useCat)])
+}

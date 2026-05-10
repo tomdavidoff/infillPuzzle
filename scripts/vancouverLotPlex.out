@@ -508,6 +508,10 @@ Geodetic CRS:  WGS 84
    Mode   FALSE    TRUE 
 logical   12838    7639 
 > dtPermitSF <- dtPermitSF[!is.na(dtPermitSF$zoning_district),]
+> print(table(dtPermitSF$zoning_district))
+
+ R1-1 
+12838 
 > 
 > # Now get sales, etc from BC Assessment, use 2019 so as complete as feasible. Can get appx lat-lon from pccf at 6-digit postal code
 > library(DBI); library(RSQLite); library(data.table)
@@ -745,9 +749,264 @@ Key: <folioID>
  Max.   :372.00   Max.   :794.4  
  NA's   :88       NA's   :88     
 > dtSales <- dtSales[!is.na(landWidth) & !is.na(landDepth)]
+> dtSales[,roundWidth:=round(landWidth)]
+> print(table(dtSales[roundWidth<75,roundWidth]))
+
+   13    15    16    17    18    19    20    21    22    23    24    25    26 
+    3     3    59     5     3     3    17     9    13    13    77  1131   190 
+   27    28    29    30    31    32    33    34    35    36    37    38    39 
+  138   244   229  1754  1679  4463 68421  4377  2172  1605   950  1073   860 
+   40    41    42    43    44    45    46    47    48    49    50    51    52 
+ 5004  2939  2701  1660  4240  2790  2333  1474  1857  1541 15793  1074  1475 
+   53    54    55    56    57    58    59    60    61    62    63    64    65 
+ 1091  1133  1271   978   888   982   806  2969   997  1004   671   590   946 
+   66    67    68    69    70    71    72    73    74 
+ 3341   252   392   167   576   132   399   369   211 
+> dtSales <- dtSales[roundWidth==33 | roundWidth==50]
+> # collect census Tract coefficients from reg price on MB_effective_year, square feet of structure and dummy for 50 foot lot
+> dtSales <- dtSales[!is.na(censusTract)]
+> dtSales[,logPrice:=log(as.numeric(conveyancePrice))]
+> dtSales[,logSqft:=log(MB_total_finished_area)]
+> dtSales[,w50:=as.integer(roundWidth==50)]
 > 
+> # get rid of weird nbhds
+> dtSales <- dtSales[neighbourhoodDescription %in% c("SOUTHLANDS","SHAUGHNESSY")==FALSE]
+> hedReg <- feols(logPrice ~  logSqft + i(neighbourhoodDescription,w50)+i(neighbourhoodDescription)+MB_effective_year, data=dtSales)
+NOTE: 1,862 observations removed because of NA and infinite values (LHS: 1,862).
+> print(etable(hedReg))
+                                                                       hedReg
+Dependent Var.:                                                      logPrice
+                                                                             
+Constant                                                   -15.27*** (0.3803)
+logSqft                                                   -0.0768*** (0.0205)
+w50 x neighbourhoodDescription = ARBUTUS/MACKENZIEHEIGHTS  0.3877*** (0.0338)
+w50 x neighbourhoodDescription = CAMBIE                    0.3061*** (0.0508)
+w50 x neighbourhoodDescription = CEDARCOTTAGE               0.1451** (0.0545)
+w50 x neighbourhoodDescription = COLLINGWOOD               0.2196*** (0.0475)
+w50 x neighbourhoodDescription = DUNBAR                    0.2522*** (0.0269)
+w50 x neighbourhoodDescription = FRASERVIEW                 0.2021** (0.0662)
+w50 x neighbourhoodDescription = GRANDVIEW                   0.1487* (0.0650)
+w50 x neighbourhoodDescription = HASTINGSEAST              0.2739*** (0.0718)
+w50 x neighbourhoodDescription = KERRISDALE                0.3210*** (0.0368)
+w50 x neighbourhoodDescription = KILLARNEY                 0.2443*** (0.0471)
+w50 x neighbourhoodDescription = KITSILANO                 0.2105*** (0.0427)
+w50 x neighbourhoodDescription = KNIGHT                    0.2231*** (0.0467)
+w50 x neighbourhoodDescription = MAIN/FRASER               0.1880*** (0.0539)
+w50 x neighbourhoodDescription = MARINEDRIVE                   1.073 (0.7635)
+w50 x neighbourhoodDescription = MARPOLE                   0.4537*** (0.0578)
+w50 x neighbourhoodDescription = OAKRIDGE                  0.3705*** (0.0803)
+w50 x neighbourhoodDescription = POINTGREY                 0.2490*** (0.0367)
+w50 x neighbourhoodDescription = RENFREW                     0.1272* (0.0603)
+w50 x neighbourhoodDescription = RENFREWHEIGHTS              0.1582* (0.0760)
+w50 x neighbourhoodDescription = SOUTHGRANVILLE               0.0541 (0.1731)
+w50 x neighbourhoodDescription = SOUTHVANCOUVER               0.0648 (0.0541)
+neighbourhoodDescription = CAMBIE                         -0.1884*** (0.0312)
+neighbourhoodDescription = CEDARCOTTAGE                   -0.6902*** (0.0359)
+neighbourhoodDescription = COLLINGWOOD                    -0.7206*** (0.0294)
+neighbourhoodDescription = DUNBAR                             0.0338 (0.0294)
+neighbourhoodDescription = FRASERVIEW                     -0.5384*** (0.0588)
+neighbourhoodDescription = GRANDVIEW                      -0.5986*** (0.0338)
+neighbourhoodDescription = HASTINGSEAST                   -0.6075*** (0.0276)
+neighbourhoodDescription = KERRISDALE                        -0.0184 (0.0356)
+neighbourhoodDescription = KILLARNEY                      -0.6390*** (0.0292)
+neighbourhoodDescription = KITSILANO                         -0.0378 (0.0328)
+neighbourhoodDescription = KNIGHT                         -0.6445*** (0.0284)
+neighbourhoodDescription = MAIN/FRASER                    -0.6734*** (0.0285)
+neighbourhoodDescription = MARINEDRIVE                     -0.8616** (0.2712)
+neighbourhoodDescription = MARPOLE                        -0.1771*** (0.0320)
+neighbourhoodDescription = OAKRIDGE                       -0.1788*** (0.0520)
+neighbourhoodDescription = POINTGREY                         0.0619* (0.0301)
+neighbourhoodDescription = RENFREW                        -0.6516*** (0.0299)
+neighbourhoodDescription = RENFREWHEIGHTS                 -0.6810*** (0.0288)
+neighbourhoodDescription = SOUTHGRANVILLE                     0.1885 (0.1725)
+neighbourhoodDescription = SOUTHVANCOUVER                 -0.6676*** (0.0285)
+MB_effective_year                                          0.0147*** (0.0002)
+________________________________________                  ___________________
+S.E. type                                                                 IID
+Observations                                                           81,110
+R2                                                                    0.17474
+Adj. R2                                                               0.17430
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
+> # back to permits, get census tract shapefile and merge
+> stShp <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
+Reading layer `lct_000b21a_e' from data source 
+  `/Volumes/Crucial X10/Dropbox/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 6247 features and 5 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 3912489 ymin: 687427.7 xmax: 8996148 ymax: 2810992
+Projected CRS: NAD83 / Statistics Canada Lambert
+> print(head(stShp))
+Simple feature collection with 6 features and 5 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 7172098 ymin: 860422.8 xmax: 8980685 ymax: 2153697
+Projected CRS: NAD83 / Statistics Canada Lambert
+       CTUID               DGUID  CTNAME LANDAREA PRUID
+1 5370001.08 2021S05075370001.08 0001.08   1.6383    35
+2 0010002.00 2021S05070010002.00 0002.00   1.9638    10
+3 5370001.09 2021S05075370001.09 0001.09   1.9699    35
+4 5370120.02 2021S05075370120.02 0120.02  76.9650    35
+5 0010006.00 2021S05070010006.00 0006.00   1.0467    10
+6 0010007.00 2021S05070010007.00 0007.00   0.5364    10
+                        geometry
+1 MULTIPOLYGON (((7196507 869...
+2 MULTIPOLYGON (((8980217 215...
+3 MULTIPOLYGON (((7196437 869...
+4 MULTIPOLYGON (((7189476 865...
+5 MULTIPOLYGON (((8980091 215...
+6 MULTIPOLYGON (((8980158 215...
+> # convert to projection of permits
+> stShp <- st_transform(stShp,st_crs(dtPermitSF))
+> # intersect with permits
+> # dtPermitSF <- st_join(dtPermitSF,stShp,join=st_intersects) Error in wk_handle.wk_wkb(wkb, s2_geography_writer(oriented = oriented,  : Loop 0 is not valid: Edge 383 has duplicate vertex with edge 841
+> stShp <- st_make_valid(stShp)
+> dtPermitSF <- st_make_valid(dtPermitSF)
+> print(nrow(dtPermitSF))
+[1] 12838
+> dtPermitSF <- st_join(dtPermitSF,stShp,join=st_intersects)
+> print(nrow(dtPermitSF))
+[1] 12838
+> print(head(dtPermitSF))
+Simple feature collection with 6 features and 25 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -123.2101 ymin: 49.22009 xmax: -123.0848 ymax: 49.27067
+Geodetic CRS:  WGS 84
+   PermitNumber PermitNumberCreatedDate ProjectValue            TypeOfWork
+1 BP-2024-04506              2024-11-15     17909.85 Addition / Alteration
+2 BP-2025-00892              2025-02-25     85000.00 Addition / Alteration
+3 BP-2022-04125              2022-08-23         0.00          New Building
+4 DB-2025-00474              2025-01-31    672000.00          New Building
+5 BP-2024-04777              2024-12-02     26980.00 Addition / Alteration
+6 BP-2025-00916              2025-02-26     40000.00 Addition / Alteration
+                                     Address
+1 4550 BELLEVUE DRIVE, Vancouver, BC V6R 1E5
+2  3866 W 35TH AVENUE, Vancouver, BC V6N 2N9
+3           715 W 49TH AVENUE, Vancouver, BC
+4  1005 E 55TH AVENUE, Vancouver, BC V5X 1N8
+5   3707 W 2ND AVENUE, Vancouver, BC V6R 1J8
+6    96 W 20TH AVENUE, Vancouver, BC V5Y 2C1
+                                      Applicant   PropertyUse
+1                               Gordon Chambers Dwelling Uses
+2  Tony Osborn DBA: Re-Studio Architecture Inc. Dwelling Uses
+3 Gianni Vulcano DBA: Celerity Engineering Ltd. Dwelling Uses
+4                    ramanjeet sidhu DBA: remax Dwelling Uses
+5               Torin O'Regan DBA: Helion Solar Dwelling Uses
+6  Tony Osborn DBA: Re-Studio Architecture Inc. Dwelling Uses
+    SpecificUseCategory                    BuildingContractor      GeoLocalArea
+1 Single Detached House                                         West Point Grey
+2 Single Detached House                         Joong Jik Kim Dunbar-Southlands
+3     Multiple Dwelling Edge Vancouver Construction Group Ltd          Oakridge
+4                Duplex                   JHN Development Ltd            Sunset
+5 Single Detached House                                         West Point Grey
+6 Single Detached House                                              Riley Park
+            geo_point_2d.x YearMonth nCat   useCat object_id
+1 49.2704922, -123.2100666   2024-12 4374   Single    440267
+2 49.2402197, -123.1899453   2025-06 4374   Single    440267
+3 49.2263643, -123.1221317   2023-08 6057 Multiple    440267
+4 49.2200871, -123.0847553   2025-06 1462   Duplex    440267
+5 49.2706651, -123.1858476   2025-02 4374   Single    440267
+6 49.2525312, -123.1070824   2025-04 4374   Single    440267
+  zoning_classification zoning_category zoning_district cd_1_number
+1 Residential Inclusive              R1            R1-1        <NA>
+2 Residential Inclusive              R1            R1-1        <NA>
+3 Residential Inclusive              R1            R1-1        <NA>
+4 Residential Inclusive              R1            R1-1        <NA>
+5 Residential Inclusive              R1            R1-1        <NA>
+6 Residential Inclusive              R1            R1-1        <NA>
+                                             geo_point_2d.y      CTUID
+1 { "lon": -123.13291589602453, "lat": 49.247966210253324 } 9330044.00
+2 { "lon": -123.13291589602453, "lat": 49.247966210253324 } 9330024.00
+3 { "lon": -123.13291589602453, "lat": 49.247966210253324 } 9330010.01
+4 { "lon": -123.13291589602453, "lat": 49.247966210253324 } 9330013.03
+5 { "lon": -123.13291589602453, "lat": 49.247966210253324 } 9330044.00
+6 { "lon": -123.13291589602453, "lat": 49.247966210253324 } 9330031.01
+                DGUID  CTNAME LANDAREA PRUID                   geometry
+1 2021S05079330044.00 0044.00   2.8772    59 POINT (-123.2101 49.27049)
+2 2021S05079330024.00 0024.00   1.7023    59 POINT (-123.1899 49.24022)
+3 2021S05079330010.01 0010.01   1.4154    59 POINT (-123.1221 49.22636)
+4 2021S05079330013.03 0013.03   0.6239    59 POINT (-123.0848 49.22009)
+5 2021S05079330044.00 0044.00   2.8772    59 POINT (-123.1858 49.27067)
+6 2021S05079330031.01 0031.01   0.8985    59 POINT (-123.1071 49.25253)
+> 
+> dtPermit <- as.data.table(dtPermitSF)
+> for (k in unique(dtPermit[,GeoLocalArea])) {
++ 	print(k)
++ 	print(dtPermit[as.numeric(substring(YearMonth,1,4))>2018 & as.numeric(substring(YearMonth,1,4))<2024 & GeoLocalArea==k,table(useCat)])
++ }
+[1] "West Point Grey"
+useCat
+ Duplex  Infill Laneway  Single 
+     12       3      97     249 
+[1] "Dunbar-Southlands"
+useCat
+   Duplex    Infill   Laneway  Multiple Secondary    Single 
+       30         9       152         1         2       448 
+[1] "Oakridge"
+useCat
+   Duplex    Infill   Laneway  Multiple Secondary    Single 
+       14         1        64         2         1        93 
+[1] "Sunset"
+useCat
+   Duplex    Infill   Laneway      Lock Secondary    Single 
+       76         3       270         1         2       295 
+[1] "Riley Park"
+useCat
+   Duplex    Infill   Laneway      Lock  Multiple Secondary    Single 
+       43        11       101         2        11         1       333 
+[1] "Kerrisdale"
+useCat
+   Duplex    Infill   Laneway  Multiple Secondary    Single 
+       17         2        60         1         2       177 
+[1] "Kensington-Cedar Cottage"
+useCat
+   Duplex    Infill   Laneway  Multiple Secondary    Single 
+       97        11       155         7         3       357 
+[1] "Hastings-Sunrise"
+useCat
+   Duplex    Infill   Laneway      Lock  Multiple Secondary    Single 
+      175         6       166         4         2         5       348 
+[1] "Victoria-Fraserview"
+useCat
+   Duplex    Infill   Laneway Secondary    Single 
+       79         2       215         4       244 
+[1] "Killarney"
+useCat
+   Duplex    Infill   Laneway Secondary    Single 
+       53         1       134         2       158 
+[1] "Renfrew-Collingwood"
+useCat
+   Duplex   Laneway      Lock  Multiple Secondary    Single 
+      101       193         2         2         4       269 
+[1] "Shaughnessy"
+useCat
+  Duplex   Infill  Laneway Multiple   Single 
+       2        7       27        1      113 
+[1] "Arbutus Ridge"
+useCat
+   Duplex    Infill   Laneway  Multiple Secondary    Single 
+       13         8        69         2         1       140 
+[1] "Kitsilano"
+useCat
+  Duplex   Infill  Laneway Multiple   Single 
+      29        1       41        1      121 
+[1] "Marpole"
+useCat
+  Duplex   Infill  Laneway Multiple   Single 
+      31        1       64        1      119 
+[1] "South Cambie"
+useCat
+  Duplex   Infill  Laneway Multiple   Single 
+       9        1       28        1       73 
+[1] "Grandview-Woodland"
+useCat
+Single 
+     3 
 > 
 > proc.time()
    user  system elapsed 
- 39.180   4.284  25.711 
+ 50.116   7.032  41.853 
