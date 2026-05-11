@@ -3,6 +3,7 @@
 # and save locally for faster loading
 # Tom Davidoff / Claude
 # 01/15/26
+# edited May 10, 2026 to check merge quality with 2019 lots
 
 library(sf)
 library(RSQLite)
@@ -12,23 +13,28 @@ library(data.table)
 # Configuration
 # ============================================================================
 
-bcaFile<- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
-outFile   <- "~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.gpkg"
+# anything post-2019 should work the same if rollStart idea works
+# list all files in the directory to check for the right one
+bcaGeoFolder <- "~/bigFiles/latestSpatialBCA/"
+bcaFiles <- list.files(bcaGeoFolder, pattern="*.gpkg", full.names=FALSE) # will only be one
+geoInFile <- paste0(bcaGeoFolder,bcaFiles[1])
+outFile   <- "~/DropboxExternal/dataProcessed/bca_vancouver_residential.gpkg"
 
 # ============================================================================
 # Extract Vancouver residential parcels
 # ============================================================================
 
 cat("Loading Vancouver residential parcels from BCA \n")
-cat("Source:", bcaFile, "\n")
+cat("Source:", geoInFile, "\n")
 
 sBCA<- st_read(
-  bcaFile,
+  geoInFile,
   layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
   query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
            WHERE JURISDICTION_CODE='200'",
   quiet = TRUE
 )
+print(head(sBCA))
            #AND (ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling')
 
 cat("Parcels loaded:", nrow(sBCA), "\n")
@@ -42,23 +48,26 @@ dtBCA[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
 
 
 # Merge with BCA 2019 Vancouver single family R1 -zoned parcels
-bca19 <- "~/OneDrive - UBC/dataRaw/REVD19_and_inventory_extracts.sqlite3"
+bca19 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 # get the schema
 # get zoning, rollnumber, folioID from bca19
 con <- dbConnect(RSQLite::SQLite(), bca19)
 dfFolio <- dbGetQuery(con, "SELECT folioID, rollNumber FROM folio WHERE jurisdictionCode=='200'")
 dfInventory <- dbGetQuery(con, "SELECT roll_number, zoning, MB_effective_year, MB_total_finished_area FROM residentialInventory") 
 dfDescription <- dbGetQuery(con, "SELECT folioID, actualUseDescription, neighbourhoodDescription, landWidth, landDepth FROM folioDescription")
+print(nrow(dfFolio))
 dfBCA19 <- merge(dfFolio, dfInventory, by.x="rollNumber", by.y="roll_number")
 dtBCA19 <- data.table(merge(dfBCA19, dfDescription, by="folioID"))
 print(head(dtBCA19))
 print(table(dtBCA19[,actualUseDescription])[order(-table(dtBCA19[,actualUseDescription]))])
 dtBCA19 <- dtBCA19[actualUseDescription %in% c("Single Family Dwelling","Residential Dwelling with Suite")]
+print(nrow(dtBCA19))
 
 dtBCA19[,rollStart:=floor(as.numeric(rollNumber)/1000)]
 dtBCA19 <- merge(dtBCA19, dtBCA, by="rollStart",all.x=TRUE, suffixes=c("_2019","_2026"))
 print(head(dtBCA19))
 print(mean(dtBCA19[,is.na(geom)])) # should be small
+print(nrow(dtBCA19[is.na(geom)])) # 
 # how many duplex/multi on same rollStart?
 dtBCA19[,Nlot:=.N, by=.(rollStart)]
 print(table(dtBCA19[,Nlot]))
@@ -66,7 +75,7 @@ print(table(dtBCA19[Nlot>5,neighbourhoodDescription])) # nontrivial but small
 dtBCA19 <- dtBCA19[Nlot==1 ]
 print(table(dtBCA19[,zoning]))
 dtBCA19 <- dtBCA19[grepl("RS",zoning)]
-saveRDS(dtBCA19, file="~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.rds")
+saveRDS(dtBCA19, file=outFile)
 
 
 q("no")

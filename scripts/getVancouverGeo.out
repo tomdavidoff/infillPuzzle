@@ -1,6 +1,6 @@
 
-R version 4.4.0 (2024-04-24) -- "Puppy Cup"
-Copyright (C) 2024 The R Foundation for Statistical Computing
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
 R is free software and comes with ABSOLUTELY NO WARRANTY.
@@ -22,20 +22,23 @@ Type 'q()' to quit R.
 > # and save locally for faster loading
 > # Tom Davidoff / Claude
 > # 01/15/26
+> # edited May 10, 2026 to check merge quality with 2019 lots
 > 
 > library(sf)
-Linking to GEOS 3.11.0, GDAL 3.5.3, PROJ 9.1.0; sf_use_s2() is TRUE
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(RSQLite)
 > library(data.table)
-Warning message:
-package ‘data.table’ was built under R version 4.4.1 
 > 
 > # ============================================================================
 > # Configuration
 > # ============================================================================
 > 
-> bcaFile<- "/Volumes/T7Office/bigFiles/bca_folios.gpkg"
-> outFile   <- "~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.gpkg"
+> # anything post-2019 should work the same if rollStart idea works
+> # list all files in the directory to check for the right one
+> bcaGeoFolder <- "~/bigFiles/latestSpatialBCA/"
+> bcaFiles <- list.files(bcaGeoFolder, pattern="*.gpkg", full.names=FALSE) # will only be one
+> geoInFile <- paste0(bcaGeoFolder,bcaFiles[1])
+> outFile   <- "~/DropboxExternal/dataProcessed/bca_vancouver_residential.gpkg"
 > 
 > # ============================================================================
 > # Extract Vancouver residential parcels
@@ -43,11 +46,11 @@ package ‘data.table’ was built under R version 4.4.1
 > 
 > cat("Loading Vancouver residential parcels from BCA \n")
 Loading Vancouver residential parcels from BCA 
-> cat("Source:", bcaFile, "\n")
-Source: /Volumes/T7Office/bigFiles/bca_folios.gpkg 
+> cat("Source:", geoInFile, "\n")
+Source: ~/bigFiles/latestSpatialBCA/2026-01-09_bca_folios.gpkg 
 > 
 > sBCA<- st_read(
-+   bcaFile,
++   geoInFile,
 +   layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
 +   query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
 +            WHERE JURISDICTION_CODE='200'",
@@ -56,10 +59,23 @@ Source: /Volumes/T7Office/bigFiles/bca_folios.gpkg
 Warning message:
 In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
   argument layer is ignored when query is specified
+> print(head(sBCA))
+Simple feature collection with 6 features and 1 field
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 1202828 ymin: 475454.4 xmax: 1204891 ymax: 476507
+Projected CRS: NAD83 / BC Albers
+      ROLL_NUMBER                           geom
+1 001640020020000 MULTIPOLYGON (((1202848 476...
+2 001686032390000 MULTIPOLYGON (((1204477 475...
+3 001670037240009 MULTIPOLYGON (((1204847 475...
+4 001686026110000 MULTIPOLYGON (((1203547 475...
+5 001688022610000 MULTIPOLYGON (((1203206 475...
+6 001670037380019 MULTIPOLYGON (((1204890 475...
 >            #AND (ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling')
 > 
 > cat("Parcels loaded:", nrow(sBCA), "\n")
-Parcels loaded: 217182 
+Parcels loaded: 223246 
 > cat("CRS:", st_crs(sBCA)$epsg, "\n")
 CRS: 3005 
 > dtBCA <- as.data.table(sBCA)
@@ -71,13 +87,15 @@ CRS: 3005
 > 
 > 
 > # Merge with BCA 2019 Vancouver single family R1 -zoned parcels
-> bca19 <- "~/OneDrive - UBC/dataRaw/REVD19_and_inventory_extracts.sqlite3"
+> bca19 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 > # get the schema
 > # get zoning, rollnumber, folioID from bca19
 > con <- dbConnect(RSQLite::SQLite(), bca19)
 > dfFolio <- dbGetQuery(con, "SELECT folioID, rollNumber FROM folio WHERE jurisdictionCode=='200'")
 > dfInventory <- dbGetQuery(con, "SELECT roll_number, zoning, MB_effective_year, MB_total_finished_area FROM residentialInventory") 
 > dfDescription <- dbGetQuery(con, "SELECT folioID, actualUseDescription, neighbourhoodDescription, landWidth, landDepth FROM folioDescription")
+> print(nrow(dfFolio))
+[1] 208724
 > dfBCA19 <- merge(dfFolio, dfInventory, by.x="rollNumber", by.y="roll_number")
 > dtBCA19 <- data.table(merge(dfBCA19, dfDescription, by="folioID"))
 > print(head(dtBCA19))
@@ -148,6 +166,8 @@ Stratified Rental Apartment (Hi-Rise Construction)
                                        Vacant IC&I 
                                                  1 
 > dtBCA19 <- dtBCA19[actualUseDescription %in% c("Single Family Dwelling","Residential Dwelling with Suite")]
+> print(nrow(dtBCA19))
+[1] 74332
 > 
 > dtBCA19[,rollStart:=floor(as.numeric(rollNumber)/1000)]
 > dtBCA19 <- merge(dtBCA19, dtBCA, by="rollStart",all.x=TRUE, suffixes=c("_2019","_2026"))
@@ -170,47 +190,49 @@ Key: <rollStart>
 5:                   7238 Single Family Dwelling               POINT GREY
 6:                   4739 Single Family Dwelling               POINT GREY
    landWidth landDepth     ROLL_NUMBER                           geom
-      <char>    <char>          <char>                  <sfc_POLYGON>
-1:                     001019632060000 POLYGON ((1202268 477115.7,...
-2:                     001019632290000 POLYGON ((1202148 477104.5,...
-3:                     001019632450000 POLYGON ((1202142 477028.4,...
-4:                     001019632650000 POLYGON ((1202194 477101.1,...
-5:                     001019632760000 POLYGON ((1202351 477100.2,...
-6:                     001019635070000 POLYGON ((1202339 477034.2,...
+      <char>    <char>          <char>             <sfc_MULTIPOLYGON>
+1:                     001019632060000 MULTIPOLYGON (((1202268 477...
+2:                     001019632290000 MULTIPOLYGON (((1202148 477...
+3:                     001019632450000 MULTIPOLYGON (((1202142 477...
+4:                     001019632650000 MULTIPOLYGON (((1202194 477...
+5:                     001019632760000 MULTIPOLYGON (((1202351 477...
+6:                     001019635070000 MULTIPOLYGON (((1202339 477...
 > print(mean(dtBCA19[,is.na(geom)])) # should be small
+[1] 0
+> print(nrow(dtBCA19[is.na(geom)])) # 
 [1] 0
 > # how many duplex/multi on same rollStart?
 > dtBCA19[,Nlot:=.N, by=.(rollStart)]
 > print(table(dtBCA19[,Nlot]))
 
-    1     2     3     4     5     6     9    12    16    21    30    36    64 
-73883   394    60   176    10    30    27    12    32    21    30   144    64 
-   68   110   256  3249 
-   68   110   256  3249 
+    1     2     3     4     5     6     7     8     9    11    12    16    25 
+72963  2038   201   276    40   120     7     8    36    11    12    32    25 
+   36    64    68    81   110   256  3249 
+  144   128    68    81   110   256  3249 
 > print(table(dtBCA19[Nlot>5,neighbourhoodDescription])) # nontrivial but small
 
-COLLINGWOOD    FAIRVIEW  POINT GREY SHAUGHNESSY  SOUTHLANDS 
-         12         110         338          30        3553 
+         CAMBIE     COLLINGWOOD        FAIRVIEW       GRANDVIEW      KERRISDALE 
+            168              30             110              15               6 
+         KNIGHT     MAIN/FRASER      POINT GREY     SHAUGHNESSY SOUTH GRANVILLE 
+              6              12             333              36              12 
+SOUTH VANCOUVER      SOUTHLANDS 
+              6            3553 
 > dtBCA19 <- dtBCA19[Nlot==1 ]
 > print(table(dtBCA19[,zoning]))
 
          C1    C2   C2C   C3A    C5   CD1  DDL1  DEOD FCCDD   FM1   FSD    I1 
-    1    22    24     1     3     1   293     3    24     3    11   537    37 
+    1    22    24     1     3     1   290     3    24     3    11   537    36 
    I2   IC3   M1B    M2   MC1   RA1   RM1 RM10N  RM11 RM11N RM12N  RM1N   RM2 
-   24     2     2    10     2    49   196    25    16    69   149   118    15 
+   24     2     2    10     2    49   194    25    16    69   147   117    15 
   RM3  RM3A   RM4  RM4N   RM5  RM5A  RM5B   RM7 RM7AN  RM7N   RM8  RM8A RM8AN 
-    3    75   441    57    11     6     5   593    80    24   179   171    23 
+    3    74   435    56    11     6     5   579    78    24   177   168    22 
  RM8N   RM9  RM9A RM9AN RM9BN  RM9N  RS05   RS1  RS1A  RS1B  RS1S   RS2   RS3 
-   58    38   156    36    66     3     1 48906   170    62    71   131   389 
+   56    38   156    36    65     3     1 48261   165    60    71   131   389 
  RS3A   RS4   RS5  RS5S   RS6   RS7  RSIS   RT1  RT10 RT10N  RT11 RT11N   RT2 
-  182    14 11449     2  1055  1777     1     1   984    68   776    53   653 
+  182    14 11372     2  1051  1753     1     1   962    67   759    53   644 
   RT3   RT4  RT4A RT4AN  RT4N   RT5  RT5A RT5AN  RT5N   RT6   RT7   RT8   RT9 
-  424   681    19     1     2  1100    64     8    62   100   452   466    97 
+  423   658    19     1     2  1060    61     7    62    99   451   464    97 
 > dtBCA19 <- dtBCA19[grepl("RS",zoning)]
-> saveRDS(dtBCA19, file="~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.rds")
-> 
-> 
-> q("no")
-> proc.time()
-   user  system elapsed 
- 11.099   1.331  13.494 
+> saveRDS(dtBCA19, file=outfile)
+Error: object 'outfile' not found
+Execution halted

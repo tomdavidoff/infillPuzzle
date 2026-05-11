@@ -7,10 +7,8 @@ library(data.table)
 library(sf)
 
 # Load data
-dtBCA <- readRDS("~/OneDrive - UBC/dataProcessed/bca_vancouver_residential.rds")
-dtP <- fread("~/OneDrive - UBC/dataRaw/vancouver_permits_full.csv",
-             select = c("geom", "geo_point_2d", "permitnumber", "permitnumbercreateddate",
-                        "applicant", "typeofwork", "projectvalue", "specificusecategory", "address"))
+dtBCA <- readRDS("~/DropboxExternal/dataProcessed/bca_vancouver_residential.rds")
+dtP <- fread("~/DropboxExternal/dataRaw/issued-building-permits.csv", select=c("PermitNumber","PermitNumberCreatedDate","ProjectValue","TypeOfWork","Address","Applicant","PropertyUse","SpecificUseCategory","BuildingContractor","GeoLocalArea","geo_point_2d","YearMonth"))
 
 # Filter to new builds and high-value alterations
 dtP <- dtP[typeofwork %in% c("Addition / Alteration", "New Building")]

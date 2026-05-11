@@ -60,8 +60,38 @@ print(summary(is.na(dtPermitSF$zoning_district)))
 dtPermitSF <- dtPermitSF[!is.na(dtPermitSF$zoning_district),]
 print(table(dtPermitSF$zoning_district))
 
+# now find closest matching property to each permit
+dtBCA <- st_as_sf(readRDS("~/DropboxExternal/dataProcessed/bca_vancouver_residential.rds"))
+dtBCA <- st_transform(dtBCA,st_crs(dtPermitSF))
+# try within
+dtPermitBCA <- st_join(dtPermitSF,dtBCA,join=st_within)
+print(nrow(dtPermitSF))
+print(head(dtPermitBCA))
+print(nrow(dtPermitBCA))
+dtPermitBCA <- as.data.table(dtPermitBCA)
+dtPermitBCA[,roundWidth:=round(as.numeric(landWidth))]
+print(dtPermitBCA[,summary(roundWidth),by=useCat])
+
+
+
+
 # Now get sales, etc from BC Assessment, use 2019 so as complete as feasible. Can get appx lat-lon from pccf at 6-digit postal code
-library(DBI); library(RSQLite); library(data.table)
+con <- dbConnect(SQLite(), "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3")
+dtSales <- dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice, conveyanceTypeDescription FROM sales ") |> setDT()
+print(nrow(dtSales))
+# turn dtBCA into data.table, but extract lat and lon from geometry first, centroid of lot polygon
+dtBCA <- as.data.table(dtBCA)
+dtBCA[, c("lon", "lat") := st_coordinates(st_centroid(geom))]
+dtSales <- merge(dtSales,dtBCA,by="folioID")
+print(nrow(dtSales))
+q("no")
+
+# --- Read each table, filter where cheap ---
+
+dtFolio <- dbGetQuery(con, "
+  SELECT folioID, rollNumber, jurisdictionCode, assessmentAreaCode
+  FROM folio WHERE jurisdictionCode = '200'
+") |> setDT()
 
 con <- dbConnect(SQLite(), "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3")
 
@@ -215,8 +245,19 @@ dtSales[,w50:=as.integer(roundWidth==50)]
 
 # get rid of weird nbhds
 dtSales <- dtSales[neighbourhoodDescription %in% c("SOUTHLANDS","SHAUGHNESSY")==FALSE]
+
+#  hedonic regressions
 hedReg <- feols(logPrice ~  logSqft + i(neighbourhoodDescription,w50)+i(neighbourhoodDescription)+MB_effective_year, data=dtSales)
 print(etable(hedReg))
+
+# hedonic by tract, collect tract interaction coefficients, then merge with tract lat and lon
+hetRegTract <- feols(logPrice ~  logSqft + i(censusTract,w50)+i(censusTract)+MB_effective_year, data=dtSales)
+# get tract interaction coefficients
+tractCoefs <- data.table(censusTract=names(coef(hetRegTract))[grepl("censusTract::",names(coef(hetRegTract)))],
+			   w50Effect=coef(hetRegTract)[grepl("censusTract::",names(coef(hetRegTract)))])
+print(tractCoefs)
+q("no")
+			   
 
 # back to permits, get census tract shapefile and merge
 stShp <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
