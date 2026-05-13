@@ -31,7 +31,7 @@ CRITQUANT <- .25
 qCrit <- quantile(dtPermit[TypeOfWork == "New Building" &
                            SpecificUseCategory %in% c("Duplex","Single Detached House") &
                            ProjectValue > 0, ProjectValue], CRITQUANT)
-dtPermit <- dtPermit[TypeOfWork == "New Building" | ProjectValue <= qCrit]
+dtPermit <- dtPermit[TypeOfWork == "New Building" | ProjectValue >= qCrit]
 dtPermit <- dtPermit[grepl("Duplex|Single Detached House|Laneway House|Multiple Dwelling",
                            SpecificUseCategory)]
 
@@ -44,7 +44,7 @@ dtPermit[, c("permitLat","permitLon") := tstrsplit(geo_point_2d, ", ")]
 dtPermit[, `:=`(permitLat = as.numeric(permitLat),
                 permitLon = as.numeric(permitLon))]
 dtPermit <- dtPermit[!is.na(permitLat) & !is.na(permitLon)]
-dtPermit <- dtPermit[, .(PermitNumber, useCat, year, permitLat, permitLon)]
+dtPermit <- dtPermit[, .(PermitNumber, useCat, year, permitLat, permitLon,TypeOfWork,ProjectValue)]
 
 # ============================================================================
 # ---- Spatial filters: R1-1 zoning, census tract, BCA parcel ---------------
@@ -130,6 +130,21 @@ pPriorYear <- ggplot(dtPermit2[roundWidth == 33 & useCat %in% c("Single","Duplex
        title = "Prior-structure vintage by permit type, 33' lots, 2018-2023") +
   theme_minimal()
 ggsave("text/priorYear_by_useCat.png", pPriorYear, w = 7, h = 4)
+# print table of same image
+cat("\nPrior structure vintage by useCat (33' lots, 2018-2023):\n")
+print(dtPermit2[roundWidth == 33 & useCat %in% c("Single","Duplex","Laneway") &
+		year >= 2018 & year < 2024 &
+		MB_effective_year >= 1900 & MB_effective_year <= 2023,
+		.(.N,
+		  medMBYear   = median(MB_effective_year, na.rm = TRUE),
+		  meanMBYear  = mean(MB_effective_year,   na.rm = TRUE),
+		  sharePre1940= mean(MB_effective_year < 1940, na.rm = TRUE)),
+		by = useCat])
+for (y in 1960:2020) {
+	print(y)
+	print(table(dtPermit2[roundWidth == 33 & useCat %in% c("Single","Duplex","Laneway") & year >= 2018 & year < 2024 & MB_effective_year == y, .(useCat,TypeOfWork)]))
+	print(dtPermit2[roundWidth == 33 & useCat %in% c("Single","Duplex","Laneway") & year >= 2018 & year < 2024 & MB_effective_year == y, median(ProjectValue),by=c("useCat","TypeOfWork")])
+}
 
 # Same in priorAge space (probably more useful for inspection)
 pPriorAge <- ggplot(dtPermit2[roundWidth == 33 & useCat %in% c("Single","Duplex","Laneway") &
@@ -310,6 +325,7 @@ print(etable(hedTract, simpleTract))
 print(dtTractCompare)
 cat("\nTract-level correlations:\n")
 print(cor(dtTractCompare[, .(w50Interact, plexRatio, tractFE)], use = "complete.obs"))
+
 
 # ============================================================================
 # ---- Spatial averaging: local w50 premium at permit locations -------------
