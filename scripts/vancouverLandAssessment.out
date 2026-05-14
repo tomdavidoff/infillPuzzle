@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -175,40 +175,98 @@ Key: <rollStart>
 > dtValuation[,landArea := landWidth * landDepth]
 > dtValuation[,ppsf := landValue/landArea]
 > dtValuation <- dtValuation[!is.na(lat) & !is.na(lon) & !is.na(ppsf) & !is.na(landArea)]
-> dtValuation <- dtValuation[landWidth %in% quantile(landWidth, probs = c(critQuant, 1-critQuant))]
-> dtValuation <- dtValuation[landDepth %in% quantile(landDepth, probs = c(critQuant, 1-critQuant))]
+> dtValuation <- dtValuation[landWidth %between% quantile(landWidth, probs = c(critQuant, 1-critQuant))]
+> dtValuation <- dtValuation[landDepth %between% quantile(landDepth, probs = c(critQuant, 1-critQuant))]
 > print(summary(dtValuation))
-   folioID            landValue        rollNumber          land_width   
- Length:275         Min.   :1114000   Length:275         Min.   :33.00  
- Class :character   1st Qu.:1334000   Class :character   1st Qu.:33.00  
- Mode  :character   Median :1334000   Mode  :character   Median :33.00  
-                    Mean   :1387967                      Mean   :33.31  
-                    3rd Qu.:1349000                      3rd Qu.:33.00  
-                    Max.   :1855000                      Max.   :50.00  
+   folioID            landValue         rollNumber          land_width   
+ Length:30356       Min.   :  140000   Length:30356       Min.   :24.80  
+ Class :character   1st Qu.: 1305000   Class :character   1st Qu.:33.00  
+ Mode  :character   Median : 1484000   Mode  :character   Median :33.00  
+                    Mean   : 1735668                      Mean   :37.22  
+                    3rd Qu.: 2109000                      3rd Qu.:41.50  
+                    Max.   :10475000                      Max.   :53.50  
+                                                          NA's   :2      
    land_depth       zoning          actualUseDescription   landWidth    
- Min.   :111.2   Length:275         Length:275           Min.   :33.00  
- 1st Qu.:127.0   Class :character   Class :character     1st Qu.:33.00  
- Median :127.0   Mode  :character   Mode  :character     Median :33.00  
- Mean   :126.0                                           Mean   :33.31  
- 3rd Qu.:127.0                                           3rd Qu.:33.00  
- Max.   :127.0                                           Max.   :50.00  
+ Min.   :107.0   Length:30356       Length:30356         Min.   :33.00  
+ 1st Qu.:116.7   Class :character   Class :character     1st Qu.:33.00  
+ Median :122.0   Mode  :character   Mode  :character     Median :33.00  
+ Mean   :119.7                                           Mean   :37.22  
+ 3rd Qu.:122.0                                           3rd Qu.:41.50  
+ Max.   :131.0                                           Max.   :50.00  
+ NA's   :2                                                              
    landDepth       rollStart              lat             lon        
- Min.   :111.2   Min.   :1.214e+10   Min.   :49.22   Min.   :-123.1  
- 1st Qu.:127.0   1st Qu.:1.924e+10   1st Qu.:49.26   1st Qu.:-123.1  
- Median :127.0   Median :2.161e+10   Median :49.27   Median :-123.1  
- Mean   :126.0   Mean   :1.984e+10   Mean   :49.27   Mean   :-123.1  
- 3rd Qu.:127.0   3rd Qu.:2.161e+10   3rd Qu.:49.27   3rd Qu.:-123.0  
- Max.   :127.0   Max.   :2.427e+10   Max.   :49.27   Max.   :-123.0  
-    landArea         ppsf      
- Min.   :3670   Min.   :247.4  
- 1st Qu.:4191   1st Qu.:318.3  
- Median :4191   Median :318.3  
- Mean   :4198   Mean   :331.5  
- 3rd Qu.:4191   3rd Qu.:329.3  
- Max.   :6350   Max.   :442.6  
+ Min.   :110.0   Min.   :1.023e+09   Min.   :49.21   Min.   :-123.2  
+ 1st Qu.:116.7   1st Qu.:9.693e+09   1st Qu.:49.23   1st Qu.:-123.1  
+ Median :122.0   Median :1.781e+10   Median :49.25   Median :-123.1  
+ Mean   :119.7   Mean   :1.530e+10   Mean   :49.25   Mean   :-123.1  
+ 3rd Qu.:122.0   3rd Qu.:2.163e+10   3rd Qu.:49.26   3rd Qu.:-123.1  
+ Max.   :128.8   Max.   :2.583e+10   Max.   :49.29   Max.   :-123.0  
+                                                                     
+    landArea         ppsf        
+ Min.   :3630   Min.   :  37.18  
+ 1st Qu.:4023   1st Qu.: 315.40  
+ Median :4029   Median : 336.31  
+ Mean   :4457   Mean   : 389.77  
+ 3rd Qu.:4994   3rd Qu.: 468.98  
+ Max.   :6442   Max.   :2541.24  
+                                 
 > 
 > critQuant <- .01
-> dtValuation <- dtValuation[lat %in% quantile(lat, probs = c(critQuant, 1-critQuant))]
-> dtValuation <- dtValuaion [lon %in% quantile(lon, probs = c(critQuant, 1-critQuant))] 
-Error: object 'dtValuaion' not found
-Execution halted
+> print(dtValuation[,.(lat,lon)])
+            lat       lon
+          <num>     <num>
+    1: 49.26879 -123.2117
+    2: 49.26685 -123.2117
+    3: 49.26674 -123.2117
+    4: 49.26662 -123.2117
+    5: 49.27099 -123.2107
+   ---                   
+30352: 49.21130 -123.0709
+30353: 49.20740 -123.0566
+30354: 49.20741 -123.0564
+30355: 49.20742 -123.0562
+30356: 49.20743 -123.0560
+> dtValuation <- dtValuation[ppsf %between% quantile(ppsf, probs = c(critQuant, 1-critQuant))]
+> print(summary(dtValuation))
+   folioID            landValue        rollNumber          land_width  
+ Length:29775       Min.   : 971000   Length:29775       Min.   :24.8  
+ Class :character   1st Qu.:1305000   Class :character   1st Qu.:33.0  
+ Mode  :character   Median :1480000   Mode  :character   Median :33.0  
+                    Mean   :1723820                      Mean   :37.1  
+                    3rd Qu.:2090000                      3rd Qu.:41.0  
+                    Max.   :4098000                      Max.   :53.5  
+                                                         NA's   :2     
+   land_depth       zoning          actualUseDescription   landWidth    
+ Min.   :107.0   Length:29775       Length:29775         Min.   :33.00  
+ 1st Qu.:116.9   Class :character   Class :character     1st Qu.:33.00  
+ Median :122.0   Mode  :character   Mode  :character     Median :33.00  
+ Mean   :119.8                                           Mean   :37.11  
+ 3rd Qu.:122.0                                           3rd Qu.:41.00  
+ Max.   :128.8                                           Max.   :50.00  
+ NA's   :2                                                              
+   landDepth       rollStart              lat             lon        
+ Min.   :110.0   Min.   :1.023e+09   Min.   :49.21   Min.   :-123.2  
+ 1st Qu.:116.9   1st Qu.:9.694e+09   1st Qu.:49.23   1st Qu.:-123.1  
+ Median :122.0   Median :1.781e+10   Median :49.25   Median :-123.1  
+ Mean   :119.8   Mean   :1.535e+10   Mean   :49.25   Mean   :-123.1  
+ 3rd Qu.:122.0   3rd Qu.:2.163e+10   3rd Qu.:49.26   3rd Qu.:-123.1  
+ Max.   :128.8   Max.   :2.583e+10   Max.   :49.29   Max.   :-123.0  
+                                                                     
+    landArea         ppsf      
+ Min.   :3630   Min.   :254.8  
+ 1st Qu.:4022   1st Qu.:315.4  
+ Median :4028   Median :336.3  
+ Mean   :4443   Mean   :388.0  
+ 3rd Qu.:4934   3rd Qu.:467.0  
+ Max.   :6442   Max.   :664.3  
+                               
+> # plot ppsf heatmap by location, make a nice map using st tools
+> ggplot(dtValuation, aes(x=lon, y=lat, color=ppsf)) + geom_point() + scale_color_viridis_c() + theme_void() + labs(color="Price per sqft")
+> ggsave("text/landPPSFHeatMapVancouver.png")
+Saving 7 x 7 in image
+> 
+> 
+> q("no")
+> proc.time()
+   user  system elapsed 
+ 27.827   5.825  17.713 

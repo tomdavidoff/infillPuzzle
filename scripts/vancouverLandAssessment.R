@@ -68,17 +68,20 @@ critQuant <- .2
 dtValuation[,landArea := landWidth * landDepth]
 dtValuation[,ppsf := landValue/landArea]
 dtValuation <- dtValuation[!is.na(lat) & !is.na(lon) & !is.na(ppsf) & !is.na(landArea)]
-dtValuation <- dtValuation[landWidth %in% quantile(landWidth, probs = c(critQuant, 1-critQuant))]
-dtValuation <- dtValuation[landDepth %in% quantile(landDepth, probs = c(critQuant, 1-critQuant))]
+dtValuation <- dtValuation[landWidth %between% quantile(landWidth, probs = c(critQuant, 1-critQuant))]
+dtValuation <- dtValuation[landDepth %between% quantile(landDepth, probs = c(critQuant, 1-critQuant))]
 print(summary(dtValuation))
 
 critQuant <- .01
-dtValuation <- dtValuation[lat %in% quantile(lat, probs = c(critQuant, 1-critQuant))]
-dtValuation <- dtValuation [lon %in% quantile(lon, probs = c(critQuant, 1-critQuant))] 
+print(dtValuation[,.(lat,lon)])
+dtValuation <- dtValuation[ppsf %between% quantile(ppsf, probs = c(critQuant, 1-critQuant))]
 print(summary(dtValuation))
 # plot ppsf heatmap by location, make a nice map using st tools
 ggplot(dtValuation, aes(x=lon, y=lat, color=ppsf)) + geom_point() + scale_color_viridis_c() + theme_void() + labs(color="Price per sqft")
 ggsave("text/landPPSFHeatMapVancouver.png")
+
+# show a lat lon of kernel reg of ppsf on lot size
+
 
 
 q("no")
