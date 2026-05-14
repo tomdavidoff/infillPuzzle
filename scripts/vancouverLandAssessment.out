@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -18,34 +18,71 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > # vancouverLandAssessment.R
-> # R to explore spatial elements of land valuation by location
-> # Want spatial heatmap of elasticity of land value with respect to lot size
+> # Spatial heterogeneity in the elasticity of land value with respect to lot size.
+> # Local-linear (bisquare, adaptive-k) GWR evaluated at building-permit locations.
 > # Tom Davidoff
 > # 05/13/26
 > 
 > library(data.table)
 > library(ggplot2)
+> library(ggspatial)
 > library(RSQLite)
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > 
-> # 2019 assessment data
+> # ---------------------------------------------------------------------------
+> # Hand (by Claude) -rolled adaptive-bandwidth GWR -- GWR was slow and annoying in either sp or model versions.
+> # ---------------------------------------------------------------------------
+> # y, x          : numeric response and (single) predictor vectors, length n
+> # dataCoords    : n x 2 matrix of projected (meter) coordinates for the data
+> # fitCoords     : m x 2 matrix of projected coordinates at which to fit
+> # k             : adaptive bandwidth = number of nearest neighbours
+> # Returns a data.table with m rows: intercept, slope, SEs, effective n.
+> # ---------------------------------------------------------------------------
+> gwrLocal <- function(y, x, dataCoords, fitCoords, k = 2000) {
++   bisquare <- function(d, h) ifelse(d < h, (1 - (d/h)^2)^2, 0)
++   fitOne <- function(s) {
++     d  <- sqrt((dataCoords[,1] - s[1])^2 + (dataCoords[,2] - s[2])^2)
++     h  <- sort(d, partial = k)[k]
++     w  <- bisquare(d, h)
++     keep <- w > 0
++     Xm <- cbind(1, x[keep]); ym <- y[keep]; wm <- w[keep]
++     fit <- lm.wfit(Xm, ym, wm)
++     resid <- ym - Xm %*% fit$coefficients
++     sigma2 <- sum(wm * resid^2) / (sum(wm) - 2)
++     XtWX_inv <- solve(crossprod(Xm * sqrt(wm)))
++     se <- sqrt(diag(sigma2 * XtWX_inv))
++     c(intercept = fit$coefficients[1], slope = fit$coefficients[2],
++       seInt = se[1], seSlope = se[2], nEff = sum(wm))
++   }
++   resList <- parallel::mclapply(seq_len(nrow(fitCoords)), function(i) fitOne(fitCoords[i,]), mc.cores = 6)
++   res <- do.call(rbind, resList)
++   dt  <- as.data.table(res)
++   setnames(dt, c("intercept","slope","seInt","seSlope","nEff"))
++   dt[, `:=`(fitX = fitCoords[,1], fitY = fitCoords[,2])]
++   dt[]
++ }
+> 
+> # ---------------------------------------------------------------------------
+> # Load 2019 BC Assessment data
+> # ---------------------------------------------------------------------------
 > filename <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 > con <- dbConnect(SQLite(), filename)
-> # Get the data
-> queryValuation <- "SELECT folioID, landValue FROM valuation"
-> queryInventory <- "SELECT roll_number,land_width, land_depth, zoning FROM residentialInventory WHERE jurisdiction==200 and zoning LIKE 'RS%'"
-> queryFolio <- "SELECT folioID, rollNumber from folio WHERE jurisdictionCode == 200"
-> queryDescription <- "SELECT folioID, actualUseDescription, landWidth, landDepth FROM folioDescription "
 > 
-> # load queries
-> valuation <- data.table(dbGetQuery(con, queryValuation))
-> inventory <- data.table(dbGetQuery(con, queryInventory))
-> folio <- data.table(dbGetQuery(con, queryFolio))
+> queryValuation   <- "SELECT folioID, landValue FROM valuation"
+> queryInventory   <- "SELECT roll_number, land_width, land_depth, zoning FROM residentialInventory WHERE jurisdiction==200 and zoning LIKE 'RS%'"
+> queryFolio       <- "SELECT folioID, rollNumber FROM folio WHERE jurisdictionCode == 200"
+> queryDescription <- "SELECT folioID, actualUseDescription, landWidth, landDepth FROM folioDescription"
+> 
+> valuation   <- data.table(dbGetQuery(con, queryValuation))
+> inventory   <- data.table(dbGetQuery(con, queryInventory))
+> folio       <- data.table(dbGetQuery(con, queryFolio))
 > description <- data.table(dbGetQuery(con, queryDescription))
-> # Merge the data
-> setkey(valuation, folioID)
-> setkey(folio, folioID)
+> dbDisconnect(con)
+> 
+> # Merge
+> setkey(valuation, folioID)     
+> setkey(folio, folioID)        
 > valuation <- valuation[folio]
 > setkey(inventory, roll_number)
 > setkey(valuation, rollNumber)
@@ -54,219 +91,188 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > setkey(valuation, folioID)
 > valuation <- valuation[description]
 > 
-> print(head(valuation))
-Key: <folioID>
-      folioID landValue      rollNumber land_width land_depth zoning
-       <char>    <char>          <char>     <char>     <char> <char>
-1: A000000009  13555000 001019632060000                          RS1
-2: A00000000A  11912000 001019632290000        195      251.9    RS1
-3: A00000000B  12046000 001019632450000        150        250    RS1
-4: A00000000C  12046000 001019632650000        150        250    RS1
-5: A00000000D  14412000 001019632760000        170      215.2    RS1
-6: A00000000E  12292000 001019635070000        170      217.8    RS1
-     actualUseDescription landWidth landDepth
-                   <char>    <char>    <char>
-1: Single Family Dwelling                    
-2: Single Family Dwelling                    
-3: Single Family Dwelling                    
-4: Single Family Dwelling                    
-5: Single Family Dwelling                    
-6: Single Family Dwelling                    
-> numericCols <- c("landValue", "land_width", "land_depth", "landWidth", "landDepth")
+> # Coerce numerics, fill in missing dimensions from inventory
+> numericCols <- c("landValue","land_width","land_depth","landWidth","landDepth")
 > dtValuation <- as.data.table(valuation)
-> # use SD operation to make chars numeric
 > dtValuation[, (numericCols) := lapply(.SD, as.numeric), .SDcols = numericCols]
-> print(summary(dtValuation[!is.na(land_width) & !is.na(land_depth),land_width==landWidth]))
+> print(summary(dtValuation[!is.na(land_width) & !is.na(land_depth), land_width == landWidth]))
    Mode   FALSE    TRUE    NA's 
 logical    7661   52842    5087 
 > dtValuation[is.na(landWidth) & !is.na(land_width), landWidth := land_width]
 > dtValuation[is.na(landDepth) & !is.na(land_depth), landDepth := land_depth]
 > 
+> # ---------------------------------------------------------------------------
+> # Attach BCA centroid coordinates
+> # ---------------------------------------------------------------------------
 > sfBCA <- st_as_sf(readRDS("~/DropboxExternal/dataProcessed/bca_vancouver_residential.rds"))
 > sfBCA <- st_transform(sfBCA, 4326)
-> 
-> cent <- st_centroid(st_geometry(sfBCA))
+> cent  <- st_centroid(st_geometry(sfBCA))
 > sfBCA$lon <- st_coordinates(cent)[, 1]
 > sfBCA$lat <- st_coordinates(cent)[, 2]
-> 
 > dtBCA <- as.data.table(st_drop_geometry(sfBCA))[, .(lat, lon, rollStart)]
-> print(head(dtBCA))
-        lat       lon  rollStart
-      <num>     <num>      <num>
-1: 49.27488 -123.2229 1019632060
-2: 49.27431 -123.2243 1019632290
-3: 49.27424 -123.2236 1019632450
-4: 49.27420 -123.2230 1019632650
-5: 49.27456 -123.2206 1019632760
-6: 49.27416 -123.2214 1019635070
 > 
-> dtValuation[,rollStart:=floor(as.numeric(rollNumber)/1000)]
-> print(head(dtValuation))
-Key: <folioID>
-      folioID landValue      rollNumber land_width land_depth zoning
-       <char>     <num>          <char>      <num>      <num> <char>
-1: A000000009  13555000 001019632060000         NA         NA    RS1
-2: A00000000A  11912000 001019632290000        195      251.9    RS1
-3: A00000000B  12046000 001019632450000        150      250.0    RS1
-4: A00000000C  12046000 001019632650000        150      250.0    RS1
-5: A00000000D  14412000 001019632760000        170      215.2    RS1
-6: A00000000E  12292000 001019635070000        170      217.8    RS1
-     actualUseDescription landWidth landDepth  rollStart
-                   <char>     <num>     <num>      <num>
-1: Single Family Dwelling        NA        NA 1019632060
-2: Single Family Dwelling       195     251.9 1019632290
-3: Single Family Dwelling       150     250.0 1019632450
-4: Single Family Dwelling       150     250.0 1019632650
-5: Single Family Dwelling       170     215.2 1019632760
-6: Single Family Dwelling       170     217.8 1019635070
-> print(nrow(dtValuation))
-[1] 2068257
-> setkey(dtValuation, rollStart)
-> setkey(dtBCA, rollStart)
+> dtValuation[, rollStart := floor(as.numeric(rollNumber)/1000)]
+> setkey(dtValuation, rollStart); setkey(dtBCA, rollStart)
 > dtValuation <- dtValuation[dtBCA]
-> print(head(dtValuation))
-Key: <rollStart>
-      folioID landValue      rollNumber land_width land_depth zoning
-       <char>     <num>          <char>      <num>      <num> <char>
-1: A000000009  13555000 001019632060000         NA         NA    RS1
-2: A00000000A  11912000 001019632290000        195      251.9    RS1
-3: A00000000B  12046000 001019632450000        150      250.0    RS1
-4: A00000000C  12046000 001019632650000        150      250.0    RS1
-5: A00000000D  14412000 001019632760000        170      215.2    RS1
-6: A00000000E  12292000 001019635070000        170      217.8    RS1
-     actualUseDescription landWidth landDepth  rollStart      lat       lon
-                   <char>     <num>     <num>      <num>    <num>     <num>
-1: Single Family Dwelling        NA        NA 1019632060 49.27488 -123.2229
-2: Single Family Dwelling       195     251.9 1019632290 49.27431 -123.2243
-3: Single Family Dwelling       150     250.0 1019632450 49.27424 -123.2236
-4: Single Family Dwelling       150     250.0 1019632650 49.27420 -123.2230
-5: Single Family Dwelling       170     215.2 1019632760 49.27456 -123.2206
-6: Single Family Dwelling       170     217.8 1019635070 49.27416 -123.2214
-> print(nrow(dtValuation))
-[1] 64220
-> print(summary(dtValuation))
-   folioID            landValue         rollNumber          land_width    
- Length:64220       Min.   :  113000   Length:64220       Min.   : 13.00  
- Class :character   1st Qu.: 1316000   Class :character   1st Qu.: 33.00  
- Mode  :character   Median : 1584000   Mode  :character   Median : 33.50  
-                    Mean   : 2031206                      Mean   : 41.81  
-                    3rd Qu.: 2408000                      3rd Qu.: 49.50  
-                    Max.   :46589000                      Max.   :300.00  
-                                                          NA's   :45      
-   land_depth       zoning          actualUseDescription   landWidth     
- Min.   : 30.0   Length:64220       Length:64220         Min.   : 13.00  
- 1st Qu.:112.5   Class :character   Class :character     1st Qu.: 33.00  
- Median :122.0   Mode  :character   Mode  :character     Median : 33.50  
- Mean   :122.7                                           Mean   : 41.87  
- 3rd Qu.:127.0                                           3rd Qu.: 49.50  
- Max.   :462.1                                           Max.   :300.00  
- NA's   :45                                              NA's   :36      
-   landDepth       rollStart              lat             lon        
- Min.   : 30.0   Min.   :1.020e+09   Min.   :49.21   Min.   :-123.2  
- 1st Qu.:112.5   1st Qu.:6.816e+09   1st Qu.:49.23   1st Qu.:-123.2  
- Median :122.0   Median :1.675e+10   Median :49.24   Median :-123.1  
- Mean   :122.7   Mean   :1.486e+10   Mean   :49.24   Mean   :-123.1  
- 3rd Qu.:127.0   3rd Qu.:2.163e+10   3rd Qu.:49.25   3rd Qu.:-123.1  
- Max.   :462.1   Max.   :2.584e+10   Max.   :49.29   Max.   :-123.0  
- NA's   :36                          NA's   :199     NA's   :199     
-> critQuant <- .2
 > 
-> # Tidy up
-> dtValuation[,landArea := landWidth * landDepth]
-> dtValuation[,ppsf := landValue/landArea]
+> # ---------------------------------------------------------------------------
+> # Sample selection: RS, plausible dimensions, plausible ppsf
+> # ---------------------------------------------------------------------------
+> dtValuation[, landArea := landWidth * landDepth]
+> dtValuation[, ppsf     := landValue / landArea]
 > dtValuation <- dtValuation[!is.na(lat) & !is.na(lon) & !is.na(ppsf) & !is.na(landArea)]
-> dtValuation <- dtValuation[landWidth %between% quantile(landWidth, probs = c(critQuant, 1-critQuant))]
-> dtValuation <- dtValuation[landDepth %between% quantile(landDepth, probs = c(critQuant, 1-critQuant))]
-> print(summary(dtValuation))
-   folioID            landValue         rollNumber          land_width   
- Length:30356       Min.   :  140000   Length:30356       Min.   :24.80  
- Class :character   1st Qu.: 1305000   Class :character   1st Qu.:33.00  
- Mode  :character   Median : 1484000   Mode  :character   Median :33.00  
-                    Mean   : 1735668                      Mean   :37.22  
-                    3rd Qu.: 2109000                      3rd Qu.:41.50  
-                    Max.   :10475000                      Max.   :53.50  
-                                                          NA's   :2      
-   land_depth       zoning          actualUseDescription   landWidth    
- Min.   :107.0   Length:30356       Length:30356         Min.   :33.00  
- 1st Qu.:116.7   Class :character   Class :character     1st Qu.:33.00  
- Median :122.0   Mode  :character   Mode  :character     Median :33.00  
- Mean   :119.7                                           Mean   :37.22  
- 3rd Qu.:122.0                                           3rd Qu.:41.50  
- Max.   :131.0                                           Max.   :50.00  
- NA's   :2                                                              
-   landDepth       rollStart              lat             lon        
- Min.   :110.0   Min.   :1.023e+09   Min.   :49.21   Min.   :-123.2  
- 1st Qu.:116.7   1st Qu.:9.693e+09   1st Qu.:49.23   1st Qu.:-123.1  
- Median :122.0   Median :1.781e+10   Median :49.25   Median :-123.1  
- Mean   :119.7   Mean   :1.530e+10   Mean   :49.25   Mean   :-123.1  
- 3rd Qu.:122.0   3rd Qu.:2.163e+10   3rd Qu.:49.26   3rd Qu.:-123.1  
- Max.   :128.8   Max.   :2.583e+10   Max.   :49.29   Max.   :-123.0  
-                                                                     
-    landArea         ppsf        
- Min.   :3630   Min.   :  37.18  
- 1st Qu.:4023   1st Qu.: 315.40  
- Median :4029   Median : 336.31  
- Mean   :4457   Mean   : 389.77  
- 3rd Qu.:4994   3rd Qu.: 468.98  
- Max.   :6442   Max.   :2541.24  
-                                 
 > 
-> critQuant <- .01
-> print(dtValuation[,.(lat,lon)])
-            lat       lon
-          <num>     <num>
-    1: 49.26879 -123.2117
-    2: 49.26685 -123.2117
-    3: 49.26674 -123.2117
-    4: 49.26662 -123.2117
-    5: 49.27099 -123.2107
-   ---                   
-30352: 49.21130 -123.0709
-30353: 49.20740 -123.0566
-30354: 49.20741 -123.0564
-30355: 49.20742 -123.0562
-30356: 49.20743 -123.0560
-> dtValuation <- dtValuation[ppsf %between% quantile(ppsf, probs = c(critQuant, 1-critQuant))]
+> critQuant <- 0.05
+> dtValuation <- dtValuation[landWidth %between% quantile(landWidth, c(critQuant, 1 - critQuant))]
+> dtValuation <- dtValuation[landDepth %between% quantile(landDepth, c(critQuant, 1 - critQuant))]
+> 
+> critQuant <- 0.01
+> dtValuation <- dtValuation[ppsf %between% quantile(ppsf, c(critQuant, 1 - critQuant))]
 > print(summary(dtValuation))
-   folioID            landValue        rollNumber          land_width  
- Length:29775       Min.   : 971000   Length:29775       Min.   :24.8  
- Class :character   1st Qu.:1305000   Class :character   1st Qu.:33.0  
- Mode  :character   Median :1480000   Mode  :character   Median :33.0  
-                    Mean   :1723820                      Mean   :37.1  
-                    3rd Qu.:2090000                      3rd Qu.:41.0  
-                    Max.   :4098000                      Max.   :53.5  
-                                                         NA's   :2     
+   folioID            landValue        rollNumber          land_width   
+ Length:52202       Min.   : 924000   Length:52202       Min.   :24.80  
+ Class :character   1st Qu.:1316000   Class :character   1st Qu.:33.00  
+ Mode  :character   Median :1553000   Mode  :character   Median :33.00  
+                    Mean   :1878997                      Mean   :39.73  
+                    3rd Qu.:2345000                      3rd Qu.:46.60  
+                    Max.   :6101000                      Max.   :66.00  
+                                                         NA's   :2      
    land_depth       zoning          actualUseDescription   landWidth    
- Min.   :107.0   Length:29775       Length:29775         Min.   :33.00  
- 1st Qu.:116.9   Class :character   Class :character     1st Qu.:33.00  
+ Min.   : 98.0   Length:52202       Length:52202         Min.   :32.00  
+ 1st Qu.:114.1   Class :character   Class :character     1st Qu.:33.00  
  Median :122.0   Mode  :character   Mode  :character     Median :33.00  
- Mean   :119.8                                           Mean   :37.11  
- 3rd Qu.:122.0                                           3rd Qu.:41.00  
- Max.   :128.8                                           Max.   :50.00  
+ Mean   :120.7                                           Mean   :39.75  
+ 3rd Qu.:124.9                                           3rd Qu.:46.75  
+ Max.   :149.4                                           Max.   :66.00  
  NA's   :2                                                              
    landDepth       rollStart              lat             lon        
- Min.   :110.0   Min.   :1.023e+09   Min.   :49.21   Min.   :-123.2  
- 1st Qu.:116.9   1st Qu.:9.694e+09   1st Qu.:49.23   1st Qu.:-123.1  
- Median :122.0   Median :1.781e+10   Median :49.25   Median :-123.1  
- Mean   :119.8   Mean   :1.535e+10   Mean   :49.25   Mean   :-123.1  
- 3rd Qu.:122.0   3rd Qu.:2.163e+10   3rd Qu.:49.26   3rd Qu.:-123.1  
- Max.   :128.8   Max.   :2.583e+10   Max.   :49.29   Max.   :-123.0  
+ Min.   : 99.0   Min.   :1.021e+09   Min.   :49.21   Min.   :-123.2  
+ 1st Qu.:114.1   1st Qu.:6.122e+09   1st Qu.:49.23   1st Qu.:-123.2  
+ Median :122.0   Median :1.723e+10   Median :49.24   Median :-123.1  
+ Mean   :120.7   Mean   :1.505e+10   Mean   :49.24   Mean   :-123.1  
+ 3rd Qu.:124.9   3rd Qu.:2.164e+10   3rd Qu.:49.26   3rd Qu.:-123.1  
+ Max.   :148.5   Max.   :2.583e+10   Max.   :49.29   Max.   :-123.0  
                                                                      
     landArea         ppsf      
- Min.   :3630   Min.   :254.8  
- 1st Qu.:4022   1st Qu.:315.4  
- Median :4028   Median :336.3  
- Mean   :4443   Mean   :388.0  
- 3rd Qu.:4934   3rd Qu.:467.0  
- Max.   :6442   Max.   :664.3  
+ Min.   :3168   Min.   :245.5  
+ 1st Qu.:4014   1st Qu.:315.4  
+ Median :4217   Median :344.0  
+ Mean   :4813   Mean   :387.8  
+ 3rd Qu.:5600   3rd Qu.:461.5  
+ Max.   :9801   Max.   :676.5  
                                
-> # plot ppsf heatmap by location, make a nice map using st tools
-> ggplot(dtValuation, aes(x=lon, y=lat, color=ppsf)) + geom_point() + scale_color_viridis_c() + theme_void() + labs(color="Price per sqft")
+> 
+> # Raw ppsf heatmap
+> ggplot() +
++   annotation_map_tile(type = "cartolight", zoom = 12) +
++   geom_point(data = dtValuation, aes(x=lon, y = lat, color = ppsf), size = 0.8) +
++   scale_color_viridis_c(option = "plasma") +
++   coord_sf(crs = 4326, xlim = c(-123.23, -123.02), ylim = c(49.20, 49.32)) +
++   theme_void() +
++   labs(color = "Local elasticity")
+Loading required namespace: raster
+Zoom: 12
 > ggsave("text/landPPSFHeatMapVancouver.png")
 Saving 7 x 7 in image
+Zoom: 12
 > 
+> # ---------------------------------------------------------------------------
+> # Permit locations (restricted to R1-1 zoning)
+> # ---------------------------------------------------------------------------
+> permitFile <- "~/DropboxExternal/dataRaw/issued-building-permits.csv"
+> dtPermit <- fread(permitFile, select = c("PermitNumber","ProjectValue","TypeOfWork",
++                                          "PropertyUse","SpecificUseCategory",
++                                          "GeoLocalArea","geo_point_2d","YearMonth"))
+> dtPermit <- dtPermit[PropertyUse == "Dwelling Uses" &
++                      TypeOfWork %in% c("New Building","Addition / Alteration")]
+> dtPermit[, c("permitLat","permitLon") := tstrsplit(geo_point_2d, ", ")]
+> dtPermit[, `:=`(permitLat = as.numeric(permitLat),
++                 permitLon = as.numeric(permitLon))]
+> dtPermit <- dtPermit[!is.na(permitLat) & !is.na(permitLon)]
 > 
-> q("no")
-> proc.time()
-   user  system elapsed 
- 27.827   5.825  17.713 
+> CRITQUANT <- 0.25
+> qCrit <- quantile(dtPermit[TypeOfWork == "New Building" &
++                            SpecificUseCategory %in% c("Duplex","Single Detached House") &
++                            ProjectValue > 0, ProjectValue], CRITQUANT)
+> dtPermit <- dtPermit[TypeOfWork == "New Building" | ProjectValue >= qCrit]
+> dtPermit <- dtPermit[grepl("Duplex|Single Detached House|Laneway House|Multiple Dwelling",
++                            SpecificUseCategory)]
+> 
+> sfPermit <- st_as_sf(dtPermit[, .(permitLat, permitLon)],
++                      coords = c("permitLon","permitLat"), crs = 4326)
+> dZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson")
+Reading layer `vancouver_zoning' from data source 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/vancouver_zoning.geojson' 
+  using driver `GeoJSON'
+Simple feature collection with 1590 features and 6 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -123.2248 ymin: 49.19952 xmax: -123.0233 ymax: 49.31617
+Geodetic CRS:  WGS 84
+> dZ <- dZ[dZ$zoning_district == "R1-1", "zoning_district"]
+> sfPermit <- st_transform(sfPermit, st_crs(dZ))
+> sfPermit <- st_join(sfPermit, dZ, join = st_within)
+> sfPermit <- sfPermit[!is.na(sfPermit$zoning_district), ]
+> 
+> # ---------------------------------------------------------------------------
+> # GWR: project to UTM 10N (meters) and fit
+> # ---------------------------------------------------------------------------
+> sfData       <- st_transform(st_as_sf(dtValuation, coords = c("lon","lat"), crs = 4326), 26910)
+> sfPermitProj <- st_transform(sfPermit, 26910)
+> 
+> dataCoords <- st_coordinates(sfData)
+> fitCoords  <- st_coordinates(sfPermitProj)
+> 
+> dtLocal <- gwrLocal(y          = log(dtValuation$ppsf),
++                     x          = log(dtValuation$landArea),
++                     dataCoords = dataCoords,
++                     fitCoords  = fitCoords,
++                     k          = 1000)
+> print(summary(dtLocal))
+   intercept          slope             seInt            seSlope        
+ Min.   : 2.194   Min.   :-0.7132   Min.   :0.03536   Min.   :0.004241  
+ 1st Qu.: 8.655   1st Qu.:-0.4662   1st Qu.:0.10977   1st Qu.:0.013076  
+ Median : 9.298   Median :-0.4099   Median :0.15611   Median :0.018469  
+ Mean   : 9.100   Mean   :-0.3748   Mean   :0.18273   Mean   :0.021489  
+ 3rd Qu.: 9.708   3rd Qu.:-0.3088   3rd Qu.:0.22239   3rd Qu.:0.026261  
+ Max.   :12.441   Max.   : 0.4835   Max.   :0.93703   Max.   :0.106188  
+      nEff             fitX             fitY        
+ Min.   : 74.49   Min.   :483778   Min.   :5450345  
+ 1st Qu.:324.72   1st Qu.:489039   1st Qu.:5452550  
+ Median :352.73   Median :493495   Median :5454243  
+ Mean   :354.18   Mean   :492585   Mean   :5454317  
+ 3rd Qu.:385.30   3rd Qu.:496121   3rd Qu.:5455756  
+ Max.   :551.71   Max.   :498276   Max.   :5459905  
+> 
+> # Attach lat/lon back to fit points for plotting
+> fitLL <- st_coordinates(st_transform(sfPermitProj, 4326))
+> dtLocal[, `:=`(lon = fitLL[,1], lat = fitLL[,2])]
+> 
+> # ---------------------------------------------------------------------------
+> # Heatmap of local elasticity
+> # ---------------------------------------------------------------------------
+> ggplot() +
++   annotation_map_tile(type = "cartolight", zoom = 12) +
++   geom_point(data = dtLocal, aes(lon, lat, color = slope), size = 0.8) +
++   scale_color_viridis_c(option = "plasma") +
++   coord_sf(crs = 4326, xlim = c(-123.23, -123.02), ylim = c(49.20, 49.32)) +
++   theme_void() +
++   labs(color = "Local elasticity")
+Zoom: 12
+> 
+> #ggplot(dtLocal, aes(x = lon, y = lat, color = slope)) +
+> #  geom_point(size = 0.8) +
+> #  scale_color_viridis_c(option = "plasma") +
+> #  theme_void() +
+> #  labs(color = "Local elasticity\nlog(ppsf) ~ log(landArea)")
+> #
+> ggsave("text/landElasticityHeatMapVancouver.png")
+Saving 7 x 7 in image
+Zoom: 12
+> 
+> # ============================================================================
+> # ---- Sales -----------------------------------------------------------------
+> # ============================================================================
+> con <- dbConnect(SQLite(), cfg$sqliteFile)
+Error: object 'cfg' not found
+Execution halted

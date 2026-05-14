@@ -17,1279 +17,447 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
-> # vancouverLotPlex.R
-> # 33 vs 50 price gap, duplex takeup, and spatial averaging
+> # vancouverLandAssessment.R
+> # Spatial heterogeneity in the elasticity of land value w.r.t. lot size.
+> # Local-linear (bisquare, adaptive-k) GWR evaluated at building-permit locations.
+> # Modular: city config + generic loaders/plotters so Minneapolis / Portland slot in.
 > # Tom Davidoff
 > # 05/13/26
-> #
-> # Spec:
-> #   - FSR 0.5-0.8, age 1-39, year 2014-2018 for the duplex-margin hedonic sample
-> #   - 3rd-order polynomial in logFSR
-> #   - Universal sample dtSalesRegSubset for all hedonics
-> #   - localElasticity from log(landWidth) regression on new builds (eff yr 2000-2018),
-> #     depth IQR-trimmed, evaluated at permit locations
-> #   - Permits NOT pre-filtered by width; choice models take a `widths` arg
-> #   - Permit-to-BCA join is a real point-in-polygon (st_intersects on polygons)
 > 
-> library(DBI)
-> library(RSQLite)
 > library(data.table)
-> library(fixest)
 > library(ggplot2)
+> library(ggspatial)
+> library(RSQLite)
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > 
-> # ============================================================================
-> # ---- Permits ---------------------------------------------------------------
-> # ============================================================================
-> permitFile <- "~/DropboxExternal/dataRaw/issued-building-permits.csv"
-> dtPermit <- fread(permitFile, select = c("PermitNumber","ProjectValue","TypeOfWork",
-+                                          "PropertyUse","SpecificUseCategory",
-+                                          "GeoLocalArea","geo_point_2d","YearMonth"))
+> # ===========================================================================
+> # 1. GENERIC TOOLS
+> # ===========================================================================
 > 
-> dtPermit <- dtPermit[PropertyUse == "Dwelling Uses" &
-+                      TypeOfWork %in% c("New Building","Addition / Alteration")]
-> CRITQUANT <- .25
-> qCrit <- quantile(dtPermit[TypeOfWork == "New Building" &
-+                            SpecificUseCategory %in% c("Duplex","Single Detached House") &
-+                            ProjectValue > 0, ProjectValue], CRITQUANT)
-> dtPermit <- dtPermit[TypeOfWork == "New Building" | ProjectValue >= qCrit]
-> dtPermit <- dtPermit[grepl("Duplex|Single Detached House|Laneway House|Multiple Dwelling",
-+                            SpecificUseCategory)]
-> 
-> dtPermit[, useCat := tstrsplit(SpecificUseCategory, " ")[[1]]]
-> dtPermit[, useCat := tstrsplit(useCat, ",")[[1]]]
-> dtPermit[, year := as.numeric(substring(YearMonth, 1, 4))]
-> print(table(dtPermit[, useCat]))
-
-   Duplex  Dwelling    Infill   Laneway      Lock  Multiple Secondary    Single 
-     1772         2       200      4058        18      1408        55      3814 
-> 
-> dtPermit[, c("permitLat","permitLon") := tstrsplit(geo_point_2d, ", ")]
-> dtPermit[, `:=`(permitLat = as.numeric(permitLat),
-+                 permitLon = as.numeric(permitLon))]
-> dtPermit <- dtPermit[!is.na(permitLat) & !is.na(permitLon)]
-> dtPermit <- dtPermit[, .(PermitNumber, useCat, year, permitLat, permitLon,
-+                          TypeOfWork, ProjectValue)]
-> 
-> # ============================================================================
-> # ---- Spatial filters: R1-1 zoning, census tract, BCA parcel ---------------
-> # ============================================================================
-> dZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson")
-Reading layer `vancouver_zoning' from data source 
-  `/Volumes/Micron2TB/Dropbox/dataRaw/vancouver_zoning.geojson' 
-  using driver `GeoJSON'
-Simple feature collection with 1590 features and 6 fields
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: -123.2248 ymin: 49.19952 xmax: -123.0233 ymax: 49.31617
-Geodetic CRS:  WGS 84
-> dZ <- dZ[dZ$zoning_district == "R1-1", "zoning_district"]
-> 
-> stShp <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
-Reading layer `lct_000b21a_e' from data source 
-  `/Volumes/Micron2TB/Dropbox/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 6247 features and 5 fields
-Geometry type: MULTIPOLYGON
-Dimension:     XY
-Bounding box:  xmin: 3912489 ymin: 687427.7 xmax: 8996148 ymax: 2810992
-Projected CRS: NAD83 / Statistics Canada Lambert
-> stShp <- st_make_valid(stShp)
-> stShp <- stShp[, "CTNAME"]
-> 
-> sfBCA <- st_as_sf(readRDS("~/DropboxExternal/dataProcessed/bca_vancouver_residential.rds"))
-> sfBCA <- st_transform(sfBCA, 3005)
-> sfBCA <- st_make_valid(sfBCA)
-> dZ    <- st_transform(dZ,    3005)
-> stShp <- st_transform(stShp, 3005)
-> 
-> sfBCA <- st_join(sfBCA, stShp, join = st_within)
-> 
-> sfBCA$landWidth <- as.numeric(sfBCA$landWidth)
-> sfBCA$landDepth <- as.numeric(sfBCA$landDepth)
-> if ("land_width" %in% names(sfBCA))
-+   sfBCA$landWidth[is.na(sfBCA$landWidth)] <- as.numeric(sfBCA$land_width[is.na(sfBCA$landWidth)])
-> if ("land_depth" %in% names(sfBCA))
-+   sfBCA$landDepth[is.na(sfBCA$landDepth)] <- as.numeric(sfBCA$land_depth[is.na(sfBCA$landDepth)])
-> 
-> # Join permits to R1-1, tract, and BCA parcel
-> sfPermit <- st_as_sf(dtPermit, coords = c("permitLon","permitLat"), crs = 4326)
-> sfPermit <- st_transform(sfPermit, 3005)
-> sfPermit <- st_join(sfPermit, dZ,    join = st_intersects)
-> sfPermit <- sfPermit[!is.na(sfPermit$zoning_district), ]
-> sfPermit <- st_join(sfPermit, stShp, join = st_within)
-> sfPermit <- st_join(sfPermit,
-+                     sfBCA[, c("folioID","landWidth","landDepth",
-+                               "MB_effective_year","neighbourhoodDescription")],
-+                     join = st_intersects)
-> 
-> matchRate <- mean(!is.na(sfPermit$folioID))
-> cat("\nPermits joined to a BCA parcel:", sum(!is.na(sfPermit$folioID)),
-+     "/", nrow(sfPermit), sprintf(" (%.1f%%)\n", 100 * matchRate))
-
-Permits joined to a BCA parcel: 6359 / 9231  (68.9%)
-> 
-> sfPermit <- sfPermit[!is.na(sfPermit$folioID), ]
-> 
-> permitCoords <- st_coordinates(st_geometry(sfPermit))
-> dtPermit2 <- as.data.table(st_drop_geometry(sfPermit))
-> dtPermit2[, `:=`(permitXM = permitCoords[,1], permitYM = permitCoords[,2])]
-> dtPermit2[, landWidth := as.numeric(landWidth)]
-> dtPermit2[, landDepth := as.numeric(landDepth)]
-> dtPermit2[, roundWidth := round(landWidth)]
-> dtPermit2[, MB_effective_year := as.numeric(MB_effective_year)]
-> dtPermit2[, priorAge := year - MB_effective_year]
-> 
-> cat("Permit table after BCA join: nrow =", nrow(dtPermit2),
-+     " | with roundWidth =", sum(!is.na(dtPermit2$roundWidth)), "\n")
-Permit table after BCA join: nrow = 6359  | with roundWidth = 5898 
-> 
-> # ---- Diagnostic: prior-structure age by useCat (33' lots, 2018-2023) ------
-> cat("\nPrior structure age by useCat (33' lots, 2018-2023):\n")
-
-Prior structure age by useCat (33' lots, 2018-2023):
-> print(dtPermit2[roundWidth == 33 & useCat %in% c("Single","Duplex") &
-+                 year >= 2018 & year < 2024,
-+                 .(.N,
-+                   medPriorAge   = median(priorAge, na.rm = TRUE),
-+                   meanPriorAge  = mean(priorAge,   na.rm = TRUE),
-+                   shareYoung    = mean(priorAge < 30, na.rm = TRUE),
-+                   shareVeryYng  = mean(priorAge < 15, na.rm = TRUE)),
-+                 by = useCat])
-   useCat     N medPriorAge meanPriorAge  shareYoung shareVeryYng
-   <char> <int>       <num>        <num>       <num>        <num>
-1: Duplex   226          61     60.95982 0.004464286  0.004464286
-2: Single   730          32     29.68377 0.490984743  0.481276006
-> 
-> pPriorYear <- ggplot(dtPermit2[roundWidth == 33 & useCat %in% c("Single","Duplex","Laneway") &
-+                                year >= 2018 & year < 2024 &
-+                                MB_effective_year >= 1900 & MB_effective_year <= 2023],
-+                      aes(x = MB_effective_year, fill = useCat)) +
-+   geom_histogram(binwidth = 5, position = "identity", alpha = 0.5) +
-+   labs(x = "MB_effective_year of prior structure",
-+        y = "Count of permits",
-+        title = "Prior-structure vintage by permit type, 33' lots, 2018-2023") +
-+   theme_minimal()
-> ggsave("text/priorYear_by_useCat.png", pPriorYear, w = 7, h = 4)
-> 
-> pPriorAge <- ggplot(dtPermit2[roundWidth == 33 & useCat %in% c("Single","Duplex","Laneway") &
-+                               year >= 2018 & year < 2024 &
-+                               priorAge >= 0 & priorAge <= 120],
-+                     aes(x = priorAge, fill = useCat)) +
-+   geom_histogram(binwidth = 5, position = "identity", alpha = 0.5) +
-+   labs(x = "Age of prior structure at permit",
-+        y = "Count of permits",
-+        title = "Prior-structure age by permit type, 33' lots, 2018-2023") +
-+   theme_minimal()
-> ggsave("text/priorAge_by_useCat.png", pPriorAge, w = 7, h = 4)
-> 
-> # BCA parcel centroids for the sales merge
-> parcelCoords <- st_coordinates(st_centroid(st_geometry(sfBCA)))
-> dtBCA <- as.data.table(st_drop_geometry(sfBCA))
-> dtBCA[, `:=`(parcelXM = parcelCoords[,1], parcelYM = parcelCoords[,2])]
-> dtBCA <- dtBCA[, .(folioID,
-+                    parcelXM, parcelYM,
-+                    landWidth, landDepth,
-+                    MB_total_finished_area, MB_effective_year,
-+                    actualUseDescription, neighbourhoodDescription,
-+                    CTNAME)]
-> 
-> # All permits (no width restriction) -- subset at point of use
-> dtPermitAll <- dtPermit2[, .(PermitNumber, useCat, year,
-+                              permitXM, permitYM,
-+                              CTNAME, neighbourhoodDescription,
-+                              roundWidth, landWidth, landDepth,
-+                              MB_effective_year, priorAge, folioID)]
-> cat("\nAll permits after spatial filtering:", nrow(dtPermitAll), "\n")
-
-All permits after spatial filtering: 6359 
-> print(table(dtPermitAll[roundWidth %in% c(33, 50), .(useCat, roundWidth)]))
-           roundWidth
-useCat        33   50
-  Duplex     424   67
-  Infill       3    1
-  Laneway    883  234
-  Lock         4    1
-  Multiple    79   30
-  Secondary    6    8
-  Single    1081  354
-> 
-> # ============================================================================
-> # ---- Sales -----------------------------------------------------------------
-> # ============================================================================
-> con <- dbConnect(SQLite(), "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3")
-> dtSalesRaw <- dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice,
-+                                conveyanceTypeDescription FROM sales") |> setDT()
-> dbDisconnect(con)
-> 
-> dtSalesRaw <- dtSalesRaw[conveyanceTypeDescription == "Improved Single Property Transaction"]
-> dtSalesRaw <- dtSalesRaw[, .(folioID, conveyanceDate, conveyancePrice)]
-> 
-> dtSalesAll <- merge(dtSalesRaw, dtBCA, by = "folioID")
-> dtSalesAll[, year       := as.numeric(substring(conveyanceDate, 1, 4))]
-> dtSalesAll[, logPrice   := log(as.numeric(conveyancePrice))]
-> dtSalesAll[, landWidth  := as.numeric(landWidth)]
-> dtSalesAll[, landDepth  := as.numeric(landDepth)]
-> dtSalesAll[, roundWidth := round(landWidth)]
-> dtSalesAll[, w50        := as.integer(roundWidth == 50)]
-> dtSalesAll[, w33        := as.integer(roundWidth == 33)]
-> dtSalesAll[, age        := year - as.numeric(MB_effective_year)]
-> dtSalesAll[, FSR        := as.numeric(MB_total_finished_area) / (landWidth * landDepth)]
-> dtSalesAll[, logFSR     := log(FSR)]
-> dtSalesAll[, logFSR2    := logFSR^2]
-> dtSalesAll[, logFSR3    := logFSR^3]
-> dtSalesAll[, logWidth   := log(landWidth)]
-> 
-> # ============================================================================
-> # ---- Two analysis samples --------------------------------------------------
-> # ============================================================================
-> # A) Universal hedonic sample (duplex-margin: 33 vs 50, FSR 0.5-0.8, age < 40)
-> CRITAGE <- 40
-> FSR_LO  <- 0.50
-> FSR_HI  <- 0.80
-> YR_LO   <- 2013
-> YR_HI   <- 2019
-> 
-> dtSalesRegSubset <- dtSalesAll[(w33 == 1 | w50 == 1) &
-+                                year > YR_LO & year < YR_HI &
-+                                age > 0 & age < CRITAGE &
-+                                actualUseDescription == "Single Family Dwelling" &
-+                                !is.na(FSR) & FSR > FSR_LO & FSR < FSR_HI &
-+                                !is.na(logPrice) & is.finite(logPrice) &
-+                                !is.na(parcelXM) & !is.na(parcelYM)]
-> 
-> cat("\nUniversal hedonic sample:", nrow(dtSalesRegSubset),
-+     " | w33:", sum(dtSalesRegSubset$w33),
-+     " | w50:", sum(dtSalesRegSubset$w50),
-+     " | tracts:", uniqueN(dtSalesRegSubset$CTNAME), "\n")
-
-Universal hedonic sample: 1276  | w33: 875  | w50: 401  | tracts: 70 
-> 
-> # B) Elasticity sample: new builds (eff yr 2000-2018), all widths,
-> #    depth IQR-trimmed within sample
-> EFFYR_LO <- 2000
-> EFFYR_HI <- 2018
-> 
-> dtSalesElast <- dtSalesAll[year > YR_LO & year < YR_HI &
-+                            MB_effective_year >= EFFYR_LO &
-+                            MB_effective_year <= EFFYR_HI &
-+                            age > 0 &
-+                            actualUseDescription == "Single Family Dwelling" &
-+                            !is.na(FSR) & FSR > FSR_LO & FSR < FSR_HI &
-+                            !is.na(landWidth) & landWidth > 0 &
-+                            !is.na(landDepth) & landDepth > 0 &
-+                            !is.na(logPrice) & is.finite(logPrice) &
-+                            !is.na(parcelXM) & !is.na(parcelYM)]
-> 
-> depthQ <- quantile(dtSalesElast$landDepth, c(0.25, 0.75), na.rm = TRUE)
-> cat("\nDepth IQR trim:", round(depthQ[1], 1), "to", round(depthQ[2], 1), "ft\n")
-
-Depth IQR trim: 120.1 to 130.2 ft
-> dtSalesElast <- dtSalesElast[landDepth >= depthQ[1] & landDepth <= depthQ[2]]
-> 
-> cat("Elasticity sample:", nrow(dtSalesElast),
-+     " | tracts:", uniqueN(dtSalesElast$CTNAME),
-+     " | width range:", round(min(dtSalesElast$landWidth), 1), "-",
-+     round(max(dtSalesElast$landWidth), 1), "ft\n")
-Elasticity sample: 690  | tracts: 41  | width range: 24 - 90.4 ft
-> cat("Width distribution in elasticity sample:\n")
-Width distribution in elasticity sample:
-> print(quantile(dtSalesElast$landWidth, c(0.05, 0.25, 0.5, 0.75, 0.95)))
-    5%    25%    50%    75%    95% 
-33.000 33.000 40.695 50.000 66.000 
-> 
-> FSRctrl <- "logFSR + logFSR2 + logFSR3"
-> 
-> # ============================================================================
-> # ---- Neighbourhood-level hedonic + plex ratio (unchanged) -----------------
-> # ============================================================================
-> hedNbhd <- feols(as.formula(paste0("logPrice ~ ", FSRctrl,
-+                                    " + i(neighbourhoodDescription, w50)",
-+                                    " + i(neighbourhoodDescription) |",
-+                                    " MB_effective_year + year")),
-+                  data = dtSalesRegSubset)
-The variables 'neighbourhoodDescription::CEDAR COTTAGE:w50',
-'neighbourhoodDescription::HASTINGS EAST:w50',
-'neighbourhoodDescription::RENFREW:w50', 'neighbourhoodDescription::RENFREW
-HEIGHTS:w50' and 'neighbourhoodDescription::SHAUGHNESSY' have been removed
-because of collinearity (see $collin.var).
-> 
-> cfN <- coef(hedNbhd)
-> intN <- grep(":w50$", names(cfN), value = TRUE)
-> dtHedonicNbhd <- data.table(
-+   neighbourhoodDescription = gsub("^neighbourhoodDescription::|:w50$", "", intN),
-+   w50Interact              = cfN[intN]
-+ )
-> 
-> simpleNbhd <- feols(as.formula(paste0("logPrice ~ ", FSRctrl,
-+                                       " + i(neighbourhoodDescription) |",
-+                                       " MB_effective_year + year")),
-+                     data = dtSalesRegSubset[w33 == 1])
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-> cfSN <- coef(simpleNbhd)
-> feSN <- grep("^neighbourhoodDescription::", names(cfSN), value = TRUE)
-> dtNbhdFE <- data.table(
-+   neighbourhoodDescription = gsub("^neighbourhoodDescription::", "", feSN),
-+   nbhdFE                   = cfSN[feSN]
-+ )
-> dtHedonicNbhd <- merge(dtHedonicNbhd, dtNbhdFE, by = "neighbourhoodDescription")
-> 
-> dtRatioNbhd <- dtPermitAll[roundWidth == 33 &
-+                            year >= 2018 & year < 2024 & !is.na(neighbourhoodDescription),
-+                            .(nDuplex  = sum(useCat == "Duplex"),
-+                              nSingle  = sum(useCat == "Single"),
-+                              nLaneway = sum(useCat == "Laneway")),
-+                            by = neighbourhoodDescription]
-> dtRatioNbhd[, plexRatio := (nDuplex + nLaneway) / pmax(nSingle + nDuplex, 1)]
-> 
-> dtNbhdCompare <- merge(dtHedonicNbhd, dtRatioNbhd, by = "neighbourhoodDescription")
-> print(dtNbhdCompare)
-Key: <neighbourhoodDescription>
-    neighbourhoodDescription w50Interact       nbhdFE nDuplex nSingle nLaneway
-                      <char>       <num>        <num>   <int>   <int>    <int>
- 1:                   CAMBIE   0.2590233 -0.091111222       7      48       30
- 2:              COLLINGWOOD   0.3093120 -0.686037777      17      22       26
- 3:                   DUNBAR   0.3567177 -0.001637551       8      56       24
- 4:               FRASERVIEW   0.2719626 -0.623197364       1       5        2
- 5:                GRANDVIEW   0.2341922 -0.628937509       5       3        1
- 6:               KERRISDALE   0.4036321 -0.052782578       1      17        8
- 7:                KILLARNEY   0.2529351 -0.581762717       7      40       39
- 8:                KITSILANO   0.3876048 -0.053650648      12      35       12
- 9:                   KNIGHT   0.1517338 -0.703282313      19      69       40
-10:              MAIN/FRASER   0.1821965 -0.587533747      21      77       44
-11:                  MARPOLE   0.2265697 -0.253664913       6      28       20
-12:                 OAKRIDGE   0.2554853 -0.242086953       0       3        4
-13:               POINT GREY   0.4303076  0.082232846       6      67       28
-14:          SOUTH GRANVILLE   0.1378324  0.101013557       0       1        0
-15:          SOUTH VANCOUVER   0.1879938 -0.592692547      18      69       75
-16:               SOUTHLANDS   0.3588881 -0.112656965       0       1        2
-    plexRatio
-        <num>
- 1: 0.6727273
- 2: 1.1025641
- 3: 0.5000000
- 4: 0.5000000
- 5: 0.7500000
- 6: 0.5000000
- 7: 0.9787234
- 8: 0.5106383
- 9: 0.6704545
-10: 0.6632653
-11: 0.7647059
-12: 1.3333333
-13: 0.4657534
-14: 0.0000000
-15: 1.0689655
-16: 2.0000000
-> cat("\nNbhd-level correlations:\n")
-
-Nbhd-level correlations:
-> print(cor(dtNbhdCompare[, .(w50Interact, plexRatio, nbhdFE)], use = "complete.obs"))
-            w50Interact  plexRatio     nbhdFE
-w50Interact   1.0000000  0.1150354  0.5020106
-plexRatio     0.1150354  1.0000000 -0.2442793
-nbhdFE        0.5020106 -0.2442793  1.0000000
-> 
-> rNbhd1 <- feols(plexRatio ~ nbhdFE,                 data = dtNbhdCompare)
-> rNbhd2 <- feols(plexRatio ~ w50Interact,            data = dtNbhdCompare)
-> rNbhd3 <- feols(plexRatio ~ w50Interact + nbhdFE,   data = dtNbhdCompare)
-> print(etable(rNbhd1, rNbhd2, rNbhd3, digits = 3))
-                         rNbhd1        rNbhd2         rNbhd3
-Dependent Var.:       plexRatio     plexRatio      plexRatio
-                                                            
-Constant        0.665** (0.167) 0.622 (0.383)  0.154 (0.508)
-nbhdFE           -0.366 (0.388)               -0.605 (0.447)
-w50Interact                      0.574 (1.32)    1.58 (1.49)
-_______________ _______________ _____________ ______________
-S.E. type                   IID           IID            IID
-Observations                 16            16             16
-R2                      0.05967       0.01323        0.13519
-Adj. R2                -0.00749      -0.05725        0.00214
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-> 
-> ggplot(dtNbhdCompare, aes(x = nbhdFE, y = w50Interact, color = plexRatio)) +
-+   geom_point() + geom_smooth(method = "lm") +
-+   labs(x = "Nbhd FE (w33-only)", y = "w50 interaction (hedonic)",
-+        title = "Hedonic w50 interaction vs nbhd FE") + theme_minimal()
-`geom_smooth()` using formula = 'y ~ x'
-Warning message:
-The following aesthetics were dropped during statistical transformation:
-colour.
-ℹ This can happen when ggplot fails to infer the correct grouping structure in
-  the data.
-ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-  variable into a factor? 
-> ggsave("text/FEvw50.png", w = 6, h = 4)
-`geom_smooth()` using formula = 'y ~ x'
-Warning message:
-The following aesthetics were dropped during statistical transformation:
-colour.
-ℹ This can happen when ggplot fails to infer the correct grouping structure in
-  the data.
-ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
-  variable into a factor? 
-> 
-> # ============================================================================
-> # ---- Tract-level hedonic + plex ratio (unchanged) -------------------------
-> # ============================================================================
-> hedTract <- feols(as.formula(paste0("logPrice ~ ", FSRctrl,
-+                                     " + i(CTNAME, w50) + i(CTNAME) |",
-+                                     " MB_effective_year + year")),
-+                   data = dtSalesRegSubset)
-The variables 'CTNAME::0002.03:w50', 'CTNAME::0003.01:w50',
-'CTNAME::0004.01:w50', 'CTNAME::0004.02:w50', 'CTNAME::0011.00:w50',
-'CTNAME::0012.02:w50' and 35 others have been removed because of collinearity
-(see $collin.var).
-> 
-> cfT <- coef(hedTract)
-> intT <- grep(":w50$", names(cfT), value = TRUE)
-> dtHedonicTract <- data.table(
-+   CTNAME      = gsub("^CTNAME::|:w50$", "", intT),
-+   w50Interact = cfT[intT]
-+ )
-> 
-> simpleTract <- feols(as.formula(paste0("logPrice ~ ", FSRctrl,
-+                                        " + i(CTNAME) |",
-+                                        " MB_effective_year + year")),
-+                      data = dtSalesRegSubset[w33 == 1])
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-> cfST <- coef(simpleTract)
-> feST <- grep("^CTNAME::", names(cfST), value = TRUE)
-> dtTractFE <- data.table(
-+   CTNAME  = gsub("^CTNAME::", "", feST),
-+   tractFE = cfST[feST]
-+ )
-> dtHedonicTract <- merge(dtHedonicTract, dtTractFE, by = "CTNAME")
-> 
-> dtRatioTract <- dtPermitAll[roundWidth == 33 &
-+                             year >= 2018 & year < 2024 & !is.na(CTNAME),
-+                             .(nDuplex  = sum(useCat == "Duplex"),
-+                               nSingle  = sum(useCat == "Single"),
-+                               nLaneway = sum(useCat == "Laneway")),
-+                             by = CTNAME]
-> dtRatioTract[, plexRatio := (nDuplex + nLaneway) / pmax(nSingle + nDuplex, 1)]
-> 
-> dtTractCompare <- merge(dtHedonicTract, dtRatioTract, by = "CTNAME")
-> print(etable(hedTract, simpleTract))
-                                 hedTract        simpleTract
-Dependent Var.:                  logPrice           logPrice
-                                                            
-logFSR                    -6.215* (2.629)   -7.954** (2.923)
-logFSR2                   -14.16* (5.603)   -18.48** (6.257)
-logFSR3                   -9.904* (3.865)   -13.20** (4.328)
-w50 x CTNAME = 0001.02    0.1750 (0.1766)                   
-w50 x CTNAME = 0002.01    0.2304 (0.1806)                   
-w50 x CTNAME = 0002.04   0.4258* (0.1765)                   
-w50 x CTNAME = 0003.02   0.3542. (0.2056)                   
-w50 x CTNAME = 0006.01 0.2910*** (0.0702)                   
-w50 x CTNAME = 0006.02  0.2278** (0.0780)                   
-w50 x CTNAME = 0007.01 0.4352*** (0.0384)                   
-w50 x CTNAME = 0007.02  0.3399** (0.1115)                   
-w50 x CTNAME = 0008.02 0.3309*** (0.0658)                   
-w50 x CTNAME = 0009.00 0.3901*** (0.0442)                   
-w50 x CTNAME = 0010.02 0.8681*** (0.1137)                   
-w50 x CTNAME = 0012.01  0.2831** (0.0863)                   
-w50 x CTNAME = 0013.01    0.1202 (0.1577)                   
-w50 x CTNAME = 0014.02   0.3121* (0.1220)                   
-w50 x CTNAME = 0015.01   0.3377* (0.1550)                   
-w50 x CTNAME = 0016.01   0.2949. (0.1769)                   
-w50 x CTNAME = 0018.01   0.3956* (0.1758)                   
-w50 x CTNAME = 0018.02    0.0948 (0.1480)                   
-w50 x CTNAME = 0019.00 0.4604*** (0.0729)                   
-w50 x CTNAME = 0021.00 0.2689*** (0.0641)                   
-w50 x CTNAME = 0022.00 0.6243*** (0.1597)                   
-w50 x CTNAME = 0023.00 0.4384*** (0.0372)                   
-w50 x CTNAME = 0024.00 0.3905*** (0.0278)                   
-w50 x CTNAME = 0025.00 0.3219*** (0.0352)                   
-w50 x CTNAME = 0026.00 0.3388*** (0.0365)                   
-w50 x CTNAME = 0027.01 0.9628*** (0.1047)                   
-w50 x CTNAME = 0027.02  1.171*** (0.1798)                   
-w50 x CTNAME = 0028.00  1.133*** (0.1120)                   
-w50 x CTNAME = 0031.01  0.3860** (0.1467)                   
-w50 x CTNAME = 0033.01    0.1177 (0.1541)                   
-w50 x CTNAME = 0035.01    0.2627 (0.1691)                   
-w50 x CTNAME = 0041.02 0.9365*** (0.1124)                   
-w50 x CTNAME = 0042.00  0.4148** (0.1469)                   
-w50 x CTNAME = 0043.01 0.2615*** (0.0614)                   
-w50 x CTNAME = 0043.02 0.4573*** (0.0361)                   
-w50 x CTNAME = 0044.00 0.4210*** (0.0509)                   
-w50 x CTNAME = 0055.02    0.2262 (0.1449)                   
-CTNAME = 0002.03          0.0192 (0.1779)                   
-CTNAME = 0003.01         -0.1709 (0.1449)   -0.1897 (0.1754)
-CTNAME = 0003.02         -0.1746 (0.1782)   -0.1971 (0.2035)
-CTNAME = 0004.01         0.2156. (0.1210)    0.2100 (0.1569)
-CTNAME = 0004.02          0.1059 (0.1451)    0.0967 (0.1758)
-CTNAME = 0006.01       0.3646*** (0.1055)   0.3603* (0.1450)
-CTNAME = 0006.02       0.3549*** (0.1071)   0.3399* (0.1464)
-CTNAME = 0007.01       0.3870*** (0.1073)  0.3827** (0.1468)
-CTNAME = 0007.02       0.5608*** (0.1457)  0.5546** (0.1766)
-CTNAME = 0008.02       0.5414*** (0.1106) 0.5314*** (0.1486)
-CTNAME = 0009.00       0.5197*** (0.1049) 0.5143*** (0.1449)
-CTNAME = 0011.00          0.1015 (0.1191)    0.0960 (0.1546)
-CTNAME = 0012.01        0.3716** (0.1166)   0.3585* (0.1529)
-CTNAME = 0012.02          0.0276 (0.1222)    0.0072 (0.1577)
-CTNAME = 0013.01         -0.0786 (0.1214)   -0.0783 (0.1565)
-CTNAME = 0013.03          0.0102 (0.1228)    0.0021 (0.1570)
-CTNAME = 0013.04         -0.0349 (0.1494)   -0.0316 (0.1787)
-CTNAME = 0014.01          0.0953 (0.1262)    0.0852 (0.1612)
-CTNAME = 0014.02         -0.0379 (0.1124)   -0.0347 (0.1504)
-CTNAME = 0015.01         -0.0815 (0.1191)   -0.0944 (0.1554)
-CTNAME = 0015.02          0.0137 (0.1169)    0.0109 (0.1534)
-CTNAME = 0016.01          0.0905 (0.1458)    0.0655 (0.1757)
-CTNAME = 0016.04         -0.1515 (0.1192)   -0.1693 (0.1526)
-CTNAME = 0017.02         -0.1480 (0.1757)   -0.1430 (0.2014)
-CTNAME = 0017.03         0.3310* (0.1485)   0.3235. (0.1758)
-CTNAME = 0017.04          0.0852 (0.1911)    0.0839 (0.2132)
-CTNAME = 0018.01         -0.1015 (0.1450)   -0.1192 (0.1759)
-CTNAME = 0018.02         -0.0175 (0.1092)   -0.0318 (0.1470)
-CTNAME = 0019.00         0.2605* (0.1134)   0.2556. (0.1512)
-CTNAME = 0021.00       0.7400*** (0.1164) 0.7328*** (0.1519)
-CTNAME = 0022.00         0.3701* (0.1783)   0.3512. (0.2038)
-CTNAME = 0023.00       0.5778*** (0.1061) 0.5739*** (0.1461)
-CTNAME = 0024.00       0.5918*** (0.1047) 0.5878*** (0.1447)
-CTNAME = 0025.00       0.6140*** (0.1037) 0.6090*** (0.1439)
-CTNAME = 0026.00       0.6255*** (0.1045) 0.6228*** (0.1449)
-CTNAME = 0029.00       0.5522*** (0.1059) 0.5457*** (0.1455)
-CTNAME = 0030.00         0.3056* (0.1261)   0.2955. (0.1596)
-CTNAME = 0031.01       0.4631*** (0.1075)  0.4580** (0.1465)
-CTNAME = 0031.02          0.0819 (0.1268)    0.0658 (0.1611)
-CTNAME = 0032.01          0.0986 (0.1779)    0.0747 (0.1973)
-CTNAME = 0032.02         -0.0438 (0.1764)   -0.0666 (0.2013)
-CTNAME = 0033.01         -0.1351 (0.1177)   -0.1434 (0.1532)
-CTNAME = 0034.01          0.0426 (0.1349)    0.0210 (0.1688)
-CTNAME = 0034.02         -0.0952 (0.1332)   -0.1060 (0.1673)
-CTNAME = 0035.01         -0.0645 (0.1368)   -0.0864 (0.1695)
-CTNAME = 0035.02          0.0083 (0.1197)   -0.0056 (0.1557)
-CTNAME = 0036.01         -0.0526 (0.1124)   -0.0525 (0.1505)
-CTNAME = 0036.02         -0.0102 (0.1761)   -0.0088 (0.2008)
-CTNAME = 0042.00       0.5411*** (0.1050) 0.5384*** (0.1444)
-CTNAME = 0043.01       0.6676*** (0.1043) 0.6658*** (0.1444)
-CTNAME = 0043.02       0.6694*** (0.1039) 0.6646*** (0.1443)
-CTNAME = 0044.00       0.8026*** (0.1060) 0.8003*** (0.1456)
-CTNAME = 0045.01        1.808*** (0.1774)  1.773*** (0.2023)
-CTNAME = 0051.01         -0.0227 (0.1257)   -0.0362 (0.1612)
-CTNAME = 0051.02          0.0524 (0.1270)    0.0334 (0.1593)
-CTNAME = 0052.01         -0.0608 (0.1191)   -0.0742 (0.1550)
-CTNAME = 0052.02         -0.0806 (0.1150)   -0.0885 (0.1514)
-CTNAME = 0053.01         -0.0217 (0.1093)   -0.0262 (0.1478)
-CTNAME = 0053.02         -0.0750 (0.1182)   -0.0856 (0.1548)
-CTNAME = 0054.02         -0.1101 (0.1157)   -0.1195 (0.1517)
-CTNAME = 0055.01          0.0912 (0.1255)    0.0805 (0.1586)
-CTNAME = 0055.02                            -0.0134 (0.1756)
-Fixed-Effects:         ------------------ ------------------
-MB_effective_year                     Yes                Yes
-year                                  Yes                Yes
-______________________ __________________ __________________
-S.E. type                             IID                IID
-Observations                        1,276                874
-R2                                0.90612            0.88962
-Within R2                         0.83817            0.78672
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-> print(dtTractCompare)
-Key: <CTNAME>
-     CTNAME w50Interact     tractFE nDuplex nSingle nLaneway plexRatio
-     <char>       <num>       <num>   <int>   <int>    <int>     <num>
- 1: 0003.02   0.3541961 -0.19708166       3       6       15 2.0000000
- 2: 0006.01   0.2910086  0.36031397       3      13       10 0.8125000
- 3: 0006.02   0.2278254  0.33992950       1       4        2 0.6000000
- 4: 0007.01   0.4352091  0.38265743       2      10        8 0.8333333
- 5: 0007.02   0.3398830  0.55457609       0       1        0 0.0000000
- 6: 0008.02   0.3308783  0.53141269       0       4        5 1.2500000
- 7: 0009.00   0.3900612  0.51433928       1       9        3 0.4000000
- 8: 0012.01   0.2830969  0.35849919       1       8        5 0.6666667
- 9: 0013.01   0.1201733 -0.07830034       7      16       13 0.8695652
-10: 0014.02   0.3120640 -0.03471235       5      12       12 1.0000000
-11: 0015.01   0.3377294 -0.09436059       2      11        5 0.5384615
-12: 0016.01   0.2949302  0.06550887       1       1        4 2.5000000
-13: 0018.01   0.3955836 -0.11923380       4      18       18 1.0000000
-14: 0018.02   0.0948245 -0.03178283       6      46       18 0.4615385
-15: 0019.00   0.4603982  0.25559193       5      16       10 0.7142857
-16: 0021.00   0.2688951  0.73282594       0       2        0 0.0000000
-17: 0023.00   0.4383634  0.57391577       0       8        4 0.5000000
-18: 0024.00   0.3904905  0.58775101       2       9        3 0.4545455
-19: 0025.00   0.3219061  0.60902576       6      44       20 0.5200000
-20: 0026.00   0.3388158  0.62275247       2      20        9 0.5000000
-21: 0031.01   0.3859880  0.45797779       2      29       17 0.6129032
-22: 0033.01   0.1176879 -0.14340284       4      18        6 0.4545455
-23: 0035.01   0.2627332 -0.08641961       7       9        6 0.8125000
-24: 0042.00   0.4148355  0.53836300      12      36       13 0.5208333
-25: 0043.01   0.2615021  0.66577935       3      27       10 0.4333333
-26: 0043.02   0.4572640  0.66462132       2      28       12 0.4666667
-27: 0044.00   0.4209836  0.80033684       1       8        5 0.6666667
-28: 0055.02   0.2262212 -0.01338535       1       0        3 4.0000000
-     CTNAME w50Interact     tractFE nDuplex nSingle nLaneway plexRatio
-     <char>       <num>       <num>   <int>   <int>    <int>     <num>
-> cat("\nTract-level correlations:\n")
-
-Tract-level correlations:
-> print(cor(dtTractCompare[, .(w50Interact, plexRatio, tractFE)], use = "complete.obs"))
-            w50Interact  plexRatio    tractFE
-w50Interact   1.0000000 -0.1333207  0.4784579
-plexRatio    -0.1333207  1.0000000 -0.4551328
-tractFE       0.4784579 -0.4551328  1.0000000
-> 
-> # ============================================================================
-> # ---- Local kernel features -------------------------------------------------
-> # ============================================================================
-> gaussKernel <- function(d, h) exp(-0.5 * (d / h)^2)
-> 
-> # Local fit on the 33/50 hedonic sample: gives localPremium (w50 dummy)
-> # and localPPSF (predicted log price at a reference 33' house).
-> localFitPremium <- function(xE, yE, h, sales, minN = 40, minPerGroup = 5,
-+                             refLogFSR = log(0.65), refAge = 20) {
-+   d <- sqrt((sales$parcelXM - xE)^2 + (sales$parcelYM - yE)^2)
-+   w <- gaussKernel(d, h)
-+   keep <- d < 3 * h & w > 1e-6
-+   if (sum(keep) < minN ||
-+       sum(sales$w50[keep]) < minPerGroup ||
-+       sum(sales$w33[keep]) < minPerGroup) {
-+     return(list(localPremium = NA_real_, localPPSF = NA_real_,
-+                 nSales = sum(keep)))
+> # Hand-rolled adaptive-bandwidth GWR (bisquare kernel, k-nearest-neighbour bw)
+> gwrLocal <- function(y, x, dataCoords, fitCoords, k = 1000, mcCores = 6) {
++   bisquare <- function(d, h) ifelse(d < h, (1 - (d/h)^2)^2, 0)
++   fitOne <- function(s) {
++     d  <- sqrt((dataCoords[,1] - s[1])^2 + (dataCoords[,2] - s[2])^2)
++     h  <- sort(d, partial = k)[k]
++     w  <- bisquare(d, h)
++     keep <- w > 0
++     Xm <- cbind(1, x[keep]); ym <- y[keep]; wm <- w[keep]
++     fit <- lm.wfit(Xm, ym, wm)
++     resid <- ym - Xm %*% fit$coefficients
++     sigma2 <- sum(wm * resid^2) / (sum(wm) - 2)
++     XtWX_inv <- solve(crossprod(Xm * sqrt(wm)))
++     se <- sqrt(diag(sigma2 * XtWX_inv))
++     c(intercept = fit$coefficients[1], slope = fit$coefficients[2],
++       seInt = se[1], seSlope = se[2], nEff = sum(wm))
 +   }
-+   sub <- sales[keep]
-+   sub[, .w := w[keep]]
-+   fit <- tryCatch(
-+     feols(logPrice ~ logFSR + logFSR2 + logFSR3 + w50 + age | year,
-+           data = sub, weights = ~.w),
-+     error = function(e) NULL
-+   )
-+   if (is.null(fit)) return(list(localPremium = NA_real_, localPPSF = NA_real_,
-+                                 nSales = sum(keep)))
-+   cf <- coef(fit)
-+   yrFE <- fixef(fit)$year
-+   meanYrFE <- mean(yrFE, na.rm = TRUE)
-+   localPPSF <- cf["logFSR"]  * refLogFSR     +
-+                cf["logFSR2"] * refLogFSR^2   +
-+                cf["logFSR3"] * refLogFSR^3   +
-+                cf["age"]     * refAge        +
-+                meanYrFE
-+   list(localPremium = unname(cf["w50"]),
-+        localPPSF    = unname(localPPSF),
-+        nSales       = sum(keep))
++   resList <- parallel::mclapply(seq_len(nrow(fitCoords)),
++                                 function(i) fitOne(fitCoords[i,]),
++                                 mc.cores = mcCores)
++   res <- do.call(rbind, resList)
++   dt  <- as.data.table(res)
++   setnames(dt, c("intercept","slope","seInt","seSlope","nEff"))
++   dt[, `:=`(fitX = fitCoords[,1], fitY = fitCoords[,2])]
++   dt[]
 + }
 > 
-> # Local fit on the new-build elasticity sample: gives localElasticity
-> # (coefficient on log(landWidth)).
-> localFitElasticity <- function(xE, yE, h, sales, minN = 40,
-+                                minDistinctWidths = 5) {
-+   d <- sqrt((sales$parcelXM - xE)^2 + (sales$parcelYM - yE)^2)
-+   w <- gaussKernel(d, h)
-+   keep <- d < 3 * h & w > 1e-6
-+   if (sum(keep) < minN) {
-+     return(list(localElasticity = NA_real_, nSalesE = sum(keep)))
+> # Trim a data.table by symmetric quantile filter on a set of columns
+> trimByQuantile <- function(dt, cols, q) {
++   for (c in cols) {
++     lo <- quantile(dt[[c]], q,     na.rm = TRUE)
++     hi <- quantile(dt[[c]], 1 - q, na.rm = TRUE)
++     dt <- dt[get(c) %between% c(lo, hi)]
 +   }
-+   sub <- sales[keep]
-+   if (uniqueN(sub$roundWidth) < minDistinctWidths) {
-+     return(list(localElasticity = NA_real_, nSalesE = sum(keep)))
-+   }
-+   sub[, .w := w[keep]]
-+   fit <- tryCatch(
-+     feols(logPrice ~ logWidth + logFSR + logFSR2 + logFSR3 + age | year,
-+           data = sub, weights = ~.w),
-+     error = function(e) NULL
-+   )
-+   if (is.null(fit)) return(list(localElasticity = NA_real_, nSalesE = sum(keep)))
-+   list(localElasticity = unname(coef(fit)["logWidth"]),
-+        nSalesE         = sum(keep))
-+ }
-> 
-> cvBandwidth <- function(h, sales, nFolds = 10) {
-+   set.seed(42)
-+   folds <- sample(rep(1:nFolds, length.out = nrow(sales)))
-+   yhat <- rep(NA_real_, nrow(sales))
-+   for (k in 1:nFolds) {
-+     train <- sales[folds != k]
-+     for (i in which(folds == k)) {
-+       d <- sqrt((train$parcelXM - sales$parcelXM[i])^2 +
-+                 (train$parcelYM - sales$parcelYM[i])^2)
-+       w <- gaussKernel(d, h)
-+       keep <- d < 3 * h & w > 1e-6
-+       if (sum(keep) < 30) next
-+       sub <- train[keep]
-+       sub[, .w := w[keep]]
-+       fit <- tryCatch(
-+         feols(logPrice ~ logFSR + logFSR2 + logFSR3 + w50 + age | year,
-+               data = sub, weights = ~.w),
-+         error = function(e) NULL
-+       )
-+       if (is.null(fit)) next
-+       cf <- coef(fit)
-+       yrFE <- fixef(fit)$year
-+       yr_i <- as.character(sales$year[i])
-+       yrEff <- if (yr_i %in% names(yrFE)) yrFE[yr_i] else mean(yrFE)
-+       yhat[i] <- cf["logFSR"]  * sales$logFSR[i]  +
-+                  cf["logFSR2"] * sales$logFSR2[i] +
-+                  cf["logFSR3"] * sales$logFSR3[i] +
-+                  cf["w50"]     * sales$w50[i]     +
-+                  cf["age"]     * sales$age[i]     +
-+                  yrEff
-+     }
-+   }
-+   ok <- !is.na(yhat)
-+   list(h = h, rmse = sqrt(mean((sales$logPrice[ok] - yhat[ok])^2)),
-+        nPred = sum(ok))
-+ }
-> 
-> # ============================================================================
-> # ---- Permit set for local features: both 33' and 50' ----------------------
-> # ============================================================================
-> dtPermitLocal <- dtPermitAll[roundWidth %in% c(33, 50) &
-+                              useCat %in% c("Single","Duplex") &
-+                              year >= 2018 & year < 2024]
-> dtPermitLocal[, isDuplex := as.integer(useCat == "Duplex")]
-> cat("\nPermits for choice model (33' + 50', single vs duplex):", nrow(dtPermitLocal), "\n")
-
-Permits for choice model (33' + 50', single vs duplex): 1232 
-> print(dtPermitLocal[, .(.N, duplexShare = mean(isDuplex)), by = roundWidth])
-   roundWidth     N duplexShare
-        <num> <int>       <num>
-1:         33   956   0.2364017
-2:         50   276   0.1557971
-> 
-> # ============================================================================
-> # ---- Bandwidth CV (on the duplex-margin hedonic sample) -------------------
-> # ============================================================================
-> bandwidthGrid <- c(750, 1000, 1250, 1500, 1750, 2000)
-> cat("\nBandwidth CV (predictive RMSE on hedonic sample):\n")
-
-Bandwidth CV (predictive RMSE on hedonic sample):
-> cvResults <- rbindlist(lapply(bandwidthGrid, function(h) {
-+   cat("  h =", h, "m... "); t0 <- Sys.time()
-+   r <- cvBandwidth(h, dtSalesRegSubset)
-+   cat("RMSE =", round(r$rmse, 4), " | n =", r$nPred,
-+       " | t =", round(as.numeric(Sys.time() - t0, units = "secs"), 1), "s\n")
-+   as.data.table(r)
-+ }))
-  h = 750 m... The variable 'w50' has been removed because of collinearity (see $collin.var).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-NOTE: 2 fixed-effect singletons were removed (2 observations).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-The variable 'w50' has been removed because of collinearity (see $collin.var).
-RMSE = 0.1559  | n = 1250  | t = 5.2 s
-  h = 1000 m... The variable 'w50' has been removed because of collinearity (see $collin.var).
-RMSE = 0.1582  | n = 1275  | t = 5.6 s
-  h = 1250 m... RMSE = 0.1607  | n = 1276  | t = 5.4 s
-  h = 1500 m... RMSE = 0.1631  | n = 1276  | t = 5.5 s
-  h = 1750 m... RMSE = 0.1659  | n = 1276  | t = 5.5 s
-  h = 2000 m... RMSE = 0.1688  | n = 1276  | t = 5.3 s
-> hOptCV <- cvResults[which.min(rmse), h]
-> cat("CV-optimal h:", hOptCV, "m\n")
-CV-optimal h: 750 m
-> 
-> # ============================================================================
-> # ---- Compute features at every bandwidth ----------------------------------
-> # ============================================================================
-> computePermitFeatures <- function(h, permits, salesHed, salesElast) {
-+   feats <- rbindlist(lapply(seq_len(nrow(permits)), function(i) {
-+     rP <- localFitPremium(permits$permitXM[i], permits$permitYM[i], h, salesHed)
-+     rE <- localFitElasticity(permits$permitXM[i], permits$permitYM[i], h, salesElast)
-+     data.table(localPremium    = rP$localPremium,
-+                localPPSF       = rP$localPPSF,
-+                nSales          = rP$nSales,
-+                localElasticity = rE$localElasticity,
-+                nSalesE         = rE$nSalesE)
-+   }))
-+   cbind(permits[, .(isDuplex, useCat, CTNAME, neighbourhoodDescription,
-+                     roundWidth, permitXM, permitYM, year,
-+                     MB_effective_year, priorAge)],
-+         feats)
-+ }
-> 
-> cat("\nComputing permit features at each bandwidth...\n")
-
-Computing permit features at each bandwidth...
-> permitFeatures <- lapply(bandwidthGrid, function(h) {
-+   cat("  h =", h, "m... "); t0 <- Sys.time()
-+   dt <- computePermitFeatures(h, dtPermitLocal, dtSalesRegSubset, dtSalesElast)
-+   cat("n with premium:",    sum(!is.na(dt$localPremium)),
-+       " | n with elast:",   sum(!is.na(dt$localElasticity)),
-+       " | t =", round(as.numeric(Sys.time() - t0, units = "secs"), 1), "s\n")
 +   dt
-+ })
-  h = 750 m... n with premium: 936  | n with elast: 583  | t = 6.5 s
-  h = 1000 m... n with premium: 1010  | n with elast: 758  | t = 7.4 s
-  h = 1250 m... n with premium: 1095  | n with elast: 856  | t = 7.9 s
-  h = 1500 m... n with premium: 1133  | n with elast: 920  | t = 8.5 s
-  h = 1750 m... n with premium: 1177  | n with elast: 979  | t = 8.7 s
-  h = 2000 m... n with premium: 1212  | n with elast: 1102  | t = 9.4 s
-> names(permitFeatures) <- paste0("h", bandwidthGrid)
++ }
 > 
-> # ============================================================================
-> # ---- Diagnostics across bandwidths ----------------------------------------
-> # ============================================================================
-> diagBW <- rbindlist(lapply(seq_along(bandwidthGrid), function(j) {
-+   h  <- bandwidthGrid[j]
-+   dt <- permitFeatures[[j]][!is.na(localPremium) & !is.na(localPPSF) &
-+                             !is.na(localElasticity)]
-+   if (nrow(dt) < 20) return(data.table(h = h))
+> # Project lon/lat columns of a data.table to a planar CRS; return coord matrix
+> projectCoords <- function(dt, crsOut) {
++   sfTmp <- st_as_sf(dt[, .(lon, lat)], coords = c("lon","lat"), crs = 4326)
++   sfTmp <- st_transform(sfTmp, crsOut)
++   st_coordinates(sfTmp)
++ }
+> 
+> # Run GWR + attach lon/lat for plotting.
+> # dtData must contain numeric columns named in yCol/xCol, plus lon/lat.
+> # fitPointsLL is a data.table with lon/lat for fit locations.
+> runGWR <- function(dtData, yCol, xCol, fitPointsLL, cfg, k = 1000) {
++   dataCoords <- projectCoords(dtData, cfg$crsProj)
++   fitCoords  <- projectCoords(fitPointsLL, cfg$crsProj)
++   dtLocal <- gwrLocal(y          = dtData[[yCol]],
++                       x          = dtData[[xCol]],
++                       dataCoords = dataCoords,
++                       fitCoords  = fitCoords,
++                       k          = k)
++   dtLocal[, `:=`(lon = fitPointsLL$lon, lat = fitPointsLL$lat)]
++   dtLocal[]
++ }
+> 
+> # Heatmap on a basemap. Pass `valueCol` as a string.
+> plotHeatmap <- function(dt, valueCol, cfg, legendTitle, outPath,
++                         size = 0.8, option = "plasma") {
++   p <- ggplot() +
++     annotation_map_tile(type = "cartolight", zoom = cfg$tileZoom) +
++     geom_point(data = dt, aes(x = lon, y = lat, color = .data[[valueCol]]),
++                size = size) +
++     scale_color_viridis_c(option = option) +
++     coord_sf(crs = 4326, xlim = cfg$xlim, ylim = cfg$ylim) +
++     theme_void() +
++     labs(color = legendTitle)
++   ggsave(outPath, plot = p)
++   invisible(p)
++ }
+> 
+> # ===========================================================================
+> # 2. CITY CONFIG
+> # ===========================================================================
+> # To add Minneapolis / Portland: copy this list, swap paths / CRS / bbox /
+> # trim thresholds. Everything downstream is config-driven.
+> 
+> cfgVancouver <- list(
++   city      = "Vancouver",
++   crsProj   = 26910,                              # UTM 10N (meters)
++   xlim      = c(-123.23, -123.02),
++   ylim      = c( 49.20,   49.32),
++   tileZoom  = 12,
++   # data paths
++   sqliteFile     = "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3",
++   bcaRDS         = "~/DropboxExternal/dataProcessed/bca_vancouver_residential.rds",
++   permitFile     = "~/DropboxExternal/dataRaw/issued-building-permits.csv",
++   zoningGeojson  = "~/DropboxExternal/dataRaw/vancouver_zoning.geojson",
++   targetZone     = "R1-1",
++   # filtering
++   trimDimsQ      = 0.05,                          # winsorize landWidth & landDepth
++   trimYQ         = 0.01,                           # winsorize the response (ppsf or price)
++   salesYearRange = c(2014, 2018)
++ )
+> 
+> # ===========================================================================
+> # 3. LOAD BCA PARCEL CONTEXT (used by both appraisal and sales pipelines)
+> # ===========================================================================
+> # Returns a data.table keyed on rollStart with lat, lon, and the MB_* columns
+> # needed for sales-side hedonics.
+> 
+> loadBCAParcels <- function(cfg) {
++   sfBCA <- st_as_sf(readRDS(cfg$bcaRDS))
++   sfBCA <- st_transform(sfBCA, 4326)
++   cent  <- st_centroid(st_geometry(sfBCA))
++   sfBCA$lon <- st_coordinates(cent)[, 1]
++   sfBCA$lat <- st_coordinates(cent)[, 2]
++   keepCols <- intersect(c("folioID","rollStart","landWidth","landDepth",
++                           "MB_effective_year","MB_total_finished_area",
++                           "neighbourhoodDescription","lat","lon"),
++                         names(sfBCA))
++   dtBCA <- as.data.table(st_drop_geometry(sfBCA))[, ..keepCols]
++   dtBCA
++ }
+> 
+> # ===========================================================================
+> # 4. APPRAISAL LOADER (BCA valuation table)
+> # ===========================================================================
+> # Returns dtValuation with columns: folioID, landValue, landWidth, landDepth,
+> # landArea, ppsf, logPPSF, logArea, lat, lon.
+> 
+> loadAppraisal <- function(cfg, dtBCA) {
++   con <- dbConnect(SQLite(), cfg$sqliteFile)
++   qVal  <- "SELECT folioID, landValue FROM valuation"
++   qInv  <- "SELECT roll_number, land_width, land_depth, zoning FROM residentialInventory
++             WHERE jurisdiction==200 and zoning LIKE 'RS%'"
++   qFol  <- "SELECT folioID, rollNumber FROM folio WHERE jurisdictionCode == 200"
++   qDes  <- "SELECT folioID, actualUseDescription, landWidth, landDepth FROM folioDescription"
++   valuation   <- as.data.table(dbGetQuery(con, qVal))
++   inventory   <- as.data.table(dbGetQuery(con, qInv))
++   folio       <- as.data.table(dbGetQuery(con, qFol))
++   description <- as.data.table(dbGetQuery(con, qDes))
++   dbDisconnect(con)
 + 
-+   probit <- tryCatch(
-+     glm(isDuplex ~ localPremium + localPPSF + localElasticity,
-+         data = dt[roundWidth == 33], family = binomial("probit")),
-+     error = function(e) NULL
-+   )
-+   if (is.null(probit)) {
-+     premCoef <- premSE <- ppsfCoef <- ppsfSE <- elastCoef <- elastSE <- NA
-+   } else {
-+     cf <- coef(probit); vc <- sqrt(diag(vcov(probit)))
-+     premCoef  <- cf["localPremium"];    premSE  <- vc["localPremium"]
-+     ppsfCoef  <- cf["localPPSF"];       ppsfSE  <- vc["localPPSF"]
-+     elastCoef <- cf["localElasticity"]; elastSE <- vc["localElasticity"]
++   setkey(valuation, folioID);     setkey(folio, folioID);        valuation <- valuation[folio]
++   setkey(inventory, roll_number); setkey(valuation, rollNumber); valuation <- valuation[inventory]
++   setkey(description, folioID);   setkey(valuation, folioID);    valuation <- valuation[description]
++ 
++   numericCols <- c("landValue","land_width","land_depth","landWidth","landDepth")
++   valuation[, (numericCols) := lapply(.SD, as.numeric), .SDcols = numericCols]
++   valuation[is.na(landWidth) & !is.na(land_width), landWidth := land_width]
++   valuation[is.na(landDepth) & !is.na(land_depth), landDepth := land_depth]
++ 
++   valuation[, rollStart := floor(as.numeric(rollNumber)/1000)]
++   setkey(valuation, rollStart)
++   setkey(dtBCA,     rollStart)
++   dt <- valuation[dtBCA, nomatch = 0]   # inner join: must have coords
++ 
++   # Derive analytical variables
++   dt[, landArea := landWidth * landDepth]
++   dt[, ppsf     := landValue / landArea]
++   dt <- dt[!is.na(lat) & !is.na(lon) & !is.na(ppsf) & !is.na(landArea) &
++            landArea > 0 & ppsf > 0]
++   dt <- trimByQuantile(dt, c("landWidth","landDepth"), cfg$trimDimsQ)
++   dt <- trimByQuantile(dt, "ppsf", cfg$trimYQ)
++   dt[, logPPSF := log(ppsf)]
++   dt[, logArea := log(landArea)]
++   dt[]
++ }
+> 
+> # ===========================================================================
+> # 5. SALES LOADER (BCA sales table)
+> # ===========================================================================
+> # Returns dtSales with columns: folioID, year, conveyancePrice, logPrice,
+> # landWidth, landDepth, landArea, logArea, ppsfSale, logPPSFSale, age, FSR,
+> # logFSR, lat, lon.
+> 
+> loadSales <- function(cfg, dtBCA) {
++   con <- dbConnect(SQLite(), cfg$sqliteFile)
++   dt  <- as.data.table(dbGetQuery(con,
++     "SELECT folioID, conveyanceDate, conveyancePrice, conveyanceTypeDescription
++      FROM sales"))
++   dbDisconnect(con)
++ 
++   dt <- dt[conveyanceTypeDescription == "Improved Single Property Transaction",
++            .(folioID, conveyanceDate, conveyancePrice)]
++   dt <- merge(dt, dtBCA, by = "folioID")
++ 
++   dt[, conveyancePrice := as.numeric(conveyancePrice)]
++   dt[, landWidth       := as.numeric(landWidth)]
++   dt[, landDepth       := as.numeric(landDepth)]
++   dt <- dt[!is.na(lat) & !is.na(lon) & !is.na(conveyancePrice) &
++            !is.na(landWidth) & !is.na(landDepth) &
++            conveyancePrice > 0 & landWidth > 0 & landDepth > 0]
++ 
++   dt[, year      := as.numeric(substring(conveyanceDate, 1, 4))]
++   dt[, logPrice  := log(conveyancePrice)]
++   dt[, landArea  := landWidth * landDepth]
++   dt[, logArea   := log(landArea)]
++   dt[, ppsfSale  := conveyancePrice / landArea]
++   dt[, logPPSFSale := log(ppsfSale)]
++   if ("MB_effective_year" %in% names(dt))
++     dt[, age := year - as.numeric(MB_effective_year)]
++   if ("MB_total_finished_area" %in% names(dt)) {
++     dt[, FSR    := as.numeric(MB_total_finished_area) / landArea]
++     dt[, logFSR := log(FSR)]
 +   }
 + 
-+   corPE  <- cor(dt$localPPSF, dt$localElasticity)
-+   corPP  <- cor(dt$localPPSF, dt$localPremium)
-+   corEP  <- cor(dt$localElasticity, dt$localPremium)
-+ 
-+   data.table(h = h, nPermits = nrow(dt),
-+              sdPremium    = sd(dt$localPremium),
-+              sdPPSF       = sd(dt$localPPSF),
-+              sdElasticity = sd(dt$localElasticity),
-+              corPPSFElast = corPE,
-+              corPPSFPrem  = corPP,
-+              corElastPrem = corEP,
-+              probitPrem   = premCoef,  probitPremSE  = premSE,
-+              probitPPSF   = ppsfCoef,  probitPPSFSE  = ppsfSE,
-+              probitElast  = elastCoef, probitElastSE = elastSE)
-+ }))
-> diagAll <- merge(cvResults, diagBW, by = "h")
-> print(diagAll)
-Key: <h>
-       h      rmse nPred nPermits  sdPremium    sdPPSF sdElasticity
-   <num>     <num> <int>    <int>      <num>     <num>        <num>
-1:   750 0.1559460  1250      583 0.04376240 0.1240902    0.1029593
-2:  1000 0.1581740  1275      758 0.05886173 0.2292016    0.1133020
-3:  1250 0.1606506  1276      856 0.05204551 0.2536012    0.1388574
-4:  1500 0.1631255  1276      920 0.05306499 0.2559443    0.1493383
-5:  1750 0.1659346  1276      979 0.05851361 0.2547716    0.1582332
-6:  2000 0.1688138  1276     1102 0.07077366 0.2637271    0.1661791
-   corPPSFElast corPPSFPrem corElastPrem probitPrem probitPremSE  probitPPSF
-          <num>       <num>        <num>      <num>        <num>       <num>
-1:   -0.3866270 -0.01560821   0.46944380  2.0267069    1.9156031 -0.85319593
-2:   -0.4732441  0.44486176   0.26782745 -0.4203607    1.3633066 -0.31256160
-3:   -0.7947922  0.51342912  -0.13060247 -0.8663300    1.3777994 -0.09998417
-4:   -0.8290015  0.42729650  -0.06125589  0.6818291    1.3171172 -1.65822930
-5:   -0.7523078  0.26779916   0.17247667  0.8837301    1.1479173 -1.34755146
-6:   -0.5241083  0.26466249   0.42341932  0.1271984    0.9855009 -1.02767997
-   probitPPSFSE probitElast probitElastSE
-          <num>       <num>         <num>
-1:    0.6032811  -0.6085351     0.9243943
-2:    0.3879475   0.3760944     0.7212099
-3:    0.4798374   0.8360401     0.7337881
-4:    0.4620593  -1.6282907     0.6927243
-5:    0.3685059  -1.1063320     0.5590981
-6:    0.2795835  -0.3637454     0.4294369
-> 
-> # ---- Plots ----------------------------------------------------------------
-> pCV    <- ggplot(cvResults, aes(h, rmse)) + geom_line() + geom_point(size = 3) +
-+           scale_x_log10() +
-+           labs(x = "Bandwidth (m, log)", y = "10-fold CV RMSE",
-+                title = "Diagnostic 1: prediction error") + theme_minimal()
-> pDisp  <- ggplot(melt(diagBW[, .(h, sdPremium, sdPPSF, sdElasticity)],
-+                       id.vars = "h"),
-+                  aes(h, value, color = variable)) +
-+           geom_line() + geom_point(size = 3) + scale_x_log10() +
-+           labs(x = "Bandwidth (m, log)", y = "SD across permits",
-+                title = "Diagnostic 2: spatial dispersion of local features") +
-+           theme_minimal()
-> pCor   <- ggplot(melt(diagBW[, .(h, corPPSFElast, corPPSFPrem, corElastPrem)],
-+                       id.vars = "h"),
-+                  aes(h, value, color = variable)) +
-+           geom_line() + geom_point(size = 3) +
-+           geom_hline(yintercept = 0, linetype = "dashed") +
-+           scale_x_log10() +
-+           labs(x = "Bandwidth (m, log)", y = "Cross-feature correlation",
-+                title = "Diagnostic 3: do local features measure the same thing?") +
-+           theme_minimal()
-> pStab  <- ggplot(diagBW, aes(h)) +
-+           geom_pointrange(aes(y = probitElast,
-+                               ymin = probitElast - 1.96 * probitElastSE,
-+                               ymax = probitElast + 1.96 * probitElastSE),
-+                           color = "darkgreen") +
-+           geom_hline(yintercept = 0, linetype = "dashed") +
-+           scale_x_log10() +
-+           labs(x = "Bandwidth (m, log)", y = "Probit coef on localElasticity",
-+                title = "Diagnostic 4: elasticity coefficient stability (33' permits)") +
-+           theme_minimal()
-> ggsave("text/bandwidth_cv.png",         pCV,   w = 6, h = 4)
-> ggsave("text/bandwidth_dispersion.png", pDisp, w = 7, h = 4)
-> ggsave("text/bandwidth_corr.png",       pCor,  w = 7, h = 4)
-> ggsave("text/bandwidth_probit.png",     pStab, w = 6, h = 4)
-> 
-> # ============================================================================
-> # ---- Headline choice models -----------------------------------------------
-> # ============================================================================
-> # `widths` argument controls which lots enter the choice model.
-> runChoiceModels <- function(dt, widths, label) {
-+   sub <- dt[roundWidth %in% widths &
-+             !is.na(localPremium) & !is.na(localPPSF) & !is.na(localElasticity)]
-+   if (nrow(sub) < 20) {
-+     cat("\n[", label, "] too few obs (", nrow(sub), "), skipping\n", sep = "")
-+     return(invisible(NULL))
++   dt <- trimByQuantile(dt, c("landWidth","landDepth"), cfg$trimDimsQ)
++   dt <- trimByQuantile(dt, "ppsfSale", cfg$trimYQ)
++   if (!is.null(cfg$salesYearRange)) {
++     dt <- dt[year %between% cfg$salesYearRange]
 +   }
-+   cat("\n--- Choice models [", label, "]: widths =", paste(widths, collapse = ","),
-+       " | n =", nrow(sub), " | duplex share =", round(mean(sub$isDuplex), 3),
-+       " ---\n", sep = "")
-+   cat("Correlations:\n")
-+   print(round(cor(sub[, .(localPremium, localPPSF, localElasticity, isDuplex)]), 3))
-+ 
-+   pr1 <- glm(isDuplex ~ localPPSF,                                    data = sub, family = binomial("probit"))
-+   pr2 <- glm(isDuplex ~ localElasticity,                              data = sub, family = binomial("probit"))
-+   pr3 <- glm(isDuplex ~ localPremium,                                 data = sub, family = binomial("probit"))
-+   pr4 <- glm(isDuplex ~ localPPSF + localElasticity,                  data = sub, family = binomial("probit"))
-+   pr5 <- glm(isDuplex ~ localPremium + localPPSF + localElasticity,   data = sub, family = binomial("probit"))
-+   cat("\nProbit, PPSF only:\n");                   print(summary(pr1)$coefficients)
-+   cat("\nProbit, elasticity only:\n");             print(summary(pr2)$coefficients)
-+   cat("\nProbit, premium only:\n");                print(summary(pr3)$coefficients)
-+   cat("\nProbit, PPSF + elasticity:\n");           print(summary(pr4)$coefficients)
-+   cat("\nProbit, premium + PPSF + elasticity:\n"); print(summary(pr5)$coefficients)
-+   invisible(list(pr1 = pr1, pr2 = pr2, pr3 = pr3, pr4 = pr4, pr5 = pr5))
++   dt[]
 + }
 > 
-> hHeadline <- 1500
-> dtBest <- permitFeatures[[paste0("h", hHeadline)]]
+> # ===========================================================================
+> # 6. PERMIT LOADER (fit-point locations)
+> # ===========================================================================
+> # Returns a data.table with lon/lat for permits in the target zone.
 > 
-> choice33   <- runChoiceModels(dtBest, widths = 33,        label = "33' only")
-
---- Choice models [33' only]: widths =33 | n =679 | duplex share =0.187 ---
-Correlations:
-                localPremium localPPSF localElasticity isDuplex
-localPremium           1.000     0.482          -0.094   -0.115
-localPPSF              0.482     1.000          -0.803   -0.158
-localElasticity       -0.094    -0.803           1.000    0.061
-isDuplex              -0.115    -0.158           0.061    1.000
-
-Probit, PPSF only:
-              Estimate Std. Error   z value     Pr(>|z|)
-(Intercept) 11.5448098  3.0681759  3.762760 0.0001680484
-localPPSF   -0.8578064  0.2118437 -4.049241 0.0000513840
-
-Probit, elasticity only:
-                  Estimate Std. Error   z value     Pr(>|z|)
-(Intercept)     -1.5182492  0.4025649 -3.771439 0.0001623087
-localElasticity  0.5735853  0.3623397  1.583004 0.1134204557
-
-Probit, premium only:
-               Estimate Std. Error    z value    Pr(>|z|)
-(Intercept)   0.1635096  0.3672819  0.4451884 0.656183631
-localPremium -2.7463874  0.9526907 -2.8827693 0.003941961
-
-Probit, PPSF + elasticity:
-                 Estimate Std. Error   z value     Pr(>|z|)
-(Intercept)     22.291786  5.3277098  4.184122 2.862707e-05
-localPPSF       -1.490619  0.3325224 -4.482763 7.368291e-06
-localElasticity -1.431050  0.5810010 -2.463077 1.377505e-02
-
-Probit, premium + PPSF + elasticity:
-                  Estimate Std. Error    z value     Pr(>|z|)
-(Intercept)     24.6766426  7.0101777  3.5201166 0.0004313572
-localPremium     0.6818291  1.3171172  0.5176677 0.6046901281
-localPPSF       -1.6582293  0.4620593 -3.5887802 0.0003322288
-localElasticity -1.6282907  0.6927243 -2.3505611 0.0187451291
-> choice50   <- runChoiceModels(dtBest, widths = 50,        label = "50' only")
-
---- Choice models [50' only]: widths =50 | n =241 | duplex share =0.129 ---
-Correlations:
-                localPremium localPPSF localElasticity isDuplex
-localPremium           1.000     0.122           0.194   -0.049
-localPPSF              0.122     1.000          -0.880   -0.293
-localElasticity        0.194    -0.880           1.000    0.203
-isDuplex              -0.049    -0.293           0.203    1.000
-
-Probit, PPSF only:
-             Estimate Std. Error   z value     Pr(>|z|)
-(Intercept) 30.180306  7.6195288  3.960915 7.466310e-05
-localPPSF   -2.136831  0.5204019 -4.106117 4.023656e-05
-
-Probit, elasticity only:
-                 Estimate Std. Error   z value     Pr(>|z|)
-(Intercept)     -3.645976  0.8604740 -4.237171 2.263537e-05
-localElasticity  2.474425  0.8352843  2.962374 3.052763e-03
-
-Probit, premium only:
-               Estimate Std. Error    z value  Pr(>|z|)
-(Intercept)  -0.2865431   1.194876 -0.2398099 0.8104776
-localPremium -2.1758437   3.066609 -0.7095276 0.4779971
-
-Probit, PPSF + elasticity:
-                 Estimate Std. Error   z value    Pr(>|z|)
-(Intercept)     49.718732  17.278279  2.877528 0.004008043
-localPPSF       -3.317489   1.071274 -3.096770 0.001956416
-localElasticity -2.200606   1.757369 -1.252216 0.210491183
-
-Probit, premium + PPSF + elasticity:
-                 Estimate Std. Error   z value    Pr(>|z|)
-(Intercept)     66.321599  22.338776  2.968900 0.002988675
-localPremium     4.659273   3.901429  1.194248 0.232381058
-localPPSF       -4.451382   1.440764 -3.089598 0.002004277
-localElasticity -3.977082   2.358880 -1.686004 0.091794965
-> choiceBoth <- runChoiceModels(dtBest, widths = c(33, 50), label = "33' + 50' pooled")
-
---- Choice models [33' + 50' pooled]: widths =33,50 | n =920 | duplex share =0.172 ---
-Correlations:
-                localPremium localPPSF localElasticity isDuplex
-localPremium           1.000     0.427          -0.061   -0.106
-localPPSF              0.427     1.000          -0.829   -0.191
-localElasticity       -0.061    -0.829           1.000    0.102
-isDuplex              -0.106    -0.191           0.102    1.000
-
-Probit, PPSF only:
-             Estimate Std. Error   z value     Pr(>|z|)
-(Intercept) 14.610190  2.7389793  5.334173 9.598081e-08
-localPPSF   -1.070504  0.1886544 -5.674420 1.391593e-08
-
-Probit, elasticity only:
-                  Estimate Std. Error   z value     Pr(>|z|)
-(Intercept)     -2.0142549  0.3519308 -5.723441 1.043879e-08
-localElasticity  0.9904516  0.3219768  3.076158 2.096865e-03
-
-Probit, premium only:
-               Estimate Std. Error    z value    Pr(>|z|)
-(Intercept)   0.1257499  0.3543075  0.3549174 0.722651485
-localPremium -2.7912778  0.9174619 -3.0423909 0.002347069
-
-Probit, PPSF + elasticity:
-                 Estimate Std. Error   z value     Pr(>|z|)
-(Intercept)     25.228693  5.0692264  4.976833 6.463305e-07
-localPPSF       -1.699698  0.3153241 -5.390320 7.033239e-08
-localElasticity -1.365076  0.5491366 -2.485858 1.292396e-02
-
-Probit, premium + PPSF + elasticity:
-                 Estimate Std. Error   z value     Pr(>|z|)
-(Intercept)     30.293173   6.590882  4.596224 4.302155e-06
-localPremium     1.461849   1.228251  1.190188 2.339725e-01
-localPPSF       -2.053945   0.431895 -4.755657 1.978021e-06
-localElasticity -1.808944   0.663720 -2.725463 6.421144e-03
-> 
-> # ============================================================================
-> # ---- Tract-aggregate comparison at headline bandwidth ---------------------
-> # ============================================================================
-> makeTractAgg <- function(dt, widths) {
-+   sub <- dt[roundWidth %in% widths &
-+             !is.na(localPremium) & !is.na(localPPSF) & !is.na(localElasticity)]
-+   sub[, .(plexRate     = mean(isDuplex),
-+           meanPremium  = mean(localPremium),
-+           meanPPSF     = mean(localPPSF),
-+           meanElast    = mean(localElasticity),
-+           n            = .N), by = CTNAME][n >= 5]
+> loadPermits <- function(cfg) {
++   dtPermit <- fread(cfg$permitFile,
++     select = c("PermitNumber","ProjectValue","TypeOfWork",
++                "PropertyUse","SpecificUseCategory",
++                "GeoLocalArea","geo_point_2d","YearMonth"))
++   dtPermit <- dtPermit[PropertyUse == "Dwelling Uses" &
++                        TypeOfWork %in% c("New Building","Addition / Alteration")]
++   dtPermit[, c("permitLat","permitLon") := tstrsplit(geo_point_2d, ", ")]
++   dtPermit[, `:=`(permitLat = as.numeric(permitLat),
++                   permitLon = as.numeric(permitLon))]
++   dtPermit <- dtPermit[!is.na(permitLat) & !is.na(permitLon)]
++   qCrit <- quantile(dtPermit[TypeOfWork == "New Building" &
++                              SpecificUseCategory %in%
++                                c("Duplex","Single Detached House") &
++                              ProjectValue > 0, ProjectValue], 0.25)
++   dtPermit <- dtPermit[TypeOfWork == "New Building" | ProjectValue >= qCrit]
++   dtPermit <- dtPermit[grepl("Duplex|Single Detached House|Laneway House|Multiple Dwelling",
++                              SpecificUseCategory)]
++   sfPermit <- st_as_sf(dtPermit[, .(permitLat, permitLon)],
++                        coords = c("permitLon","permitLat"), crs = 4326)
++   dZ <- st_read(cfg$zoningGeojson, quiet = TRUE)
++   dZ <- dZ[dZ$zoning_district == cfg$targetZone, "zoning_district"]
++   sfPermit <- st_transform(sfPermit, st_crs(dZ))
++   sfPermit <- st_join(sfPermit, dZ, join = st_within)
++   sfPermit <- sfPermit[!is.na(sfPermit$zoning_district), ]
++   sfPermit <- st_transform(sfPermit, 4326)
++   data.table(lon = st_coordinates(sfPermit)[, 1],
++              lat = st_coordinates(sfPermit)[, 2])
 + }
 > 
-> for (wset in list(c(33), c(50), c(33, 50))) {
-+   lab <- paste(wset, collapse = "+")
-+   dtAgg <- makeTractAgg(dtBest, wset)
-+   cat("\n=== Tract-aggregate [widths =", lab, "] ===\n")
-+   print(round(cor(dtAgg[, .(plexRate, meanPremium, meanPPSF, meanElast)]), 3))
-+   print(etable(
-+     feols(plexRate ~ meanPPSF,                            data = dtAgg, weights = ~n),
-+     feols(plexRate ~ meanElast,                           data = dtAgg, weights = ~n),
-+     feols(plexRate ~ meanPremium,                         data = dtAgg, weights = ~n),
-+     feols(plexRate ~ meanPPSF + meanElast,                data = dtAgg, weights = ~n),
-+     feols(plexRate ~ meanPremium + meanPPSF + meanElast,  data = dtAgg, weights = ~n),
-+     headers = c("PPSF","Elast","Prem","PPSF+Elast","All three"),
-+     digits = 3))
-+ }
-
-=== Tract-aggregate [widths = 33 ] ===
-            plexRate meanPremium meanPPSF meanElast
-plexRate       1.000      -0.418   -0.555     0.225
-meanPremium   -0.418       1.000    0.574    -0.220
-meanPPSF      -0.555       0.574    1.000    -0.801
-meanElast      0.225      -0.220   -0.801     1.000
-                feols(plexRate.. feols(plexRa.. feols(plexRate...1
-                            PPSF          Elast               Prem
-Dependent Var.:         plexRate       plexRate           plexRate
-                                                                  
-Constant          3.39** (0.951) -0.030 (0.142)   0.510*** (0.129)
-meanPPSF        -0.221** (0.066)                                  
-meanElast                         0.197 (0.128)                   
-meanPremium                                        -0.834* (0.327)
-_______________ ________________ ______________   ________________
-S.E. type                    IID            IID                IID
-Observations                  37             37                 37
-R2                       0.24474        0.06296            0.15653
-Adj. R2                  0.22316        0.03619            0.13243
-
-                feols(plexRate .. feols(plexRat..
-                       PPSF+Elast       All three
-Dependent Var.:          plexRate        plexRate
-                                                 
-Constant           6.64*** (1.82)    6.47* (2.49)
-meanPPSF        -0.414*** (0.113) -0.402* (0.162)
-meanElast         -0.408* (0.198)  -0.393 (0.253)
-meanPremium                        -0.044 (0.427)
-_______________ _________________ _______________
-S.E. type                     IID             IID
-Observations                   37              37
-R2                        0.32843         0.32865
-Adj. R2                   0.28893         0.26762
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-=== Tract-aggregate [widths = 50 ] ===
-            plexRate meanPremium meanPPSF meanElast
-plexRate       1.000      -0.277   -0.892     0.819
-meanPremium   -0.277       1.000   -0.034     0.145
-meanPPSF      -0.892      -0.034    1.000    -0.982
-meanElast      0.819       0.145   -0.982     1.000
-                feols(plexRat.. feols(plexRa.. feols(plexR.. feols(plexRat...1
-                           PPSF          Elast          Prem        PPSF+Elast
-Dependent Var.:        plexRate       plexRate      plexRate          plexRate
-                                                                              
-Constant           8.76* (3.20) -0.537 (0.342) 0.507 (0.666)     39.0** (10.7)
-meanPPSF        -0.588* (0.217)                                -2.46** (0.667)
-meanElast                       0.643. (0.352)                  -2.75* (0.949)
-meanPremium                                     -1.09 (1.71)                  
-_______________ _______________ ______________ _____________   _______________
-S.E. type                   IID            IID           IID               IID
-Observations                 12             12            12                12
-R2                      0.42307        0.24992       0.03881           0.70157
-Adj. R2                 0.36538        0.17491      -0.05731           0.63525
-
-                feols(plexR...1
-                      All three
-Dependent Var.:        plexRate
-                               
-Constant            25.2 (13.6)
-meanPPSF          -1.56 (0.863)
-meanElast          -1.15 (1.39)
-meanPremium        -2.50 (1.66)
-_______________   _____________
-S.E. type                   IID
-Observations                 12
-R2                      0.76739
-Adj. R2                 0.68016
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-
-=== Tract-aggregate [widths = 33+50 ] ===
-            plexRate meanPremium meanPPSF meanElast
-plexRate       1.000      -0.380   -0.587     0.271
-meanPremium   -0.380       1.000    0.542    -0.202
-meanPPSF      -0.587       0.542    1.000    -0.818
-meanElast      0.271      -0.202   -0.818     1.000
-                feols(plexRate .. feols(plexRa.. feols(plexRate..
-                             PPSF          Elast             Prem
-Dependent Var.:          plexRate       plexRate         plexRate
-                                                                 
-Constant          4.21*** (0.846) -0.160 (0.125) 0.485*** (0.135)
-meanPPSF        -0.277*** (0.058)                                
-meanElast                         0.309* (0.116)                 
-meanPremium                                       -0.809* (0.344)
-_______________ _________________ ______________ ________________
-S.E. type                     IID            IID              IID
-Observations                   42             42               42
-R2                        0.36279        0.14990          0.12165
-Adj. R2                   0.34686        0.12865          0.09970
-
-                feols(plexRate ...1 feols(plexRate...1
-                         PPSF+Elast          All three
-Dependent Var.:            plexRate           plexRate
-                                                      
-Constant             7.32*** (1.74)      7.94** (2.36)
-meanPPSF          -0.463*** (0.108)   -0.505** (0.153)
-meanElast           -0.378. (0.187)    -0.438. (0.243)
-meanPremium                              0.157 (0.400)
-_______________   _________________   ________________
-S.E. type                       IID                IID
-Observations                     42                 42
-R2                          0.42327            0.42560
-Adj. R2                     0.39369            0.38026
----
-Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> # ===========================================================================
+> # 7. PIPELINE
+> # ===========================================================================
 > 
-> # ============================================================================
-> # ---- Spatial heatmaps at headline bandwidth -------------------------------
-> # ============================================================================
-> dtMap <- copy(dtBest[roundWidth == 33 &
-+                      !is.na(localPremium) & !is.na(localPPSF) &
-+                      !is.na(localElasticity)])
-> dtMap[, `:=`(xKm = permitXM / 1000, yKm = permitYM / 1000)]
+> cfg     <- cfgVancouver
+> dtBCA   <- loadBCAParcels(cfg)
+> permits <- loadPermits(cfg)
 > 
-> pMapPPSF <- ggplot(dtMap, aes(xKm, yKm, color = localPPSF)) +
-+   geom_point(size = 1.2, alpha = 0.7) +
-+   scale_color_viridis_c(option = "plasma", name = "log P_ref") +
-+   coord_equal() +
-+   labs(x = "Easting (km)", y = "Northing (km)",
-+        title = paste0("Local log price at reference house, h = ", hHeadline, "m"),
-+        subtitle = "33' lot permits, 2018-2023") + theme_minimal()
+> # ---- 7a. Appraisal: log(ppsf) ~ log(landArea) -----------------------------
+> dtVal <- loadAppraisal(cfg, dtBCA)
+> print(summary(dtVal))
+   folioID            landValue        rollNumber          land_width   
+ Length:52202       Min.   : 924000   Length:52202       Min.   :24.80  
+ Class :character   1st Qu.:1316000   Class :character   1st Qu.:33.00  
+ Mode  :character   Median :1553000   Mode  :character   Median :33.00  
+                    Mean   :1878997                      Mean   :39.73  
+                    3rd Qu.:2345000                      3rd Qu.:46.60  
+                    Max.   :6101000                      Max.   :66.00  
+                                                         NA's   :2      
+   land_depth       zoning          actualUseDescription   landWidth    
+ Min.   : 98.0   Length:52202       Length:52202         Min.   :32.00  
+ 1st Qu.:114.1   Class :character   Class :character     1st Qu.:33.00  
+ Median :122.0   Mode  :character   Mode  :character     Median :33.00  
+ Mean   :120.7                                           Mean   :39.75  
+ 3rd Qu.:124.9                                           3rd Qu.:46.75  
+ Max.   :149.4                                           Max.   :66.00  
+ NA's   :2                                                              
+   landDepth       rollStart          i.folioID         i.landWidth       
+ Min.   : 99.0   Min.   :1.021e+09   Length:52202       Length:52202      
+ 1st Qu.:114.1   1st Qu.:6.122e+09   Class :character   Class :character  
+ Median :122.0   Median :1.723e+10   Mode  :character   Mode  :character  
+ Mean   :120.7   Mean   :1.505e+10                                        
+ 3rd Qu.:124.9   3rd Qu.:2.164e+10                                        
+ Max.   :148.5   Max.   :2.583e+10                                        
+                                                                          
+ i.landDepth        MB_effective_year  MB_total_finished_area
+ Length:52202       Length:52202       Length:52202          
+ Class :character   Class :character   Class :character      
+ Mode  :character   Mode  :character   Mode  :character      
+                                                             
+                                                             
+                                                             
+                                                             
+ neighbourhoodDescription      lat             lon            landArea   
+ Length:52202             Min.   :49.21   Min.   :-123.2   Min.   :3168  
+ Class :character         1st Qu.:49.23   1st Qu.:-123.2   1st Qu.:4014  
+ Mode  :character         Median :49.24   Median :-123.1   Median :4217  
+                          Mean   :49.24   Mean   :-123.1   Mean   :4813  
+                          3rd Qu.:49.26   3rd Qu.:-123.1   3rd Qu.:5600  
+                          Max.   :49.29   Max.   :-123.0   Max.   :9801  
+                                                                         
+      ppsf          logPPSF         logArea     
+ Min.   :245.5   Min.   :5.503   Min.   :8.061  
+ 1st Qu.:315.4   1st Qu.:5.754   1st Qu.:8.298  
+ Median :344.0   Median :5.841   Median :8.347  
+ Mean   :387.8   Mean   :5.930   Mean   :8.449  
+ 3rd Qu.:461.5   3rd Qu.:6.135   3rd Qu.:8.631  
+ Max.   :676.5   Max.   :6.517   Max.   :9.190  
+                                                
 > 
-> pMapPrem <- ggplot(dtMap, aes(xKm, yKm, color = localPremium)) +
-+   geom_point(size = 1.2, alpha = 0.7) +
-+   scale_color_gradient2(low = "blue", mid = "grey90", high = "red",
-+                         midpoint = median(dtMap$localPremium, na.rm = TRUE),
-+                         name = "w50 premium\n(log points)") +
-+   coord_equal() +
-+   labs(x = "Easting (km)", y = "Northing (km)",
-+        title = paste0("Local 50' vs 33' premium, h = ", hHeadline, "m"),
-+        subtitle = "33' lot permits, 2018-2023") + theme_minimal()
+> plotHeatmap(dtVal, "ppsf", cfg,
++             legendTitle = "Price per sqft (appraisal)",
++             outPath     = "text/landPPSFHeatMapVancouver.png")
+Saving 7 x 7 in image
+Loading required namespace: raster
+Zoom: 12
 > 
-> pMapElast <- ggplot(dtMap, aes(xKm, yKm, color = localElasticity)) +
-+   geom_point(size = 1.2, alpha = 0.7) +
-+   scale_color_gradient2(low = "blue", mid = "grey90", high = "red",
-+                         midpoint = median(dtMap$localElasticity, na.rm = TRUE),
-+                         name = "log P / log width") +
-+   coord_equal() +
-+   labs(x = "Easting (km)", y = "Northing (km)",
-+        title = paste0("Local lot-size elasticity (new builds), h = ", hHeadline, "m"),
-+        subtitle = "33' lot permits, 2018-2023") + theme_minimal()
+> dtLocalVal <- runGWR(dtVal, yCol = "logPPSF", xCol = "logArea",
++                      fitPointsLL = permits, cfg = cfg, k = 1000)
+> print(summary(dtLocalVal))
+   intercept          slope             seInt            seSlope        
+ Min.   : 2.194   Min.   :-0.7132   Min.   :0.03536   Min.   :0.004241  
+ 1st Qu.: 8.655   1st Qu.:-0.4662   1st Qu.:0.10977   1st Qu.:0.013076  
+ Median : 9.298   Median :-0.4099   Median :0.15611   Median :0.018469  
+ Mean   : 9.100   Mean   :-0.3748   Mean   :0.18273   Mean   :0.021489  
+ 3rd Qu.: 9.708   3rd Qu.:-0.3088   3rd Qu.:0.22239   3rd Qu.:0.026261  
+ Max.   :12.441   Max.   : 0.4835   Max.   :0.93703   Max.   :0.106188  
+      nEff             fitX             fitY              lon        
+ Min.   : 74.49   Min.   :483778   Min.   :5450345   Min.   :-123.2  
+ 1st Qu.:324.72   1st Qu.:489039   1st Qu.:5452550   1st Qu.:-123.2  
+ Median :352.73   Median :493495   Median :5454243   Median :-123.1  
+ Mean   :354.18   Mean   :492585   Mean   :5454317   Mean   :-123.1  
+ 3rd Qu.:385.30   3rd Qu.:496121   3rd Qu.:5455756   3rd Qu.:-123.1  
+ Max.   :551.71   Max.   :498276   Max.   :5459905   Max.   :-123.0  
+      lat       
+ Min.   :49.21  
+ 1st Qu.:49.23  
+ Median :49.24  
+ Mean   :49.24  
+ 3rd Qu.:49.25  
+ Max.   :49.29  
 > 
-> # Choice maps: 33' and 50' faceted, plotted from dtBest (no feature filter)
-> dtMapChoice <- dtBest[roundWidth %in% c(33, 50)]
-> dtMapChoice[, choice := factor(ifelse(isDuplex == 1, "Duplex", "Single"),
-+                                levels = c("Single","Duplex"))]
-> dtMapChoice[, width := factor(paste0(roundWidth, "'"), levels = c("33'","50'"))]
+> plotHeatmap(dtLocalVal, "slope", cfg,
++             legendTitle = "Local elasticity\nlog(ppsf) ~ log(landArea)\nappraisal",
++             outPath     = "text/landElasticityHeatMapVancouver.png")
+Saving 7 x 7 in image
+Zoom: 12
 > 
-> pMapChoiceBoth <- ggplot(dtMapChoice, aes(permitXM/1000, permitYM/1000, color = choice)) +
-+   geom_point(size = 1.2, alpha = 0.7) +
-+   facet_wrap(~ width) +
-+   scale_color_manual(values = c("Single" = "grey70", "Duplex" = "red"),
-+                      name = "Permit type") +
-+   coord_equal() +
-+   labs(x = "Easting (km)", y = "Northing (km)",
-+        title = "Duplex vs single permits, 2018-2023") +
-+   theme_minimal()
+> # ---- 7b. Sales: log(ppsfSale) ~ log(landArea) -----------------------------
+> dtSales <- loadSales(cfg, dtBCA)
+> print(summary(dtSales))
+   folioID          conveyanceDate     conveyancePrice     rollStart        
+ Length:9099        Length:9099        Min.   : 305666   Min.   :1.030e+09  
+ Class :character   Class :character   1st Qu.:1313500   1st Qu.:5.079e+09  
+ Mode  :character   Mode  :character   Median :1783000   Median :1.569e+10  
+                                       Mean   :2068720   Mean   :1.355e+10  
+                                       3rd Qu.:2650000   3rd Qu.:2.059e+10  
+                                       Max.   :6519000   Max.   :2.583e+10  
+                                                                            
+   landWidth       landDepth      MB_effective_year  MB_total_finished_area
+ Min.   :32.00   Min.   : 99.31   Length:9099        Length:9099           
+ 1st Qu.:33.00   1st Qu.:115.05   Class :character   Class :character      
+ Median :33.14   Median :122.00   Mode  :character   Mode  :character      
+ Mean   :40.61   Mean   :121.10                                            
+ 3rd Qu.:49.50   3rd Qu.:125.00                                            
+ Max.   :66.00   Max.   :145.38                                            
+                                                                           
+ neighbourhoodDescription      lat             lon              year     
+ Length:9099              Min.   :49.21   Min.   :-123.2   Min.   :2014  
+ Class :character         1st Qu.:49.23   1st Qu.:-123.2   1st Qu.:2014  
+ Mode  :character         Median :49.24   Median :-123.1   Median :2015  
+                          Mean   :49.24   Mean   :-123.1   Mean   :2016  
+                          3rd Qu.:49.26   3rd Qu.:-123.1   3rd Qu.:2017  
+                          Max.   :49.29   Max.   :-123.0   Max.   :2018  
+                                                                         
+    logPrice        landArea       logArea         ppsfSale     
+ Min.   :12.63   Min.   :3246   Min.   :8.085   Min.   : 71.71  
+ 1st Qu.:14.09   1st Qu.:4023   1st Qu.:8.300   1st Qu.:304.50  
+ Median :14.39   Median :4290   Median :8.364   Median :390.54  
+ Mean   :14.43   Mean   :4938   Mean   :8.472   Mean   :413.11  
+ 3rd Qu.:14.79   3rd Qu.:5940   3rd Qu.:8.689   3rd Qu.:516.56  
+ Max.   :15.69   Max.   :9570   Max.   :9.166   Max.   :740.91  
+                                                                
+  logPPSFSale         age              FSR              logFSR        
+ Min.   :4.273   Min.   : -6.00   Min.   :0.06477   Min.   :-2.73692  
+ 1st Qu.:5.719   1st Qu.:  1.00   1st Qu.:0.51167   1st Qu.:-0.67007  
+ Median :5.968   Median : 18.00   Median :0.59404   Median :-0.52081  
+ Mean   :5.962   Mean   : 20.95   Mean   :0.57768   Mean   :-0.57163  
+ 3rd Qu.:6.247   3rd Qu.: 36.00   3rd Qu.:0.67898   3rd Qu.:-0.38716  
+ Max.   :6.608   Max.   :108.00   Max.   :0.97430   Max.   :-0.02604  
+                 NA's   :18       NA's   :18        NA's   :18        
 > 
-> ggsave("text/heatmap_ppsf_h1500.png",       pMapPPSF,       w = 7, h = 6)
-> ggsave("text/heatmap_premium_h1500.png",    pMapPrem,       w = 7, h = 6)
-> ggsave("text/heatmap_elasticity_h1500.png", pMapElast,      w = 7, h = 6)
-> ggsave("text/heatmap_choice_both.png",      pMapChoiceBoth, w = 12, h = 6)
+> plotHeatmap(dtSales, "ppsfSale", cfg,
++             legendTitle = "Price per sqft (sales)",
++             outPath     = "text/salesPPSFHeatMapVancouver.png")
+Saving 7 x 7 in image
+Zoom: 12
 > 
-> # ============================================================================
-> # ---- Save ------------------------------------------------------------------
-> # ============================================================================
-> saveRDS(list(cvResults = cvResults, diagBW = diagBW, diagAll = diagAll,
-+              permitFeatures = permitFeatures, hOptCV = hOptCV, hHeadline = hHeadline,
-+              choice33 = choice33, choice50 = choice50, choiceBoth = choiceBoth,
-+              dtNbhdCompare = dtNbhdCompare, dtTractCompare = dtTractCompare,
-+              depthQ = depthQ),
-+         "~/DropboxExternal/dataProcessed/vancouverLotPlex_results.rds")
+> dtLocalSales <- runGWR(dtSales, yCol = "logPPSFSale", xCol = "logArea",
++                        fitPointsLL = permits, cfg = cfg, k = 1000)
+> print(summary(dtLocalSales))
+   intercept          slope             seInt           seSlope       
+ Min.   : 4.481   Min.   :-0.7230   Min.   :0.3431   Min.   :0.03969  
+ 1st Qu.: 7.817   1st Qu.:-0.5005   1st Qu.:0.4918   1st Qu.:0.05731  
+ Median : 8.894   Median :-0.3572   Median :0.6691   Median :0.07958  
+ Mean   : 8.773   Mean   :-0.3388   Mean   :0.6592   Mean   :0.07828  
+ 3rd Qu.: 9.887   3rd Qu.:-0.1903   3rd Qu.:0.7961   3rd Qu.:0.09517  
+ Max.   :11.780   Max.   : 0.1696   Max.   :1.0631   Max.   :0.12730  
+      nEff            fitX             fitY              lon        
+ Min.   :127.6   Min.   :483778   Min.   :5450345   Min.   :-123.2  
+ 1st Qu.:341.0   1st Qu.:489039   1st Qu.:5452550   1st Qu.:-123.2  
+ Median :372.0   Median :493495   Median :5454243   Median :-123.1  
+ Mean   :371.9   Mean   :492585   Mean   :5454317   Mean   :-123.1  
+ 3rd Qu.:403.2   3rd Qu.:496121   3rd Qu.:5455756   3rd Qu.:-123.1  
+ Max.   :514.9   Max.   :498276   Max.   :5459905   Max.   :-123.0  
+      lat       
+ Min.   :49.21  
+ 1st Qu.:49.23  
+ Median :49.24  
+ Mean   :49.24  
+ 3rd Qu.:49.25  
+ Max.   :49.29  
 > 
-> cat("\nDone. h_CV =", hOptCV, "m | h_headline =", hHeadline, "m\n")
-
-Done. h_CV = 750 m | h_headline = 1500 m
-> q("no")
+> plotHeatmap(dtLocalSales, "slope", cfg,
++             legendTitle = "Local elasticity\nlog(ppsf) ~ log(landArea)\nsales",
++             outPath     = "text/salesElasticityHeatMapVancouver.png")
+Saving 7 x 7 in image
+Zoom: 12
+> 
 > proc.time()
    user  system elapsed 
- 96.850   1.482  96.845 
+ 56.909   8.641  34.065 
