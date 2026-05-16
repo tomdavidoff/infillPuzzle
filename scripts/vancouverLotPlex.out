@@ -22,7 +22,7 @@ Type 'q()' to quit R.
 > # Local-linear (bisquare, adaptive-k) GWR evaluated at building-permit locations.
 > # Modular: city config + generic loaders/plotters so Minneapolis / Portland slot in.
 > # Tom Davidoff
-> # 05/13/26
+> # 05/13/26  (rev 05/15/26: discrete-choice block + bbox exclusion)
 > 
 > library(data.table)
 > library(ggplot2)
@@ -62,6 +62,26 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +   dt[]
 + }
 > 
+> # Intercept-only adaptive-bandwidth local mean (bisquare, k-NN bw).
+> # Returns a locally-smoothed level of `y` at each fit point -- i.e. a
+> # nonparametric surface that does NOT condition on lot size. This is the
+> # right "local ppsf" regressor for the choice model: it is the ambient
+> # price level a developer faces, not a value extrapolated through the
+> # log-log slope to some arbitrary lot size.
+> gwrLocalMean <- function(y, dataCoords, fitCoords, k = 1000, mcCores = 6) {
++   bisquare <- function(d, h) ifelse(d < h, (1 - (d/h)^2)^2, 0)
++   fitOne <- function(s) {
++     d <- sqrt((dataCoords[,1] - s[1])^2 + (dataCoords[,2] - s[2])^2)
++     h <- sort(d, partial = k)[k]
++     w <- bisquare(d, h)
++     keep <- w > 0
++     sum(w[keep] * y[keep]) / sum(w[keep])     # weighted mean = intercept-only WLS
++   }
++   unlist(parallel::mclapply(seq_len(nrow(fitCoords)),
++                             function(i) fitOne(fitCoords[i,]),
++                             mc.cores = mcCores))
++ }
+> 
 > # Trim a data.table by symmetric quantile filter on a set of columns
 > trimByQuantile <- function(dt, cols, q) {
 +   for (c in cols) {
@@ -70,6 +90,149 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +     dt <- dt[get(c) %between% c(lo, hi)]
 +   }
 +   dt
++ }
+> 
+> # Drop rows in the exclusion STRIP: west-bounded by Oak, east-bounded by
+> # Ontario, and SOUTH of W 16th Ave -- the southern edge is open (no lower
+> # latitude limit). A row is excluded iff
+> #     lon in [lonMin, lonMax]  AND  lat <= latMax
+> # cfg$excludeBox is list(lonMin, lonMax, latMax) or NULL.
+> # Operates on any data.table with numeric `lon`/`lat`; applied globally
+> # to BCA parcels, sales, and permit fit points so every downstream
+> # pipeline (appraisal GWR, sales GWR, choice model) sees the same cut.
+> # NOTE: northern boundary is INclusive of points exactly at 16th and the
+> # strip extends arbitrarily far south; this is the intended half-plane.
+> applyExcludeBox <- function(dt, cfg) {
++   bx <- cfg$excludeBox
++   if (is.null(bx)) return(dt)
++   inStrip <- dt$lon %between% c(bx$lonMin, bx$lonMax) &
++              dt$lat <= bx$latMax
++   dt[!inStrip]
++ }
+> 
+> # Resolve the exclusion strip bounds from named street references by
+> # reading the City zoning GeoJSON (already WGS84, vertices on street
+> # centrelines) -- avoids hardcoding longitudes/latitudes that cannot be
+> # verified without the actual street grid. Strategy: take the bounding
+> # box of the zoning layer's vertices and locate the requested streets by
+> # matching against the layer extent is NOT reliable; instead this helper
+> # expects the caller to have supplied either:
+> #   (a) cfg$excludeBox already populated (manual override -- used as is), OR
+> #   (b) cfg$excludeBoxRef = list(west=, east=, north=) giving longitudes
+> #       for the west/east streets and a latitude for the north street,
+> #       which are simply copied into excludeBox.
+> # It performs no geocoding; it only normalizes whichever the user gave.
+> # If both are NULL the strip is disabled.
+> resolveExcludeBox <- function(cfg) {
++   if (!is.null(cfg$excludeBox)) return(cfg)        # explicit override wins
++   ref <- cfg$excludeBoxRef
++   if (is.null(ref)) { cfg$excludeBox <- NULL; return(cfg) }
++   cfg$excludeBox <- list(
++     lonMin = min(ref$west, ref$east),
++     lonMax = max(ref$west, ref$east),
++     latMax = ref$north
++   )
++   cfg
++ }
+> 
+> # ---------------------------------------------------------------------------
+> # Derive the exclusion-strip reference bounds from real street geometry
+> # (OpenStreetMap via osmdata), built deliberately as an OUTER bound.
+> #
+> # Asymmetry assumption: over-inclusion costs only sample, under-inclusion
+> # leaves contamination -> we take the EXTREME vertex of each street over
+> # the relevant span, then push it OUTWARD by `slackMeters`. The strip is
+> # intentionally too wide.
+> #
+> # Segments (not whole streets):
+> #   * Oak     -- only the portion SOUTH of 16th
+> #   * Ontario -- only the portion SOUTH of 16th
+> #   * 16th    -- only the portion BETWEEN Oak and Ontario
+> # 16th's latitude is read first (its vertices near the Oak/Ontario
+> # longitude band), then used to clip Oak/Ontario southward.
+> #
+> # Returns list(west=, east=, north=) suitable for cfg$excludeBoxRef.
+> # Network: osmdata hits the Overpass API. Result is cached to
+> # `cachePath`; delete the file to force a refresh. If osmdata is
+> # unavailable or the query fails, returns NULL and the caller keeps
+> # whatever excludeBoxRef was already set (the approximate fallback).
+> #
+> # slackMeters is converted to degrees locally: ~1 deg lat = 111320 m;
+> # 1 deg lon = 111320*cos(lat) m at ~49.26 N. Outward = west pushed
+> # more-negative, east pushed more-positive, north pushed up.
+> deriveBoundsFromOSM <- function(cfg,
++                                 cachePath  = "~/DropboxExternal/dataProcessed/exclStripBounds.rds",
++                                 slackMeters = 150) {
++   cachePath <- path.expand(cachePath)
++   if (file.exists(cachePath)) {
++     message("Exclusion bounds: using cached ", cachePath)
++     return(readRDS(cachePath))
++   }
++   if (!requireNamespace("osmdata", quietly = TRUE)) {
++     warning("osmdata not installed; falling back to cfg$excludeBoxRef")
++     return(NULL)
++   }
++   ok <- tryCatch({
++     # Bounding box generous enough to contain all three streets near the
++     # corner; osmdata returns full named ways, we clip below.
++     bb <- c(cfg$xlim[1], cfg$ylim[1], cfg$xlim[2], cfg$ylim[2])
++ 
++     pull <- function(streetName) {
++       q <- osmdata::opq(bbox = bb)
++       q <- osmdata::add_osm_feature(q, key = "name", value = streetName)
++       res <- osmdata::osmdata_sf(q)
++       ls  <- res$osm_lines
++       if (is.null(ls) || nrow(ls) == 0)
++         stop("no OSM lines for '", streetName, "'")
++       # union all matching segments, densify-free vertex extraction
++       cm <- st_coordinates(st_geometry(ls))
++       data.table(lon = cm[, "X"], lat = cm[, "Y"])
++     }
++ 
++     oak <- pull("Oak Street")
++     ont <- pull("Ontario Street")
++     s16 <- pull("West 16th Avenue")
++ 
++     # Longitude band of the corner = rough Oak..Ontario span, used to
++     # isolate the relevant stretch of 16th. Use medians as robust anchors.
++     lonOak <- median(oak$lon); lonOnt <- median(ont$lon)
++     loB <- min(lonOak, lonOnt); hiB <- max(lonOak, lonOnt)
++ 
++     # 16th between Oak and Ontario -> its representative latitude
++     s16seg <- s16[lon %between% c(loB, hiB)]
++     if (nrow(s16seg) == 0) stop("16th has no vertices between Oak and Ontario")
++     lat16 <- median(s16seg$lat)
++ 
++     # Oak / Ontario, only SOUTH of 16th
++     oakS <- oak[lat <= lat16]
++     ontS <- ont[lat <= lat16]
++     if (nrow(oakS) == 0 || nrow(ontS) == 0)
++       stop("Oak/Ontario have no vertices south of 16th in bbox")
++ 
++     # OUTER extremes over the clipped spans
++     westRaw  <- min(oakS$lon, ontS$lon)   # westernmost of the two
++     eastRaw  <- max(oakS$lon, ontS$lon)   # easternmost of the two
++     northRaw <- max(s16seg$lat)           # northern (16th) edge
++ 
++     # Push outward by slack (metres -> degrees at ~49.26 N)
++     dLat <- slackMeters / 111320
++     dLon <- slackMeters / (111320 * cos(lat16 * pi / 180))
++     out <- list(
++       west  = westRaw  - dLon,            # more negative = further west
++       east  = eastRaw  + dLon,            # more positive = further east
++       north = northRaw + dLat             # further north
++     )
++     saveRDS(out, cachePath)
++     message(sprintf(
++       "Exclusion bounds from OSM (+%dm slack): W=%.5f E=%.5f N=%.5f  [16th lat ~ %.5f]",
++       slackMeters, out$west, out$east, out$north, lat16))
++     out
++   }, error = function(e) {
++     warning("deriveBoundsFromOSM failed (", conditionMessage(e),
++             "); falling back to cfg$excludeBoxRef")
++     NULL
++   })
++   ok
 + }
 > 
 > # Project lon/lat columns of a data.table to a planar CRS; return coord matrix
@@ -92,6 +255,14 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +                       k          = k)
 +   dtLocal[, `:=`(lon = fitPointsLL$lon, lat = fitPointsLL$lat)]
 +   dtLocal[]
++ }
+> 
+> # Local smoothed level of yCol at fit points (intercept-only GWR).
+> runGWRMean <- function(dtData, yCol, fitPointsLL, cfg, k = 1000) {
++   dataCoords <- projectCoords(dtData, cfg$crsProj)
++   fitCoords  <- projectCoords(fitPointsLL, cfg$crsProj)
++   gwrLocalMean(y = dtData[[yCol]], dataCoords = dataCoords,
++                fitCoords = fitCoords, k = k)
 + }
 > 
 > # Heatmap on a basemap. Pass `valueCol` as a string.
@@ -129,8 +300,33 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +   targetZone     = "R1-1",
 +   # filtering
 +   trimDimsQ      = 0.05,                          # winsorize landWidth & landDepth
-+   trimYQ         = 0.01,                           # winsorize the response (ppsf or price)
-+   salesYearRange = c(2014, 2018)
++   trimYQ         = 0.01,                          # winsorize the response (ppsf or price)
++   salesYearRange = c(2014, 2018),
++   permitYearRange = c(2019, 2023),
++   # ---- GLOBAL EXCLUSION STRIP ---------------------------------------------
++   # Half-plane strip: west-bounded by Oak St, east-bounded by Ontario St,
++   # SOUTH of W 16th Ave (no southern limit). Dropped everywhere (BCA,
++   # sales, permits) before any GWR / choice estimation.
++   #
++   # Two ways to set it (resolveExcludeBox picks one):
++   #   * excludeBox = list(lonMin=, lonMax=, latMax=)  -- explicit override,
++   #     used verbatim; OR
++   #   * excludeBoxRef = list(west=, east=, north=)    -- longitudes of the
++   #     west/east streets + latitude of the north street; normalized into
++   #     excludeBox at runtime.
++   # Set BOTH to NULL to disable the strip entirely.
++   #
++   # The reference values below are APPROXIMATE Vancouver street
++   # coordinates and should be replaced with values read off the City
++   # zoning GeoJSON (same WGS84 CRS as the rest of the pipeline) before
++   # any production run. They are good enough to eyeball the cut on the
++   # heatmaps but NOT to trust for a final sample definition.
++   excludeBox    = NULL,
++   excludeBoxRef = list(
++     west  = -123.1283,   # Oak St      -- APPROX, verify against zoning layer
++     east  = -123.1037,   # Ontario St  -- APPROX, verify against zoning layer
++     north =   49.2575    # W 16th Ave  -- APPROX, verify against zoning layer
++   )
 + )
 > 
 > # ===========================================================================
@@ -150,6 +346,7 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +                           "neighbourhoodDescription","lat","lon"),
 +                         names(sfBCA))
 +   dtBCA <- as.data.table(st_drop_geometry(sfBCA))[, ..keepCols]
++   dtBCA <- applyExcludeBox(dtBCA, cfg)            # GLOBAL bbox exclusion
 +   dtBCA
 + }
 > 
@@ -247,7 +444,11 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > # ===========================================================================
 > # 6. PERMIT LOADER (fit-point locations)
 > # ===========================================================================
-> # Returns a data.table with lon/lat for permits in the target zone.
+> # Returns a data.table with lon/lat for permits in the target zone PLUS the
+> # use category, so the duplex/single choice can be modeled. `useCat` retains
+> # the raw SpecificUseCategory; `isDuplex` is the binary choice variable
+> # (1 = Duplex, 0 = Single Detached House; other categories -> NA and dropped
+> # in the choice model but retained as GWR fit points).
 > 
 > loadPermits <- function(cfg) {
 +   dtPermit <- fread(cfg$permitFile,
@@ -267,7 +468,9 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +   dtPermit <- dtPermit[TypeOfWork == "New Building" | ProjectValue >= qCrit]
 +   dtPermit <- dtPermit[grepl("Duplex|Single Detached House|Laneway House|Multiple Dwelling",
 +                              SpecificUseCategory)]
-+   sfPermit <- st_as_sf(dtPermit[, .(permitLat, permitLon)],
++   dtPermit[,Year:= as.numeric(substring(YearMonth, 1, 4))]
++   dtPermit <- dtPermit[Year >= cfg$permitYearRange[1] & Year <= cfg$permitYearRange[2]]
++   sfPermit <- st_as_sf(dtPermit[, .(permitLat, permitLon, SpecificUseCategory)],
 +                        coords = c("permitLon","permitLat"), crs = 4326)
 +   dZ <- st_read(cfg$zoningGeojson, quiet = TRUE)
 +   dZ <- dZ[dZ$zoning_district == cfg$targetZone, "zoning_district"]
@@ -275,8 +478,41 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +   sfPermit <- st_join(sfPermit, dZ, join = st_within)
 +   sfPermit <- sfPermit[!is.na(sfPermit$zoning_district), ]
 +   sfPermit <- st_transform(sfPermit, 4326)
-+   data.table(lon = st_coordinates(sfPermit)[, 1],
-+              lat = st_coordinates(sfPermit)[, 2])
++   # convert YearMongth to numeric year and only use in PermitYearRange to be added to cfg
++   print(head(sfPermit))
++ 
++   dtOut <- data.table(lon    = st_coordinates(sfPermit)[, 1],
++                        lat    = st_coordinates(sfPermit)[, 2],
++                        useCat = sfPermit$SpecificUseCategory)
++   dtOut[, isDuplex := fifelse(useCat == "Duplex", 1L,
++                        fifelse(useCat == "Single Detached House", 0L,
++                                NA_integer_))]
++   dtOut <- applyExcludeBox(dtOut, cfg)            # GLOBAL bbox exclusion
++   dtOut[]
++ }
+> 
+> # Attach each permit's OWN parcel lot size by nearest-parcel spatial join
+> # to BCA. The permit CSV carries no lot area, so the discrete-choice
+> # regressor "log lot size" must be sourced from the matched parcel.
+> # Nearest-feature join (st_nearest_feature) rather than st_within because
+> # permit geo_point_2d is a rooftop/centroid that need not fall inside the
+> # parcel polygon's planar footprint after reprojection.
+> attachPermitLot <- function(permits, dtBCA, cfg) {
++   bca <- dtBCA[!is.na(lon) & !is.na(lat) &
++                !is.na(landWidth) & !is.na(landDepth)]
++   bca[, landArea := as.numeric(landWidth) * as.numeric(landDepth)]
++   bca <- bca[landArea > 0]
++   sfP <- st_transform(
++             st_as_sf(copy(permits), coords = c("lon","lat"), crs = 4326),
++             cfg$crsProj)
++   sfB <- st_transform(
++             st_as_sf(bca[, .(landArea, lon, lat)],
++                      coords = c("lon","lat"), crs = 4326),
++             cfg$crsProj)
++   nn  <- st_nearest_feature(sfP, sfB)
++   permits[, permitLandArea := sfB$landArea[nn]]
++   permits[, permitLogArea  := log(permitLandArea)]
++   permits[]
 + }
 > 
 > # ===========================================================================
@@ -284,38 +520,62 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > # ===========================================================================
 > 
 > cfg     <- cfgVancouver
+> osmRef  <- deriveBoundsFromOSM(cfg, slackMeters = 150)
+Warning message:
+In deriveBoundsFromOSM(cfg, slackMeters = 150) :
+  osmdata not installed; falling back to cfg$excludeBoxRef
+> if (!is.null(osmRef)) cfg$excludeBoxRef <- osmRef   # else keep approx fallback
+> cfg     <- resolveExcludeBox(cfg)   # populate cfg$excludeBox from refs/override
+> if (!is.null(cfg$excludeBox))
++   cat(sprintf("Exclusion strip ACTIVE: lon in [%.4f, %.4f], lat <= %.4f\n",
++               cfg$excludeBox$lonMin, cfg$excludeBox$lonMax,
++               cfg$excludeBox$latMax)) else
++   cat("Exclusion strip DISABLED\n")
+Exclusion strip ACTIVE: lon in [-123.1283, -123.1037], lat <= 49.2575
 > dtBCA   <- loadBCAParcels(cfg)
 > permits <- loadPermits(cfg)
+Simple feature collection with 6 features and 2 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -123.2174 ymin: 49.22512 xmax: -123.0531 ymax: 49.28453
+Geodetic CRS:  WGS 84
+        SpecificUseCategory zoning_district                   geometry
+1         Multiple Dwelling            R1-1 POINT (-123.1221 49.22636)
+2     Single Detached House            R1-1   POINT (-123.149 49.2284)
+4     Single Detached House            R1-1 POINT (-123.1948 49.24458)
+5     Single Detached House            R1-1 POINT (-123.2174 49.27188)
+12            Laneway House            R1-1 POINT (-123.0822 49.22512)
+22 Duplex w/Secondary Suite            R1-1 POINT (-123.0531 49.28453)
 > 
 > # ---- 7a. Appraisal: log(ppsf) ~ log(landArea) -----------------------------
 > dtVal <- loadAppraisal(cfg, dtBCA)
 > print(summary(dtVal))
    folioID            landValue        rollNumber          land_width   
- Length:52202       Min.   : 924000   Length:52202       Min.   :24.80  
- Class :character   1st Qu.:1316000   Class :character   1st Qu.:33.00  
- Mode  :character   Median :1553000   Mode  :character   Median :33.00  
-                    Mean   :1878997                      Mean   :39.73  
-                    3rd Qu.:2345000                      3rd Qu.:46.60  
+ Length:47725       Min.   : 924000   Length:47725       Min.   :24.80  
+ Class :character   1st Qu.:1305000   Class :character   1st Qu.:33.00  
+ Mode  :character   Median :1487000   Mode  :character   Median :33.00  
+                    Mean   :1832924                      Mean   :39.59  
+                    3rd Qu.:2297000                      3rd Qu.:46.10  
                     Max.   :6101000                      Max.   :66.00  
                                                          NA's   :2      
    land_depth       zoning          actualUseDescription   landWidth    
- Min.   : 98.0   Length:52202       Length:52202         Min.   :32.00  
- 1st Qu.:114.1   Class :character   Class :character     1st Qu.:33.00  
+ Min.   : 98.0   Length:47725       Length:47725         Min.   :32.00  
+ 1st Qu.:113.0   Class :character   Class :character     1st Qu.:33.00  
  Median :122.0   Mode  :character   Mode  :character     Median :33.00  
- Mean   :120.7                                           Mean   :39.75  
- 3rd Qu.:124.9                                           3rd Qu.:46.75  
+ Mean   :120.5                                           Mean   :39.61  
+ 3rd Qu.:124.7                                           3rd Qu.:46.20  
  Max.   :149.4                                           Max.   :66.00  
  NA's   :2                                                              
    landDepth       rollStart          i.folioID         i.landWidth       
- Min.   : 99.0   Min.   :1.021e+09   Length:52202       Length:52202      
- 1st Qu.:114.1   1st Qu.:6.122e+09   Class :character   Class :character  
- Median :122.0   Median :1.723e+10   Mode  :character   Mode  :character  
- Mean   :120.7   Mean   :1.505e+10                                        
- 3rd Qu.:124.9   3rd Qu.:2.164e+10                                        
- Max.   :148.5   Max.   :2.583e+10                                        
+ Min.   : 99.0   Min.   :1.021e+09   Length:47725       Length:47725      
+ 1st Qu.:113.0   1st Qu.:5.752e+09   Class :character   Class :character  
+ Median :122.0   Median :1.781e+10   Mode  :character   Mode  :character  
+ Mean   :120.5   Mean   :1.537e+10                                        
+ 3rd Qu.:124.7   3rd Qu.:2.228e+10                                        
+ Max.   :148.6   Max.   :2.583e+10                                        
                                                                           
  i.landDepth        MB_effective_year  MB_total_finished_area
- Length:52202       Length:52202       Length:52202          
+ Length:47725       Length:47725       Length:47725          
  Class :character   Class :character   Class :character      
  Mode  :character   Mode  :character   Mode  :character      
                                                              
@@ -323,20 +583,20 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
                                                              
                                                              
  neighbourhoodDescription      lat             lon            landArea   
- Length:52202             Min.   :49.21   Min.   :-123.2   Min.   :3168  
- Class :character         1st Qu.:49.23   1st Qu.:-123.2   1st Qu.:4014  
- Mode  :character         Median :49.24   Median :-123.1   Median :4217  
-                          Mean   :49.24   Mean   :-123.1   Mean   :4813  
-                          3rd Qu.:49.26   3rd Qu.:-123.1   3rd Qu.:5600  
-                          Max.   :49.29   Max.   :-123.0   Max.   :9801  
+ Length:47725             Min.   :49.21   Min.   :-123.2   Min.   :3168  
+ Class :character         1st Qu.:49.23   1st Qu.:-123.2   1st Qu.:4000  
+ Mode  :character         Median :49.24   Median :-123.1   Median :4191  
+                          Mean   :49.24   Mean   :-123.1   Mean   :4786  
+                          3rd Qu.:49.26   3rd Qu.:-123.0   3rd Qu.:5541  
+                          Max.   :49.29   Max.   :-123.0   Max.   :9808  
                                                                          
       ppsf          logPPSF         logArea     
- Min.   :245.5   Min.   :5.503   Min.   :8.061  
- 1st Qu.:315.4   1st Qu.:5.754   1st Qu.:8.298  
- Median :344.0   Median :5.841   Median :8.347  
- Mean   :387.8   Mean   :5.930   Mean   :8.449  
- 3rd Qu.:461.5   3rd Qu.:6.135   3rd Qu.:8.631  
- Max.   :676.5   Max.   :6.517   Max.   :9.190  
+ Min.   :244.5   Min.   :5.499   Min.   :8.061  
+ 1st Qu.:312.3   1st Qu.:5.744   1st Qu.:8.294  
+ Median :336.7   Median :5.819   Median :8.341  
+ Mean   :379.9   Mean   :5.910   Mean   :8.444  
+ 3rd Qu.:452.0   3rd Qu.:6.114   3rd Qu.:8.620  
+ Max.   :672.5   Max.   :6.511   Max.   :9.191  
                                                 
 > 
 > plotHeatmap(dtVal, "ppsf", cfg,
@@ -350,25 +610,25 @@ Zoom: 12
 +                      fitPointsLL = permits, cfg = cfg, k = 1000)
 > print(summary(dtLocalVal))
    intercept          slope             seInt            seSlope        
- Min.   : 2.194   Min.   :-0.7132   Min.   :0.03536   Min.   :0.004241  
- 1st Qu.: 8.655   1st Qu.:-0.4662   1st Qu.:0.10977   1st Qu.:0.013076  
- Median : 9.298   Median :-0.4099   Median :0.15611   Median :0.018469  
- Mean   : 9.100   Mean   :-0.3748   Mean   :0.18273   Mean   :0.021489  
- 3rd Qu.: 9.708   3rd Qu.:-0.3088   3rd Qu.:0.22239   3rd Qu.:0.026261  
- Max.   :12.441   Max.   : 0.4835   Max.   :0.93703   Max.   :0.106188  
+ Min.   : 2.345   Min.   :-0.7318   Min.   :0.03598   Min.   :0.004369  
+ 1st Qu.: 8.773   1st Qu.:-0.4721   1st Qu.:0.10811   1st Qu.:0.012873  
+ Median : 9.358   Median :-0.4218   Median :0.15198   Median :0.018004  
+ Mean   : 9.180   Mean   :-0.3870   Mean   :0.17316   Mean   :0.020361  
+ 3rd Qu.: 9.731   3rd Qu.:-0.3285   3rd Qu.:0.20603   3rd Qu.:0.024514  
+ Max.   :12.613   Max.   : 0.4652   Max.   :0.91221   Max.   :0.103417  
       nEff             fitX             fitY              lon        
- Min.   : 74.49   Min.   :483778   Min.   :5450345   Min.   :-123.2  
- 1st Qu.:324.72   1st Qu.:489039   1st Qu.:5452550   1st Qu.:-123.2  
- Median :352.73   Median :493495   Median :5454243   Median :-123.1  
- Mean   :354.18   Mean   :492585   Mean   :5454317   Mean   :-123.1  
- 3rd Qu.:385.30   3rd Qu.:496121   3rd Qu.:5455756   3rd Qu.:-123.1  
- Max.   :551.71   Max.   :498276   Max.   :5459905   Max.   :-123.0  
+ Min.   : 89.14   Min.   :483912   Min.   :5450345   Min.   :-123.2  
+ 1st Qu.:325.14   1st Qu.:488684   1st Qu.:5452576   1st Qu.:-123.2  
+ Median :352.26   Median :493882   Median :5454256   Median :-123.1  
+ Mean   :353.95   Mean   :492712   Mean   :5454350   Mean   :-123.1  
+ 3rd Qu.:384.06   3rd Qu.:496322   3rd Qu.:5455843   3rd Qu.:-123.1  
+ Max.   :561.97   Max.   :498265   Max.   :5459867   Max.   :-123.0  
       lat       
  Min.   :49.21  
  1st Qu.:49.23  
  Median :49.24  
  Mean   :49.24  
- 3rd Qu.:49.25  
+ 3rd Qu.:49.26  
  Max.   :49.29  
 > 
 > plotHeatmap(dtLocalVal, "slope", cfg,
@@ -381,23 +641,23 @@ Zoom: 12
 > dtSales <- loadSales(cfg, dtBCA)
 > print(summary(dtSales))
    folioID          conveyanceDate     conveyancePrice     rollStart        
- Length:9099        Length:9099        Min.   : 305666   Min.   :1.030e+09  
- Class :character   Class :character   1st Qu.:1313500   1st Qu.:5.079e+09  
- Mode  :character   Mode  :character   Median :1783000   Median :1.569e+10  
-                                       Mean   :2068720   Mean   :1.355e+10  
-                                       3rd Qu.:2650000   3rd Qu.:2.059e+10  
+ Length:8318        Length:8318        Min.   : 305666   Min.   :1.028e+09  
+ Class :character   Class :character   1st Qu.:1278850   1st Qu.:4.712e+09  
+ Mode  :character   Mode  :character   Median :1710000   Median :1.672e+10  
+                                       Mean   :2025903   Mean   :1.379e+10  
+                                       3rd Qu.:2610000   3rd Qu.:2.060e+10  
                                        Max.   :6519000   Max.   :2.583e+10  
                                                                             
-   landWidth       landDepth      MB_effective_year  MB_total_finished_area
- Min.   :32.00   Min.   : 99.31   Length:9099        Length:9099           
- 1st Qu.:33.00   1st Qu.:115.05   Class :character   Class :character      
- Median :33.14   Median :122.00   Mode  :character   Mode  :character      
- Mean   :40.61   Mean   :121.10                                            
- 3rd Qu.:49.50   3rd Qu.:125.00                                            
- Max.   :66.00   Max.   :145.38                                            
-                                                                           
+   landWidth       landDepth     MB_effective_year  MB_total_finished_area
+ Min.   :32.00   Min.   : 99.0   Length:8318        Length:8318           
+ 1st Qu.:33.00   1st Qu.:113.9   Class :character   Class :character      
+ Median :33.09   Median :122.0   Mode  :character   Mode  :character      
+ Mean   :40.36   Mean   :120.6                                            
+ 3rd Qu.:49.50   3rd Qu.:125.0                                            
+ Max.   :66.00   Max.   :145.0                                            
+                                                                          
  neighbourhoodDescription      lat             lon              year     
- Length:9099              Min.   :49.21   Min.   :-123.2   Min.   :2014  
+ Length:8318              Min.   :49.21   Min.   :-123.2   Min.   :2014  
  Class :character         1st Qu.:49.23   1st Qu.:-123.2   1st Qu.:2014  
  Mode  :character         Median :49.24   Median :-123.1   Median :2015  
                           Mean   :49.24   Mean   :-123.1   Mean   :2016  
@@ -405,21 +665,21 @@ Zoom: 12
                           Max.   :49.29   Max.   :-123.0   Max.   :2018  
                                                                          
     logPrice        landArea       logArea         ppsfSale     
- Min.   :12.63   Min.   :3246   Min.   :8.085   Min.   : 71.71  
- 1st Qu.:14.09   1st Qu.:4023   1st Qu.:8.300   1st Qu.:304.50  
- Median :14.39   Median :4290   Median :8.364   Median :390.54  
- Mean   :14.43   Mean   :4938   Mean   :8.472   Mean   :413.11  
- 3rd Qu.:14.79   3rd Qu.:5940   3rd Qu.:8.689   3rd Qu.:516.56  
- Max.   :15.69   Max.   :9570   Max.   :9.166   Max.   :740.91  
+ Min.   :12.63   Min.   :3208   Min.   :8.073   Min.   : 71.71  
+ 1st Qu.:14.06   1st Qu.:4014   1st Qu.:8.297   1st Qu.:297.77  
+ Median :14.35   Median :4257   Median :8.356   Median :382.04  
+ Mean   :14.41   Mean   :4887   Mean   :8.461   Mean   :407.79  
+ 3rd Qu.:14.77   3rd Qu.:5835   3rd Qu.:8.672   3rd Qu.:509.78  
+ Max.   :15.69   Max.   :9570   Max.   :9.166   Max.   :744.36  
                                                                 
   logPPSFSale         age              FSR              logFSR        
  Min.   :4.273   Min.   : -6.00   Min.   :0.06477   Min.   :-2.73692  
- 1st Qu.:5.719   1st Qu.:  1.00   1st Qu.:0.51167   1st Qu.:-0.67007  
- Median :5.968   Median : 18.00   Median :0.59404   Median :-0.52081  
- Mean   :5.962   Mean   : 20.95   Mean   :0.57768   Mean   :-0.57163  
- 3rd Qu.:6.247   3rd Qu.: 36.00   3rd Qu.:0.67898   3rd Qu.:-0.38716  
- Max.   :6.608   Max.   :108.00   Max.   :0.97430   Max.   :-0.02604  
-                 NA's   :18       NA's   :18        NA's   :18        
+ 1st Qu.:5.696   1st Qu.:  1.00   1st Qu.:0.51041   1st Qu.:-0.67254  
+ Median :5.946   Median : 19.00   Median :0.59404   Median :-0.52081  
+ Mean   :5.947   Mean   : 20.93   Mean   :0.57785   Mean   :-0.57103  
+ 3rd Qu.:6.234   3rd Qu.: 36.00   3rd Qu.:0.67949   3rd Qu.:-0.38642  
+ Max.   :6.613   Max.   :108.00   Max.   :0.97430   Max.   :-0.02604  
+                 NA's   :16       NA's   :16        NA's   :16        
 > 
 > plotHeatmap(dtSales, "ppsfSale", cfg,
 +             legendTitle = "Price per sqft (sales)",
@@ -430,26 +690,26 @@ Zoom: 12
 > dtLocalSales <- runGWR(dtSales, yCol = "logPPSFSale", xCol = "logArea",
 +                        fitPointsLL = permits, cfg = cfg, k = 1000)
 > print(summary(dtLocalSales))
-   intercept          slope             seInt           seSlope       
- Min.   : 4.481   Min.   :-0.7230   Min.   :0.3431   Min.   :0.03969  
- 1st Qu.: 7.817   1st Qu.:-0.5005   1st Qu.:0.4918   1st Qu.:0.05731  
- Median : 8.894   Median :-0.3572   Median :0.6691   Median :0.07958  
- Mean   : 8.773   Mean   :-0.3388   Mean   :0.6592   Mean   :0.07828  
- 3rd Qu.: 9.887   3rd Qu.:-0.1903   3rd Qu.:0.7961   3rd Qu.:0.09517  
- Max.   :11.780   Max.   : 0.1696   Max.   :1.0631   Max.   :0.12730  
+   intercept          slope               seInt           seSlope       
+ Min.   : 6.159   Min.   :-0.734548   Min.   :0.3079   Min.   :0.03550  
+ 1st Qu.: 8.103   1st Qu.:-0.524004   1st Qu.:0.4844   1st Qu.:0.05642  
+ Median : 9.175   Median :-0.403195   Median :0.6812   Median :0.08108  
+ Mean   : 9.115   Mean   :-0.382137   Mean   :0.6599   Mean   :0.07846  
+ 3rd Qu.:10.078   3rd Qu.:-0.224224   3rd Qu.:0.8021   3rd Qu.:0.09616  
+ Max.   :11.881   Max.   :-0.005674   Max.   :1.0639   Max.   :0.12740  
       nEff            fitX             fitY              lon        
- Min.   :127.6   Min.   :483778   Min.   :5450345   Min.   :-123.2  
- 1st Qu.:341.0   1st Qu.:489039   1st Qu.:5452550   1st Qu.:-123.2  
- Median :372.0   Median :493495   Median :5454243   Median :-123.1  
- Mean   :371.9   Mean   :492585   Mean   :5454317   Mean   :-123.1  
- 3rd Qu.:403.2   3rd Qu.:496121   3rd Qu.:5455756   3rd Qu.:-123.1  
- Max.   :514.9   Max.   :498276   Max.   :5459905   Max.   :-123.0  
+ Min.   :183.8   Min.   :483912   Min.   :5450345   Min.   :-123.2  
+ 1st Qu.:344.9   1st Qu.:488684   1st Qu.:5452576   1st Qu.:-123.2  
+ Median :376.3   Median :493882   Median :5454256   Median :-123.1  
+ Mean   :379.8   Mean   :492712   Mean   :5454350   Mean   :-123.1  
+ 3rd Qu.:412.3   3rd Qu.:496322   3rd Qu.:5455843   3rd Qu.:-123.1  
+ Max.   :583.4   Max.   :498265   Max.   :5459867   Max.   :-123.0  
       lat       
  Min.   :49.21  
  1st Qu.:49.23  
  Median :49.24  
  Mean   :49.24  
- 3rd Qu.:49.25  
+ 3rd Qu.:49.26  
  Max.   :49.29  
 > 
 > plotHeatmap(dtLocalSales, "slope", cfg,
@@ -458,6 +718,218 @@ Zoom: 12
 Saving 7 x 7 in image
 Zoom: 12
 > 
+> # ===========================================================================
+> # 8. DISCRETE CHOICE: DUPLEX vs SINGLE DETACHED
+> # ===========================================================================
+> # Dependent var: isDuplex (1 = Duplex permit, 0 = Single Detached House).
+> # Regressors:
+> #   permitLogArea  -- log lot size of the permit's OWN matched parcel
+> #   localSlope     -- locally-estimated elasticity at the permit (appraisal GWR)
+> #   localLogPPSF   -- locally-smoothed log price/sqft level at the permit
+> #                     (intercept-only GWR -- ambient price, not slope-extrapolated)
+> # Estimated three ways: LPM (lm), logit, probit.
+> #
+> # Note on the ppsf regressor: using the GWR *intercept* would mean the
+> # fitted log(ppsf) at log(landArea)=0 -- a wildly out-of-sample lot of 1
+> # sqft -- which is exactly the geometric artifact already discussed in the
+> # infill work. The intercept-only local mean of logPPSF is the clean
+> # ambient-price control and is what enters here.
+> 
+> # 8.1 Own-parcel lot size for each permit (nearest BCA parcel)
+> permits <- attachPermitLot(permits, dtBCA, cfg)
+> 
+> # 8.2 Local elasticity at permits (already have dtLocalVal: row-aligned to
+> #     `permits` by construction -- fitPointsLL == permits, same order,
+> #     bbox exclusion applied to both before GWR).
+> permits[, localSlope := dtLocalVal$slope]
+> 
+> # 8.3 Local ambient log-ppsf level at permits (intercept-only GWR on the
+> #     appraisal sample). Independent of any lot-size assumption.
+> permits[, localLogPPSF := runGWRMean(dtVal, yCol = "logPPSF",
++                                      fitPointsLL = permits,
++                                      cfg = cfg, k = 1000)]
+> 
+> # 8.4 Estimation sample: duplex/single only, complete cases
+> choiceDT <- permits[!is.na(isDuplex) &
++                      is.finite(permitLogArea) &
++                      is.finite(localSlope) &
++                      is.finite(localLogPPSF)]
+> cat(sprintf("\nChoice sample: n = %d  (duplex = %d, single = %d)\n",
++             nrow(choiceDT), sum(choiceDT$isDuplex == 1L),
++             sum(choiceDT$isDuplex == 0L)))
+
+Choice sample: n = 930  (duplex = 363, single = 567)
+> 
+> fmlChoiceSlopeOnly <- isDuplex ~ permitLogArea + localSlope
+> fmlChoicePPSFOnly  <- isDuplex ~ permitLogArea + localLogPPSF
+> fmlChoice <- isDuplex ~ permitLogArea + localSlope + localLogPPSF
+> 
+> mLPM   <- lm(fmlChoice, data = choiceDT)
+> mLogit <- glm(fmlChoice, data = choiceDT, family = binomial(link = "logit"))
+> mProbit<- glm(fmlChoice, data = choiceDT, family = binomial(link = "probit"))
+> mLogitSlopeOnly <- glm(fmlChoiceSlopeOnly, data = choiceDT, family = binomial(link = "logit"))
+> mLogitPPSFOnly  <- glm(fmlChoicePPSFOnly, data = choiceDT, family = binomial(link = "logit"))
+> 
+> cat("\n================ LPM  (isDuplex) ================\n")
+
+================ LPM  (isDuplex) ================
+> print(summary(mLPM))
+
+Call:
+lm(formula = fmlChoice, data = choiceDT)
+
+Residuals:
+     Min       1Q   Median       3Q      Max 
+-0.82653 -0.20807 -0.04017  0.25654  1.06393 
+
+Coefficients:
+              Estimate Std. Error t value Pr(>|t|)    
+(Intercept)    9.10440    0.43331  21.011   <2e-16 ***
+permitLogArea -0.35325    0.03201 -11.034   <2e-16 ***
+localSlope    -0.03723    0.09455  -0.394    0.694    
+localLogPPSF  -0.94670    0.07256 -13.047   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+Residual standard error: 0.3765 on 926 degrees of freedom
+Multiple R-squared:  0.4069,	Adjusted R-squared:  0.405 
+F-statistic: 211.8 on 3 and 926 DF,  p-value: < 2.2e-16
+
+> cat("\n================ LOGIT  (isDuplex) ==============\n")
+
+================ LOGIT  (isDuplex) ==============
+> print(summary(mLogit))
+
+Call:
+glm(formula = fmlChoice, family = binomial(link = "logit"), data = choiceDT)
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)    58.1378     4.3059  13.502   <2e-16 ***
+permitLogArea  -3.6503     0.3816  -9.566   <2e-16 ***
+localSlope     -0.1450     0.7803  -0.186    0.853    
+localLogPPSF   -4.6261     0.5232  -8.841   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1244.14  on 929  degrees of freedom
+Residual deviance:  768.11  on 926  degrees of freedom
+AIC: 776.11
+
+Number of Fisher Scoring iterations: 6
+
+> print(summary(mLogitSlopeOnly))
+
+Call:
+glm(formula = fmlChoiceSlopeOnly, family = binomial(link = "logit"), 
+    data = choiceDT)
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)    35.9634     3.0981  11.608  < 2e-16 ***
+permitLogArea  -4.5011     0.3668 -12.272  < 2e-16 ***
+localSlope     -4.7945     0.6905  -6.944 3.81e-12 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1244.14  on 929  degrees of freedom
+Residual deviance:  854.84  on 927  degrees of freedom
+AIC: 860.84
+
+Number of Fisher Scoring iterations: 6
+
+> print(summary(mLogitPPSFOnly))
+
+Call:
+glm(formula = fmlChoicePPSFOnly, family = binomial(link = "logit"), 
+    data = choiceDT)
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)    58.5439     3.7229  15.725   <2e-16 ***
+permitLogArea  -3.6502     0.3817  -9.564   <2e-16 ***
+localLogPPSF   -4.6853     0.4168 -11.241   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1244.14  on 929  degrees of freedom
+Residual deviance:  768.14  on 927  degrees of freedom
+AIC: 774.14
+
+Number of Fisher Scoring iterations: 6
+
+> cat("\n================ PROBIT  (isDuplex) =============\n")
+
+================ PROBIT  (isDuplex) =============
+> print(summary(mProbit))
+
+Call:
+glm(formula = fmlChoice, family = binomial(link = "probit"), 
+    data = choiceDT)
+
+Coefficients:
+              Estimate Std. Error z value Pr(>|z|)    
+(Intercept)   34.11615    2.29376  14.873   <2e-16 ***
+permitLogArea -2.03547    0.20425  -9.966   <2e-16 ***
+localSlope     0.05274    0.42836   0.123    0.902    
+localLogPPSF  -2.85571    0.29854  -9.566   <2e-16 ***
+---
+Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
+
+(Dispersion parameter for binomial family taken to be 1)
+
+    Null deviance: 1244.14  on 929  degrees of freedom
+Residual deviance:  767.32  on 926  degrees of freedom
+AIC: 775.32
+
+Number of Fisher Scoring iterations: 6
+
+> 
+> # 8.5 Average marginal effects for logit/probit (so coefficients are
+> #     comparable in scale to the LPM). Numerical AME via finite differences
+> #     on the linear predictor scale would be exact for continuous
+> #     regressors; here we use the simple mean-of-derivatives form.
+> ame <- function(model) {
++   X    <- model.matrix(model)
++   b    <- coef(model)
++   eta  <- as.vector(X %*% b)
++   dens <- switch(model$family$link,
++                  logit  = dlogis(eta),
++                  probit = dnorm(eta))
++   vapply(colnames(X)[-1],
++          function(v) mean(dens) * b[v], numeric(1))
++ }
+> cat("\n---- Avg marginal effects ----\n")
+
+---- Avg marginal effects ----
+> cat("logit :\n");  print(ame(mLogit))
+logit :
+permitLogArea    localSlope  localLogPPSF 
+  -0.47951008   -0.01904716   -0.60770688 
+> cat("logit :\n");  print(ame(mLogitSlopeOnly))
+logit :
+permitLogArea    localSlope 
+   -0.6857679    -0.7304643 
+> cat("logit :\n");  print(ame(mLogitPPSFOnly))
+logit :
+permitLogArea  localLogPPSF 
+   -0.4795363    -0.6155153 
+> cat("probit:\n");  print(ame(mProbit))
+probit:
+permitLogArea    localSlope  localLogPPSF 
+   -0.4682657     0.0121330    -0.6569637 
+> cat("LPM (slopes are the marginal effects):\n")
+LPM (slopes are the marginal effects):
+> print(coef(mLPM)[-1])
+permitLogArea    localSlope  localLogPPSF 
+  -0.35324631   -0.03722992   -0.94670494 
+> 
 > proc.time()
    user  system elapsed 
- 56.909   8.641  34.065 
+ 48.023   7.259  31.704 
