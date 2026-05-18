@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -30,6 +30,7 @@ Type 'q()' to quit R.
 > library(RSQLite)
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(fixest)
 > 
 > # ===========================================================================
 > # 1. GENERIC TOOLS
@@ -68,7 +69,8 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > # right "local ppsf" regressor for the choice model: it is the ambient
 > # price level a developer faces, not a value extrapolated through the
 > # log-log slope to some arbitrary lot size.
-> gwrLocalMean <- function(y, dataCoords, fitCoords, k = 1000, mcCores = 6) {
+> BANDWIDTHGWR <- 1000
+> gwrLocalMean <- function(y, dataCoords, fitCoords, k = BANDWIDTHGWR, mcCores = 6) {
 +   bisquare <- function(d, h) ifelse(d < h, (1 - (d/h)^2)^2, 0)
 +   fitOne <- function(s) {
 +     d <- sqrt((dataCoords[,1] - s[1])^2 + (dataCoords[,2] - s[2])^2)
@@ -608,28 +610,6 @@ Zoom: 12
 > 
 > dtLocalVal <- runGWR(dtVal, yCol = "logPPSF", xCol = "logArea",
 +                      fitPointsLL = permits, cfg = cfg, k = 1000)
-> print(summary(dtLocalVal))
-   intercept          slope             seInt            seSlope        
- Min.   : 2.345   Min.   :-0.7318   Min.   :0.03598   Min.   :0.004369  
- 1st Qu.: 8.773   1st Qu.:-0.4721   1st Qu.:0.10811   1st Qu.:0.012873  
- Median : 9.358   Median :-0.4218   Median :0.15198   Median :0.018004  
- Mean   : 9.180   Mean   :-0.3870   Mean   :0.17316   Mean   :0.020361  
- 3rd Qu.: 9.731   3rd Qu.:-0.3285   3rd Qu.:0.20603   3rd Qu.:0.024514  
- Max.   :12.613   Max.   : 0.4652   Max.   :0.91221   Max.   :0.103417  
-      nEff             fitX             fitY              lon        
- Min.   : 89.14   Min.   :483912   Min.   :5450345   Min.   :-123.2  
- 1st Qu.:325.14   1st Qu.:488684   1st Qu.:5452576   1st Qu.:-123.2  
- Median :352.26   Median :493882   Median :5454256   Median :-123.1  
- Mean   :353.95   Mean   :492712   Mean   :5454350   Mean   :-123.1  
- 3rd Qu.:384.06   3rd Qu.:496322   3rd Qu.:5455843   3rd Qu.:-123.1  
- Max.   :561.97   Max.   :498265   Max.   :5459867   Max.   :-123.0  
-      lat       
- Min.   :49.21  
- 1st Qu.:49.23  
- Median :49.24  
- Mean   :49.24  
- 3rd Qu.:49.26  
- Max.   :49.29  
 > 
 > plotHeatmap(dtLocalVal, "slope", cfg,
 +             legendTitle = "Local elasticity\nlog(ppsf) ~ log(landArea)\nappraisal",
@@ -718,6 +698,36 @@ Zoom: 12
 Saving 7 x 7 in image
 Zoom: 12
 > 
+> # ---- 7b.bis. Diagnostic: cor(observed logPPSFSale, local slope) at sales --
+> # Fit GWR at the sales points themselves (easy: dtSales already has lon/lat),
+> # at k=1000 and k=2000, and report the cross-sectional correlation between
+> # each sale's own logPPSFSale and the local slope estimated at its location.
+> dtSlopeAtSales500  <- runGWR(dtSales, yCol = "logPPSFSale", xCol = "logArea",
++ 			     fitPointsLL = dtSales[, .(lon, lat)],
++ 			     cfg = cfg, k = 500)
+> dtSlopeAtSales1000 <- runGWR(dtSales, yCol = "logPPSFSale", xCol = "logArea",
++                              fitPointsLL = dtSales[, .(lon, lat)],
++                              cfg = cfg, k = 1000)
+> dtSlopeAtSales2000 <- runGWR(dtSales, yCol = "logPPSFSale", xCol = "logArea",
++                              fitPointsLL = dtSales[, .(lon, lat)],
++                              cfg = cfg, k = 2000)
+> cat(sprintf("\ncor(logPPSFSale, localSlope) at sales, k=500: %.4f\n",
++             cor(dtSales$logPPSFSale, dtSlopeAtSales500$slope,
++                 use = "complete.obs")))
+
+cor(logPPSFSale, localSlope) at sales, k=500: 0.4977
+> cat(sprintf("\ncor(logPPSFSale, localSlope) at sales, k=1000: %.4f\n",
++             cor(dtSales$logPPSFSale, dtSlopeAtSales1000$slope,
++                 use = "complete.obs")))
+
+cor(logPPSFSale, localSlope) at sales, k=1000: 0.5486
+> cat(sprintf("cor(logPPSFSale, localSlope) at sales, k=2000: %.4f\n",
++             cor(dtSales$logPPSFSale, dtSlopeAtSales2000$slope,
++                 use = "complete.obs")))
+cor(logPPSFSale, localSlope) at sales, k=2000: 0.5302
+> cat(sprintf("cor(slope_k1000, slope_k2000):                 %.4f\n",
++             cor(dtSlopeAtSales1000$slope, dtSlopeAtSales2000$slope, use = "complete.obs")))
+cor(slope_k1000, slope_k2000):                 0.9262
 > # ===========================================================================
 > # 8. DISCRETE CHOICE: DUPLEX vs SINGLE DETACHED
 > # ===========================================================================
@@ -764,11 +774,12 @@ Choice sample: n = 930  (duplex = 363, single = 567)
 > fmlChoicePPSFOnly  <- isDuplex ~ permitLogArea + localLogPPSF
 > fmlChoice <- isDuplex ~ permitLogArea + localSlope + localLogPPSF
 > 
+> CONLEYCUTOFF  <- 2*BANDWIDTHGWR/1000  # meters -- matches GWR bandwidth, and is large enough to capture spatial correlation in residuals
 > mLPM   <- lm(fmlChoice, data = choiceDT)
-> mLogit <- glm(fmlChoice, data = choiceDT, family = binomial(link = "logit"))
 > mProbit<- glm(fmlChoice, data = choiceDT, family = binomial(link = "probit"))
-> mLogitSlopeOnly <- glm(fmlChoiceSlopeOnly, data = choiceDT, family = binomial(link = "logit"))
-> mLogitPPSFOnly  <- glm(fmlChoicePPSFOnly, data = choiceDT, family = binomial(link = "logit"))
+> mLogit <- feglm(fmlChoice, data = choiceDT, family = binomial(link = "logit"))
+> mLogitSlopeOnly <- feglm(fmlChoiceSlopeOnly, data = choiceDT, family = binomial(link = "logit"))
+> mLogitPPSFOnly  <- feglm(fmlChoicePPSFOnly, data = choiceDT, family = binomial(link = "logit"))
 > 
 > cat("\n================ LPM  (isDuplex) ================\n")
 
@@ -799,71 +810,93 @@ F-statistic: 211.8 on 3 and 926 DF,  p-value: < 2.2e-16
 
 ================ LOGIT  (isDuplex) ==============
 > print(summary(mLogit))
-
-Call:
-glm(formula = fmlChoice, family = binomial(link = "logit"), data = choiceDT)
-
-Coefficients:
-              Estimate Std. Error z value Pr(>|z|)    
-(Intercept)    58.1378     4.3059  13.502   <2e-16 ***
-permitLogArea  -3.6503     0.3816  -9.566   <2e-16 ***
-localSlope     -0.1450     0.7803  -0.186    0.853    
-localLogPPSF   -4.6261     0.5232  -8.841   <2e-16 ***
+GLM estimation, family = binomial(link = "logit"), Dep. Var.: isDuplex
+Observations: 930
+Standard-errors: IID 
+               Estimate Std. Error   z value  Pr(>|z|)    
+(Intercept)   58.137788   4.312854 13.480121 < 2.2e-16 ***
+permitLogArea -3.650255   0.382192 -9.550837 < 2.2e-16 ***
+localSlope    -0.144996   0.781606 -0.185510   0.85283    
+localLogPPSF  -4.626149   0.524088 -8.827053 < 2.2e-16 ***
 ---
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-(Dispersion parameter for binomial family taken to be 1)
-
-    Null deviance: 1244.14  on 929  degrees of freedom
-Residual deviance:  768.11  on 926  degrees of freedom
-AIC: 776.11
-
-Number of Fisher Scoring iterations: 6
-
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -384.1   Adj. Pseudo R2: 0.377799
+           BIC:  795.4     Squared Cor.: 0.440029
 > print(summary(mLogitSlopeOnly))
-
-Call:
-glm(formula = fmlChoiceSlopeOnly, family = binomial(link = "logit"), 
-    data = choiceDT)
-
-Coefficients:
-              Estimate Std. Error z value Pr(>|z|)    
-(Intercept)    35.9634     3.0981  11.608  < 2e-16 ***
-permitLogArea  -4.5011     0.3668 -12.272  < 2e-16 ***
-localSlope     -4.7945     0.6905  -6.944 3.81e-12 ***
+GLM estimation, family = binomial(link = "logit"), Dep. Var.: isDuplex
+Observations: 930
+Standard-errors: IID 
+              Estimate Std. Error   z value  Pr(>|z|)    
+(Intercept)   35.96337   3.101415  11.59579 < 2.2e-16 ***
+permitLogArea -4.50111   0.367165 -12.25911 < 2.2e-16 ***
+localSlope    -4.79448   0.691206  -6.93641 4.022e-12 ***
 ---
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-(Dispersion parameter for binomial family taken to be 1)
-
-    Null deviance: 1244.14  on 929  degrees of freedom
-Residual deviance:  854.84  on 927  degrees of freedom
-AIC: 860.84
-
-Number of Fisher Scoring iterations: 6
-
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -427.4   Adj. Pseudo R2: 0.309693
+           BIC:  875.3     Squared Cor.: 0.379954
 > print(summary(mLogitPPSFOnly))
-
-Call:
-glm(formula = fmlChoicePPSFOnly, family = binomial(link = "logit"), 
-    data = choiceDT)
-
-Coefficients:
-              Estimate Std. Error z value Pr(>|z|)    
-(Intercept)    58.5439     3.7229  15.725   <2e-16 ***
-permitLogArea  -3.6502     0.3817  -9.564   <2e-16 ***
-localLogPPSF   -4.6853     0.4168 -11.241   <2e-16 ***
+GLM estimation, family = binomial(link = "logit"), Dep. Var.: isDuplex
+Observations: 930
+Standard-errors: IID 
+              Estimate Std. Error   z value  Pr(>|z|)    
+(Intercept)   58.54391   3.726880  15.70856 < 2.2e-16 ***
+permitLogArea -3.65020   0.382064  -9.55388 < 2.2e-16 ***
+localLogPPSF  -4.68526   0.417267 -11.22844 < 2.2e-16 ***
 ---
-Signif. codes:  0 ‘***’ 0.001 ‘**’ 0.01 ‘*’ 0.05 ‘.’ 0.1 ‘ ’ 1
-
-(Dispersion parameter for binomial family taken to be 1)
-
-    Null deviance: 1244.14  on 929  degrees of freedom
-Residual deviance:  768.14  on 927  degrees of freedom
-AIC: 774.14
-
-Number of Fisher Scoring iterations: 6
-
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Log-Likelihood: -384.1   Adj. Pseudo R2: 0.379378
+           BIC:  788.6     Squared Cor.: 0.439748
+> print("SEs simple then Conley")
+[1] "SEs simple then Conley"
+> print(etable(mLogitSlopeOnly,mLogitPPSFOnly,mLogit, digits = 3))
+                 mLogitSlopeOnly   mLogitPPSFOnly           mLogit
+Dependent Var.:         isDuplex         isDuplex         isDuplex
+                                                                  
+Constant          36.0*** (3.10)   58.5*** (3.73)   58.1*** (4.31)
+permitLogArea   -4.50*** (0.367) -3.65*** (0.382) -3.65*** (0.382)
+localSlope      -4.79*** (0.691)                    -0.145 (0.782)
+localLogPPSF                     -4.69*** (0.417) -4.63*** (0.524)
+_______________ ________________ ________________ ________________
+S.E. type                    IID              IID              IID
+Observations                 930              930              930
+Squared Cor.             0.37995          0.43975          0.44003
+Pseudo R2                0.31291          0.38259          0.38262
+BIC                       875.34           788.65           795.45
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> print(etable(mLogitSlopeOnly,mLogitPPSFOnly,mLogit, digits = 3,vcov=conley(cutoff=CONLEYCUTOFF,distance="spherical")))
+                mLogitSlopeOnly   mLogitPPSFOnly          mLogit
+Dependent Var.:        isDuplex         isDuplex        isDuplex
+                                                                
+Constant         36.0*** (9.75)   58.5*** (7.88)  58.1*** (8.18)
+permitLogArea   -4.50*** (1.18)  -3.65*** (1.04) -3.65*** (1.05)
+localSlope       -4.79** (1.71)                    -0.145 (1.44)
+localLogPPSF                    -4.69*** (0.680) -4.63*** (1.16)
+_______________ _______________ ________________ _______________
+S.E. type          Conley (2km)     Conley (2km)    Conley (2km)
+Observations                930              930             930
+Squared Cor.            0.37995          0.43975         0.44003
+Pseudo R2               0.31291          0.38259         0.38262
+BIC                      875.34           788.65          795.45
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> print(etable(mLogitSlopeOnly,mLogitPPSFOnly,mLogit, digits = 3,vcov=conley(cutoff=CONLEYCUTOFF*2,distance="spherical")))
+                mLogitSlopeOnly   mLogitPPSFOnly          mLogit
+Dependent Var.:        isDuplex         isDuplex        isDuplex
+                                                                
+Constant         36.0*** (8.10)   58.5*** (5.96)  58.1*** (2.61)
+permitLogArea   -4.50*** (1.01)   -3.65** (1.14)  -3.65** (1.15)
+localSlope       -4.79** (1.81)                    -0.145 (1.56)
+localLogPPSF                    -4.69*** (0.638) -4.63*** (1.20)
+_______________ _______________ ________________ _______________
+S.E. type          Conley (4km)     Conley (4km)    Conley (4km)
+Observations                930              930             930
+Squared Cor.            0.37995          0.43975         0.44003
+Pseudo R2               0.31291          0.38259         0.38262
+BIC                      875.34           788.65          795.45
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
 > cat("\n================ PROBIT  (isDuplex) =============\n")
 
 ================ PROBIT  (isDuplex) =============
@@ -890,7 +923,6 @@ AIC: 775.32
 
 Number of Fisher Scoring iterations: 6
 
-> 
 > # 8.5 Average marginal effects for logit/probit (so coefficients are
 > #     comparable in scale to the LPM). Numerical AME via finite differences
 > #     on the linear predictor scale would be exact for continuous
@@ -911,7 +943,7 @@ Number of Fisher Scoring iterations: 6
 > cat("logit :\n");  print(ame(mLogit))
 logit :
 permitLogArea    localSlope  localLogPPSF 
-  -0.47951008   -0.01904716   -0.60770688 
+  -0.47951008   -0.01904714   -0.60770689 
 > cat("logit :\n");  print(ame(mLogitSlopeOnly))
 logit :
 permitLogArea    localSlope 
@@ -923,13 +955,13 @@ permitLogArea  localLogPPSF
 > cat("probit:\n");  print(ame(mProbit))
 probit:
 permitLogArea    localSlope  localLogPPSF 
-   -0.4682657     0.0121330    -0.6569637 
+  -0.46826573    0.01213302   -0.65696368 
 > cat("LPM (slopes are the marginal effects):\n")
 LPM (slopes are the marginal effects):
 > print(coef(mLPM)[-1])
 permitLogArea    localSlope  localLogPPSF 
-  -0.35324631   -0.03722992   -0.94670494 
+  -0.35324631   -0.03722989   -0.94670494 
 > 
 > proc.time()
    user  system elapsed 
- 48.023   7.259  31.704 
+124.219  31.323  82.842 

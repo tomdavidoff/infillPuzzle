@@ -10,6 +10,7 @@ library(ggplot2)
 library(ggspatial)
 library(RSQLite)
 library(sf)
+library(fixest)
 
 # ===========================================================================
 # 1. GENERIC TOOLS
@@ -48,7 +49,8 @@ gwrLocal <- function(y, x, dataCoords, fitCoords, k = 1000, mcCores = 6) {
 # right "local ppsf" regressor for the choice model: it is the ambient
 # price level a developer faces, not a value extrapolated through the
 # log-log slope to some arbitrary lot size.
-gwrLocalMean <- function(y, dataCoords, fitCoords, k = 1000, mcCores = 6) {
+BANDWIDTHGWR <- 1000
+gwrLocalMean <- function(y, dataCoords, fitCoords, k = BANDWIDTHGWR, mcCores = 6) {
   bisquare <- function(d, h) ifelse(d < h, (1 - (d/h)^2)^2, 0)
   fitOne <- function(s) {
     d <- sqrt((dataCoords[,1] - s[1])^2 + (dataCoords[,2] - s[2])^2)
@@ -521,7 +523,6 @@ plotHeatmap(dtVal, "ppsf", cfg,
 
 dtLocalVal <- runGWR(dtVal, yCol = "logPPSF", xCol = "logArea",
                      fitPointsLL = permits, cfg = cfg, k = 1000)
-print(summary(dtLocalVal))
 
 plotHeatmap(dtLocalVal, "slope", cfg,
             legendTitle = "Local elasticity\nlog(ppsf) ~ log(landArea)\nappraisal",
@@ -543,6 +544,30 @@ plotHeatmap(dtLocalSales, "slope", cfg,
             legendTitle = "Local elasticity\nlog(ppsf) ~ log(landArea)\nsales",
             outPath     = "text/salesElasticityHeatMapVancouver.png")
 
+# ---- 7b.bis. Diagnostic: cor(observed logPPSFSale, local slope) at sales --
+# Fit GWR at the sales points themselves (easy: dtSales already has lon/lat),
+# at k=1000 and k=2000, and report the cross-sectional correlation between
+# each sale's own logPPSFSale and the local slope estimated at its location.
+dtSlopeAtSales500  <- runGWR(dtSales, yCol = "logPPSFSale", xCol = "logArea",
+			     fitPointsLL = dtSales[, .(lon, lat)],
+			     cfg = cfg, k = 500)
+dtSlopeAtSales1000 <- runGWR(dtSales, yCol = "logPPSFSale", xCol = "logArea",
+                             fitPointsLL = dtSales[, .(lon, lat)],
+                             cfg = cfg, k = 1000)
+dtSlopeAtSales2000 <- runGWR(dtSales, yCol = "logPPSFSale", xCol = "logArea",
+                             fitPointsLL = dtSales[, .(lon, lat)],
+                             cfg = cfg, k = 2000)
+cat(sprintf("\ncor(logPPSFSale, localSlope) at sales, k=500: %.4f\n",
+            cor(dtSales$logPPSFSale, dtSlopeAtSales500$slope,
+                use = "complete.obs")))
+cat(sprintf("\ncor(logPPSFSale, localSlope) at sales, k=1000: %.4f\n",
+            cor(dtSales$logPPSFSale, dtSlopeAtSales1000$slope,
+                use = "complete.obs")))
+cat(sprintf("cor(logPPSFSale, localSlope) at sales, k=2000: %.4f\n",
+            cor(dtSales$logPPSFSale, dtSlopeAtSales2000$slope,
+                use = "complete.obs")))
+cat(sprintf("cor(slope_k1000, slope_k2000):                 %.4f\n",
+            cor(dtSlopeAtSales1000$slope, dtSlopeAtSales2000$slope, use = "complete.obs")))
 # ===========================================================================
 # 8. DISCRETE CHOICE: DUPLEX vs SINGLE DETACHED
 # ===========================================================================
@@ -587,11 +612,12 @@ fmlChoiceSlopeOnly <- isDuplex ~ permitLogArea + localSlope
 fmlChoicePPSFOnly  <- isDuplex ~ permitLogArea + localLogPPSF
 fmlChoice <- isDuplex ~ permitLogArea + localSlope + localLogPPSF
 
+CONLEYCUTOFF  <- 2*BANDWIDTHGWR/1000  # meters -- matches GWR bandwidth, and is large enough to capture spatial correlation in residuals
 mLPM   <- lm(fmlChoice, data = choiceDT)
-mLogit <- glm(fmlChoice, data = choiceDT, family = binomial(link = "logit"))
 mProbit<- glm(fmlChoice, data = choiceDT, family = binomial(link = "probit"))
-mLogitSlopeOnly <- glm(fmlChoiceSlopeOnly, data = choiceDT, family = binomial(link = "logit"))
-mLogitPPSFOnly  <- glm(fmlChoicePPSFOnly, data = choiceDT, family = binomial(link = "logit"))
+mLogit <- feglm(fmlChoice, data = choiceDT, family = binomial(link = "logit"))
+mLogitSlopeOnly <- feglm(fmlChoiceSlopeOnly, data = choiceDT, family = binomial(link = "logit"))
+mLogitPPSFOnly  <- feglm(fmlChoicePPSFOnly, data = choiceDT, family = binomial(link = "logit"))
 
 cat("\n================ LPM  (isDuplex) ================\n")
 print(summary(mLPM))
@@ -599,9 +625,13 @@ cat("\n================ LOGIT  (isDuplex) ==============\n")
 print(summary(mLogit))
 print(summary(mLogitSlopeOnly))
 print(summary(mLogitPPSFOnly))
+print("SEs simple then Conley")
+print(etable(mLogitSlopeOnly,mLogitPPSFOnly,mLogit, digits = 3))
+print(etable(mLogitSlopeOnly,mLogitPPSFOnly,mLogit, digits = 3,vcov=conley(cutoff=CONLEYCUTOFF,distance="spherical")))
+print(etable(mLogitSlopeOnly,mLogitPPSFOnly,mLogit, digits = 3,vcov=conley(cutoff=CONLEYCUTOFF*2,distance="spherical")))
+
 cat("\n================ PROBIT  (isDuplex) =============\n")
 print(summary(mProbit))
-
 # 8.5 Average marginal effects for logit/probit (so coefficients are
 #     comparable in scale to the LPM). Numerical AME via finite differences
 #     on the linear predictor scale would be exact for continuous
