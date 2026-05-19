@@ -1,0 +1,644 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # vancouverElasticityPrice.R
+> # Three-way COV pipeline (renamed from vancouverLotPlexByType.R):
+> #   (a) Strata           -- floor-ppsf elasticity wrt log(finished area).
+> #                           Null is zero (price linear in unit size); the
+> #                           interpretable test is spatial FLATNESS of the
+> #                           slope surface, not the point estimate.
+> #   (b) Single-family    -- 2014-2018, land-ppsf elasticity wrt log(lot area).
+> #   (c) Duplex premium   -- 2014-2018, pooled SF + duplex on ~33' lots.
+> #                           y = log(conveyancePrice), x = isDuplex.
+> #                           Global benchmark: feols(logPrice ~ isDuplex | year)
+> #                           gives the average log-price premium. The GWR
+> #                           slope surface gives that premium locally at
+> #                           each permit location.
+> #
+> # Fit points = COV permit locations, so the three surfaces overlay.
+> # Property-type categories come from propertyTypeMap.rds (run
+> # bcaPropertyTypes.R first).
+> #
+> # Tom Davidoff
+> # 05/18/26 (rev: replace duplex elasticity sample with duplex price-premium
+> #           sample; renamed file)
+> 
+> library(data.table)
+> library(ggplot2)
+> library(ggspatial)
+> library(RSQLite)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(fixest)
+> 
+> # ===========================================================================
+> # 1. GENERIC TOOLS  (identical to vancouverLandAssessment.R)
+> # ===========================================================================
+> gwrLocal <- function(y, x, dataCoords, fitCoords, k = 1000, mcCores = 6) {
++   bisquare <- function(d, h) ifelse(d < h, (1 - (d/h)^2)^2, 0)
++   naRow <- c(intercept = NA_real_, slope = NA_real_,
++              seInt = NA_real_, seSlope = NA_real_, nEff = NA_real_)
++   fitOne <- function(s) {
++     tryCatch({
++       d  <- sqrt((dataCoords[,1] - s[1])^2 + (dataCoords[,2] - s[2])^2)
++       if (length(d) < k) return(naRow)
++       h  <- sort(d, partial = k)[k]
++       if (!is.finite(h) || h <= 0) return(naRow)
++       w  <- bisquare(d, h)
++       keep <- w > 0
++       if (sum(keep) < 3) return(naRow)
++       Xm <- cbind(1, x[keep]); ym <- y[keep]; wm <- w[keep]
++       ok <- complete.cases(Xm, ym, wm) & is.finite(wm) & wm > 0
++       Xm <- Xm[ok, , drop = FALSE]; ym <- ym[ok]; wm <- wm[ok]
++       if (length(ym) < 3 || sd(Xm[, 2]) == 0) return(naRow)
++       fit <- lm.wfit(Xm, ym, wm)
++       resid <- ym - Xm %*% fit$coefficients
++       sigma2 <- sum(wm * resid^2) / (sum(wm) - 2)
++       XtWX_inv <- solve(crossprod(Xm * sqrt(wm)))
++       se <- sqrt(diag(sigma2 * XtWX_inv))
++       c(intercept = fit$coefficients[1], slope = fit$coefficients[2],
++         seInt = se[1], seSlope = se[2], nEff = sum(wm))
++     }, error = function(e) naRow)
++   }
++   resList <- parallel::mclapply(seq_len(nrow(fitCoords)),
++                                 function(i) fitOne(fitCoords[i,]),
++                                 mc.cores = mcCores)
++   res <- do.call(rbind, resList)
++   dt  <- as.data.table(res)
++   setnames(dt, c("intercept","slope","seInt","seSlope","nEff"))
++   dt[, `:=`(fitX = fitCoords[,1], fitY = fitCoords[,2])]
++   dt[]
++ }
+> 
+> # Intercept-only adaptive-bandwidth local mean (bisquare, k-NN bw).
+> # The local price level surface that does NOT condition on lot size --
+> # used for cor(localPPSF, localSlope) against the elasticity surface.
+> gwrLocalMean <- function(y, dataCoords, fitCoords, k = 1000, mcCores = 6) {
++   bisquare <- function(d, h) ifelse(d < h, (1 - (d/h)^2)^2, 0)
++   fitOne <- function(s) {
++     tryCatch({
++       d <- sqrt((dataCoords[,1] - s[1])^2 + (dataCoords[,2] - s[2])^2)
++       if (length(d) < k) return(NA_real_)
++       h <- sort(d, partial = k)[k]
++       if (!is.finite(h) || h <= 0) return(NA_real_)
++       w <- bisquare(d, h)
++       keep <- w > 0 & is.finite(y)
++       if (sum(keep) < 1) return(NA_real_)
++       sum(w[keep] * y[keep]) / sum(w[keep])
++     }, error = function(e) NA_real_)
++   }
++   unlist(parallel::mclapply(seq_len(nrow(fitCoords)),
++                             function(i) fitOne(fitCoords[i,]),
++                             mc.cores = mcCores))
++ }
+> 
+> trimByQuantile <- function(dt, cols, q) {
++   for (c in cols) {
++     lo <- quantile(dt[[c]], q,     na.rm = TRUE)
++     hi <- quantile(dt[[c]], 1 - q, na.rm = TRUE)
++     dt <- dt[get(c) %between% c(lo, hi)]
++   }
++   dt
++ }
+> 
+> projectCoords <- function(dt, crsOut) {
++   sfTmp <- st_as_sf(dt[, .(lon, lat)], coords = c("lon","lat"), crs = 4326)
++   sfTmp <- st_transform(sfTmp, crsOut)
++   st_coordinates(sfTmp)
++ }
+> 
+> runGWR <- function(dtData, yCol, xCol, fitPointsLL, cfg, k = 1000) {
++   dataCoords <- projectCoords(dtData, cfg$crsProj)
++   fitCoords  <- projectCoords(fitPointsLL, cfg$crsProj)
++   dtLocal <- gwrLocal(y          = dtData[[yCol]],
++                       x          = dtData[[xCol]],
++                       dataCoords = dataCoords,
++                       fitCoords  = fitCoords,
++                       k          = k)
++   dtLocal[, `:=`(lon = fitPointsLL$lon, lat = fitPointsLL$lat)]
++   dtLocal[]
++ }
+> 
+> runGWRMean <- function(dtData, yCol, fitPointsLL, cfg, k = 1000) {
++   dataCoords <- projectCoords(dtData, cfg$crsProj)
++   fitCoords  <- projectCoords(fitPointsLL, cfg$crsProj)
++   gwrLocalMean(y = dtData[[yCol]],
++                dataCoords = dataCoords, fitCoords = fitCoords, k = k)
++ }
+> 
+> plotHeatmap <- function(dt, valueCol, cfg, legendTitle, outPath,
++                         size = 0.8, option = "plasma") {
++   p <- ggplot() +
++     annotation_map_tile(type = "cartolight", zoom = cfg$tileZoom) +
++     geom_point(data = dt, aes(x = lon, y = lat, color = .data[[valueCol]]),
++                size = size) +
++     scale_color_viridis_c(option = option) +
++     coord_sf(crs = 4326, xlim = cfg$xlim, ylim = cfg$ylim) +
++     theme_void() +
++     labs(color = legendTitle)
++   ggsave(outPath, plot = p)
++   invisible(p)
++ }
+> 
+> # ===========================================================================
+> # 2. COV CONFIG
+> # ===========================================================================
+> cfg <- list(
++   city            = "Vancouver",
++   crsProj         = 26910,
++   xlim            = c(-123.23, -123.02),
++   ylim            = c( 49.20,   49.32),
++   tileZoom        = 12,
++   sqliteFile      = "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3",
++   parcelRDSDir    = "~/DropboxExternal/dataProcessed/",
++   permitFile      = "~/DropboxExternal/dataRaw/issued-building-permits.csv",
++   zoningGeojson   = "~/DropboxExternal/dataRaw/vancouver_zoning.geojson",
++   targetZone      = "R1-1",
++   propertyTypeMap = "~/DropboxExternal/dataProcessed/propertyTypeMap.rds",
++   trimDimsQ       = 0.05,
++   trimYQ          = 0.01,
++   salesYearRange  = c(2014, 2018),
++   permitYearRange = c(2019, 2023),
++   bandwidthK      = 1000,
++   # 33' lot band for the duplex-premium sample. Width measured in feet
++   # in BCA. The band absorbs measurement slop without bleeding into
++   # 50'/66' lots.
++   lotWidthBand    = c(32, 34)
++ )
+> 
+> # ===========================================================================
+> # 3. PROPERTY TYPE MAP
+> # ===========================================================================
+> if (!file.exists(path.expand(cfg$propertyTypeMap)))
++   stop("propertyTypeMap.rds not found. Run bcaPropertyTypes.R first.")
+> propertyTypeMap <- readRDS(path.expand(cfg$propertyTypeMap))
+> cat("\nLoaded propertyTypeMap. Resolved categories:\n")
+
+Loaded propertyTypeMap. Resolved categories:
+> for (nm in c("singleFamily","strata","duplex")) {
++   cat(sprintf(" -- %s --\n", nm))
++   if (length(propertyTypeMap[[nm]]) == 0) cat("   (none)\n")
++   for (s in propertyTypeMap[[nm]]) cat("    ", s, "\n")
++ }
+ -- singleFamily --
+     Single Family Dwelling 
+     Residential Dwelling with Suite 
+ -- strata --
+     Strata-Lot Residence (Condominium) 
+ -- duplex --
+     Duplex, Strata Front / Back 
+     Duplex, Strata Side by Side 
+> 
+> # ===========================================================================
+> # 4. RAW LOADS  (one parcel RDS per type, one sales loader)
+> # ===========================================================================
+> # Parcel RDS files are produced by bcaVancouverParcelExtract.R with the
+> # unified schema:
+> #   folioID, rollNumber, jurisdiction, actualUseDescription,
+> #   landWidth, landDepth, MB_effective_year, MB_total_finished_area,
+> #   lon, lat
+> # Strata rows have NA landWidth/landDepth; SF/duplex have them populated.
+> loadParcels <- function(cfg, type) {
++   path <- file.path(path.expand(cfg$parcelRDSDir),
++                     sprintf("bca_vancouver_%s.rds", type))
++   if (!file.exists(path))
++     stop(sprintf("%s not found. Run bcaVancouverParcelExtract.R first.", path))
++   as.data.table(readRDS(path))
++ }
+> 
+> # Sales merged to a given parcels table. Adds year, sqft, age, landArea
+> # (NA for strata where dims aren't populated).
+> loadSales <- function(cfg, dtParcels) {
++   con <- dbConnect(SQLite(), cfg$sqliteFile)
++   dt  <- as.data.table(dbGetQuery(con,
++     paste("SELECT folioID, conveyanceDate, conveyancePrice,",
++           "conveyanceTypeDescription FROM sales")))
++   dbDisconnect(con)
++   dt <- dt[conveyanceTypeDescription == "Improved Single Property Transaction",
++            .(folioID, conveyanceDate, conveyancePrice)]
++   dt[, folioID := as.character(folioID)]
++   dtParcels <- copy(dtParcels)
++   dtParcels[, folioID := as.character(folioID)]
++   dt <- merge(dt, dtParcels, by = "folioID")
++   dt[, conveyancePrice := as.numeric(conveyancePrice)]
++   dt[, landWidth       := as.numeric(landWidth)]
++   dt[, landDepth       := as.numeric(landDepth)]
++   dt[, year            := as.numeric(substring(conveyanceDate, 1, 4))]
++   dt[, sqft            := as.numeric(MB_total_finished_area)]
++   dt[, age             := year - as.numeric(MB_effective_year)]
++   dt[, landArea        := landWidth * landDepth]
++   dt[]
++ }
+> 
+> loadPermits <- function(cfg) {
++   dp <- fread(cfg$permitFile,
++     select = c("PermitNumber","ProjectValue","TypeOfWork",
++                "PropertyUse","SpecificUseCategory","geo_point_2d","YearMonth"))
++   dp <- dp[PropertyUse == "Dwelling Uses" &
++            TypeOfWork %in% c("New Building","Addition / Alteration")]
++   dp[, c("permitLat","permitLon") := tstrsplit(geo_point_2d, ", ")]
++   dp[, `:=`(permitLat = as.numeric(permitLat),
++             permitLon = as.numeric(permitLon))]
++   dp <- dp[!is.na(permitLat) & !is.na(permitLon)]
++   dp[, Year := as.numeric(substring(YearMonth, 1, 4))]
++   dp <- dp[Year %between% cfg$permitYearRange]
++   dp <- dp[grepl("Duplex|Single Detached House|Laneway House|Multiple Dwelling",
++                  SpecificUseCategory)]
++   sfP <- st_as_sf(dp[, .(permitLat, permitLon)],
++                   coords = c("permitLon","permitLat"), crs = 4326)
++   dZ <- st_read(cfg$zoningGeojson, quiet = TRUE)
++   dZ <- dZ[dZ$zoning_district == cfg$targetZone, "zoning_district"]
++   sfP <- st_transform(sfP, st_crs(dZ))
++   sfP <- st_join(sfP, dZ, join = st_within)
++   sfP <- sfP[!is.na(sfP$zoning_district), ]
++   sfP <- st_transform(sfP, 4326)
++   data.table(lon = st_coordinates(sfP)[, 1],
++              lat = st_coordinates(sfP)[, 2])
++ }
+> 
+> # ===========================================================================
+> # 5. SAMPLE BUILDERS  (one per analysis)
+> # ===========================================================================
+> # Each returns a data.table with columns:
+> #   lon, lat, y (LHS), x (RHS) -- plus diagnostics retained.
+> # Trimming is uniform.
+> 
+> mkSampleSF <- function(salesAll, cfg) {
++   use <- propertyTypeMap$singleFamily
++   d <- salesAll[actualUseDescription %in% use &
++                 year %between% cfg$salesYearRange &
++                 conveyancePrice > 0 & landArea > 0 &
++                 landWidth > 0 & landDepth > 0 &
++                 !is.na(age) & age >= 1]
++   d[, ppsf := conveyancePrice / landArea]
++   d <- d[is.finite(ppsf) & ppsf > 0]
++   d <- trimByQuantile(d, c("landWidth","landDepth"), cfg$trimDimsQ)
++   d <- trimByQuantile(d, "ppsf", cfg$trimYQ)
++   d[, `:=`(y = log(ppsf), x = log(landArea))]
++   d[!is.na(lon) & !is.na(lat) & is.finite(y) & is.finite(x)]
++ }
+> 
+> mkSampleStrata <- function(salesStrata, cfg) {
++   use <- propertyTypeMap$strata
++   d <- salesStrata[actualUseDescription %in% use &
++                    year %between% cfg$salesYearRange &
++                    conveyancePrice > 0 & !is.na(sqft) & sqft > 0]
++   d[, ppsf := conveyancePrice / sqft]
++   d <- d[is.finite(ppsf) & ppsf > 0]
++   d <- trimByQuantile(d, "sqft", cfg$trimDimsQ)
++   d <- trimByQuantile(d, "ppsf", cfg$trimYQ)
++   d[, `:=`(y = log(ppsf), x = log(sqft))]
++   d[!is.na(lon) & !is.na(lat) & is.finite(y) & is.finite(x)]
++ }
+> 
+> # ---- NEW: duplex price-premium sample -------------------------------------
+> # Pool SF + duplex sales on ~33' lots, 2014-2018. y = log(price), x = isDuplex.
+> # GWR slope at each permit = local duplex log-price premium.
+> # Note: width band absorbs BCA measurement slop without including 2x33'=66'
+> # duplex lots, which represent a structurally different transaction.
+> mkSampleDuplexPremium <- function(salesAll, cfg) {
++   useSF  <- propertyTypeMap$singleFamily
++   useDup <- propertyTypeMap$duplex
++   d <- salesAll[actualUseDescription %in% c(useSF, useDup) &
++                 year %between% cfg$salesYearRange &
++                 conveyancePrice > 0 & landWidth > 0 & landDepth > 0]
++   d[, isDuplex := as.integer(actualUseDescription %in% useDup)]
++   d <- d[landWidth %between% cfg$lotWidthBand]
++   d <- trimByQuantile(d, "conveyancePrice", cfg$trimYQ)
++   d[, `:=`(y = log(conveyancePrice), x = as.numeric(isDuplex))]
++   d <- d[!is.na(lon) & !is.na(lat) & is.finite(y)]
++   cat(sprintf("  width band [%.1f, %.1f]: n_SF = %d, n_duplex = %d\n",
++               cfg$lotWidthBand[1], cfg$lotWidthBand[2],
++               sum(d$isDuplex == 0), sum(d$isDuplex == 1)))
++   d[]
++ }
+> 
+> # Config list. Each entry: builder, label, optional reference value, file tag,
+> # and an optional `extraGlobal` function for sample-specific diagnostics
+> # (e.g. the simple duplex log-price delta).
+> sampleConfigs <- list(
++   singleFamilyPre = list(
++     builder     = mkSampleSF,
++     dataSource  = "salesSF",
++     label       = "Single-family, 2014-2018, land-ppsf vs log(lot area)",
++     refValue    = NA_real_,
++     fileTag     = "sfPre",
++     extraGlobal = NULL),
++   strataPre = list(
++     builder     = mkSampleStrata,
++     dataSource  = "salesStrata",
++     label       = "Strata, 2014-2018, floor-ppsf vs log(unit sqft)",
++     refValue    = 0,
++     fileTag     = "strataPre",
++     extraGlobal = NULL),
++   duplexPremium33 = list(
++     builder     = mkSampleDuplexPremium,
++     dataSource  = "salesSFDuplex",
++     label       = "Duplex price premium, 2014-2018, 33' lots",
++     refValue    = NA_real_,
++     fileTag     = "duplexPrem33",
++     # Simple year-FE regression of logPrice on isDuplex.
++     # The coefficient IS the "simple delta" the project starts from.
++     extraGlobal = function(d) {
++       reg <- feols(y ~ x | year, data = d)
++       cm  <- coeftable(reg)
++       cat("\n  Simple duplex log-price delta (year FE):\n")
++       cat(sprintf("    beta = %.4f  SE = %.4f  ->  premium ~ %.1f%%\n",
++                   cm["x", 1], cm["x", 2], 100 * (exp(cm["x", 1]) - 1)))
++       invisible(reg)
++     })
++ )
+> 
+> # ===========================================================================
+> # 6. PIPELINE
+> # ===========================================================================
+> dtSF      <- loadParcels(cfg, "singleFamily")
+> dtStrata  <- loadParcels(cfg, "strata")
+> dtDuplex  <- loadParcels(cfg, "duplex")
+> 
+> salesSF       <- loadSales(cfg, dtSF)
+> salesStrata   <- loadSales(cfg, dtStrata)
+> salesDuplex   <- loadSales(cfg, dtDuplex)
+> salesSFDuplex <- rbindlist(list(salesSF, salesDuplex), use.names = TRUE,
++                            fill = TRUE)
+> 
+> permits   <- loadPermits(cfg)
+> 
+> dataSources <- list(salesSF       = salesSF,
++                     salesStrata   = salesStrata,
++                     salesDuplex   = salesDuplex,
++                     salesSFDuplex = salesSFDuplex)
+> 
+> cat(sprintf("\nLoaded sales:  SF = %d  strata = %d  duplex = %d  SF+duplex = %d\n",
++             nrow(salesSF), nrow(salesStrata), nrow(salesDuplex),
++             nrow(salesSFDuplex)))
+
+Loaded sales:  SF = 123203  strata = 172377  duplex = 6560  SF+duplex = 129763
+> 
+> globalElast <- function(d) {
++   reg <- feols(y ~ x | year, data = d)
++   cm  <- coeftable(reg)
++   list(beta = cm["x", 1], se = cm["x", 2], n = nrow(d))
++ }
+> 
+> resultsBoard <- list()
+> 
+> for (nm in names(sampleConfigs)) {
++   sc <- sampleConfigs[[nm]]
++   cat(sprintf("\n============== %s ==============\n", sc$label))
++   src <- dataSources[[sc$dataSource]]
++   if (is.null(src)) {
++     cat(sprintf("Unknown dataSource '%s'; skipping.\n", sc$dataSource))
++     next
++   }
++   d <- sc$builder(src, cfg)
++   if (nrow(d) < 100) {
++     cat(sprintf("Sample n = %d -- too small; skipping GWR.\n", nrow(d)))
++     next
++   }
++   cat(sprintf("Sample n = %d  (years %d-%d)\n",
++               nrow(d), as.integer(min(d$year)), as.integer(max(d$year))))
++ 
++   ge <- globalElast(d)
++   cat(sprintf("Global slope (year FE): beta = %.4f  SE = %.4f  n = %d\n",
++               ge$beta, ge$se, ge$n))
++   if (!is.na(sc$refValue)) {
++     z <- (ge$beta - sc$refValue) / ge$se
++     cat(sprintf("Test vs reference (%.2f): z = %.3f\n", sc$refValue, z))
++   }
++   if (!is.null(sc$extraGlobal)) sc$extraGlobal(d)
++ 
++   dtLocal <- runGWR(d, yCol = "y", xCol = "x",
++                     fitPointsLL = permits, cfg = cfg,
++                     k = cfg$bandwidthK)
++   nFail <- sum(!is.finite(dtLocal$slope))
++   if (nFail > 0)
++     cat(sprintf("GWR failed at %d / %d permit fit points (NA slope).\n",
++                 nFail, nrow(dtLocal)))
++   cat("Local slope summary at permit fit points:\n")
++   print(summary(dtLocal$slope))
++ 
++   plotHeatmap(dtLocal[is.finite(slope)], "slope", cfg,
++               legendTitle = sprintf("Local slope\n%s", sc$label),
++               outPath     = sprintf("text/elasticity_%s.png", sc$fileTag))
++ 
++   resultsBoard[[nm]] <- list(sample = d, gwr = dtLocal, globalElast = ge)
++ }
+
+============== Single-family, 2014-2018, land-ppsf vs log(lot area) ==============
+Sample n = 9093  (years 2014-2018)
+Global slope (year FE): beta = 0.2299  SE = 0.0410  n = 9093
+Local slope summary at permit fit points:
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+-0.6315 -0.3762 -0.2769 -0.2627 -0.1585  0.2262 
+Saving 7 x 7 in image
+Loading required namespace: raster
+Zoom: 12
+
+============== Strata, 2014-2018, floor-ppsf vs log(unit sqft) ==============
+Sample n = 35827  (years 2014-2018)
+Global slope (year FE): beta = 0.1344  SE = 0.0176  n = 35827
+Test vs reference (0.00): z = 7.653
+Local slope summary at permit fit points:
+    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+-0.45724 -0.11710 -0.02328 -0.02666  0.07348  0.47127 
+Saving 7 x 7 in image
+Zoom: 12
+
+============== Duplex price premium, 2014-2018, 33' lots ==============
+  width band [32.0, 34.0]: n_SF = 6267, n_duplex = 642
+Sample n = 6909  (years 2014-2018)
+Global slope (year FE): beta = -0.3724  SE = 0.0252  n = 6909
+
+  Simple duplex log-price delta (year FE):
+    beta = -0.3724  SE = 0.0252  ->  premium ~ -31.1%
+GWR failed at 493 / 6336 permit fit points (NA slope).
+Local slope summary at permit fit points:
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+-1.1977 -0.5655 -0.3206 -0.4096 -0.2455 -0.1036     493 
+Saving 7 x 7 in image
+Zoom: 12
+> 
+> # ---------------------------------------------------------------------------
+> # Cross-sample comparison at common permit fit points.
+> # `cmp` is enriched in section 7 with localPPSF and slope SEs, then saved
+> # once at the very end so downstream scripts (duplex-choice) get a single
+> # unified file.
+> # ---------------------------------------------------------------------------
+> if (length(resultsBoard) >= 2) {
++   cmp <- data.table(lon = permits$lon, lat = permits$lat)
++   for (nm in names(resultsBoard)) {
++     cmp[[paste0("slope_",   nm)]] <- resultsBoard[[nm]]$gwr$slope
++     cmp[[paste0("seSlope_", nm)]] <- resultsBoard[[nm]]$gwr$seSlope
++   }
++   cat("\n============== Cross-sample slope correlations at permits ==============\n")
++   num <- cmp[, .SD, .SDcols = patterns("^slope_")]
++   print(round(cor(num, use = "complete.obs"), 3))
++ }
+
+============== Cross-sample slope correlations at permits ==============
+                      slope_singleFamilyPre slope_strataPre
+slope_singleFamilyPre                 1.000           0.357
+slope_strataPre                       0.357           1.000
+slope_duplexPremium33                -0.350          -0.710
+                      slope_duplexPremium33
+slope_singleFamilyPre                 -0.35
+slope_strataPre                       -0.71
+slope_duplexPremium33                  1.00
+> 
+> # ===========================================================================
+> # 7. COV ANALOGUE OF GREATER-VAN: cor(localPPSF, localSlope) at permits
+> # ===========================================================================
+> # Mirrors the Greater-Van cross-aggregation-level diagnostic, but here
+> # the spatial scale is fixed at cfg$bandwidthK and the "level" is the
+> # COV permits. Single-family only -- this is where the
+> # elasticity-meets-price-level theoretical prediction lives. For strata
+> # (no regulation) and duplex (different LHS) the same exercise isn't
+> # parallel.
+> #
+> # Method:
+> #   1. From the SF sample, residualize log(ppsf) on log(age) + year FE
+> #      globally. The residuals are a pure location effect, matching the
+> #      Greater-Van ppsf_fe construction.
+> #   2. Run intercept-only GWR on those residuals at permits -> localPPSF.
+> #   3. localSlope already estimated as the SF elasticity surface above.
+> #   4. Cor(localPPSF, localSlope) -- unweighted (headline), precision-
+> #      weighted by 1/seSlope^2, SE-trimmed, all parallel to the
+> #      Greater-Van weightedCorDiagnostic output.
+> if (!is.null(resultsBoard$singleFamilyPre)) {
++   cat("\n============== COV: cor(localPPSF, localSlope) at permits ==============\n")
++   dSF      <- resultsBoard$singleFamilyPre$sample
++   dtSlope  <- resultsBoard$singleFamilyPre$gwr   # row-aligned to permits
++ 
++   # Step 1: residualize log(ppsf) on log(age) + year, globally.
++   regRes <- feols(y ~ log(age) | year, data = dSF)
++   dSF[, yResid := y - predict(regRes, newdata = dSF)]
++ 
++   # Step 2: intercept-only GWR on residuals at permits.
++   localPPSF <- runGWRMean(dSF, yCol = "yResid",
++                           fitPointsLL = permits, cfg = cfg,
++                           k = cfg$bandwidthK)
++ 
++   # Attach to the cross-sample comparison table for unified export.
++   if (exists("cmp")) cmp[, localPPSF := localPPSF]
++ 
++   # Step 3: assemble and report.
++   covDiag <- data.table(lon       = permits$lon,
++                         lat       = permits$lat,
++                         localPPSF = localPPSF,
++                         localSlope    = dtSlope$slope,
++                         seLocalSlope  = dtSlope$seSlope)
++   ok <- covDiag[is.finite(localPPSF) & is.finite(localSlope) &
++                 is.finite(seLocalSlope) & seLocalSlope > 0]
++   cat(sprintf("Permits with finite estimates: %d / %d\n",
++               nrow(ok), nrow(covDiag)))
++ 
++   if (nrow(ok) >= 20) {
++     seCut <- quantile(ok$seLocalSlope, 0.75, na.rm = TRUE)
++     okTrim <- ok[seLocalSlope <= seCut]
++     wCor <- function(x, y, w) {
++       w <- w / sum(w)
++       mx <- sum(w * x); my <- sum(w * y)
++       cxy <- sum(w * (x - mx) * (y - my))
++       vx  <- sum(w * (x - mx)^2)
++       vy  <- sum(w * (y - my)^2)
++       cxy / sqrt(vx * vy)
++     }
++     diagCOV <- rbindlist(list(
++       data.table(flavour = "unweighted",
++                  cor = cor(ok$localPPSF, ok$localSlope),
++                  n   = nrow(ok)),
++       data.table(flavour = "precision_wtd_1_over_se2",
++                  cor = wCor(ok$localPPSF, ok$localSlope,
++                             1 / ok$seLocalSlope^2),
++                  n   = nrow(ok)),
++       data.table(flavour = "trim_se_below_q0.75",
++                  cor = if (nrow(okTrim) >= 5)
++                    cor(okTrim$localPPSF, okTrim$localSlope) else NA_real_,
++                  n   = nrow(okTrim))
++     ))
++     diagCOV[, level := sprintf("COV_permits_k%d", cfg$bandwidthK)]
++     setcolorder(diagCOV, c("level","flavour","cor","n"))
++     print(diagCOV)
++     saveRDS(diagCOV,
++             "~/DropboxExternal/dataProcessed/covElasticityPrice_diagCOV.rds")
++ 
++     # Diagnostic scatter: localPPSF vs localSlope, point size ~ 1/seSlope^2.
++     okPlot <- ok[, .(localPPSF, localSlope,
++                      w = 1 / seLocalSlope^2)]
++     pScatter <- ggplot(okPlot,
++                        aes(x = localPPSF, y = localSlope, size = w)) +
++       geom_point(alpha = 0.45) +
++       scale_size(trans = "sqrt", guide = "none") +
++       geom_hline(yintercept = 0, linetype = "dotted") +
++       labs(title = sprintf("COV permits, k=%d: localPPSF vs localSlope (SF)",
++                            cfg$bandwidthK),
++            subtitle = "point size proportional to 1/SE^2 of localSlope",
++            x = "localPPSF (location effect on log ppsf, age/year-residualized)",
++            y = "localSlope (elasticity of log ppsf wrt log lot area)") +
++       theme_minimal()
++     ggsave("text/cov_localPPSF_vs_localSlope_SF.png", plot = pScatter,
++            width = 6.5, height = 5, dpi = 130)
++   } else {
++     cat("Too few permits with finite estimates; skipping cor.\n")
++   }
++ }
+
+============== COV: cor(localPPSF, localSlope) at permits ==============
+Permits with finite estimates: 6336 / 6336
+               level                  flavour       cor     n
+              <char>                   <char>     <num> <int>
+1: COV_permits_k1000               unweighted 0.4168379  6336
+2: COV_permits_k1000 precision_wtd_1_over_se2 0.3993133  6336
+3: COV_permits_k1000      trim_se_below_q0.75 0.3984327  4752
+Warning message:
+In `[.data.table`(cmp, , `:=`(localPPSF, localPPSF)) :
+  A shallow copy of this data.table was taken so that := can add or remove 1 columns by reference. At an earlier point, this data.table was copied by R (or was created manually using structure() or similar). Avoid names<- and attr<- which in R currently (and oddly) may copy the whole data.table. Use set* syntax instead to avoid copying: ?set, ?setnames and ?setattr. It's also not unusual for data.table-agnostic packages to produce tables affected by this issue. If this message doesn't help, please report your use case to the data.table issue tracker so the root cause can be fixed or this message improved.
+> 
+> # ===========================================================================
+> # 8. UNIFIED EXPORT for downstream scripts (e.g. vancouverDuplexChoice.R)
+> # ===========================================================================
+> # cmp now carries, at each permit fit point:
+> #   lon, lat
+> #   slope_singleFamilyPre / strataPre / duplexPremium33    (local slopes)
+> #   seSlope_*                                              (slope SEs)
+> #   localPPSF                                              (age/year-resid'd
+> #                                                           log-ppsf level, SF)
+> if (exists("cmp")) {
++   cat(sprintf("\nUnified export: %d permits x %d columns\n",
++               nrow(cmp), ncol(cmp)))
++   print(names(cmp))
++   saveRDS(cmp,
++           "~/DropboxExternal/dataProcessed/covElasticityPrice_permitSurfaces.rds")
++ }
+
+Unified export: 6336 permits x 9 columns
+[1] "lon"                     "lat"                    
+[3] "slope_singleFamilyPre"   "seSlope_singleFamilyPre"
+[5] "slope_strataPre"         "seSlope_strataPre"      
+[7] "slope_duplexPremium33"   "seSlope_duplexPremium33"
+[9] "localPPSF"              
+> 
+> cat("\nDone.\n")
+
+Done.
+> 
+> proc.time()
+   user  system elapsed 
+100.274  20.622  72.880 

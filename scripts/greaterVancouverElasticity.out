@@ -18,9 +18,15 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > # greaterVancouverElasticity.R
-> # R code to go census tract -> neighbourhood -> elasticity of circa 2018 ppsf and elasticity
-> # Tom Davidoff 
-> # 05/16/26
+> # Tract -> neighbourhood -> jurisdiction.
+> # Headline: cor(ppsf_fe, elasticity) UNWEIGHTED at each level.
+> #           The point is the cross-level pattern -- as cells get coarser,
+> #           per-cell precision rises and N falls, and we want to see the
+> #           cor move without imposing a weighting scheme on that tradeoff.
+> # Supplement: weightedCorDiagnostic() reports precision-weighted and
+> #           SE-trimmed versions at each level for robustness only.
+> # Tom Davidoff
+> # 05/16/26  (rev 05/18/26: per-cell elasticity SE + weighted-cor diagnostic)
 > 
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
@@ -28,8 +34,11 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(DBI)
 > library(RSQLite)
 > library(fixest)
+> library(ggplot2)
 > 
+> # ---------------------------------------------------------------------------
 > # helpers
+> # ---------------------------------------------------------------------------
 > trimByQuantile <- function(dt, cols, q) {
 +   for (c in cols) {
 +     lo <- quantile(dt[[c]], q,     na.rm = TRUE)
@@ -39,402 +48,293 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +   dt
 + }
 > 
+> # Supplementary diagnostic. Input: a per-cell results table with columns
+> #   ppsf_fe, elasticity, se_elasticity, n
+> # Reports four flavours of cor(ppsf_fe, elasticity):
+> #   (1) unweighted (headline -- recomputed here for the table)
+> #   (2) precision-weighted by 1/se^2
+> #   (3) unweighted on the precision-trimmed subset (drop top SE quartile)
+> #   (4) unweighted on cells with n >= nFloor
+> # Intent: see whether the level-by-level cor pattern is driven by noisy
+> # cells. If (2)-(4) move toward the coarser-level number, the noise story
+> # holds; if they don't, the coarsening effect is substantive.
+> weightedCorDiagnostic <- function(dt,
++                                   nFloor = 30,
++                                   seQuantile = 0.75,
++                                   label = "") {
++   d <- dt[!is.na(ppsf_fe) & !is.na(elasticity) & !is.na(se_elasticity)]
++   if (nrow(d) < 5) {
++     return(data.table(label = label, flavour = NA_character_,
++                       cor = NA_real_, n = nrow(d)))
++   }
++   seCut <- quantile(d$se_elasticity, seQuantile, na.rm = TRUE)
++   dTrim <- d[se_elasticity <= seCut]
++   dNflr <- d[n >= nFloor]
++   wCor <- function(x, y, w) {
++     w <- w / sum(w)
++     mx <- sum(w * x); my <- sum(w * y)
++     cxy <- sum(w * (x - mx) * (y - my))
++     vx  <- sum(w * (x - mx)^2)
++     vy  <- sum(w * (y - my)^2)
++     cxy / sqrt(vx * vy)
++   }
++   rbind(
++     data.table(label = label, flavour = "unweighted",
++                cor = cor(d$ppsf_fe, d$elasticity),
++                n   = nrow(d)),
++     data.table(label = label, flavour = "precision_wtd_1_over_se2",
++                cor = wCor(d$ppsf_fe, d$elasticity, 1 / d$se_elasticity^2),
++                n   = nrow(d)),
++     data.table(label = label,
++                flavour = sprintf("trim_se_below_q%.2f", seQuantile),
++                cor = if (nrow(dTrim) >= 5)
++                  cor(dTrim$ppsf_fe, dTrim$elasticity) else NA_real_,
++                n   = nrow(dTrim)),
++     data.table(label = label, flavour = sprintf("n_geq_%d", nFloor),
++                cor = if (nrow(dNflr) >= 5)
++                  cor(dNflr$ppsf_fe, dNflr$elasticity) else NA_real_,
++                n   = nrow(dNflr))
++   )
++ }
+> 
+> # Diagnostic scatter: elasticity vs ppsf_fe with point size proportional to
+> # 1/se^2. Visual companion to the weighted diagnostic.
+> plotElasticityVsFE <- function(dt, label, outPath) {
++   d <- dt[!is.na(ppsf_fe) & !is.na(elasticity) & !is.na(se_elasticity) &
++           se_elasticity > 0]
++   if (nrow(d) < 5) return(invisible(NULL))
++   d[, w := 1 / se_elasticity^2]
++   p <- ggplot(d, aes(x = ppsf_fe, y = elasticity, size = w)) +
++     geom_point(alpha = 0.45) +
++     scale_size(trans = "sqrt", guide = "none") +
++     geom_hline(yintercept = 0, linetype = "dotted") +
++     labs(title = sprintf("Elasticity vs ppsf FE -- %s", label),
++          subtitle = "point size proportional to 1/SE^2 of elasticity",
++          x = "ppsf fixed effect (from log-age + year-FE regression)",
++          y = "elasticity of log(ppsf) wrt log(sqft)") +
++     theme_minimal()
++   ggsave(outPath, plot = p, width = 6.5, height = 5, dpi = 130)
++   invisible(p)
++ }
 > 
 > # ============================================================================
-> # Extract Greater residential parcels
+> # Extract Greater Van residential parcels  (unchanged from prior version)
 > # ============================================================================
 > 
 > bcaGeoFolder <- "~/bigFiles/latestSpatialBCA/"
-> bcaFiles <- list.files(bcaGeoFolder, pattern="*.gpkg", full.names=FALSE) # will only be one
-> geoInFile <- paste0(bcaGeoFolder, bcaFiles[1])
-> geoOutFile <- "~/DropboxExternal/dataProcessed/greaterVancouverSingle.rds"
+> bcaFiles     <- list.files(bcaGeoFolder, pattern = "*.gpkg", full.names = FALSE)
+> geoInFile    <- paste0(bcaGeoFolder, bcaFiles[1])
+> geoOutFile   <- "~/DropboxExternal/dataProcessed/greaterVancouverSingle.rds"
 > 
 > if (!file.exists(geoOutFile)) {
-+     cat("Loading Greater Vancouver residential parcels from BCA \n")
-+     cat("Source:", geoInFile, "\n")
-+     
-+     sBCA <- st_read(
-+         geoInFile,
-+         layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
-+         query = "SELECT ROLL_NUMBER, NEIGHBOURHOOD, JURISDICTION_CODE, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV WHERE REGIONAL_DISTRICT_CODE='15' AND ACTUAL_USE_DESCRIPTION IN ('Residential Dwelling with Suite','Single Family Dwelling') ", 
-+         quiet = TRUE
-+     )
-+     print(head(sBCA))
-+     
-+     cat("Parcels loaded:", nrow(sBCA), "\n")
-+     cat("CRS:", st_crs(sBCA)$epsg, "\n")
-+     
-+    
-+     
-+ 
-+     # Spatial join: add census tracts
-+     dCT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
-+     dCT <- st_transform(dCT, st_crs(sBCA))
-+     sBCA <- st_join(sBCA, dCT, join = st_within)
-+     dtBCA <- as.data.table(sBCA)
-+     # FIX: Clean strings and align column names right at the source layer
-+     dtBCA[, rollNumber   := trimws(as.character(ROLL_NUMBER))]
-+     dtBCA[, jurisdiction := trimws(as.character(JURISDICTION_CODE))]
-+     dtBCA <- dtBCA[!is.na(rollNumber) & rollNumber != "" & !is.na(jurisdiction) & jurisdiction != ""]
-+     
-+     saveRDS(dtBCA, geoOutFile)
++   cat("Loading Greater Vancouver residential parcels from BCA\n")
++   sBCA <- st_read(
++     geoInFile,
++     layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
++     query = paste("SELECT ROLL_NUMBER, NEIGHBOURHOOD, JURISDICTION_CODE, geom",
++                   "FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
++                   "WHERE REGIONAL_DISTRICT_CODE='15'",
++                   "AND ACTUAL_USE_DESCRIPTION IN",
++                   "('Residential Dwelling with Suite','Single Family Dwelling')"),
++     quiet = TRUE)
++   dCT  <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
++   dCT  <- st_transform(dCT, st_crs(sBCA))
++   sBCA <- st_join(sBCA, dCT, join = st_within)
++   dtBCA <- as.data.table(sBCA)
++   dtBCA[, rollNumber   := trimws(as.character(ROLL_NUMBER))]
++   dtBCA[, jurisdiction := trimws(as.character(JURISDICTION_CODE))]
++   dtBCA <- dtBCA[!is.na(rollNumber) & rollNumber != "" &
++                  !is.na(jurisdiction) & jurisdiction != ""]
++   saveRDS(dtBCA, geoOutFile)
 + }
 > dtBCA <- as.data.table(readRDS(geoOutFile))
-> print(head(dtBCA))
-       ROLL_NUMBER NEIGHBOURHOOD JURISDICTION_CODE      CTUID
-            <char>        <char>            <char>     <char>
-1: 001686032390000    Point Grey               200 9330043.02
-2: 001686026110000    Point Grey               200 9330043.01
-3: 001688022610000    Point Grey               200 9330043.01
-4: 001688026970000    Point Grey               200 9330043.01
-5: 001686037830000    Point Grey               200 9330043.02
-6: 001638035870000    Point Grey               200 9330044.00
-                 DGUID  CTNAME LANDAREA  PRUID                           geom
-                <char>  <char>    <num> <char>             <sfc_MULTIPOLYGON>
-1: 2021S05079330043.02 0043.02   0.9967     59 MULTIPOLYGON (((1204477 475...
-2: 2021S05079330043.01 0043.01   0.7113     59 MULTIPOLYGON (((1203547 475...
-3: 2021S05079330043.01 0043.01   0.7113     59 MULTIPOLYGON (((1203206 475...
-4: 2021S05079330043.01 0043.01   0.7113     59 MULTIPOLYGON (((1203700 475...
-5: 2021S05079330043.02 0043.02   0.9967     59 MULTIPOLYGON (((1204937 475...
-6: 2021S05079330044.00 0044.00   2.8772     59 MULTIPOLYGON (((1204784 476...
-        rollNumber jurisdiction
-            <char>       <char>
-1: 001686032390000          200
-2: 001686026110000          200
-3: 001688022610000          200
-4: 001688026970000          200
-5: 001686037830000          200
-6: 001638035870000          200
 > 
 > cfgVancouver <- list(
-+     city           = "Vancouver",
-+     crsProj        = 26910,                              # UTM 10N (meters)
-+     xlim           = c(-123.23, -123.02),
-+     ylim           = c( 49.20,   49.32),
-+     tileZoom       = 12,
-+     sqliteFile     = "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3",
-+     bcaRDS         = "~/DropboxExternal/dataProcessed/bca_vancouver_residential.rds",
-+     permitFile     = "~/DropboxExternal/dataRaw/issued-building-permits.csv",
-+     zoningGeojson  = "~/DropboxExternal/dataRaw/vancouver_zoning.geojson",
-+     targetZone     = "R1-1",
-+     trimDimsQ      = 0.05,                          # winsorize landWidth & landDepth
-+     trimYQ         = 0.01,                          # winsorize the response (ppsf or price)
-+     salesYearRange = c(2014, 2018),
-+     permitYearRange = c(2019, 2023),
-+     excludeBox     = NULL,
-+     excludeBoxRef  = list(
-+         west  = -123.1283,   # Oak St
-+         east  = -123.1037,   # Ontario St
-+         north =   49.2575    # W 16th Ave
-+     )
++   sqliteFile     = "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3",
++   trimDimsQ      = 0.05,
++   trimYQ         = 0.01,
++   salesYearRange = c(2014, 2018)
 + )
-> 
-> # ===========================================================================
-> # APPRAISAL LOADER (BCA valuation table)
-> # ===========================================================================
 > cfg <- cfgVancouver
 > 
+> # ============================================================================
+> # Appraisal + sales merge  (unchanged)
+> # ============================================================================
 > con <- dbConnect(SQLite(), cfg$sqliteFile)
-> qVal  <- "SELECT folioID, landValue FROM valuation"
-> qInv  <- "SELECT roll_number, land_width, land_depth, zoning, MB_effective_year, MB_total_finished_area, jurisdiction FROM residentialInventory"
-> qFol  <- "SELECT folioID, rollNumber, jurisdictionCode FROM folio "
-> qDes  <- "SELECT folioID, actualUseDescription, landWidth, landDepth FROM folioDescription WHERE actualUseDescription IN ('Residential Dwelling with Suite','Single Family Dwelling')"
-> 
-> valuation   <- as.data.table(dbGetQuery(con, qVal))
-> inventory   <- as.data.table(dbGetQuery(con, qInv))
-> folio       <- as.data.table(dbGetQuery(con, qFol))
-> description <- as.data.table(dbGetQuery(con, qDes))
+> valuation   <- as.data.table(dbGetQuery(con, "SELECT folioID, landValue FROM valuation"))
+> inventory   <- as.data.table(dbGetQuery(con,
++                 "SELECT roll_number, land_width, land_depth, zoning,
++                         MB_effective_year, MB_total_finished_area, jurisdiction
++                  FROM residentialInventory"))
+> folio       <- as.data.table(dbGetQuery(con,
++                 "SELECT folioID, rollNumber, jurisdictionCode FROM folio"))
+> description <- as.data.table(dbGetQuery(con,
++                 paste("SELECT folioID, actualUseDescription, landWidth, landDepth",
++                       "FROM folioDescription",
++                       "WHERE actualUseDescription IN",
++                       "('Residential Dwelling with Suite','Single Family Dwelling')")))
 > dbDisconnect(con)
->     
-> setkey(valuation, folioID);     setkey(folio, folioID);        valuation <- valuation[folio]
-> setkey(description, folioID);   setkey(valuation, folioID);    valuation <- valuation[description]
+> 
+> setkey(valuation, folioID); setkey(folio, folioID)
+> valuation <- valuation[folio]
+> setkey(description, folioID); setkey(valuation, folioID)
+> valuation <- valuation[description]
 > setnames(valuation, "jurisdictionCode", "jurisdiction")
 > 
-> # FIX 1: Keep IDs safely as trimmed characters to avoid precision loss & truncation
 > valuation[, rollNumber   := trimws(as.character(rollNumber))]
 > inventory[, rollNumber   := trimws(as.character(roll_number))]
 > valuation[, jurisdiction := trimws(as.character(jurisdiction))]
 > inventory[, jurisdiction := trimws(as.character(jurisdiction))]
->     
-> # FIX 2: Clear missing keys *before* doing any uniqueness testing
-> valuation <- valuation[!is.na(rollNumber) & rollNumber != "" & !is.na(jurisdiction) & jurisdiction != ""]
-> inventory <- inventory[!is.na(rollNumber) & rollNumber != "" & !is.na(jurisdiction) & jurisdiction != ""]
-> 
-> # FIX 3: Drop duplicate database records using safe 1-to-1 string checks
+> valuation <- valuation[!is.na(rollNumber) & rollNumber != "" &
++                        !is.na(jurisdiction) & jurisdiction != ""]
+> inventory <- inventory[!is.na(rollNumber) & rollNumber != "" &
++                        !is.na(jurisdiction) & jurisdiction != ""]
 > valuation <- unique(valuation, by = c("rollNumber", "jurisdiction"))
 > inventory <- unique(inventory, by = c("rollNumber", "jurisdiction"))
 > 
-> # First inner join (Database cross-match)
 > setkey(inventory, rollNumber, jurisdiction)
 > setkey(valuation, rollNumber, jurisdiction)
 > valuation <- valuation[inventory, nomatch = NULL]
 > 
-> # Numeric formatting transformations
 > numericCols <- c("landValue","land_width","land_depth","landWidth","landDepth")
 > valuation[, (numericCols) := lapply(.SD, as.numeric), .SDcols = numericCols]
 > valuation[is.na(landWidth) & !is.na(land_width), landWidth := land_width]
 > valuation[is.na(landDepth) & !is.na(land_depth), landDepth := land_depth]
 > 
-> # FIX 4: Exact string match instead of lossy numeric rollStart math
 > setkey(valuation, rollNumber, jurisdiction)
-> setkey(dtBCA,      rollNumber, jurisdiction)
-> dt <- valuation[dtBCA, nomatch = 0]   # Precise spatial intersection
-> 
-> # Extract coordinates directly from sf shape layer if not present as flat variables
-> if (!"lat" %in% names(dt) || !"lon" %in% names(dt)) {
-+ 	coords <- sf::st_coordinates(sf::st_centroid(sf::st_as_sf(dt)))
-+ 	dt[, lon := coords[, 1]]
-+ 	dt[, lat := coords[, 2]]
-+ }
-Warning message:
-st_centroid assumes attributes are constant over geometries 
->     
-> # Derive analytical variables
+> setkey(dtBCA,     rollNumber, jurisdiction)
+> dt <- valuation[dtBCA, nomatch = 0]
 > dt[, landArea := landWidth * landDepth]
 > dt[, ppsf     := landValue / landArea]
-> dt <- dt[!is.na(lat) & !is.na(lon) & !is.na(ppsf) & !is.na(landArea) &
-+ 	 landArea > 0 & ppsf > 0]
-> 
+> dt <- dt[!is.na(ppsf) & !is.na(landArea) & landArea > 0 & ppsf > 0]
 > dt <- trimByQuantile(dt, c("landWidth","landDepth"), cfg$trimDimsQ)
 > dt <- trimByQuantile(dt, "ppsf", cfg$trimYQ)
 > dt[, logPPSF := log(ppsf)]
 > dt[, logArea := log(landArea)]
-> dtMerge <- dt
-> dt <- NULL
+> dtMerge <- dt; dt <- NULL
 > 
-> # ===========================================================================
-> # 5. SALES LOADER (BCA sales table)
-> # ===========================================================================
-> 
+> # ---- sales ------------------------------------------------------------------
 > con <- dbConnect(SQLite(), cfg$sqliteFile)
-> dt  <- as.data.table(dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice, conveyanceTypeDescription FROM sales"))
+> dt  <- as.data.table(dbGetQuery(con,
++         paste("SELECT folioID, conveyanceDate, conveyancePrice,",
++               "conveyanceTypeDescription FROM sales")))
 > dbDisconnect(con)
->     
-> dt <- dt[conveyanceTypeDescription == "Improved Single Property Transaction", .(folioID, conveyanceDate, conveyancePrice)]
+> 
+> dt <- dt[conveyanceTypeDescription == "Improved Single Property Transaction",
++          .(folioID, conveyanceDate, conveyancePrice)]
 > dt <- merge(dt, dtMerge, by = "folioID")
->     
 > dt[, conveyancePrice := as.numeric(conveyancePrice)]
 > dt[, landWidth       := as.numeric(landWidth)]
 > dt[, landDepth       := as.numeric(landDepth)]
-> dt <- dt[!is.na(lat) & !is.na(lon) & !is.na(conveyancePrice) &
-+ 	 !is.na(landWidth) & !is.na(landDepth) &
-+ 	 conveyancePrice > 0 & landWidth > 0 & landDepth > 0]
-> 
+> dt <- dt[!is.na(conveyancePrice) & !is.na(landWidth) & !is.na(landDepth) &
++          conveyancePrice > 0 & landWidth > 0 & landDepth > 0]
 > dt[, year      := as.numeric(substring(conveyanceDate, 1, 4))]
-> dt[, logPrice  := log(conveyancePrice)]
 > dt[, landArea  := landWidth * landDepth]
-> dt[, logArea   := log(landArea)]
 > dt[, ppsfSale  := conveyancePrice / landArea]
 > dt[, logPPSFSale := log(ppsfSale)]
-> if ("MB_effective_year" %in% names(dt))
-+ dt[, age := year - as.numeric(MB_effective_year)]
-> if ("MB_total_finished_area" %in% names(dt)) {
-+ 	dt[, FSR    := as.numeric(MB_total_finished_area) / landArea]
-+ 	dt[, logFSR := log(FSR)]
-+ }
-> 
+> dt[, age       := year - as.numeric(MB_effective_year)]
+> dt[, sqft      := as.numeric(MB_total_finished_area)]
+> dt[, FSR       := sqft / landArea]
 > dt <- trimByQuantile(dt, c("landWidth","landDepth"), cfg$trimDimsQ)
 > dt <- trimByQuantile(dt, "ppsfSale", cfg$trimYQ)
-> if (!is.null(cfg$salesYearRange)) {
-+ 	dt <- dt[year %between% cfg$salesYearRange]
-+ }
-> print(head(dt))
-Key: <folioID>
-      folioID conveyanceDate conveyancePrice landValue      rollNumber
-       <char>         <char>           <num>     <num>          <char>
-1: A00000004D     2014-11-17         3270000   3358000 001030683970000
-2: A00000004K     2014-09-30         3120000   3916000 001032655440000
-3: A00000004U     2014-01-06         2498000   3360000 001032683620000
-4: A000000084     2017-04-10         1810000   1754000 001040678430000
-5: A0000000TD     2015-11-06         4008880   3030000 001640020260000
-6: A0000000TG     2016-04-29         4150000   3031000 001640020380000
-   jurisdiction            actualUseDescription landWidth landDepth
-         <char>                          <char>     <num>     <num>
-1:          200          Single Family Dwelling      60.9    110.00
-2:          200          Single Family Dwelling      62.2    106.25
-3:          200          Single Family Dwelling      61.0    110.00
-4:          200 Residential Dwelling with Suite      33.0    111.00
-5:          200 Residential Dwelling with Suite      66.0    122.64
-6:          200          Single Family Dwelling      66.0    122.65
-       roll_number land_width land_depth zoning MB_effective_year
-            <char>      <num>      <num> <char>            <char>
-1: 001030683970000       60.9      110.0    RS1              2005
-2: 001032655440000       62.2      106.2    RS1              2017
-3: 001032683620000       61.0      110.0    RS1              2018
-4: 001040678430000       33.0      111.0    RS1              2007
-5: 001640020260000       66.0      122.6    RS1              2012
-6: 001640020380000       66.0      122.7    RS1              2005
-   MB_total_finished_area     ROLL_NUMBER NEIGHBOURHOOD JURISDICTION_CODE
-                   <char>          <char>        <char>            <char>
-1:                   3615 001030683970000    Point Grey               200
-2:                   4002 001032655440000    Point Grey               200
-3:                   4214 001032683620000    Point Grey               200
-4:                   2470 001040678430000    Point Grey               200
-5:                   4707 001640020260000    Point Grey               200
-6:                   4782 001640020380000    Point Grey               200
-        CTUID               DGUID  CTNAME LANDAREA  PRUID
-       <char>              <char>  <char>    <num> <char>
-1: 9330043.02 2021S05079330043.02 0043.02   0.9967     59
-2: 9330043.02 2021S05079330043.02 0043.02   0.9967     59
-3: 9330043.02 2021S05079330043.02 0043.02   0.9967     59
-4: 9330043.02 2021S05079330043.02 0043.02   0.9967     59
-5: 9330044.00 2021S05079330044.00 0044.00   2.8772     59
-6: 9330044.00 2021S05079330044.00 0044.00   2.8772     59
-                             geom     lon      lat landArea     ppsf  logPPSF
-               <sfc_MULTIPOLYGON>   <num>    <num>    <num>    <num>    <num>
-1: MULTIPOLYGON (((1204118 475... 1204135 475579.1  6699.00 501.2688 6.217143
-2: MULTIPOLYGON (((1204346 476... 1204329 476084.6  6608.75 592.5478 6.384431
-3: MULTIPOLYGON (((1204393 475... 1204410 475602.5  6710.00 500.7452 6.216097
-4: MULTIPOLYGON (((1204921 475... 1204938 475729.1  3663.00 478.8425 6.171372
-5: MULTIPOLYGON (((1202889 476... 1202878 476488.8  8094.24 374.3403 5.925165
-6: MULTIPOLYGON (((1202889 476... 1202898 476489.2  8094.90 374.4333 5.925414
-    logArea  year logPrice ppsfSale logPPSFSale   age       FSR     logFSR
-      <num> <num>    <num>    <num>       <num> <num>     <num>      <num>
-1: 8.809714  2014 15.00030 488.1326    6.190587     9 0.5396328 -0.6168664
-2: 8.796150  2014 14.95334 472.1014    6.157194    -3 0.6055608 -0.5016003
-3: 8.811354  2014 14.73100 372.2802    5.919647    -4 0.6280179 -0.4651866
-4: 8.206038  2017 14.40884 494.1305    6.202800    10 0.6743107 -0.3940643
-5: 8.998908  2015 15.20402 495.2757    6.205114     3 0.5815246 -0.5421019
-6: 8.998990  2016 15.23862 512.6685    6.239629    11 0.5907423 -0.5263754
-> print(summary(dt))
-   folioID          conveyanceDate     conveyancePrice     landValue      
- Length:43717       Length:43717       Min.   : 160000   Min.   : 422000  
- Class :character   Class :character   1st Qu.: 775000   1st Qu.: 830000  
- Mode  :character   Mode  :character   Median :1061000   Median :1110000  
-                                       Mean   :1226062   Mean   :1215048  
-                                       3rd Qu.:1510000   3rd Qu.:1409000  
-                                       Max.   :5030000   Max.   :5176000  
-                                                                          
-  rollNumber        jurisdiction       actualUseDescription   landWidth   
- Length:43717       Length:43717       Length:43717         Min.   :33.0  
- Class :character   Class :character   Class :character     1st Qu.:48.0  
- Mode  :character   Mode  :character   Mode  :character     Median :60.0  
-                                                            Mean   :54.5  
-                                                            3rd Qu.:63.5  
-                                                            Max.   :74.0  
-                                                                          
-   landDepth     roll_number          land_width      land_depth   
- Min.   : 99.9   Length:43717       Min.   :32.30   Min.   : 67.0  
- 1st Qu.:112.3   Class :character   1st Qu.:48.00   1st Qu.:112.3  
- Median :120.0   Mode  :character   Median :60.00   Median :120.0  
- Mean   :120.7                      Mean   :54.49   Mean   :120.7  
- 3rd Qu.:128.0                      3rd Qu.:63.50   3rd Qu.:128.0  
- Max.   :148.0                      Max.   :74.00   Max.   :148.5  
-                                    NA's   :19      NA's   :19     
-    zoning          MB_effective_year  MB_total_finished_area
- Length:43717       Length:43717       Length:43717          
- Class :character   Class :character   Class :character      
- Mode  :character   Mode  :character   Mode  :character      
-                                                             
-                                                             
-                                                             
-                                                             
- ROLL_NUMBER        NEIGHBOURHOOD      JURISDICTION_CODE     CTUID          
- Length:43717       Length:43717       Length:43717       Length:43717      
- Class :character   Class :character   Class :character   Class :character  
- Mode  :character   Mode  :character   Mode  :character   Mode  :character  
-                                                                            
-                                                                            
-                                                                            
-                                                                            
-    DGUID              CTNAME             LANDAREA           PRUID          
- Length:43717       Length:43717       Min.   :  0.3066   Length:43717      
- Class :character   Class :character   1st Qu.:  1.2612   Class :character  
- Mode  :character   Mode  :character   Median :  1.6529   Mode  :character  
-                                       Mean   :  3.2110                     
-                                       3rd Qu.:  2.6147                     
-                                       Max.   :830.6310                     
-                                       NA's   :63                           
-            geom            lon               lat            landArea    
- MULTIPOLYGON :43717   Min.   :1191518   Min.   :447268   Min.   : 3297  
- epsg:3005    :    0   1st Qu.:1212668   1st Qu.:463336   1st Qu.: 5500  
- +proj=aea ...:    0   Median :1222738   Median :471073   Median : 7000  
-                       Mean   :1222550   Mean   :469785   Mean   : 6574  
-                       3rd Qu.:1231605   3rd Qu.:476192   3rd Qu.: 7663  
-                       Max.   :1258959   Max.   :498954   Max.   :10952  
-                                                                         
-      ppsf           logPPSF         logArea           year     
- Min.   : 73.89   Min.   :4.303   Min.   :8.101   Min.   :2014  
- 1st Qu.:117.12   1st Qu.:4.763   1st Qu.:8.613   1st Qu.:2015  
- Median :168.91   Median :5.129   Median :8.854   Median :2016  
- Mean   :197.81   Mean   :5.175   Mean   :8.760   Mean   :2016  
- 3rd Qu.:249.66   3rd Qu.:5.520   3rd Qu.:8.944   3rd Qu.:2017  
- Max.   :597.37   Max.   :6.393   Max.   :9.301   Max.   :2018  
-                                                                
-    logPrice        ppsfSale       logPPSFSale         age        
- Min.   :11.98   Min.   : 22.22   Min.   :3.101   Min.   : -6.00  
- 1st Qu.:13.56   1st Qu.:111.20   1st Qu.:4.711   1st Qu.:  9.00  
- Median :13.87   Median :169.88   Median :5.135   Median : 24.00  
- Mean   :13.90   Mean   :198.85   Mean   :5.141   Mean   : 22.94  
- 3rd Qu.:14.23   3rd Qu.:265.27   3rd Qu.:5.581   3rd Qu.: 34.00  
- Max.   :15.43   Max.   :522.24   Max.   :6.258   Max.   :106.00  
-                                                  NA's   :46      
-      FSR              logFSR       
- Min.   :0.06477   Min.   :-2.7369  
- 1st Qu.:0.30451   1st Qu.:-1.1890  
- Median :0.42775   Median :-0.8492  
- Mean   :0.43982   Mean   :-0.8966  
- 3rd Qu.:0.56881   3rd Qu.:-0.5642  
- Max.   :1.29040   Max.   : 0.2550  
- NA's   :46        NA's   :46       
+> dt <- dt[year %between% cfg$salesYearRange]
+> dt <- dt[age >= 1 & !is.na(age) & !is.na(sqft) & sqft > 0]
+> dt[, ppsf := conveyancePrice / sqft]
 > 
-> # for each level: CTNAME, NEIGHBOURHOOD, jurisdiction
-> # only do sales
-> # calculate mean ppsf residuals from reg log PPSFSale ~ log(year - MB_effective_year) + dummy at relevant level -- collect geographic residuals -- or do with i(term) in fixest, better
-> # then calculate elasticity of ppsf with respect to landArea for appraisal 2019 <- just do for year is max year by rollNUmber/jurisdiction pair log PPSFSale ~ log(year - MB_effective_year) + log(MB_total_finished_area) do for each area a separate regression and collect reg coefficient on log(MB_total_finished_area), then create a data.table of ppsf residual and of elasiticity by area and calculate the correlation for non-missing. Do for SALESRANGEYEARS or whatever
+> # ============================================================================
+> # Per-level results: FE + per-cell elasticity (with SE)
+> # ============================================================================
 > 
-> MINREGOBS <- 10
-> 
+> MINREGOBS  <- 10
 > levelsToRun <- c("CTNAME","NEIGHBOURHOOD","jurisdiction")
-> dt[, age := (year - as.numeric(MB_effective_year))]
-> dtReg <- dt[age>=1 & !is.na(age) & year %between% cfg$salesYearRange]
-> dtReg[,sqft:=as.numeric(MB_total_finished_area)]
-> dtReg[,ppsf := conveyancePrice / as.numeric(MB_total_finished_area)]
-> out <- list()
+> 
+> # Per-cell elasticity regression. Returns coef and its SE so the
+> # diagnostic helper can build precision-weighted comparisons later.
+> fitCell <- function(sd) {
++   if (nrow(sd) < MINREGOBS)
++     return(list(elasticity = NA_real_, se_elasticity = NA_real_, n = nrow(sd)))
++   reg <- tryCatch(
++     feols(log(ppsf) ~ log(age) + i(year) + log(sqft), data = sd, warn = FALSE),
++     error = function(e) NULL)
++   if (is.null(reg))
++     return(list(elasticity = NA_real_, se_elasticity = NA_real_, n = nrow(sd)))
++   cm <- coeftable(reg)
++   rn <- rownames(cm)
++   idx <- match("log(sqft)", rn)
++   if (is.na(idx))
++     return(list(elasticity = NA_real_, se_elasticity = NA_real_, n = nrow(sd)))
++   list(elasticity    = unname(cm[idx, 1]),
++        se_elasticity = unname(cm[idx, 2]),
++        n             = nrow(sd))
++ }
+> 
+> out      <- list()
+> corBoard <- list()
+> diagBoard <- list()
 > 
 > for (level in levelsToRun) {
++   regFE <- feols(as.formula(paste0("ppsf ~ log(age) + i(year) | ", level)),
++                  data = dt)
++   fe_dt <- data.table(level_value = names(fixef(regFE)[[1]]),
++                       ppsf_fe     = as.numeric(fixef(regFE)[[1]]))
 + 
-+   regFE <- feols(
-+     as.formula(paste0("ppsf ~ log(age) +i(year)| ", level)),
-+     data = dtReg
-+   )
-+ 
-+   fe_dt <- data.table(
-+     level = level,
-+     level_value = names(fixef(regFE)[[1]]),
-+     ppsf_fe = as.numeric(fixef(regFE)[[1]])
-+   )
-+ 
-+   elas_dt <- dtReg[
-+     !is.na(get(level)) & !is.na(FSR) & FSR > 0,
-+     {
-+       if (.N >= MINREGOBS) {
-+ 	reg <- feols(log(ppsf) ~ log(age) + i(year) + log(sqft), data = .SD)
-+ 	.(elasticity = coef(reg)["log(sqft)"], n = .N)
-+       } else {
-+ 	.(elasticity = NA_real_, n = .N)
-+       }
-+     },
-+     by = .(level_value = get(level))
-+   ]
++   elas_dt <- dt[!is.na(get(level)) & !is.na(FSR) & FSR > 0,
++                 fitCell(.SD),
++                 by = .(level_value = get(level))]
 + 
 +   out[[level]] <- merge(fe_dt, elas_dt, by = "level_value", all.x = TRUE)
 + 
-+   cat("\n", level, "\n")
-+   print(out[[level]][!is.na(elasticity), cor(ppsf_fe, elasticity)])
++   unwCor <- out[[level]][!is.na(elasticity), cor(ppsf_fe, elasticity)]
++   corBoard[[level]] <- data.table(level = level, cor_unweighted = unwCor,
++                                   cells = sum(!is.na(out[[level]]$elasticity)))
++   cat(sprintf("\n[%s] cor(ppsf_fe, elasticity) UNWEIGHTED = %.4f  (cells = %d)\n",
++               level, unwCor,
++               sum(!is.na(out[[level]]$elasticity))))
++ 
++   diagBoard[[level]] <- weightedCorDiagnostic(out[[level]], label = level)
++   plotElasticityVsFE(out[[level]], label = level,
++                      outPath = sprintf("text/greaterVan_elasFE_%s.png", level))
 + }
 NOTE: 63 observations removed because of NA values (Fixed-effects: 63).
 
- CTNAME 
-[1] 0.3281844
+[CTNAME] cor(ppsf_fe, elasticity) UNWEIGHTED = 0.3282  (cells = 360)
 
- NEIGHBOURHOOD 
-[1] 0.2461487
+[NEIGHBOURHOOD] cor(ppsf_fe, elasticity) UNWEIGHTED = 0.2461  (cells = 147)
 
- jurisdiction 
-[1] 0.5977509
+[jurisdiction] cor(ppsf_fe, elasticity) UNWEIGHTED = 0.5978  (cells = 19)
 > 
+> cat("\n============== HEADLINE: unweighted cor by level ==============\n")
+
+============== HEADLINE: unweighted cor by level ==============
+> print(rbindlist(corBoard))
+           level cor_unweighted cells
+          <char>          <num> <int>
+1:        CTNAME      0.3281844   360
+2: NEIGHBOURHOOD      0.2461487   147
+3:  jurisdiction      0.5977509    19
+> 
+> cat("\n============== SUPPLEMENT: weighted-cor diagnostics ==============\n")
+
+============== SUPPLEMENT: weighted-cor diagnostics ==============
+> print(rbindlist(diagBoard))
+            label                  flavour       cor     n
+           <char>                   <char>     <num> <int>
+ 1:        CTNAME               unweighted 0.3281844   360
+ 2:        CTNAME precision_wtd_1_over_se2 0.5208090   360
+ 3:        CTNAME      trim_se_below_q0.75 0.5307447   270
+ 4:        CTNAME                 n_geq_30 0.4748754   321
+ 5: NEIGHBOURHOOD               unweighted 0.2461487   147
+ 6: NEIGHBOURHOOD precision_wtd_1_over_se2 0.5677347   147
+ 7: NEIGHBOURHOOD      trim_se_below_q0.75 0.4358878   110
+ 8: NEIGHBOURHOOD                 n_geq_30 0.4046130   131
+ 9:  jurisdiction               unweighted 0.5977509    19
+10:  jurisdiction precision_wtd_1_over_se2 0.8267052    19
+11:  jurisdiction      trim_se_below_q0.75 0.7670891    14
+12:  jurisdiction                 n_geq_30 0.6242635    17
+> 
+> # Optional: save per-level result tables for the paper.
+> saveRDS(out, "~/DropboxExternal/dataProcessed/greaterVan_elasticityByLevel.rds")
 > 
 > proc.time()
    user  system elapsed 
- 79.118   8.572  53.379 
+ 79.515  12.240  56.849 

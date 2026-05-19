@@ -1,0 +1,431 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # vancouverDuplexChoice.R
+> # Downstream of vancouverElasticityPrice.R.
+> # Permit-level discrete choice: does a permit build a duplex or a single
+> # detached house? Regressors are the local price level and local
+> # elasticity surfaces estimated at each permit's location.
+> #
+> # Spec strategy (per Tom): three horse races, one per elasticity surface.
+> # In each race, three nested logits:
+> #   A) localPPSF only
+> #   B) the elasticity surface only
+> #   C) both together
+> # All specs include the permit's OWN log lot area (developer's scale
+> # choice variable, separate from neighborhood surfaces).
+> #
+> # Hypothesis: localPPSF should beat each elasticity in its horse race,
+> # because ppsf and the regulation-induced slope are observationally
+> # (nearly) equivalent to builders. The "C" columns tell us whether the
+> # elasticity surface carries any incremental information once the price
+> # level is conditioned on.
+> #
+> # Inference: Conley SEs at cutoff = 2 * GWR median effective radius,
+> # to handle spatial autocorrelation in the constructed regressors.
+> #
+> # Tom Davidoff
+> # 05/18/26
+> 
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(fixest)
+> 
+> # ---------------------------------------------------------------------------
+> # Config -- paths must match vancouverElasticityPrice.R
+> # ---------------------------------------------------------------------------
+> cfg <- list(
++   crsProj           = 26910,
++   permitFile        = "~/DropboxExternal/dataRaw/issued-building-permits.csv",
++   zoningGeojson    = "~/DropboxExternal/dataRaw/vancouver_zoning.geojson",
++   targetZone        = "R1-1",
++   permitYearRange   = c(2019, 2023),
++   parcelRDSDir      = "~/DropboxExternal/dataProcessed/",
++   surfacesRDS       = "~/DropboxExternal/dataProcessed/covElasticityPrice_permitSurfaces.rds",
++   # Conley cutoff in km. Set roughly to 2 * median GWR radius, to be
++   # tightened/loosened below after we see the median radius from the
++   # surfaces export. 3 km is a defensible default for k~750 GWR in COV.
++   conleyCutoffKM    = 3.0
++ )
+> 
+> # ---------------------------------------------------------------------------
+> # 1. Load permits with use category (need isDuplex AND lon/lat in the
+> #    SAME order as the surfaces export -- which means using the SAME
+> #    loadPermits filter chain, but retaining SpecificUseCategory).
+> # ---------------------------------------------------------------------------
+> loadPermitsTagged <- function(cfg) {
++   dp <- fread(cfg$permitFile,
++     select = c("PermitNumber","ProjectValue","TypeOfWork",
++                "PropertyUse","SpecificUseCategory",
++                "geo_point_2d","YearMonth"))
++   dp <- dp[PropertyUse == "Dwelling Uses" &
++            TypeOfWork %in% c("New Building","Addition / Alteration")]
++   dp[, c("permitLat","permitLon") := tstrsplit(geo_point_2d, ", ")]
++   dp[, `:=`(permitLat = as.numeric(permitLat),
++             permitLon = as.numeric(permitLon))]
++   dp <- dp[!is.na(permitLat) & !is.na(permitLon)]
++   dp[, Year := as.numeric(substring(YearMonth, 1, 4))]
++   dp <- dp[Year %between% cfg$permitYearRange]
++   dp <- dp[grepl("Duplex|Single Detached House|Laneway House|Multiple Dwelling",
++                  SpecificUseCategory)]
++   sfP <- st_as_sf(dp[, .(permitLat, permitLon, SpecificUseCategory)],
++                   coords = c("permitLon","permitLat"), crs = 4326)
++   dZ <- st_read(cfg$zoningGeojson, quiet = TRUE)
++   dZ <- dZ[dZ$zoning_district == cfg$targetZone, "zoning_district"]
++   sfP <- st_transform(sfP, st_crs(dZ))
++   sfP <- st_join(sfP, dZ, join = st_within)
++   sfP <- sfP[!is.na(sfP$zoning_district), ]
++   sfP <- st_transform(sfP, 4326)
++   data.table(lon    = st_coordinates(sfP)[, 1],
++              lat    = st_coordinates(sfP)[, 2],
++              useCat = sfP$SpecificUseCategory)
++ }
+> 
+> # Attach each permit's OWN log lot area by nearest-parcel join to BCA
+> # single-family parcels. Lifted from vancouverLandAssessment.R.
+> attachOwnLotArea <- function(permits, dtSF, cfg) {
++   bca <- dtSF[!is.na(lon) & !is.na(lat) &
++               !is.na(landWidth) & !is.na(landDepth) &
++               landWidth > 0 & landDepth > 0]
++   bca[, landArea := as.numeric(landWidth) * as.numeric(landDepth)]
++   bca <- bca[landArea > 0]
++   sfP <- st_transform(
++             st_as_sf(copy(permits), coords = c("lon","lat"), crs = 4326),
++             cfg$crsProj)
++   sfB <- st_transform(
++             st_as_sf(bca[, .(landArea, lon, lat)],
++                      coords = c("lon","lat"), crs = 4326),
++             cfg$crsProj)
++   nn <- st_nearest_feature(sfP, sfB)
++   permits[, permitLandArea := sfB$landArea[nn]]
++   permits[, permitLogArea  := log(permitLandArea)]
++   permits[]
++ }
+> 
+> # ---------------------------------------------------------------------------
+> # 2. Load surfaces from the unified export
+> # ---------------------------------------------------------------------------
+> if (!file.exists(path.expand(cfg$surfacesRDS)))
++   stop(sprintf("%s not found. Run vancouverElasticityPrice.R first.",
++                cfg$surfacesRDS))
+> surfaces <- as.data.table(readRDS(path.expand(cfg$surfacesRDS)))
+> cat(sprintf("\nSurfaces export: %d rows, columns:\n", nrow(surfaces)))
+
+Surfaces export: 6336 rows, columns:
+> print(names(surfaces))
+[1] "lon"                     "lat"                    
+[3] "slope_singleFamilyPre"   "seSlope_singleFamilyPre"
+[5] "slope_strataPre"         "seSlope_strataPre"      
+[7] "slope_duplexPremium33"   "seSlope_duplexPremium33"
+[9] "localPPSF"              
+> 
+> # ---------------------------------------------------------------------------
+> # 3. Load permits, tag isDuplex, attach own lot area
+> # ---------------------------------------------------------------------------
+> permits <- loadPermitsTagged(cfg)
+> cat(sprintf("\nPermits in R1-1, %d-%d: %d total\n",
++             cfg$permitYearRange[1], cfg$permitYearRange[2], nrow(permits)))
+
+Permits in R1-1, 2019-2023: 6336 total
+> print(permits[, .N, by = useCat][order(-N)])
+                                                            useCat     N
+                                                            <char> <int>
+ 1:                                                  Laneway House  1836
+ 2:                                          Single Detached House  1828
+ 3:                              Single Detached House w/Sec Suite  1734
+ 4:                                                         Duplex   394
+ 5:                                       Duplex w/Secondary Suite   313
+ 6:                       Duplex w/Secondary Suite,Secondary Suite    64
+ 7:                                   Infill Single Detached House    58
+ 8:                                              Multiple Dwelling    30
+ 9:                       Secondary Suite,Duplex w/Secondary Suite    27
+10:                                          Duplex,Lock -off Unit    12
+11:        Single Detached House w/Sec Suite,Single Detached House     8
+12:        Single Detached House,Single Detached House w/Sec Suite     8
+13:                                                  Infill Duplex     5
+14:                        Lock -off Unit,Duplex w/Secondary Suite     5
+15:                                          Lock -off Unit,Duplex     4
+16:                                       Infill Multiple Dwelling     3
+17:      Infill,Multiple Conversion Dwelling,Single Detached House     2
+18:                                   Single Detached House,Duplex     1
+19:             Multiple Conversion Dwelling,Single Detached House     1
+20: Single Detached House w/Sec Suite,Infill Single Detached House     1
+21: Multiple Conversion Dwelling,Single Detached House w/Sec Suite     1
+22:                          Duplex,Lock -off Unit,Secondary Suite     1
+                                                            useCat     N
+> 
+> if (nrow(permits) != nrow(surfaces))
++   warning(sprintf("Permit count (%d) != surfaces row count (%d). ",
++                   "Check that vancouverElasticityPrice.R was run with the ",
++                   "same cfg$permitYearRange and zoning filter.",
++                   nrow(permits), nrow(surfaces)))
+> 
+> # Permits and surfaces are row-aligned by construction (same loadPermits
+> # filter chain). Bind them column-wise.
+> choiceDT <- cbind(permits, surfaces[, !c("lon","lat"), with = FALSE])
+> 
+> # Attach permit's own log lot area from nearest SF parcel.
+> dtSF <- as.data.table(readRDS(file.path(path.expand(cfg$parcelRDSDir),
++                                         "bca_vancouver_singleFamily.rds")))
+> choiceDT <- attachOwnLotArea(choiceDT, dtSF, cfg)
+> 
+> # Binary outcome: 1 = Duplex, 0 = Single Detached House. Drop others.
+> choiceDT[, isDuplex := fifelse(useCat == "Duplex", 1L,
++                        fifelse(useCat == "Single Detached House", 0L,
++                                NA_integer_))]
+> 
+> # ---------------------------------------------------------------------------
+> # 4. Estimation sample
+> # ---------------------------------------------------------------------------
+> needed <- c("isDuplex","permitLogArea","localPPSF",
++             "slope_singleFamilyPre","slope_strataPre","slope_duplexPremium33")
+> est <- choiceDT[complete.cases(choiceDT[, ..needed]) &
++                 is.finite(permitLogArea)]
+> cat(sprintf("\nEstimation sample: n = %d  (duplex = %d, SF = %d)\n",
++             nrow(est), sum(est$isDuplex == 1L), sum(est$isDuplex == 0L)))
+
+Estimation sample: n = 1953  (duplex = 387, SF = 1566)
+> 
+> # Diagnostic: correlations among the constructed regressors. Useful
+> # context for reading the horse-race coefficients.
+> cat("\nCorrelations among constructed regressors:\n")
+
+Correlations among constructed regressors:
+> regCols <- c("localPPSF","slope_singleFamilyPre",
++              "slope_strataPre","slope_duplexPremium33")
+> print(round(cor(est[, ..regCols], use = "complete.obs"), 3))
+                      localPPSF slope_singleFamilyPre slope_strataPre
+localPPSF                 1.000                 0.498           0.605
+slope_singleFamilyPre     0.498                 1.000           0.307
+slope_strataPre           0.605                 0.307           1.000
+slope_duplexPremium33    -0.774                -0.286          -0.734
+                      slope_duplexPremium33
+localPPSF                            -0.774
+slope_singleFamilyPre                -0.286
+slope_strataPre                      -0.734
+slope_duplexPremium33                 1.000
+> 
+> # ---------------------------------------------------------------------------
+> # 5. Horse races
+> # ---------------------------------------------------------------------------
+> # Spec A (common across races): isDuplex ~ permitLogArea + localPPSF
+> # Spec B (per race):             isDuplex ~ permitLogArea + <elasticity>
+> # Spec C (per race):             isDuplex ~ permitLogArea + localPPSF + <elasticity>
+> 
+> races <- list(
++   SF      = "slope_singleFamilyPre",
++   strata  = "slope_strataPre",
++   duplex  = "slope_duplexPremium33"
++ )
+> 
+> mkFmlA <- as.formula("isDuplex ~ permitLogArea + localPPSF")
+> mkFmlB <- function(elast) as.formula(sprintf(
++             "isDuplex ~ permitLogArea + %s", elast))
+> mkFmlC <- function(elast) as.formula(sprintf(
++             "isDuplex ~ permitLogArea + localPPSF + %s", elast))
+> 
+> fitLogit <- function(fml, dat)
++   feglm(fml, data = dat, family = binomial(link = "logit"))
+> 
+> # AMEs via mean-of-derivatives (continuous regressors)
+> ame <- function(model) {
++   X    <- model.matrix(model)
++   b    <- coef(model)
++   eta  <- as.vector(X %*% b)
++   dens <- dlogis(eta)
++   vapply(colnames(X)[-1],
++          function(v) mean(dens) * b[v], numeric(1))
++ }
+> 
+> mA <- fitLogit(mkFmlA, est)
+> 
+> # Conley SEs at the configured cutoff.
+> conleyVcov <- conley(cutoff = cfg$conleyCutoffKM, distance = "spherical")
+> 
+> for (raceName in names(races)) {
++   elast <- races[[raceName]]
++   cat(sprintf(
++     "\n========== HORSE RACE: localPPSF vs %s (%s) ==========\n",
++     elast, raceName))
++ 
++   mB <- fitLogit(mkFmlB(elast), est)
++   mC <- fitLogit(mkFmlC(elast), est)
++ 
++   cat("\n-- Default (model-based) SEs --\n")
++   print(etable(mA, mB, mC, digits = 3,
++                headers = c("A: ppsf only", sprintf("B: %s only", raceName),
++                            "C: both")))
++ 
++   cat(sprintf("\n-- Conley SEs (cutoff = %.1f km) --\n", cfg$conleyCutoffKM))
++   print(etable(mA, mB, mC, digits = 3, vcov = conleyVcov,
++                headers = c("A: ppsf only", sprintf("B: %s only", raceName),
++                            "C: both")))
++ 
++   cat("\n-- Average marginal effects (mean-of-derivatives) --\n")
++   cat("A: "); print(round(ame(mA), 4))
++   cat("B: "); print(round(ame(mB), 4))
++   cat("C: "); print(round(ame(mC), 4))
++ }
+
+========== HORSE RACE: localPPSF vs slope_singleFamilyPre (SF) ==========
+
+-- Default (model-based) SEs --
+                                    mA               mB               mC
+                          A: ppsf only       B: SF only          C: both
+Dependent Var.:               isDuplex         isDuplex         isDuplex
+                                                                        
+Constant                15.3*** (2.10)   18.8*** (1.98)   15.3*** (2.11)
+permitLogArea         -2.00*** (0.252) -2.45*** (0.236) -1.99*** (0.253)
+localPPSF             -2.49*** (0.306)                  -2.62*** (0.355)
+slope_singleFamilyPre                  -1.52*** (0.379)    0.318 (0.433)
+_____________________ ________________ ________________ ________________
+S.E. type                          IID              IID              IID
+Observations                     1,953            1,953            1,953
+Squared Cor.                   0.10156          0.06518          0.10193
+Pseudo R2                      0.12216          0.09145          0.12243
+BIC                            1,729.7          1,789.5          1,736.8
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+-- Conley SEs (cutoff = 3.0 km) --
+                                    mA               mB               mC
+                          A: ppsf only       B: SF only          C: both
+Dependent Var.:               isDuplex         isDuplex         isDuplex
+                                                                        
+Constant                 15.3** (5.53)    18.8** (5.78)    15.3** (5.50)
+permitLogArea          -2.00** (0.653) -2.45*** (0.696)  -1.99** (0.656)
+localPPSF             -2.49*** (0.645)                  -2.62*** (0.717)
+slope_singleFamilyPre                    -1.52. (0.873)    0.318 (0.325)
+_____________________ ________________ ________________ ________________
+S.E. type                 Conley (3km)     Conley (3km)     Conley (3km)
+Observations                     1,953            1,953            1,953
+Squared Cor.                   0.10156          0.06518          0.10193
+Pseudo R2                      0.12216          0.09145          0.12243
+BIC                            1,729.7          1,789.5          1,736.8
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+-- Average marginal effects (mean-of-derivatives) --
+A: permitLogArea     localPPSF 
+      -0.2830       -0.3518 
+B:         permitLogArea slope_singleFamilyPre 
+              -0.3566               -0.2204 
+C:         permitLogArea             localPPSF slope_singleFamilyPre 
+              -0.2813               -0.3702                0.0449 
+
+========== HORSE RACE: localPPSF vs slope_strataPre (strata) ==========
+
+-- Default (model-based) SEs --
+                              mA               mB               mC
+                    A: ppsf only   B: strata only          C: both
+Dependent Var.:         isDuplex         isDuplex         isDuplex
+                                                                  
+Constant          15.3*** (2.10)   18.1*** (2.07)   15.5*** (2.12)
+permitLogArea   -2.00*** (0.252) -2.33*** (0.248) -2.03*** (0.254)
+localPPSF       -2.49*** (0.306)                  -2.09*** (0.371)
+slope_strataPre                  -3.12*** (0.478)   -1.05. (0.586)
+_______________ ________________ ________________ ________________
+S.E. type                    IID              IID              IID
+Observations               1,953            1,953            1,953
+Squared Cor.             0.10156          0.07873          0.10187
+Pseudo R2                0.12216          0.10557          0.12381
+BIC                      1,729.7          1,762.0          1,734.1
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+-- Conley SEs (cutoff = 3.0 km) --
+                              mA               mB               mC
+                    A: ppsf only   B: strata only          C: both
+Dependent Var.:         isDuplex         isDuplex         isDuplex
+                                                                  
+Constant           15.3** (5.53)   18.1*** (4.56)    15.5** (5.08)
+permitLogArea    -2.00** (0.653) -2.33*** (0.546) -2.03*** (0.602)
+localPPSF       -2.49*** (0.645)                  -2.09*** (0.592)
+slope_strataPre                     -3.12* (1.42)     -1.05 (1.31)
+_______________ ________________ ________________ ________________
+S.E. type           Conley (3km)     Conley (3km)     Conley (3km)
+Observations               1,953            1,953            1,953
+Squared Cor.             0.10156          0.07873          0.10187
+Pseudo R2                0.12216          0.10557          0.12381
+BIC                      1,729.7          1,762.0          1,734.1
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+-- Average marginal effects (mean-of-derivatives) --
+A: permitLogArea     localPPSF 
+      -0.2830       -0.3518 
+B:   permitLogArea slope_strataPre 
+        -0.3338         -0.4482 
+C:   permitLogArea       localPPSF slope_strataPre 
+        -0.2855         -0.2953         -0.1481 
+
+========== HORSE RACE: localPPSF vs slope_duplexPremium33 (duplex) ==========
+
+-- Default (model-based) SEs --
+                                    mA               mB               mC
+                          A: ppsf only   B: duplex only          C: both
+Dependent Var.:               isDuplex         isDuplex         isDuplex
+                                                                        
+Constant                15.3*** (2.10)   15.0*** (2.17)   14.7*** (2.17)
+permitLogArea         -2.00*** (0.252) -1.81*** (0.263) -1.81*** (0.262)
+localPPSF             -2.49*** (0.306)                    -0.635 (0.551)
+slope_duplexPremium33                   3.07*** (0.347)  2.42*** (0.647)
+_____________________ ________________ ________________ ________________
+S.E. type                          IID              IID              IID
+Observations                     1,953            1,953            1,953
+Squared Cor.                   0.10156          0.11119          0.11118
+Pseudo R2                      0.12216          0.12937          0.13007
+BIC                            1,729.7          1,715.7          1,721.9
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+-- Conley SEs (cutoff = 3.0 km) --
+                                    mA               mB              mC
+                          A: ppsf only   B: duplex only         C: both
+Dependent Var.:               isDuplex         isDuplex        isDuplex
+                                                                       
+Constant                 15.3** (5.53)   15.0*** (4.43)   14.7** (4.64)
+permitLogArea          -2.00** (0.653) -1.81*** (0.547) -1.81** (0.571)
+localPPSF             -2.49*** (0.645)                   -0.635 (0.609)
+slope_duplexPremium33                   3.07*** (0.557)  2.42** (0.900)
+_____________________ ________________ ________________ _______________
+S.E. type                 Conley (3km)     Conley (3km)    Conley (3km)
+Observations                     1,953            1,953           1,953
+Squared Cor.                   0.10156          0.11119         0.11118
+Pseudo R2                      0.12216          0.12937         0.13007
+BIC                            1,729.7          1,715.7         1,721.9
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+-- Average marginal effects (mean-of-derivatives) --
+A: permitLogArea     localPPSF 
+      -0.2830       -0.3518 
+B:         permitLogArea slope_duplexPremium33 
+              -0.2536                0.4311 
+C:         permitLogArea             localPPSF slope_duplexPremium33 
+              -0.2540               -0.0891                0.3399 
+> 
+> cat("\nDone.\n")
+
+Done.
+> 
+> proc.time()
+   user  system elapsed 
+  6.295   0.973   3.121 
