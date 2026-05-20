@@ -12,6 +12,16 @@
 #                           slope surface gives that premium locally at
 #                           each permit location.
 #
+# Cambie corridor (Oak to Main, south of W 16th Ave) is excluded from
+# BOTH the sales-side training data AND the permit fit points. The
+# corridor's pre-2019 SF sales reflect redevelopment-option value from
+# the 2011 Cambie Corridor Plan upzoning rather than the SF-density
+# structural pricing the model expects; including them contaminates the
+# GWR surfaces in adjacent areas via the kernel. The choice script
+# (vancouverDuplexChoice.R) applies the same exclusion to permits, so
+# row counts and order match across the surfaces RDS and the choice
+# script's choiceDT.
+#
 # Fit points = COV permit locations, so the three surfaces overlay.
 # Property-type categories come from propertyTypeMap.rds (run
 # bcaPropertyTypes.R first).
@@ -19,6 +29,7 @@
 # Tom Davidoff
 # 05/18/26 (rev: replace duplex elasticity sample with duplex price-premium
 #           sample; renamed file)
+# 05/19/26 (rev: Cambie corridor exclusion on sales and permits)
 
 library(data.table)
 library(ggplot2)
@@ -136,6 +147,21 @@ plotHeatmap <- function(dt, valueCol, cfg, legendTitle, outPath,
   invisible(p)
 }
 
+# Drop rows inside cfg$excludeBox (Cambie corridor). Applied to any
+# data.table with lon/lat. NULL or missing box -> no-op. Matched 1:1
+# with the same helper in vancouverDuplexChoice.R so the choice script
+# evaluates the surfaces on the same set of permits used as fit points
+# here.
+applyExcludeBox <- function(dt, cfg, label = "") {
+  bx <- cfg$excludeBox
+  if (is.null(bx)) return(dt)
+  in_box <- dt$lon >= bx$lonMin & dt$lon <= bx$lonMax &
+            dt$lat >= bx$latMin & dt$lat <= bx$latMax
+  cat(sprintf("applyExcludeBox[%s]: dropping %d / %d rows in Cambie box\n",
+              label, sum(in_box, na.rm = TRUE), nrow(dt)))
+  dt[!in_box | is.na(in_box)]
+}
+
 # ===========================================================================
 # 2. COV CONFIG
 # ===========================================================================
@@ -159,7 +185,16 @@ cfg <- list(
   # 33' lot band for the duplex-premium sample. Width measured in feet
   # in BCA. The band absorbs measurement slop without bleeding into
   # 50'/66' lots.
-  lotWidthBand    = c(32, 34)
+  lotWidthBand    = c(32, 34),
+  # Cambie corridor exclusion: Oak St (W) to Main St (E), south of W
+  # 16th Ave, southern edge open. Same box as vancouverDuplexChoice.R.
+  # Coordinates: Oak ~-123.130, Main ~-123.101, W 16th lat ~49.258.
+  excludeBox      = list(
+    lonMin = -123.130,
+    lonMax = -123.101,
+    latMax =   49.258,
+    latMin = -Inf
+  )
 )
 
 # ===========================================================================
@@ -277,7 +312,7 @@ mkSampleStrata <- function(salesStrata, cfg) {
   d[!is.na(lon) & !is.na(lat) & is.finite(y) & is.finite(x)]
 }
 
-# ---- NEW: duplex price-premium sample -------------------------------------
+# ---- duplex price-premium sample -----------------------------------------
 # Pool SF + duplex sales on ~33' lots, 2014-2018. y = log(price), x = isDuplex.
 # GWR slope at each permit = local duplex log-price premium.
 # Note: width band absorbs BCA measurement slop without including 2x33'=66'
@@ -350,14 +385,27 @@ salesSFDuplex <- rbindlist(list(salesSF, salesDuplex), use.names = TRUE,
 
 permits   <- loadPermits(cfg)
 
+# ---- Cambie corridor exclusion -------------------------------------------
+# Drop rows inside cfg$excludeBox from BOTH sides:
+#   - sales (the training data feeding the GWRs)
+#   - permits (the fit points where surfaces are evaluated)
+# Same box used by vancouverDuplexChoice.R so the permit row counts and
+# order match across scripts.
+cat("\n---- Applying Cambie corridor exclusion ----\n")
+salesSF       <- applyExcludeBox(salesSF,       cfg, "salesSF")
+salesStrata   <- applyExcludeBox(salesStrata,   cfg, "salesStrata")
+salesDuplex   <- applyExcludeBox(salesDuplex,   cfg, "salesDuplex")
+salesSFDuplex <- applyExcludeBox(salesSFDuplex, cfg, "salesSFDuplex")
+permits       <- applyExcludeBox(permits,       cfg, "permits")
+
 dataSources <- list(salesSF       = salesSF,
                     salesStrata   = salesStrata,
                     salesDuplex   = salesDuplex,
                     salesSFDuplex = salesSFDuplex)
 
-cat(sprintf("\nLoaded sales:  SF = %d  strata = %d  duplex = %d  SF+duplex = %d\n",
+cat(sprintf("\nPost-exclusion: SF = %d  strata = %d  duplex = %d  SF+duplex = %d  permits = %d\n",
             nrow(salesSF), nrow(salesStrata), nrow(salesDuplex),
-            nrow(salesSFDuplex)))
+            nrow(salesSFDuplex), nrow(permits)))
 
 globalElast <- function(d) {
   reg <- feols(y ~ x | year, data = d)
@@ -533,6 +581,9 @@ if (!is.null(resultsBoard$singleFamilyPre)) {
 #   seSlope_*                                              (slope SEs)
 #   localPPSF                                              (age/year-resid'd
 #                                                           log-ppsf level, SF)
+# NB: permits has been exclude-box-filtered, so cmp has fewer rows than
+# the pre-exclusion permits set. vancouverDuplexChoice.R must apply the
+# same exclusion to its permits load so row-aligned cbind works.
 if (exists("cmp")) {
   cat(sprintf("\nUnified export: %d permits x %d columns\n",
               nrow(cmp), ncol(cmp)))

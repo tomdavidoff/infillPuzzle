@@ -27,6 +27,8 @@
 library(data.table)
 library(sf)
 library(fixest)
+library(ggplot2)
+library(ggspatial)
 
 # ---------------------------------------------------------------------------
 # Config -- paths must match vancouverElasticityPrice.R
@@ -42,7 +44,27 @@ cfg <- list(
   # Conley cutoff in km. Set roughly to 2 * median GWR radius, to be
   # tightened/loosened below after we see the median radius from the
   # surfaces export. 3 km is a defensible default for k~750 GWR in COV.
-  conleyCutoffKM    = 3.0
+  conleyCutoffKM    = 3.0,
+  # Plotting (match vancouverLotPlex.R conventions)
+  xlim              = c(-123.23, -123.02),
+  ylim              = c( 49.20,   49.32),
+  tileZoom          = 12,
+  outDir            = "text/",
+  # Width filter: exact landWidth (rounded). 33 = "33-ft lot", 50 = "50-ft lot".
+  width33           = 33,
+  width50           = 50,
+  # Cambie corridor exclusion: Oak St (W) to Main St (E), south of W
+  # 16th Ave, southern edge open. Drops sales/permits where SF
+  # transactions reflect redevelopment-option value from the Cambie
+  # corridor upzoning (and its bleed into adjacent west-side blocks)
+  # rather than the SF-density structural pricing the model expects.
+  # Coordinates: Oak ~-123.130, Main ~-123.101, W 16th lat ~49.258.
+  excludeBox        = list(
+    lonMin = -123.130,
+    lonMax = -123.101,
+    latMax =   49.258,
+    latMin = -Inf
+  )
 )
 
 # ---------------------------------------------------------------------------
@@ -78,25 +100,51 @@ loadPermitsTagged <- function(cfg) {
              useCat = sfP$SpecificUseCategory)
 }
 
-# Attach each permit's OWN log lot area by nearest-parcel join to BCA
-# single-family parcels. Lifted from vancouverLandAssessment.R.
+# Attach each permit's OWN log lot area AND lot width by point-in-polygon
+# join: permit centroid must fall within a BCA single-family parcel
+# polygon. Permits that don't land on an SF parcel (e.g. on an existing
+# duplex, multi-family, vacant non-residential, or off-parcel) get NA
+# and are dropped downstream. Enforces "former single family" sample.
 attachOwnLotArea <- function(permits, dtSF, cfg) {
-  bca <- dtSF[!is.na(lon) & !is.na(lat) &
-              !is.na(landWidth) & !is.na(landDepth) &
-              landWidth > 0 & landDepth > 0]
-  bca[, landArea := as.numeric(landWidth) * as.numeric(landDepth)]
-  bca <- bca[landArea > 0]
+  # dtSF is an sf object with polygon geometry (see bcaVancouverParcelExtract.R).
+  # Filter to parcels with usable width/depth.
+  sfB <- dtSF[!is.na(dtSF$landWidth) & !is.na(dtSF$landDepth) &
+              dtSF$landWidth > 0 & dtSF$landDepth > 0, ]
+  sfB$landArea <- as.numeric(sfB$landWidth) * as.numeric(sfB$landDepth)
+  sfB <- sfB[sfB$landArea > 0, ]
+  sfB <- st_transform(sfB, cfg$crsProj)
+  sfB <- st_make_valid(sfB)
+
   sfP <- st_transform(
-            st_as_sf(copy(permits), coords = c("lon","lat"), crs = 4326),
+            st_as_sf(copy(permits), coords = c("lon","lat"),
+                     crs = 4326, remove = FALSE),
             cfg$crsProj)
-  sfB <- st_transform(
-            st_as_sf(bca[, .(landArea, lon, lat)],
-                     coords = c("lon","lat"), crs = 4326),
-            cfg$crsProj)
-  nn <- st_nearest_feature(sfP, sfB)
-  permits[, permitLandArea := sfB$landArea[nn]]
-  permits[, permitLogArea  := log(permitLandArea)]
+  idx <- st_within(sfP, sfB)
+  hit <- lengths(idx) > 0
+  first <- vapply(idx, function(x) if (length(x) > 0) x[1] else NA_integer_,
+                  integer(1))
+
+  permits[, permitLandArea  := NA_real_]
+  permits[, permitLandWidth := NA_real_]
+  permits[hit, permitLandArea  := sfB$landArea[first[hit]]]
+  permits[hit, permitLandWidth := as.numeric(sfB$landWidth[first[hit]])]
+  permits[, permitLogArea   := log(permitLandArea)]
+
+  cat(sprintf("Permits on a former-SF parcel: %d / %d (%.1f%%)\n",
+              sum(hit), length(hit), 100 * mean(hit)))
   permits[]
+}
+
+# Drop rows inside cfg$excludeBox (Cambie corridor). Applied to any
+# data.table with lon/lat. NULL or missing box -> no-op.
+applyExcludeBox <- function(dt, cfg) {
+  bx <- cfg$excludeBox
+  if (is.null(bx)) return(dt)
+  in_box <- dt$lon >= bx$lonMin & dt$lon <= bx$lonMax &
+            dt$lat >= bx$latMin & dt$lat <= bx$latMax
+  cat(sprintf("applyExcludeBox: dropping %d / %d rows in Cambie box\n",
+              sum(in_box, na.rm = TRUE), nrow(dt)))
+  dt[!in_box | is.na(in_box)]
 }
 
 # ---------------------------------------------------------------------------
@@ -117,32 +165,66 @@ cat(sprintf("\nPermits in R1-1, %d-%d: %d total\n",
             cfg$permitYearRange[1], cfg$permitYearRange[2], nrow(permits)))
 print(permits[, .N, by = useCat][order(-N)])
 
+# Cambie corridor exclusion. Must be applied here (BEFORE the cbind
+# with surfaces) because vancouverElasticityPrice.R applies the same
+# exclusion to its permits before estimating surfaces. With both sides
+# excised in the same order, the row counts and order match.
+permits <- applyExcludeBox(permits, cfg)
+
 if (nrow(permits) != nrow(surfaces))
-  warning(sprintf("Permit count (%d) != surfaces row count (%d). ",
-                  "Check that vancouverElasticityPrice.R was run with the ",
-                  "same cfg$permitYearRange and zoning filter.",
+  warning(sprintf(paste("Permit count (%d) != surfaces row count (%d).",
+                        "Check that vancouverElasticityPrice.R was run",
+                        "with the same cfg$permitYearRange, zoning filter,",
+                        "AND excludeBox."),
                   nrow(permits), nrow(surfaces)))
 
 # Permits and surfaces are row-aligned by construction (same loadPermits
-# filter chain). Bind them column-wise.
+# filter chain + same Cambie exclusion in both scripts). Bind column-wise.
 choiceDT <- cbind(permits, surfaces[, !c("lon","lat"), with = FALSE])
 
 # Attach permit's own log lot area from nearest SF parcel.
-dtSF <- as.data.table(readRDS(file.path(path.expand(cfg$parcelRDSDir),
-                                        "bca_vancouver_singleFamily.rds")))
+dtSF <- readRDS(file.path(path.expand(cfg$parcelRDSDir),
+                          "bca_vancouver_singleFamily.rds"))
 choiceDT <- attachOwnLotArea(choiceDT, dtSF, cfg)
 
-# Binary outcome: 1 = Duplex, 0 = Single Detached House. Drop others.
-choiceDT[, isDuplex := fifelse(useCat == "Duplex", 1L,
-                       fifelse(useCat == "Single Detached House", 0L,
-                               NA_integer_))]
+# Binary outcome: 1 = Duplex (any flavor, including w/ secondary suite,
+# lock-off, infill duplex, two-family), 0 = Single Detached House (any
+# flavor, including w/ secondary suite).
+#
+# Rules:
+#   - Anything containing "Multiple" (Multiple Dwelling, Multiple
+#     Conversion Dwelling, Infill Multiple Dwelling) -> NA. These are
+#     3+ unit structures, not the SF-vs-duplex binary.
+#   - Mixed permits naming BOTH "Single Detached" and "uplex"/"Two-
+#     Family" -> NA (ambiguous; very few).
+#   - "uplex" or "Two-Family" in useCat and not mixed -> 1.
+#   - "Single Detached" in useCat and not mixed -> 0.
+#   - Everything else (Laneway House alone, etc.) -> NA.
+hasMultiple <- grepl("Multiple", choiceDT$useCat, ignore.case = TRUE)
+hasDuplex   <- grepl("uplex|Two-Family|Two Family", choiceDT$useCat,
+                     ignore.case = TRUE)
+hasSF       <- grepl("Single Detached", choiceDT$useCat, ignore.case = TRUE)
+choiceDT[, isDuplex := NA_integer_]
+choiceDT[!hasMultiple & hasDuplex & !hasSF, isDuplex := 1L]
+choiceDT[!hasMultiple & hasSF     & !hasDuplex, isDuplex := 0L]
+cat("\nisDuplex classification (post-Multiple/mixed drop):\n")
+print(choiceDT[, .N, by = .(isDuplex,
+            ifelse(grepl("Suite", useCat), "with suite", "no suite"))][
+            order(isDuplex)])
+
+# Sample restriction: permit's own parcel was a former single-family
+# parcel (point-in-polygon hit in attachOwnLotArea).
+choiceDT[, formerSF := !is.na(permitLandArea)]
+cat(sprintf("\nformer-SF restriction: %d / %d permits retained\n",
+            sum(choiceDT$formerSF), nrow(choiceDT)))
 
 # ---------------------------------------------------------------------------
 # 4. Estimation sample
 # ---------------------------------------------------------------------------
 needed <- c("isDuplex","permitLogArea","localPPSF",
             "slope_singleFamilyPre","slope_strataPre","slope_duplexPremium33")
-est <- choiceDT[complete.cases(choiceDT[, ..needed]) &
+est <- choiceDT[formerSF == TRUE &
+                complete.cases(choiceDT[, ..needed]) &
                 is.finite(permitLogArea)]
 cat(sprintf("\nEstimation sample: n = %d  (duplex = %d, SF = %d)\n",
             nrow(est), sum(est$isDuplex == 1L), sum(est$isDuplex == 0L)))
@@ -215,5 +297,84 @@ for (raceName in names(races)) {
   cat("B: "); print(round(ame(mB), 4))
   cat("C: "); print(round(ame(mC), 4))
 }
+
+cat("\nDone with estimation.\n")
+
+# ---------------------------------------------------------------------------
+# 6. Permit-level heatmaps: duplex vs SF by lot-width bin
+# ---------------------------------------------------------------------------
+# Discrete 2-color scale rather than viridis_c, because isDuplex is binary.
+# One PNG per width bin (33-ft and 50-ft).
+
+plotChoiceHeatmap <- function(dt, cfg, exactWidth, label, outPath,
+                              size = 1.4) {
+  dtSub <- dt[formerSF == TRUE &
+              !is.na(isDuplex) &
+              !is.na(permitLandWidth) &
+              round(permitLandWidth) == exactWidth]
+  cat(sprintf("\n%s heatmap (round(width)==%g ft): n=%d  duplex=%d  SF=%d\n",
+              label, exactWidth, nrow(dtSub),
+              sum(dtSub$isDuplex == 1L), sum(dtSub$isDuplex == 0L)))
+  dtSub[, choice := factor(isDuplex, levels = c(0L, 1L),
+                           labels = c("Single Detached", "Duplex"))]
+  p <- ggplot() +
+    annotation_map_tile(type = "cartolight", zoom = cfg$tileZoom) +
+    geom_point(data = dtSub, aes(x = lon, y = lat, color = choice),
+               size = size, alpha = 0.85) +
+    scale_color_manual(values = c("Single Detached" = "#1f77b4",
+                                  "Duplex"          = "#d62728")) +
+    coord_sf(crs = 4326, xlim = cfg$xlim, ylim = cfg$ylim) +
+    theme_void() +
+    labs(color = NULL,
+         title = sprintf("Permit choice on %s lots (round(width)==%g ft)",
+                         label, exactWidth))
+  ggsave(outPath, plot = p, width = 8, height = 7, dpi = 200)
+  invisible(p)
+}
+
+# Continuous-surface heatmap. Used for localPPSF and the three slope
+# surfaces. Drops NA values; the colour scale spans the observed range.
+plotSurfaceHeatmap <- function(dt, valueCol, cfg, legendTitle, outPath,
+                               size = 1.0, option = "plasma") {
+  dtSub <- dt[!is.na(get(valueCol))]
+  cat(sprintf("\nSurface heatmap [%s]: n=%d  range=[%.3g, %.3g]\n",
+              valueCol, nrow(dtSub),
+              min(dtSub[[valueCol]]), max(dtSub[[valueCol]])))
+  p <- ggplot() +
+    annotation_map_tile(type = "cartolight", zoom = cfg$tileZoom) +
+    geom_point(data = dtSub,
+               aes(x = lon, y = lat, color = .data[[valueCol]]),
+               size = size, alpha = 0.85) +
+    scale_color_viridis_c(option = option) +
+    coord_sf(crs = 4326, xlim = cfg$xlim, ylim = cfg$ylim) +
+    theme_void() +
+    labs(color = legendTitle, title = legendTitle)
+  ggsave(outPath, plot = p, width = 8, height = 7, dpi = 200)
+  invisible(p)
+}
+
+dir.create(path.expand(cfg$outDir), showWarnings = FALSE, recursive = TRUE)
+
+# Choice heatmaps: exact 33-ft and 50-ft lots.
+plotChoiceHeatmap(choiceDT, cfg, cfg$width33, "33-ft",
+                  file.path(cfg$outDir, "duplexChoice_w33.png"))
+plotChoiceHeatmap(choiceDT, cfg, cfg$width50, "50-ft",
+                  file.path(cfg$outDir, "duplexChoice_w50.png"))
+
+# Surface heatmaps: localPPSF + the three slope surfaces, at all
+# permit locations (formerSF gate not applied; these are the same
+# surfaces values the regression uses, plotted in space).
+plotSurfaceHeatmap(choiceDT, "localPPSF", cfg,
+                   "Local PPSF (single family, pre-2019)",
+                   file.path(cfg$outDir, "surface_localPPSF.png"))
+plotSurfaceHeatmap(choiceDT, "slope_singleFamilyPre", cfg,
+                   "SF slope (log price ~ log sqft, pre-2019)",
+                   file.path(cfg$outDir, "surface_slope_singleFamilyPre.png"))
+plotSurfaceHeatmap(choiceDT, "slope_strataPre", cfg,
+                   "Strata slope (log price ~ log sqft, pre-2019)",
+                   file.path(cfg$outDir, "surface_slope_strataPre.png"))
+plotSurfaceHeatmap(choiceDT, "slope_duplexPremium33", cfg,
+                   "Duplex premium slope (33-ft lots)",
+                   file.path(cfg$outDir, "surface_slope_duplexPremium33.png"))
 
 cat("\nDone.\n")

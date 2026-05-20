@@ -16,3 +16,33 @@ Here's the outline
 		\end{itemize}
 	\item Just maps for Minne and Portland??
 \end{enumerate}
+
+\subsection{City of Vancouver Duplex Reform}
+
+In September, 2018, the City of Vancouver allowed homes in zones that previously allowed only a single family residence (possibly with a basement suite and a laneway home) to be built in the form of two (half) duplex units. This reform was pure division and no addition, in that the ratio of floor space to lot size (``FSR'') was not increased for duplex units. In fact, under the 2018 reform, duplex units had less total allowable livable square feet as duplexes could not be built with a laneway home.\footnote{See \texttt{https://council.vancouver.ca/20181218/documents/a5.pdf}.} Empirically, B.C. Assessment inventory data, shows only a very small difference in FSR between single family and duplexes built at that time. Among single family and duplex homes built on standard 33' lots with effective years between 2019 and 2023 (the date of a subsequent reform), duplex units have a mean and median FSR of .37 (so .74 for the pair), whereas single family home main buildings have mean and medians of .69 and .71. This change applied to most ``RS'' zones, which became uniformly labelled ``R1-1'' or ``R1-1'' in a 2023 reform.
+
+Our model predicts that developers would be most prone to build a duplex rather than a single family home, conditional on tearing down and replacing an existing home in areas where the difference in price between single family and duplex homes is greatest. Our model further predicts under plausible conditions, that this price wedge would be greatest where price per square foot of single family homes was lowest. We do not have a clear prediction on whether the choice to tear down a home would be likelier in areas with higher or lower price per square foot. Generally, we might expect depreciation and the gains to redevelopment to be greater in more expensive neighbourhoods.\footnote{A second-order prediction is that there might be a relative acceleration in tear-downs in areas where the duplex option has more value around the time of the reform. This is challenging to verify in our data, which has only a short sample prior to the reform, and which features a general trend of relatively increasing prices in less expensive locations, as well as a dynamic policy environment with changes such as foreign buyer and empty homes taxes being enacted around the time of the zoning reform.}
+
+\subsubsection{Data}
+
+Table \ref{tab:dataSources} describes data from the City of Vancouver and B.C. Assessment that we use to analyze pricing just before the zoning reform across locations in Vancouver and on builders' choices to replace existing single family homes with duplexes or single family homes (with or without basement suites or laneway homes).
+
+\begin{table}
+	\caption{\label{tab:dataSources} Vancouver Data Sources}
+	\begin{tabular}{lll}
+		\hline
+		Data Source & Description \\
+		\hline
+		B.C. Assessment Inventory & Property ``year built'' and ``effective year'' built, lot and structure characterstics as of 2018\\
+		B.C. Assessment Folio Data & Data on property characteristics and assessed values and last three transaction dates and prices \\
+		City of Vancouver Zoning Map & Data on zoning (restricted to R1-1 zones as of 2023, excluding Cambie Corridor area\footnote{The Cambie Corridor rezoning offers some properties with R1-1 zones various ``missing middle'' redevelopment options and hence the entire area betweeen Oak and Ontario south of 16th Avenue is excluded.} \\
+		City of Vancouver Building Permits & Permit-level data with new property centroid, permit date, type of work, cost, and type of home\\
+		\hline
+	\end{tabular}
+\end{table}
+
+\subsubsection{Analysis}
+
+We identify building permits issued in R1 zones between 2019 and 2023 on parcels that were formerly single-family homes (there were many grandfathered duplexes in R1 zones, with more or less concentration \textit{ex-ante}). The location of duplex and single family permits are plotted in Figure \ref{fig:plotDuplexSingle}.
+
+
