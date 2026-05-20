@@ -54,8 +54,13 @@ TYPE_MAP_FILE   <- "~/DropboxExternal/dataProcessed/propertyTypeMap.rds"
 OUT_DIR         <- "~/DropboxExternal/dataProcessed/"
 VANCOUVER_JUR   <- "200"
 TYPES_TO_RUN    <- c("singleFamily", "strata", "duplex")
-# Types that should be filtered to R1-1 before writing (strata = unfiltered).
-TYPES_R1_1_ONLY <- c("singleFamily") # not duplex bc almost all in RT, "duplex")
+# Types that should be filtered to R1-1 before writing. Strata is
+# unfiltered (strata buildings are allowed anywhere). Duplex is also
+# unfiltered -- most duplexes in COV are in RT zones, not R1-1, and
+# downstream analyses want access to the full duplex parcel population
+# for hedonic estimation. The R1-1 filter can be applied per-use
+# downstream.
+TYPES_R1_1_ONLY <- c("singleFamily")
 TARGET_ZONE     <- "R1-1"
 
 # ---------------------------------------------------------------------------
@@ -83,7 +88,10 @@ gpkg <- gpkgFiles[1]
 # ---------------------------------------------------------------------------
 # 1. Spatial pull -- ALL Vancouver residential parcels. We will filter
 #    on type using the 2019 vintage from SQLite, not the 2025 vintage
-#    that lives in the geopackage.
+#    that lives in the geopackage. roll_base routing (strata vs SF/duplex)
+#    is decided per-parcel by joining against the 2019 SQLite-derived
+#    strata flag, NOT by the 2026 geopackage type. A 2019 SF parcel that
+#    became a 2026 strata duplex would mis-route if we used the 2026 flag.
 # ---------------------------------------------------------------------------
 cat(sprintf("\nReading geopackage: %s\n", gpkg))
 qSpatial <- sprintf(paste(
@@ -137,26 +145,21 @@ print(as.data.table(st_drop_geometry(sfAll))[
 # write time.
 sfAll$rollNumber   <- trimws(as.character(sfAll$ROLL_NUMBER))
 sfAll$jurisdiction <- trimws(as.character(sfAll$JURISDICTION_CODE))
-sfAll <- sfAll[, c("rollNumber","jurisdiction","lon","lat","zoning2025")]
+sfAll <- sfAll[, c("rollNumber","jurisdiction",
+                   "lon","lat","zoning2025")]
 sfAll <- sfAll[!is.na(sfAll$rollNumber) & sfAll$rollNumber != "", ]
 dtSpatial <- as.data.table(st_drop_geometry(sfAll))
 dtSpatial[, geom := st_geometry(sfAll)]
+# NB: 2026 ACTUAL_USE_DESCRIPTION is NOT used as the roll_base routing
+# flag. A 2019 SF parcel that became a 2026 strata-duplex would route
+# itself as strata-2026 (full rollNumber), but its 2019 parent is an SF
+# folio at the truncated rollNumber -- so the two sides would use
+# different roll_base formulas and never match. We instead route by the
+# 2019 strata flag (built below alongside folio/inventory), which makes
+# the spatial and SQLite sides use the same rule.
 
-# CRITICAL: 2025 roll numbers can differ from 2019 roll numbers for the
-# same physical parcel. When a 2019 SF parcel was subdivided into a
-# strata duplex by 2025, the 2025 layer has TWO rolls (one per unit)
-# with new suffixes, while 2019 has ONE roll for the pre-subdivision
-# parent. Joining on full rollNumber LOSES those parcels -- they end up
-# with NA actualUseDescription and get dropped from the SF output,
-# which is the very file downstream code uses to enforce "former SF"
-# samples. We join on roll_base instead (the first ~7 digits, stripping
-# the 3-digit unit suffix), and dedupe the 2025 spatial side to one
-# representative polygon per roll_base.
-dtSpatial[, roll_base := floor(as.numeric(rollNumber) / 1000)]
-nBefore <- nrow(dtSpatial)
-dtSpatial <- dtSpatial[!duplicated(roll_base)]
-cat(sprintf("Deduped spatial rows by roll_base: %d -> %d\n",
-            nBefore, nrow(dtSpatial)))
+# dtSpatial roll_base computation is deferred until after rollIsStrata
+# is built from the 2019 SQLite side. See section 2 below.
 
 # ---------------------------------------------------------------------------
 # 2. SQLite pulls -- folio (folioID), inventory (sqft, year, dims),
@@ -179,19 +182,12 @@ dbDisconnect(con)
 
 folio[, rollNumber   := trimws(as.character(rollNumber))]
 folio[, jurisdiction := trimws(as.character(jurisdictionCode))]
-folio[, roll_base    := floor(as.numeric(rollNumber) / 1000)]
-folio <- folio[!is.na(roll_base)]
-folio <- folio[, .(folioID, roll_base, jurisdiction)]
-# One folio per roll_base (most SF rolls are already unique; if any
-# 2019 parcel had multiple folios sharing a roll_base, take the first).
-folio <- unique(folio, by = c("roll_base","jurisdiction"))
+folio[, folioID      := as.character(folioID)]
+folio <- folio[, .(folioID, rollNumber, jurisdiction)]
 
 inventory[, rollNumber   := trimws(as.character(roll_number))]
 inventory[, jurisdiction := trimws(as.character(jurisdiction))]
-inventory[, roll_base    := floor(as.numeric(rollNumber) / 1000)]
-inventory <- inventory[!is.na(roll_base)]
-inventory <- unique(inventory, by = c("roll_base","jurisdiction"))
-inventory <- inventory[, .(roll_base, jurisdiction,
+inventory <- inventory[, .(rollNumber, jurisdiction,
                            land_width, land_depth,
                            MB_effective_year, MB_total_finished_area)]
 
@@ -202,6 +198,73 @@ description[, folioID := as.character(folioID)]
 setnames(description, c("landWidth","landDepth"),
                       c("fdLandWidth","fdLandDepth"))
 description <- unique(description, by = "folioID")
+
+# Build a (rollNumber, jurisdiction) -> isStrata2019 lookup once. Used
+# on BOTH folio and inventory to route roll_base conditionally:
+#   - Strata folios in 2019: full rollNumber as roll_base. Strata units
+#     are unit-level and stable; truncation would collapse all units in
+#     a building to one arbitrary row, losing 99%+ of sqft data.
+#   - SF / duplex / everything else: floor(rollNumber / 1000) so we can
+#     reach the 2019 parent of a 2026 subdivided strata duplex.
+# We assume no meaningful 2019 SF -> 2026 strata-with-new-rolls flow.
+rollIsStrata <- unique(
+  merge(folio[, .(folioID, rollNumber, jurisdiction)],
+        description[, .(folioID, actualUseDescription)],
+        by = "folioID", all.x = TRUE)[
+    , .(rollNumber, jurisdiction,
+        isStrata2019 = grepl("Strata", actualUseDescription,
+                             ignore.case = TRUE))],
+  by = c("rollNumber","jurisdiction"))
+cat(sprintf("rollIsStrata: %d rolls, %d strata (%.1f%%)\n",
+            nrow(rollIsStrata), sum(rollIsStrata$isStrata2019),
+            100 * mean(rollIsStrata$isStrata2019)))
+
+# Apply to folio.
+folio <- merge(folio, rollIsStrata,
+               by = c("rollNumber","jurisdiction"), all.x = TRUE)
+folio[is.na(isStrata2019), isStrata2019 := FALSE]
+folio[, roll_base := NA_real_]
+folio[(isStrata2019),  roll_base := as.numeric(rollNumber)]
+folio[!(isStrata2019), roll_base := floor(as.numeric(rollNumber) / 1000)]
+folio <- folio[!is.na(roll_base)]
+folio <- unique(folio, by = c("roll_base","jurisdiction"))
+folio <- folio[, .(folioID, roll_base, jurisdiction)]
+
+# Apply to inventory. Rolls that don't appear in folio (rare for COV
+# residential) default to non-strata. These will fall out anyway via
+# the type filter at split time.
+inventory <- merge(inventory, rollIsStrata,
+                   by = c("rollNumber","jurisdiction"), all.x = TRUE)
+inventory[is.na(isStrata2019), isStrata2019 := FALSE]
+inventory[, roll_base := NA_real_]
+inventory[(isStrata2019),  roll_base := as.numeric(rollNumber)]
+inventory[!(isStrata2019), roll_base := floor(as.numeric(rollNumber) / 1000)]
+inventory <- inventory[!is.na(roll_base)]
+inventory <- unique(inventory, by = c("roll_base","jurisdiction"))
+inventory <- inventory[, .(roll_base, jurisdiction,
+                           land_width, land_depth,
+                           MB_effective_year, MB_total_finished_area)]
+cat(sprintf("Inventory rows after conditional roll_base + dedup: %d\n",
+            nrow(inventory)))
+
+# Apply the same lookup to dtSpatial. A 2026 polygon's rollNumber is
+# strata-routed (full rollNumber) ONLY if that exact rollNumber also
+# appears as a 2019 strata folio in rollIsStrata. Otherwise (including
+# 2026 strata-duplex children whose 2019 parent was SF), we use the
+# truncated /1000 form so the merge hits the 2019 parent. This makes
+# the spatial and SQLite sides use the same routing rule.
+dtSpatial <- merge(dtSpatial, rollIsStrata,
+                   by = c("rollNumber","jurisdiction"), all.x = TRUE)
+dtSpatial[is.na(isStrata2019), isStrata2019 := FALSE]
+cat(sprintf("Spatial rows by 2019 strata flag for roll_base routing: strata=%d, other=%d\n",
+            sum(dtSpatial$isStrata2019), sum(!dtSpatial$isStrata2019)))
+dtSpatial[, roll_base := NA_real_]
+dtSpatial[(isStrata2019),  roll_base := as.numeric(rollNumber)]
+dtSpatial[!(isStrata2019), roll_base := floor(as.numeric(rollNumber) / 1000)]
+nBefore <- nrow(dtSpatial)
+dtSpatial <- dtSpatial[!duplicated(roll_base)]
+cat(sprintf("Deduped spatial rows by roll_base: %d -> %d\n",
+            nBefore, nrow(dtSpatial)))
 
 # ---------------------------------------------------------------------------
 # 3. Merge: spatial -> inventory (by roll/jurisdiction), then -> folio,

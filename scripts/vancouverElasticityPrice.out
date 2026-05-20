@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -425,13 +425,13 @@ Loaded propertyTypeMap. Resolved categories:
 
 ---- Applying Cambie corridor exclusion ----
 > salesSF       <- applyExcludeBox(salesSF,       cfg, "salesSF")
-applyExcludeBox[salesSF]: dropping 10253 / 107695 rows in Cambie box
+applyExcludeBox[salesSF]: dropping 10258 / 107759 rows in Cambie box
 > salesStrata   <- applyExcludeBox(salesStrata,   cfg, "salesStrata")
-applyExcludeBox[salesStrata]: dropping 136 / 2298 rows in Cambie box
+applyExcludeBox[salesStrata]: dropping 7610 / 171323 rows in Cambie box
 > salesDuplex   <- applyExcludeBox(salesDuplex,   cfg, "salesDuplex")
-applyExcludeBox[salesDuplex]: dropping 362 / 3331 rows in Cambie box
+applyExcludeBox[salesDuplex]: dropping 718 / 6621 rows in Cambie box
 > salesSFDuplex <- applyExcludeBox(salesSFDuplex, cfg, "salesSFDuplex")
-applyExcludeBox[salesSFDuplex]: dropping 10615 / 111026 rows in Cambie box
+applyExcludeBox[salesSFDuplex]: dropping 10976 / 114380 rows in Cambie box
 > permits       <- applyExcludeBox(permits,       cfg, "permits")
 applyExcludeBox[permits]: dropping 640 / 6336 rows in Cambie box
 > 
@@ -444,7 +444,7 @@ applyExcludeBox[permits]: dropping 640 / 6336 rows in Cambie box
 +             nrow(salesSF), nrow(salesStrata), nrow(salesDuplex),
 +             nrow(salesSFDuplex), nrow(permits)))
 
-Post-exclusion: SF = 97442  strata = 2162  duplex = 2969  SF+duplex = 100411  permits = 5696
+Post-exclusion: SF = 97501  strata = 163713  duplex = 5903  SF+duplex = 103404  permits = 5696
 > 
 > globalElast <- function(d) {
 +   reg <- feols(y ~ x | year, data = d)
@@ -497,37 +497,36 @@ Post-exclusion: SF = 97442  strata = 2162  duplex = 2969  SF+duplex = 100411  pe
 + }
 
 ============== Single-family, 2014-2018, land-ppsf vs log(lot area) ==============
-Sample n = 7368  (years 2014-2018)
-Global slope (year FE): beta = 0.2387  SE = 0.0161  n = 7368
+Sample n = 7374  (years 2014-2018)
+Global slope (year FE): beta = 0.2383  SE = 0.0465  n = 7374
 Local slope summary at permit fit points:
     Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
--0.65824 -0.44221 -0.35037 -0.34453 -0.25007  0.05429 
+-0.65824 -0.44256 -0.35115 -0.34523 -0.25089  0.05494 
 Saving 7 x 7 in image
 Loading required namespace: raster
 Zoom: 12
 
 ============== Strata, 2014-2018, floor-ppsf vs log(unit sqft) ==============
-Sample n = 362  (years 2014-2018)
-Global slope (year FE): beta = 0.1181  SE = 0.0499  n = 362
-Test vs reference (0.00): z = 2.367
-GWR failed at 5696 / 5696 permit fit points (NA slope).
+Sample n = 32710  (years 2014-2018)
+Global slope (year FE): beta = 0.1524  SE = 0.0198  n = 32710
+Test vs reference (0.00): z = 7.700
 Local slope summary at permit fit points:
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
-     NA      NA      NA     NaN      NA      NA    5696 
+    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+-0.46906 -0.12859 -0.06589 -0.04755  0.02964  0.34715 
 Saving 7 x 7 in image
 Zoom: 12
 
 ============== Duplex price premium, 2014-2018, 33' lots ==============
-  width band [32.0, 34.0]: n_SF = 5060, n_duplex = 291
-Sample n = 5351  (years 2014-2018)
-Global slope (year FE): beta = -0.3438  SE = 0.0223  n = 5351
+  width band [32.0, 34.0]: n_SF = 5066, n_duplex = 597
+Sample n = 5663  (years 2014-2018)
+Global slope (year FE): beta = -0.3566  SE = 0.0299  n = 5663
 
   Simple duplex log-price delta (year FE):
-    beta = -0.3438  SE = 0.0223  ->  premium ~ -29.1%
-GWR failed at 516 / 5696 permit fit points (NA slope).
+    beta = -0.3566  SE = 0.0299  ->  premium ~ -30.0%
+GWR failed at 497 / 5696 permit fit points (NA slope).
 Local slope summary at permit fit points:
-    Min.  1st Qu.   Median     Mean  3rd Qu.     Max.     NA's 
--1.19548 -0.53641 -0.27880 -0.37313 -0.22175 -0.08061      516 
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+-1.1940 -0.5592 -0.2950 -0.3816 -0.2414 -0.1008     497 
 Saving 7 x 7 in image
 Zoom: 12
 > 
@@ -549,6 +548,155 @@ Zoom: 12
 + }
 
 ============== Cross-sample slope correlations at permits ==============
-Error in cor(num, use = "complete.obs") : no complete element pairs
-Calls: print -> cor
-Execution halted
+                      slope_singleFamilyPre slope_strataPre
+slope_singleFamilyPre                  1.00           0.500
+slope_strataPre                        0.50           1.000
+slope_duplexPremium33                 -0.51          -0.718
+                      slope_duplexPremium33
+slope_singleFamilyPre                -0.510
+slope_strataPre                      -0.718
+slope_duplexPremium33                 1.000
+> 
+> # ===========================================================================
+> # 7. COV ANALOGUE OF GREATER-VAN: cor(localPPSF, localSlope) at permits
+> # ===========================================================================
+> # Mirrors the Greater-Van cross-aggregation-level diagnostic, but here
+> # the spatial scale is fixed at cfg$bandwidthK and the "level" is the
+> # COV permits. Single-family only -- this is where the
+> # elasticity-meets-price-level theoretical prediction lives. For strata
+> # (no regulation) and duplex (different LHS) the same exercise isn't
+> # parallel.
+> #
+> # Method:
+> #   1. From the SF sample, residualize log(ppsf) on log(age) + year FE
+> #      globally. The residuals are a pure location effect, matching the
+> #      Greater-Van ppsf_fe construction.
+> #   2. Run intercept-only GWR on those residuals at permits -> localPPSF.
+> #   3. localSlope already estimated as the SF elasticity surface above.
+> #   4. Cor(localPPSF, localSlope) -- unweighted (headline), precision-
+> #      weighted by 1/seSlope^2, SE-trimmed, all parallel to the
+> #      Greater-Van weightedCorDiagnostic output.
+> if (!is.null(resultsBoard$singleFamilyPre)) {
++   cat("\n============== COV: cor(localPPSF, localSlope) at permits ==============\n")
++   dSF      <- resultsBoard$singleFamilyPre$sample
++   dtSlope  <- resultsBoard$singleFamilyPre$gwr   # row-aligned to permits
++ 
++   # Step 1: residualize log(ppsf) on log(age) + year, globally.
++   regRes <- feols(y ~ log(age) | year, data = dSF)
++   dSF[, yResid := y - predict(regRes, newdata = dSF)]
++ 
++   # Step 2: intercept-only GWR on residuals at permits.
++   localPPSF <- runGWRMean(dSF, yCol = "yResid",
++                           fitPointsLL = permits, cfg = cfg,
++                           k = cfg$bandwidthK)
++ 
++   # Attach to the cross-sample comparison table for unified export.
++   if (exists("cmp")) cmp[, localPPSF := localPPSF]
++ 
++   # Step 3: assemble and report.
++   covDiag <- data.table(lon       = permits$lon,
++                         lat       = permits$lat,
++                         localPPSF = localPPSF,
++                         localSlope    = dtSlope$slope,
++                         seLocalSlope  = dtSlope$seSlope)
++   ok <- covDiag[is.finite(localPPSF) & is.finite(localSlope) &
++                 is.finite(seLocalSlope) & seLocalSlope > 0]
++   cat(sprintf("Permits with finite estimates: %d / %d\n",
++               nrow(ok), nrow(covDiag)))
++ 
++   if (nrow(ok) >= 20) {
++     seCut <- quantile(ok$seLocalSlope, 0.75, na.rm = TRUE)
++     okTrim <- ok[seLocalSlope <= seCut]
++     wCor <- function(x, y, w) {
++       w <- w / sum(w)
++       mx <- sum(w * x); my <- sum(w * y)
++       cxy <- sum(w * (x - mx) * (y - my))
++       vx  <- sum(w * (x - mx)^2)
++       vy  <- sum(w * (y - my)^2)
++       cxy / sqrt(vx * vy)
++     }
++     diagCOV <- rbindlist(list(
++       data.table(flavour = "unweighted",
++                  cor = cor(ok$localPPSF, ok$localSlope),
++                  n   = nrow(ok)),
++       data.table(flavour = "precision_wtd_1_over_se2",
++                  cor = wCor(ok$localPPSF, ok$localSlope,
++                             1 / ok$seLocalSlope^2),
++                  n   = nrow(ok)),
++       data.table(flavour = "trim_se_below_q0.75",
++                  cor = if (nrow(okTrim) >= 5)
++                    cor(okTrim$localPPSF, okTrim$localSlope) else NA_real_,
++                  n   = nrow(okTrim))
++     ))
++     diagCOV[, level := sprintf("COV_permits_k%d", cfg$bandwidthK)]
++     setcolorder(diagCOV, c("level","flavour","cor","n"))
++     print(diagCOV)
++     saveRDS(diagCOV,
++             "~/DropboxExternal/dataProcessed/covElasticityPrice_diagCOV.rds")
++ 
++     # Diagnostic scatter: localPPSF vs localSlope, point size ~ 1/seSlope^2.
++     okPlot <- ok[, .(localPPSF, localSlope,
++                      w = 1 / seLocalSlope^2)]
++     pScatter <- ggplot(okPlot,
++                        aes(x = localPPSF, y = localSlope, size = w)) +
++       geom_point(alpha = 0.45) +
++       scale_size(trans = "sqrt", guide = "none") +
++       geom_hline(yintercept = 0, linetype = "dotted") +
++       labs(title = sprintf("COV permits, k=%d: localPPSF vs localSlope (SF)",
++                            cfg$bandwidthK),
++            subtitle = "point size proportional to 1/SE^2 of localSlope",
++            x = "localPPSF (location effect on log ppsf, age/year-residualized)",
++            y = "localSlope (elasticity of log ppsf wrt log lot area)") +
++       theme_minimal()
++     ggsave("text/cov_localPPSF_vs_localSlope_SF.png", plot = pScatter,
++            width = 6.5, height = 5, dpi = 130)
++   } else {
++     cat("Too few permits with finite estimates; skipping cor.\n")
++   }
++ }
+
+============== COV: cor(localPPSF, localSlope) at permits ==============
+Permits with finite estimates: 5696 / 5696
+               level                  flavour       cor     n
+              <char>                   <char>     <num> <int>
+1: COV_permits_k1000               unweighted 0.6386147  5696
+2: COV_permits_k1000 precision_wtd_1_over_se2 0.6376707  5696
+3: COV_permits_k1000      trim_se_below_q0.75 0.6300773  4272
+Warning message:
+In `[.data.table`(cmp, , `:=`(localPPSF, localPPSF)) :
+  A shallow copy of this data.table was taken so that := can add or remove 1 columns by reference. At an earlier point, this data.table was copied by R (or was created manually using structure() or similar). Avoid names<- and attr<- which in R currently (and oddly) may copy the whole data.table. Use set* syntax instead to avoid copying: ?set, ?setnames and ?setattr. It's also not unusual for data.table-agnostic packages to produce tables affected by this issue. If this message doesn't help, please report your use case to the data.table issue tracker so the root cause can be fixed or this message improved.
+> 
+> # ===========================================================================
+> # 8. UNIFIED EXPORT for downstream scripts (e.g. vancouverDuplexChoice.R)
+> # ===========================================================================
+> # cmp now carries, at each permit fit point:
+> #   lon, lat
+> #   slope_singleFamilyPre / strataPre / duplexPremium33    (local slopes)
+> #   seSlope_*                                              (slope SEs)
+> #   localPPSF                                              (age/year-resid'd
+> #                                                           log-ppsf level, SF)
+> # NB: permits has been exclude-box-filtered, so cmp has fewer rows than
+> # the pre-exclusion permits set. vancouverDuplexChoice.R must apply the
+> # same exclusion to its permits load so row-aligned cbind works.
+> if (exists("cmp")) {
++   cat(sprintf("\nUnified export: %d permits x %d columns\n",
++               nrow(cmp), ncol(cmp)))
++   print(names(cmp))
++   saveRDS(cmp,
++           "~/DropboxExternal/dataProcessed/covElasticityPrice_permitSurfaces.rds")
++ }
+
+Unified export: 5696 permits x 9 columns
+[1] "lon"                     "lat"                    
+[3] "slope_singleFamilyPre"   "seSlope_singleFamilyPre"
+[5] "slope_strataPre"         "seSlope_strataPre"      
+[7] "slope_duplexPremium33"   "seSlope_duplexPremium33"
+[9] "localPPSF"              
+> 
+> cat("\nDone.\n")
+
+Done.
+> 
+> proc.time()
+   user  system elapsed 
+ 94.739  21.298  60.003 

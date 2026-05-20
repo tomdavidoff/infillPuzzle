@@ -221,39 +221,64 @@ cat(sprintf("\nformer-SF restriction: %d / %d permits retained\n",
 # ---------------------------------------------------------------------------
 # 4. Estimation sample
 # ---------------------------------------------------------------------------
-needed <- c("isDuplex","permitLogArea","localPPSF",
-            "slope_singleFamilyPre","slope_strataPre","slope_duplexPremium33")
+# Build the composite avgSlope surface (mean of the three local slope
+# surfaces) BEFORE constructing the estimation sample, so it can be
+# required and included in the cor matrix.
+choiceDT[, avgSlope := rowMeans(.SD, na.rm = FALSE),
+         .SDcols = c("slope_singleFamilyPre",
+                     "slope_strataPre",
+                     "slope_duplexPremium33")]
+
+needed <- c("isDuplex","permitLogArea",
+            "localPPSF_singleFamilyPre",
+            "localPPSF_strataPre",
+            "localPPSF_duplexPremium33",
+            "slope_singleFamilyPre","slope_strataPre",
+            "slope_duplexPremium33","avgSlope")
 est <- choiceDT[formerSF == TRUE &
                 complete.cases(choiceDT[, ..needed]) &
                 is.finite(permitLogArea)]
 cat(sprintf("\nEstimation sample: n = %d  (duplex = %d, SF = %d)\n",
             nrow(est), sum(est$isDuplex == 1L), sum(est$isDuplex == 0L)))
 
-# Diagnostic: correlations among the constructed regressors. Useful
-# context for reading the horse-race coefficients.
+# Diagnostic: correlations among the constructed regressors.
 cat("\nCorrelations among constructed regressors:\n")
-regCols <- c("localPPSF","slope_singleFamilyPre",
-             "slope_strataPre","slope_duplexPremium33")
+regCols <- c("localPPSF_singleFamilyPre",
+             "localPPSF_strataPre",
+             "localPPSF_duplexPremium33",
+             "slope_singleFamilyPre","slope_strataPre",
+             "slope_duplexPremium33","avgSlope")
 print(round(cor(est[, ..regCols], use = "complete.obs"), 3))
 
 # ---------------------------------------------------------------------------
 # 5. Horse races
 # ---------------------------------------------------------------------------
-# Spec A (common across races): isDuplex ~ permitLogArea + localPPSF
-# Spec B (per race):             isDuplex ~ permitLogArea + <elasticity>
-# Spec C (per race):             isDuplex ~ permitLogArea + localPPSF + <elasticity>
+# Four races. In each race three specs:
+#   A) isDuplex ~ permitLogArea + <local_ppsf>
+#   B) isDuplex ~ permitLogArea + <elasticity>
+#   C) isDuplex ~ permitLogArea + <local_ppsf> + <elasticity>
+# The ppsf paired with each elasticity is the sector-specific local
+# price level (so e.g. the strata race uses strata localPPSF, not SF
+# localPPSF). The fourth race uses SF localPPSF and the three-slope
+# average -- a single composite "average elasticity" specification.
 
 races <- list(
-  SF      = "slope_singleFamilyPre",
-  strata  = "slope_strataPre",
-  duplex  = "slope_duplexPremium33"
+  SF      = list(ppsf  = "localPPSF_singleFamilyPre",
+                 elast = "slope_singleFamilyPre"),
+  strata  = list(ppsf  = "localPPSF_strataPre",
+                 elast = "slope_strataPre"),
+  duplex  = list(ppsf  = "localPPSF_duplexPremium33",
+                 elast = "slope_duplexPremium33"),
+  avgSlope = list(ppsf  = "localPPSF_singleFamilyPre",
+                  elast = "avgSlope")
 )
 
-mkFmlA <- as.formula("isDuplex ~ permitLogArea + localPPSF")
+mkFmlA <- function(ppsf) as.formula(sprintf(
+            "isDuplex ~ permitLogArea + %s", ppsf))
 mkFmlB <- function(elast) as.formula(sprintf(
             "isDuplex ~ permitLogArea + %s", elast))
-mkFmlC <- function(elast) as.formula(sprintf(
-            "isDuplex ~ permitLogArea + localPPSF + %s", elast))
+mkFmlC <- function(ppsf, elast) as.formula(sprintf(
+            "isDuplex ~ permitLogArea + %s + %s", ppsf, elast))
 
 fitLogit <- function(fml, dat)
   feglm(fml, data = dat, family = binomial(link = "logit"))
@@ -268,28 +293,31 @@ ame <- function(model) {
          function(v) mean(dens) * b[v], numeric(1))
 }
 
-mA <- fitLogit(mkFmlA, est)
-
 # Conley SEs at the configured cutoff.
 conleyVcov <- conley(cutoff = cfg$conleyCutoffKM, distance = "spherical")
 
 for (raceName in names(races)) {
-  elast <- races[[raceName]]
+  rc    <- races[[raceName]]
+  ppsf  <- rc$ppsf
+  elast <- rc$elast
   cat(sprintf(
-    "\n========== HORSE RACE: localPPSF vs %s (%s) ==========\n",
-    elast, raceName))
+    "\n========== HORSE RACE [%s]: %s  vs  %s ==========\n",
+    raceName, ppsf, elast))
 
+  mA <- fitLogit(mkFmlA(ppsf), est)
   mB <- fitLogit(mkFmlB(elast), est)
-  mC <- fitLogit(mkFmlC(elast), est)
+  mC <- fitLogit(mkFmlC(ppsf, elast), est)
 
   cat("\n-- Default (model-based) SEs --\n")
   print(etable(mA, mB, mC, digits = 3,
-               headers = c("A: ppsf only", sprintf("B: %s only", raceName),
+               headers = c(sprintf("A: %s only", ppsf),
+                           sprintf("B: %s only", elast),
                            "C: both")))
 
   cat(sprintf("\n-- Conley SEs (cutoff = %.1f km) --\n", cfg$conleyCutoffKM))
   print(etable(mA, mB, mC, digits = 3, vcov = conleyVcov,
-               headers = c("A: ppsf only", sprintf("B: %s only", raceName),
+               headers = c(sprintf("A: %s only", ppsf),
+                           sprintf("B: %s only", elast),
                            "C: both")))
 
   cat("\n-- Average marginal effects (mean-of-derivatives) --\n")
