@@ -12,7 +12,7 @@
 \begin{document}
 
 \title{Where does the infill housing go? Addition versus division}
-\author{Thomas Davidoff\thanks{thomas.davidoff@sauder.ubc.ca}, Robert Helsley\thanks{robert.helsley@sauder.ubc.ca}, and Tsur Somerville\thanks{tsur.somerville@sauder.ubc.ca\\Sauder School of Business, University of British Columbia}\\\textbf{Under continual revision.} Updated version is available at:\\ https://github.com/tomdavidoff/infillPuzzle/blob/main/text/main.pdf}
+\author{Thomas Davidoff\thanks{thomas.davidoff@sauder.ubc.ca} and Tsur Somerville\thanks{tsur.somerville@sauder.ubc.ca\\Sauder School of Business, University of British Columbia}\\\textbf{Under continual revision.} Updated version is available at:\\ https://github.com/tomdavidoff/infillPuzzle/blob/main/text/main.pdf}
   \maketitle
 
 \onehalfspacing
@@ -227,6 +227,141 @@ In Vancouver, there are generally negative correlations between price per square
 
 
 \printbibliography
+
+\clearpage
+
+\appendix
+
+\noindent\textbf{\LARGE{Appendix}}
+
+\renewcommand\thefigure{\Alph{section}-\arabic{figure}}
+\renewcommand\thetable{\Alph{section}-\arabic{table}}
+
+\vspace{1cm}
+
+\section{From Intro}\label{sec:appndx_intro}
+
+In Minneapolis, three different infill zones have been created. We find that the zone relatively close to downtown, in which more density has been permitted, is the only of the three that exhibits a positive correlation between infill prevalence and neighbourhood price levels. In Portland, OR, where the upzoning has been more uniform across the city, we find a negative correlation between infill prevalence and neighbourhood price levels. However, the sorting is more mixed in the areas with stronger uptake. In all three cities, we find a highly positive correlation between neighbourhood average hedonically-adjusted price per square foot levels and the elasticity of price with respect to home square footage.
+
+\section{From Policies}\label{sec:appndx_policy}
+
+In this paper, we assess patterns of redevelopment of single-family sites to modestly higher density in Minneapolis, MN; Portland, OR; and Vancouver, BC, Canada. Below, we describe the evolution of the relevant policies and their details in each of these three cities.
+
+\textit{Minneapolis, MN USA}
+
+Minneapolis was moved away from single-family zoning, with the City Council voting in December 2018 to allow more than one unit on all single-family lots. The changes came into effect in January 2020 following approval by the region’s Metropolitan Council in 2019. The rezoning divides the city into three major regions, with additional distinct policies for transit corridors. These corridors were rezoned to allow 3–6 storey buildings, with 10–30 storeys permitted close to transit stations. Additionally, in May 2021, off-street parking minimums were eliminated.
+
+Our interest is in the three largest regions of the city: ``Interior-1,'' ``Interior-2,'' and ``Interior-3,'' where the rezoning permitted up to three units on all previously single-family-zoned lots. The largest land area is in Interior-1, which consists of neighborhoods most distant from the city’s core. In this area, the floor space ratio (FSR) remained unchanged at 0.5, with a maximum height of 2.5 storeys or 28 feet (8.5 meters). In Interior-2, the ring around the core, the same restrictions apply. Only in Interior-3—the single-family areas immediately south and northeast (across the Mississippi River) of the downtown core—did the rezoning increase FSR, from 0.5 to 0.6 for duplexes and 0.7 for triplexes. Triplexes also received a relaxation of the height restriction, to three storeys or 42 feet (12.8 meters). The standard residential lot size in Minneapolis is 5,000 sf, with newer single-family units typically maximizing the allowed buildable area.
+
+\textbf{PREDICTION: likelier positive sorting in Interior-3, where there is more addition, versus others only division}
+
+\textit{Portland, OR USA}
+
+Broad upzoning in Portland was triggered by the Oregon legislature’s passage of House Bill 2001 in July 2019. This bill effectively banned exclusive single-family zoning and required jurisdictions with over 25,000 residents, among other changes, to allow up to four units per lot. Cities were given until June 2022 to update their zoning codes to meet the bill’s requirements.
+
+The City of Portland enacted its first round of reforms, the Residential Infill Project (RIP-1), effective in August 2021. This first of two rounds applied to zones nearer the city centre with smaller lots (land use zones R2.5, R5, and R7).\footnote{These zones reflect allowed lot sizes: R2.5 allows 1 lot per 2,500 sq ft; R5 allows 1 lot per 5,000 sq ft; and R7 allows 1 lot per 7,000 sq ft.} Allowed FSR varied by zone and by the number of units built per lot, with an additional 0.1 FSR for each added unit above the single-family maximum of 0.7, 0.5, and 0.4 in zones R2.5, R5, and R7, respectively.\footnote{For a 2-, 3-, or 4-unit development, the maximum FAR would be 0.8, 0.9, and 1.0 in the R2.5 zone, respectively; 0.6, 0.7, and 0.8 in the R5 zone; and 0.5, 0.6, and 0.7 in the R7 zone.}
+
+The City enacted a second round of reforms (RIP-2) in June 2022. This second round extended the RIP-1 changes to the lower-density, larger-lot zones (R10 and R20, for 10,000 and 20,000 sq ft lots, respectively), which tended to be further from the city’s urban core.\footnote{The shares of single-dwelling land by zone are roughly R2.5 – 7\%, R5 – 41\%, R7 – 18\%, R10 – 18\%, and R20 – 5\%; see \textcite{DongHansz_2019}.} Additional changes under RIP-2 included the ability to subdivide lots and create townhouse-style, side-by-side, fee-simple units across all zones, as well as the extension of accessory dwelling unit (ADU) permissions into the R10 and R20 zones. Overall, RIP-2 extended RIP-1 to the remaining single-family zones, while permitting more flexibility in structure types and options for fee-simple, rather than condominium or strata, ownership.
+
+
+\section{From Data}\label{sec:appndx_data}
+
+
+Table \ref{tab:dataSources_appdx} identifies our data sources for each of the three cities. 
+
+\begin{table}
+\caption{\label{tab:dataSources_appdx} Data Sources}
+\begin{footnotesize}
+\begin{tabular}{llll}
+\hline
+City & Subject & Data Source & Coverage/Use \\
+\hline \hline
+Portland & Building permit  & City of Portland & 2022-2025 (RIP-2 era)\\
+Portland & Zoning & City of Portland & RIP-impacted zones\\
+Portland & Transactions & Attom & 2018-2021 \\
+Portland & Home and lot Characteristics & Attom\\
+\hline
+Minneapolis & Building permit  & City of Minneapolis & 2020-2025 (post-policy)\\
+Minneapolis & Zoning & City of Minneapolis & Interior 1,2, and 3 zones\\
+Minneapolis & Transactions & Attom & 2016-2020 \\
+Minneapolis & Home and lot Characteristics & Attom\\
+\hline
+\end{tabular}
+\end{footnotesize}
+\end{table}
+
+
+\subsection{Minneapolis}
+
+In Minneapolis and Portland, using Attom transaction data, we estimate the mean price per square foot and elasticity of price per square foot in home square footage for homes in formerly single family zones in the years leading up to the upzoning. Zip-code specific elasticities come from a regression of the form, where $z$ represents a Zip. $P$ is price.
+
+\begin{equation}
+	\label{eq:attomReg}
+	\ln \frac{P_{izt}}{\text{sqft}_{izt}} = \beta_{0z} + \beta_{1z} \ln \text{sqft}_{izt} + \gamma X_{izt} + \delta_t + \epsilon_{izt}
+\end{equation}
+
+We combine the estimated elasticities $\beta{1}$ and simply calculated median price per square foot by zip code, and then merge at the zip code level with each city's permit data to find the fraction of permits in upzoned formerly single-family zones that are for duplexes or triplexes (or more in the case of Portland). We then calculate correlations between the estimated elasticities, price per square foot, median income, and the propensity to build duplexes or triplexes. For Minneapolis, Table \ref{tab:MinneapolisCorrelations} shows this for all 34 affected Zip Codes/ZCTAs (top panel), for those inside the interior-3 zone, in which density bonuses of .2/.5 and .3/.5 floor area ratios were granted. Pursuant to our theoretical discussion, we expect a more positive correlation between price level and propensity to build plexes where the addition effect is larger (or existent, zone 3) than where the division effect is the only effect (zones 1 and 2). That theoretical result is supported by comparing the middle to the bottom panel, with the caveat that the number of zip codes is very small. Overall, in Minneapolis, we identify 509 permits on affected lots of which 198 are multiplex applications. 
+
+\begin{table}
+	\caption{\label{tab:MinneapolisCorrelations} Correlations between price level, elasticity of price with respect to square footage, median income, and propensity to build duplexes or triplexes in Minneapolis. All affected Zips (top panel), Interior-3 zone (middle panel, addition and division effects apply), and Interior-1 and 2 zones (bottom panel, division effect only). \textbf{Takeaway: positive sorting only where there is an addition effect.}}
+
+	\textbf{All affected Zips}
+
+\begin{tabular}{rrrrr}
+  \hline
+ & elasticity & price\_level & propensity & medianIncome \\ 
+  \hline
+elasticity & 1.00 & 0.59 & 0.28 & 0.30 \\ 
+  price\_level & 0.59 & 1.00 & 0.03 & 0.69 \\ 
+  propensity & 0.28 & 0.03 & 1.00 & -0.14 \\ 
+  medianIncome & 0.30 & 0.69 & -0.14 & 1.00 \\ 
+   \hline
+\end{tabular}
+
+\par\bigskip\par
+
+\textbf{Interior-3 zone}\par\bigskip\par
+
+\begin{tabular}{rrrrr}
+  \hline
+ & elasticity & price\_level & propensity & medianIncome \\ 
+  \hline
+elasticity & 1.00 & 0.61 & 0.32 & 0.31 \\ 
+  price\_level & 0.61 & 1.00 & 0.24 & 0.82 \\ 
+  propensity & 0.32 & 0.24 & 1.00 & 0.01 \\ 
+  medianIncome & 0.31 & 0.82 & 0.01 & 1.00 \\ 
+   \hline
+\end{tabular}
+\par\bigskip\par
+
+\textbf{Interior-1 and 2 zones}\par\bigskip\par
+\begin{tabular}{rrrrr}
+  \hline
+ & elasticity & price\_level & propensity & medianIncome \\ 
+  \hline
+elasticity & 1.00 & 0.58 & 0.36 & 0.29 \\ 
+  price\_level & 0.58 & 1.00 & -0.05 & 0.64 \\ 
+  propensity & 0.36 & -0.05 & 1.00 & -0.30 \\ 
+  medianIncome & 0.29 & 0.64 & -0.30 & 1.00 \\ 
+   \hline
+\end{tabular}
+\end{table}
+
+\subsection{Portland}
+
+In Portland, almost all of the infill uptake is in Zones 2.5 and 5, close to the urban core. Plausibly, FAR limits were not binding on large lots in the outer zones. Among building permits by zone, the mean infill propensity across zip codes (one mean per zip code) is 26.3\% for R 2.5, 10\% for R5, 5.9\% for R7, 2.9\% for R10, and 0\% for R20. Across all zip codes-zoning code pairs for which we compute infill propensities, mean prices, and elasticities of price in square foot, the correlation between uptake and price level is -.2. Across the only 5 zip codes in R2.5, we find a correlation of .71, and across the 9 zip codes in R5, the correlation is -.85. These samples are too small to draw conclusions, but the overall negative correlation reflects differences driven by an apparent negative correlation between lot size and price per square foot (driven by a higher price per square foot in R5 than R2.5). 
+
+\section{From Conclusion}\label{sec:appndx_concl}
+
+In Minneapolis, we find again a negative correlation between infill activity and price per square foot across all affected Zip Codes. However, in the relatively inner-city area where both addition and division effects apply, the correlation is positive, versus negative where there is only a division effect in outlying areas. Similarly in Portland, a strong negative correlation between price per square foot and infill activity is driven in large part by differences in lot sizes and the extent to which older floor space ratios were binding. In the active inner zones, the correlation is ambiguous within the small and larger-lot zones.
+
+
+\begin{itemize}
+	\item Division effects only: negative sorting (Vancouver duplexes)
+	\item Addition effects only: not observed
+	\item Mixed examples: mixed results (Interior-3 in Minneapolis positive, multiplexes in Vancouver negative, R2.5 in Portland positive, R5 in Portland negative, Vancouver laneways mostly negative)
+
+\end{itemize}
 
 
 \end{document}
