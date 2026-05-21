@@ -1,34 +1,62 @@
 # vancouverDuplexChoice.R
 # Downstream of vancouverElasticityPrice.R.
 # Permit-level discrete choice: does a permit build a duplex or a single
-# detached house? Regressors are the local price level and local
-# elasticity surfaces estimated at each permit's location.
+# detached house? Regressors are:
+#   - permitLogArea           -- log(lot area), permit's own scale choice
+#   - logBcaLandPPSF          -- BCA 2019 assessed land value per sqft
+#                                of lot (at the permit's own parcel).
+#                                Replaces the three sales-GWR localPPSF
+#                                surfaces previously used. One measure
+#                                of local land value, not three; built
+#                                by appraisers rather than from sales;
+#                                universal coverage; matched in time
+#                                to the permit window (BCA 2019 vs
+#                                permits 2019-2023).
+#   - slope_singleFamilyPre   -- local SF elasticity surface
+#   - slope_strataPre         -- local strata elasticity surface
+#   - slope_duplexPremium33   -- local duplex log-price premium on 33' lots
+#   - avgSlope                -- composite of the three slopes (sign-
+#                                aligned, z-scored, averaged). Z-scoring
+#                                is REQUIRED here to give each surface
+#                                equal weight in the composite, and
+#                                sign-flipping is required to put the
+#                                duplex premium on the same "positive
+#                                predicts duplex" axis as the other two
+#                                slopes. Other regressors enter in
+#                                their natural units.
 #
-# Spec strategy (per Tom): three horse races, one per elasticity surface.
-# In each race, three nested logits:
-#   A) localPPSF only
-#   B) the elasticity surface only
-#   C) both together
-# All specs include the permit's OWN log lot area (developer's scale
-# choice variable, separate from neighborhood surfaces).
+# Horse races: nine specs total. Model column order in the etable
+# output:
+#   (1) A      : BCA only
+#   (2) B-SF   : SF slope only
+#   (3) B-S    : strata slope only
+#   (4) B-D    : duplex premium only
+#   (5) B-avg  : avg slope only
+#   (6) C-SF   : BCA + SF slope
+#   (7) C-S    : BCA + strata slope
+#   (8) C-D    : BCA + duplex premium
+#   (9) C-avg  : BCA + avg slope
 #
-# Hypothesis: localPPSF should beat each elasticity in its horse race,
-# because ppsf and the regulation-induced slope are observationally
-# (nearly) equivalent to builders. The "C" columns tell us whether the
-# elasticity surface carries any incremental information once the price
-# level is conditioned on.
+# Hypothesis: BCA land value alone (spec A) should be a strong predictor;
+# adding any one elasticity surface (C specs) should add little once
+# land value is conditioned on.
 #
-# Inference: Conley SEs at cutoff = 2 * GWR median effective radius,
-# to handle spatial autocorrelation in the constructed regressors.
+# Inference: Conley SEs at cutoff = 2 * GWR median effective radius.
 #
 # Tom Davidoff
 # 05/18/26
+# 05/20/26 (rev: BCA land value replaces the three sales-GWR localPPSF
+#           surfaces; z-scoring confined to the avgSlope construction;
+#           etable calls stripped to defaults to avoid fixest 0.13.2
+#           argument-parsing quirks; user can hand-edit the TeX output
+#           for the paper)
 
 library(data.table)
 library(sf)
 library(fixest)
 library(ggplot2)
 library(ggspatial)
+library(RSQLite)
 
 # ---------------------------------------------------------------------------
 # Config -- paths must match vancouverElasticityPrice.R
@@ -41,24 +69,14 @@ cfg <- list(
   permitYearRange   = c(2019, 2023),
   parcelRDSDir      = "~/DropboxExternal/dataProcessed/",
   surfacesRDS       = "~/DropboxExternal/dataProcessed/covElasticityPrice_permitSurfaces.rds",
-  # Conley cutoff in km. Set roughly to 2 * median GWR radius, to be
-  # tightened/loosened below after we see the median radius from the
-  # surfaces export. 3 km is a defensible default for k~750 GWR in COV.
+  sqliteFile        = "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3",
   conleyCutoffKM    = 3.0,
-  # Plotting (match vancouverLotPlex.R conventions)
   xlim              = c(-123.23, -123.02),
   ylim              = c( 49.20,   49.32),
   tileZoom          = 12,
   outDir            = "text/",
-  # Width filter: exact landWidth (rounded). 33 = "33-ft lot", 50 = "50-ft lot".
   width33           = 33,
   width50           = 50,
-  # Cambie corridor exclusion: Oak St (W) to Main St (E), south of W
-  # 16th Ave, southern edge open. Drops sales/permits where SF
-  # transactions reflect redevelopment-option value from the Cambie
-  # corridor upzoning (and its bleed into adjacent west-side blocks)
-  # rather than the SF-density structural pricing the model expects.
-  # Coordinates: Oak ~-123.130, Main ~-123.101, W 16th lat ~49.258.
   excludeBox        = list(
     lonMin = -123.130,
     lonMax = -123.101,
@@ -68,9 +86,7 @@ cfg <- list(
 )
 
 # ---------------------------------------------------------------------------
-# 1. Load permits with use category (need isDuplex AND lon/lat in the
-#    SAME order as the surfaces export -- which means using the SAME
-#    loadPermits filter chain, but retaining SpecificUseCategory).
+# 1. Load helpers
 # ---------------------------------------------------------------------------
 loadPermitsTagged <- function(cfg) {
   dp <- fread(cfg$permitFile,
@@ -100,14 +116,7 @@ loadPermitsTagged <- function(cfg) {
              useCat = sfP$SpecificUseCategory)
 }
 
-# Attach each permit's OWN log lot area AND lot width by point-in-polygon
-# join: permit centroid must fall within a BCA single-family parcel
-# polygon. Permits that don't land on an SF parcel (e.g. on an existing
-# duplex, multi-family, vacant non-residential, or off-parcel) get NA
-# and are dropped downstream. Enforces "former single family" sample.
 attachOwnLotArea <- function(permits, dtSF, cfg) {
-  # dtSF is an sf object with polygon geometry (see bcaVancouverParcelExtract.R).
-  # Filter to parcels with usable width/depth.
   sfB <- dtSF[!is.na(dtSF$landWidth) & !is.na(dtSF$landDepth) &
               dtSF$landWidth > 0 & dtSF$landDepth > 0, ]
   sfB$landArea <- as.numeric(sfB$landWidth) * as.numeric(sfB$landDepth)
@@ -135,8 +144,56 @@ attachOwnLotArea <- function(permits, dtSF, cfg) {
   permits[]
 }
 
-# Drop rows inside cfg$excludeBox (Cambie corridor). Applied to any
-# data.table with lon/lat. NULL or missing box -> no-op.
+# Attach BCA 2019 land value per sqft of lot. Pulls landValue from the
+# SQLite `valuation` table, merges onto dtSF by folioID, attaches to
+# permits via point-in-polygon. Adds bcaLandPPSF and logBcaLandPPSF
+# columns to `permits` in place.
+attachBcaLandPPSF <- function(permits, dtSF, cfg) {
+  con <- dbConnect(SQLite(), path.expand(cfg$sqliteFile))
+  dtVal <- as.data.table(dbGetQuery(con,
+    "SELECT folioID, landValue FROM valuation"))
+  dbDisconnect(con)
+  dtVal[, folioID   := as.character(folioID)]
+  dtVal[, landValue := as.numeric(landValue)]
+  dtVal <- dtVal[!is.na(landValue) & landValue > 0]
+  dtVal <- unique(dtVal, by = "folioID")
+
+  dtSFwithLand <- copy(dtSF)
+  dtSFwithLand$folioID <- as.character(dtSFwithLand$folioID)
+  dtSFwithLand <- merge(dtSFwithLand, dtVal, by = "folioID", all.x = TRUE)
+
+  sfB <- dtSFwithLand[!is.na(dtSFwithLand$landWidth) &
+                      !is.na(dtSFwithLand$landDepth) &
+                      dtSFwithLand$landWidth > 0 &
+                      dtSFwithLand$landDepth > 0, ]
+  sfB$landArea     <- as.numeric(sfB$landWidth) * as.numeric(sfB$landDepth)
+  sfB$bcaLandValue <- as.numeric(sfB$landValue)
+  sfB <- sfB[sfB$landArea > 0 & !is.na(sfB$bcaLandValue) &
+             sfB$bcaLandValue > 0, ]
+  sfB$bcaLandPPSF <- sfB$bcaLandValue / sfB$landArea
+  sfB <- st_transform(sfB, cfg$crsProj)
+  sfB <- st_make_valid(sfB)
+
+  sfP <- st_transform(
+            st_as_sf(copy(permits), coords = c("lon","lat"),
+                     crs = 4326, remove = FALSE),
+            cfg$crsProj)
+  idx   <- st_within(sfP, sfB)
+  hit   <- lengths(idx) > 0
+  first <- vapply(idx, function(x) if (length(x) > 0) x[1] else NA_integer_,
+                  integer(1))
+
+  permits[, bcaLandPPSF    := NA_real_]
+  permits[hit, bcaLandPPSF := sfB$bcaLandPPSF[first[hit]]]
+  permits[, logBcaLandPPSF := log(bcaLandPPSF)]
+
+  cat(sprintf("Permits with BCA land-ppsf: %d / %d (%.1f%%)\n",
+              sum(!is.na(permits$bcaLandPPSF)),
+              nrow(permits),
+              100 * mean(!is.na(permits$bcaLandPPSF))))
+  permits[]
+}
+
 applyExcludeBox <- function(dt, cfg) {
   bx <- cfg$excludeBox
   if (is.null(bx)) return(dt)
@@ -148,7 +205,7 @@ applyExcludeBox <- function(dt, cfg) {
 }
 
 # ---------------------------------------------------------------------------
-# 2. Load surfaces from the unified export
+# 2. Load surfaces
 # ---------------------------------------------------------------------------
 if (!file.exists(path.expand(cfg$surfacesRDS)))
   stop(sprintf("%s not found. Run vancouverElasticityPrice.R first.",
@@ -158,17 +215,13 @@ cat(sprintf("\nSurfaces export: %d rows, columns:\n", nrow(surfaces)))
 print(names(surfaces))
 
 # ---------------------------------------------------------------------------
-# 3. Load permits, tag isDuplex, attach own lot area
+# 3. Load permits, attach lot area + BCA land ppsf, classify isDuplex
 # ---------------------------------------------------------------------------
 permits <- loadPermitsTagged(cfg)
 cat(sprintf("\nPermits in R1-1, %d-%d: %d total\n",
             cfg$permitYearRange[1], cfg$permitYearRange[2], nrow(permits)))
 print(permits[, .N, by = useCat][order(-N)])
 
-# Cambie corridor exclusion. Must be applied here (BEFORE the cbind
-# with surfaces) because vancouverElasticityPrice.R applies the same
-# exclusion to its permits before estimating surfaces. With both sides
-# excised in the same order, the row counts and order match.
 permits <- applyExcludeBox(permits, cfg)
 
 if (nrow(permits) != nrow(surfaces))
@@ -178,28 +231,13 @@ if (nrow(permits) != nrow(surfaces))
                         "AND excludeBox."),
                   nrow(permits), nrow(surfaces)))
 
-# Permits and surfaces are row-aligned by construction (same loadPermits
-# filter chain + same Cambie exclusion in both scripts). Bind column-wise.
 choiceDT <- cbind(permits, surfaces[, !c("lon","lat"), with = FALSE])
 
-# Attach permit's own log lot area from nearest SF parcel.
 dtSF <- readRDS(file.path(path.expand(cfg$parcelRDSDir),
                           "bca_vancouver_singleFamily.rds"))
 choiceDT <- attachOwnLotArea(choiceDT, dtSF, cfg)
+choiceDT <- attachBcaLandPPSF(choiceDT, dtSF, cfg)
 
-# Binary outcome: 1 = Duplex (any flavor, including w/ secondary suite,
-# lock-off, infill duplex, two-family), 0 = Single Detached House (any
-# flavor, including w/ secondary suite).
-#
-# Rules:
-#   - Anything containing "Multiple" (Multiple Dwelling, Multiple
-#     Conversion Dwelling, Infill Multiple Dwelling) -> NA. These are
-#     3+ unit structures, not the SF-vs-duplex binary.
-#   - Mixed permits naming BOTH "Single Detached" and "uplex"/"Two-
-#     Family" -> NA (ambiguous; very few).
-#   - "uplex" or "Two-Family" in useCat and not mixed -> 1.
-#   - "Single Detached" in useCat and not mixed -> 0.
-#   - Everything else (Laneway House alone, etc.) -> NA.
 hasMultiple <- grepl("Multiple", choiceDT$useCat, ignore.case = TRUE)
 hasDuplex   <- grepl("uplex|Two-Family|Two Family", choiceDT$useCat,
                      ignore.case = TRUE)
@@ -212,78 +250,55 @@ print(choiceDT[, .N, by = .(isDuplex,
             ifelse(grepl("Suite", useCat), "with suite", "no suite"))][
             order(isDuplex)])
 
-# Sample restriction: permit's own parcel was a former single-family
-# parcel (point-in-polygon hit in attachOwnLotArea).
 choiceDT[, formerSF := !is.na(permitLandArea)]
 cat(sprintf("\nformer-SF restriction: %d / %d permits retained\n",
             sum(choiceDT$formerSF), nrow(choiceDT)))
 
 # ---------------------------------------------------------------------------
-# 4. Estimation sample
+# 4. Estimation sample + avgSlope construction
 # ---------------------------------------------------------------------------
-# Build the composite avgSlope surface (mean of the three local slope
-# surfaces) BEFORE constructing the estimation sample, so it can be
-# required and included in the cor matrix.
-choiceDT[, avgSlope := rowMeans(.SD, na.rm = FALSE),
-         .SDcols = c("slope_singleFamilyPre",
-                     "slope_strataPre",
-                     "slope_duplexPremium33")]
-
-needed <- c("isDuplex","permitLogArea",
-            "localPPSF_singleFamilyPre",
-            "localPPSF_strataPre",
-            "localPPSF_duplexPremium33",
-            "slope_singleFamilyPre","slope_strataPre",
-            "slope_duplexPremium33","avgSlope")
+needed <- c("isDuplex","permitLogArea","logBcaLandPPSF",
+            "slope_singleFamilyPre",
+            "slope_strataPre",
+            "slope_duplexPremium33")
 est <- choiceDT[formerSF == TRUE &
                 complete.cases(choiceDT[, ..needed]) &
-                is.finite(permitLogArea)]
+                is.finite(permitLogArea) &
+                is.finite(logBcaLandPPSF)]
 cat(sprintf("\nEstimation sample: n = %d  (duplex = %d, SF = %d)\n",
             nrow(est), sum(est$isDuplex == 1L), sum(est$isDuplex == 0L)))
 
-# Diagnostic: correlations among the constructed regressors.
-cat("\nCorrelations among constructed regressors:\n")
-regCols <- c("localPPSF_singleFamilyPre",
-             "localPPSF_strataPre",
-             "localPPSF_duplexPremium33",
-             "slope_singleFamilyPre","slope_strataPre",
-             "slope_duplexPremium33","avgSlope")
-print(round(cor(est[, ..regCols], use = "complete.obs"), 3))
+# ---- avgSlope: the ONE place z-scoring is used ---------------------------
+# Sign-align each slope so positive = predicts duplex, z-score on est,
+# then average. avgSlope is the only constructed regressor that uses
+# z-scoring. All other regressors enter in natural units.
+zscore <- function(x) {
+  m <- mean(x, na.rm = TRUE)
+  s <- sd(x,   na.rm = TRUE)
+  (x - m) / s
+}
+est[, avgSlope := rowMeans(cbind(
+  zscore( slope_singleFamilyPre),
+  zscore( slope_strataPre),
+  zscore(-slope_duplexPremium33)),
+  na.rm = FALSE)]
+
+cat("\nCorrelations among regressors on est (natural units, except avgSlope):\n")
+diagCols <- c("logBcaLandPPSF",
+              "slope_singleFamilyPre",
+              "slope_strataPre",
+              "slope_duplexPremium33",
+              "avgSlope")
+print(round(cor(est[, ..diagCols], use = "complete.obs"), 3))
 
 # ---------------------------------------------------------------------------
 # 5. Horse races
 # ---------------------------------------------------------------------------
-# Four races. In each race three specs:
-#   A) isDuplex ~ permitLogArea + <local_ppsf>
-#   B) isDuplex ~ permitLogArea + <elasticity>
-#   C) isDuplex ~ permitLogArea + <local_ppsf> + <elasticity>
-# The ppsf paired with each elasticity is the sector-specific local
-# price level (so e.g. the strata race uses strata localPPSF, not SF
-# localPPSF). The fourth race uses SF localPPSF and the three-slope
-# average -- a single composite "average elasticity" specification.
-
-races <- list(
-  SF      = list(ppsf  = "localPPSF_singleFamilyPre",
-                 elast = "slope_singleFamilyPre"),
-  strata  = list(ppsf  = "localPPSF_strataPre",
-                 elast = "slope_strataPre"),
-  duplex  = list(ppsf  = "localPPSF_duplexPremium33",
-                 elast = "slope_duplexPremium33"),
-  avgSlope = list(ppsf  = "localPPSF_singleFamilyPre",
-                  elast = "avgSlope")
-)
-
-mkFmlA <- function(ppsf) as.formula(sprintf(
-            "isDuplex ~ permitLogArea + %s", ppsf))
-mkFmlB <- function(elast) as.formula(sprintf(
-            "isDuplex ~ permitLogArea + %s", elast))
-mkFmlC <- function(ppsf, elast) as.formula(sprintf(
-            "isDuplex ~ permitLogArea + %s + %s", ppsf, elast))
+mkFml <- function(rhs) as.formula(sprintf("isDuplex ~ permitLogArea + %s", rhs))
 
 fitLogit <- function(fml, dat)
   feglm(fml, data = dat, family = binomial(link = "logit"))
 
-# AMEs via mean-of-derivatives (continuous regressors)
 ame <- function(model) {
   X    <- model.matrix(model)
   b    <- coef(model)
@@ -293,47 +308,56 @@ ame <- function(model) {
          function(v) mean(dens) * b[v], numeric(1))
 }
 
-# Conley SEs at the configured cutoff.
 conleyVcov <- conley(cutoff = cfg$conleyCutoffKM, distance = "spherical")
 
-for (raceName in names(races)) {
-  rc    <- races[[raceName]]
-  ppsf  <- rc$ppsf
-  elast <- rc$elast
-  cat(sprintf(
-    "\n========== HORSE RACE [%s]: %s  vs  %s ==========\n",
-    raceName, ppsf, elast))
+dir.create(path.expand(cfg$outDir), showWarnings = FALSE, recursive = TRUE)
 
-  mA <- fitLogit(mkFmlA(ppsf), est)
-  mB <- fitLogit(mkFmlB(elast), est)
-  mC <- fitLogit(mkFmlC(ppsf, elast), est)
+# A spec
+mA <- fitLogit(mkFml("logBcaLandPPSF"), est)
 
-  cat("\n-- Default (model-based) SEs --\n")
-  print(etable(mA, mB, mC, digits = 3,
-               headers = c(sprintf("A: %s only", ppsf),
-                           sprintf("B: %s only", elast),
-                           "C: both")))
+# B specs (each elasticity alone)
+mB_SF  <- fitLogit(mkFml("slope_singleFamilyPre"), est)
+mB_S   <- fitLogit(mkFml("slope_strataPre"),       est)
+mB_D   <- fitLogit(mkFml("slope_duplexPremium33"), est)
+mB_avg <- fitLogit(mkFml("avgSlope"),              est)
 
-  cat(sprintf("\n-- Conley SEs (cutoff = %.1f km) --\n", cfg$conleyCutoffKM))
-  print(etable(mA, mB, mC, digits = 3, vcov = conleyVcov,
-               headers = c(sprintf("A: %s only", ppsf),
-                           sprintf("B: %s only", elast),
-                           "C: both")))
+# C specs (BCA + each elasticity)
+mC_SF  <- fitLogit(mkFml("logBcaLandPPSF + slope_singleFamilyPre"), est)
+mC_S   <- fitLogit(mkFml("logBcaLandPPSF + slope_strataPre"),       est)
+mC_D   <- fitLogit(mkFml("logBcaLandPPSF + slope_duplexPremium33"), est)
+mC_avg <- fitLogit(mkFml("logBcaLandPPSF + avgSlope"),              est)
 
-  cat("\n-- Average marginal effects (mean-of-derivatives) --\n")
-  cat("A: "); print(round(ame(mA), 4))
-  cat("B: "); print(round(ame(mB), 4))
-  cat("C: "); print(round(ame(mC), 4))
+allFits <- list(mA,
+                mB_SF, mB_S, mB_D, mB_avg,
+                mC_SF, mC_S, mC_D, mC_avg)
+
+cat("\n========== HORSE RACE: BCA land value vs elasticities ==========\n")
+
+cat("\n-- Default SEs --\n")
+print(etable(mA, mB_SF, mB_S, mB_D, mB_avg, mC_SF, mC_S, mC_D, mC_avg))
+
+cat("\n-- Conley SEs --\n")
+print(etable(mA, mB_SF, mB_S, mB_D, mB_avg, mC_SF, mC_S, mC_D, mC_avg,
+             vcov = conleyVcov))
+
+# TeX dump -- everything, default formatting. Hand-edit for the paper.
+etable(mA, mB_SF, mB_S, mB_D, mC_D, mC_avg,
+       vcov = conleyVcov,
+       tex = TRUE,
+       file = file.path(cfg$outDir, "horseRace_all.tex"),
+       replace = TRUE)
+
+cat("\n-- Average marginal effects --\n")
+for (i in seq_along(allFits)) {
+  cat(sprintf("Model %d:\n", i))
+  print(round(ame(allFits[[i]]), 4))
 }
 
 cat("\nDone with estimation.\n")
 
 # ---------------------------------------------------------------------------
-# 6. Permit-level heatmaps: duplex vs SF by lot-width bin
+# 6. Heatmap helpers
 # ---------------------------------------------------------------------------
-# Discrete 2-color scale rather than viridis_c, because isDuplex is binary.
-# One PNG per width bin (33-ft and 50-ft).
-
 plotChoiceHeatmap <- function(dt, cfg, exactWidth, label, outPath,
                               size = 1.4) {
   dtSub <- dt[formerSF == TRUE &
@@ -360,8 +384,8 @@ plotChoiceHeatmap <- function(dt, cfg, exactWidth, label, outPath,
   invisible(p)
 }
 
-# Continuous-surface heatmap. Used for localPPSF and the three slope
-# surfaces. Drops NA values; the colour scale spans the observed range.
+# Continuous-surface heatmap. Viridis gradient. Legend title rotated
+# vertically beside the color bar to save horizontal space. No plot title.
 plotSurfaceHeatmap <- function(dt, valueCol, cfg, legendTitle, outPath,
                                size = 1.0, option = "plasma") {
   dtSub <- dt[!is.na(get(valueCol))]
@@ -376,33 +400,31 @@ plotSurfaceHeatmap <- function(dt, valueCol, cfg, legendTitle, outPath,
     scale_color_viridis_c(option = option) +
     coord_sf(crs = 4326, xlim = cfg$xlim, ylim = cfg$ylim) +
     theme_void() +
-    labs(color = legendTitle, title = legendTitle)
+    theme(legend.title = element_text(angle = 90),
+          legend.title.position = "left") +
+    labs(color = legendTitle)
   ggsave(outPath, plot = p, width = 8, height = 7, dpi = 200)
   invisible(p)
 }
 
-dir.create(path.expand(cfg$outDir), showWarnings = FALSE, recursive = TRUE)
-
-# Choice heatmaps: exact 33-ft and 50-ft lots.
+# Choice heatmaps
 plotChoiceHeatmap(choiceDT, cfg, cfg$width33, "33-ft",
                   file.path(cfg$outDir, "duplexChoice_w33.png"))
 plotChoiceHeatmap(choiceDT, cfg, cfg$width50, "50-ft",
                   file.path(cfg$outDir, "duplexChoice_w50.png"))
 
-# Surface heatmaps: localPPSF + the three slope surfaces, at all
-# permit locations (formerSF gate not applied; these are the same
-# surfaces values the regression uses, plotted in space).
-plotSurfaceHeatmap(choiceDT, "localPPSF", cfg,
-                   "Local PPSF (single family, pre-2019)",
-                   file.path(cfg$outDir, "surface_localPPSF.png"))
+# Surface heatmaps
+plotSurfaceHeatmap(choiceDT, "logBcaLandPPSF", cfg,
+                   "BCA log(land $/sqft)",
+                   file.path(cfg$outDir, "surface_logBcaLandPPSF.png"))
 plotSurfaceHeatmap(choiceDT, "slope_singleFamilyPre", cfg,
-                   "SF slope (log price ~ log sqft, pre-2019)",
+                   "SF slope",
                    file.path(cfg$outDir, "surface_slope_singleFamilyPre.png"))
 plotSurfaceHeatmap(choiceDT, "slope_strataPre", cfg,
-                   "Strata slope (log price ~ log sqft, pre-2019)",
+                   "Strata slope",
                    file.path(cfg$outDir, "surface_slope_strataPre.png"))
 plotSurfaceHeatmap(choiceDT, "slope_duplexPremium33", cfg,
-                   "Duplex premium slope (33-ft lots)",
+                   "Duplex premium slope (33-ft)",
                    file.path(cfg$outDir, "surface_slope_duplexPremium33.png"))
 
 cat("\nDone.\n")

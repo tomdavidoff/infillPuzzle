@@ -1,0 +1,32 @@
+
+\begin{table}[htbp]
+   \caption{\label{tab:horseRace_duplex_conley} Horse race: duplex. Conley SEs, 3.0 km cutoff.}
+   \centering
+   \begin{tabular}{lccc}
+      \tabularnewline \midrule \midrule
+      Dependent Variable: & \multicolumn{3}{c}{isDuplex}\\
+                                       & A: localPPSF\_duplexPremium33\_z only   & B: slope\_duplexPremium33\_z only   & C: both \\   
+      Model:                           & (1)                                     & (2)                                 & (3)\\  
+      \midrule
+      \emph{Variables}\\
+      Constant                         & -2.07                                   & -0.899                              & -2.23\\   
+                                       & (4.64)                                  & (4.13)                              & (4.71)\\   
+      log(lot area)                    & 0.043                                   & -0.090                              & 0.061\\   
+                                       & (0.541)                                 & (0.492)                             & (0.549)\\   
+      Local price level (33-ft), z     & -0.745$^{***}$                          &                                     & -0.605$^{***}$\\   
+                                       & (0.142)                                 &                                     & (0.149)\\   
+      Duplex premium, z (sign-flipped) &                                         & -0.608$^{***}$                      & -0.155\\   
+                                       &                                         & (0.063)                             & (0.113)\\   
+      \midrule
+      \emph{Fit statistics}\\
+      Observations                     & 3,514                                   & 3,514                               & 3,514\\  
+      Squared Correlation              & 0.05396                                 & 0.04560                             & 0.05520\\  
+      Pseudo R$^2$                     & 0.06169                                 & 0.05318                             & 0.06247\\  
+      BIC                              & 3,091.4                                 & 3,119.2                             & 3,097.0\\  
+      \midrule \midrule
+      \multicolumn{4}{l}{\emph{Conley (3km) standard-errors in parentheses}}\\
+      \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+   \end{tabular}
+\end{table}
+
+

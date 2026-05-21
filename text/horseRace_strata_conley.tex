@@ -1,0 +1,32 @@
+
+\begin{table}[htbp]
+   \caption{\label{tab:horseRace_strata_conley} Horse race: strata. Conley SEs, 3.0 km cutoff.}
+   \centering
+   \begin{tabular}{lccc}
+      \tabularnewline \midrule \midrule
+      Dependent Variable: & \multicolumn{3}{c}{isDuplex}\\
+                             & A: localPPSF\_strataPre\_z only   & B: slope\_strataPre\_z only   & C: both \\   
+      Model:                 & (1)                               & (2)                           & (3)\\  
+      \midrule
+      \emph{Variables}\\
+      Constant               & 1.51                              & 3.26                          & 1.30\\   
+                             & (3.53)                            & (3.88)                        & (3.47)\\   
+      log(lot area)          & -0.374                            & -0.570                        & -0.350\\   
+                             & (0.420)                           & (0.468)                       & (0.414)\\   
+      Local PPSF (strata), z & -0.604$^{***}$                    &                               & -0.576$^{***}$\\   
+                             & (0.077)                           &                               & (0.055)\\   
+      Strata slope, z        &                                   & -0.301$^{**}$                 & -0.063\\   
+                             &                                   & (0.130)                       & (0.054)\\   
+      \midrule
+      \emph{Fit statistics}\\
+      Observations           & 3,514                             & 3,514                         & 3,514\\  
+      Squared Correlation    & 0.04667                           & 0.01850                       & 0.04727\\  
+      Pseudo R$^2$           & 0.05699                           & 0.02390                       & 0.05751\\  
+      BIC                    & 3,106.7                           & 3,214.9                       & 3,113.2\\  
+      \midrule \midrule
+      \multicolumn{4}{l}{\emph{Conley (3km) standard-errors in parentheses}}\\
+      \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+   \end{tabular}
+\end{table}
+
+

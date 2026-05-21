@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -125,7 +125,7 @@ Property types to extract:
 > # ---------------------------------------------------------------------------
 > cat(sprintf("\nReading geopackage: %s\n", gpkg))
 
-Reading geopackage: /Users/tdavidof/bigFiles/latestSpatialBCA//2026-01-09_bca_folios.gpkg
+Reading geopackage: /Users/davidoff/bigFiles/latestSpatialBCA//2026-04-08_bca_folios.gpkg
 > qSpatial <- sprintf(paste(
 +   "SELECT ROLL_NUMBER, JURISDICTION_CODE, geom",
 +   "FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
@@ -139,7 +139,7 @@ Warning message:
 In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
   argument layer is ignored when query is specified
 > cat(sprintf("Spatial rows pulled (all Vancouver): %d\n", nrow(sfAll)))
-Spatial rows pulled (all Vancouver): 223246
+Spatial rows pulled (all Vancouver): 223152
 > if (nrow(sfAll) == 0) stop("Spatial query returned zero rows.")
 > 
 > sfAll <- st_transform(sfAll, 4326)
@@ -173,22 +173,22 @@ Reading zoning: ~/DropboxExternal/dataRaw/vancouver_zoning.geojson
 > sfAll$zoning2025[zHit$idx] <- as.character(zHit$zoning_district)
 > cat(sprintf("Parcels with a 2025 zoning match: %d / %d\n",
 +             sum(!is.na(sfAll$zoning2025)), nrow(sfAll)))
-Parcels with a 2025 zoning match: 223231 / 223246
+Parcels with a 2025 zoning match: 223137 / 223152
 > cat("Top zoning2025 counts:\n")
 Top zoning2025 counts:
 > print(as.data.table(st_drop_geometry(sfAll))[
 +         !is.na(zoning2025), .N, by = zoning2025][order(-N)][1:15])
     zoning2025     N
         <char> <int>
- 1:       R1-1 66699
+ 1:       R1-1 66652
  2:         DD 15401
- 3:        C-2  7830
+ 3:        C-2  7828
  4:       R3-3  6270
- 5:       C-3A  6174
- 6:       RM-4  5791
- 7:       RT-5  3873
- 8:       R5-3  2874
- 9:       R3-2  2839
+ 5:       C-3A  6173
+ 6:       RM-4  5787
+ 7:       RT-5  3865
+ 8:       R5-3  2873
+ 9:       R3-2  2837
 10:      RM-3A  2764
 11: CD-1 (324)  2484
 12: CD-1 (314)  2331
@@ -316,7 +316,7 @@ Inventory rows after conditional roll_base + dedup: 172753
 > dtSpatial[is.na(isStrata2019), isStrata2019 := FALSE]
 > cat(sprintf("Spatial rows by 2019 strata flag for roll_base routing: strata=%d, other=%d\n",
 +             sum(dtSpatial$isStrata2019), sum(!dtSpatial$isStrata2019)))
-Spatial rows by 2019 strata flag for roll_base routing: strata=103321, other=119925
+Spatial rows by 2019 strata flag for roll_base routing: strata=103321, other=119831
 > dtSpatial[, roll_base := NA_real_]
 > dtSpatial[(isStrata2019),  roll_base := as.numeric(rollNumber)]
 > dtSpatial[!(isStrata2019), roll_base := floor(as.numeric(rollNumber) / 1000)]
@@ -324,7 +324,7 @@ Spatial rows by 2019 strata flag for roll_base routing: strata=103321, other=119
 > dtSpatial <- dtSpatial[!duplicated(roll_base)]
 > cat(sprintf("Deduped spatial rows by roll_base: %d -> %d\n",
 +             nBefore, nrow(dtSpatial)))
-Deduped spatial rows by roll_base: 223246 -> 192371
+Deduped spatial rows by roll_base: 223152 -> 192278
 > 
 > # ---------------------------------------------------------------------------
 > # 3. Merge: spatial -> inventory (by roll/jurisdiction), then -> folio,
@@ -359,22 +359,22 @@ Deduped spatial rows by roll_base: 223246 -> 192371
 > 
 > cat(sprintf("\nMerged folio-keyed rows: %d\n", nrow(dtOut)))
 
-Merged folio-keyed rows: 192371
+Merged folio-keyed rows: 192278
 > cat(sprintf("  with folioID:                   %d\n",
 +             sum(!is.na(dtOut$folioID))))
-  with folioID:                   191345
+  with folioID:                   191268
 > cat(sprintf("  with 2019 actualUseDescription: %d\n",
 +             sum(!is.na(dtOut$actualUseDescription))))
-  with 2019 actualUseDescription: 191345
+  with 2019 actualUseDescription: 191268
 > cat(sprintf("  with 2025 zoning2025:           %d\n",
 +             sum(!is.na(dtOut$zoning2025))))
-  with 2025 zoning2025:           192357
+  with 2025 zoning2025:           192264
 > cat(sprintf("  in R1-1:                        %d\n",
 +             sum(dtOut$zoning2025 == TARGET_ZONE, na.rm = TRUE)))
-  in R1-1:                        65377
+  in R1-1:                        65329
 > cat(sprintf("  with lon/lat:                   %d\n",
 +             sum(!is.na(dtOut$lon) & !is.na(dtOut$lat))))
-  with lon/lat:                   192371
+  with lon/lat:                   192278
 > cat(sprintf("  with sqft:                      %d\n",
 +             sum(!is.na(dtOut$MB_total_finished_area) &
 +                 as.numeric(dtOut$MB_total_finished_area) > 0)))
@@ -382,7 +382,7 @@ Merged folio-keyed rows: 192371
 > cat(sprintf("  with lot dims:                  %d\n",
 +             sum(!is.na(dtOut$landWidth) & !is.na(dtOut$landDepth) &
 +                 dtOut$landWidth > 0 & dtOut$landDepth > 0)))
-  with lot dims:                  88198
+  with lot dims:                  88127
 > 
 > cat("\nTop 2019 actualUseDescription values:\n")
 
@@ -392,17 +392,17 @@ Top 2019 actualUseDescription values:
                                actualUseDescription     N
                                              <char> <int>
  1:              Strata-Lot Residence (Condominium) 89678
- 2:                          Single Family Dwelling 39015
- 3:                 Residential Dwelling with Suite 34581
+ 2:                          Single Family Dwelling 38979
+ 3:                 Residential Dwelling with Suite 34560
  4:                           Commercial Strata-Lot  5128
  5:             Individual Strata Lot (Hotel/Motel)  2745
  6:                     Duplex, Strata Front / Back  2617
- 7:                       Multi-Family (Conversion)  2242
- 8:                  Multi-Family (Apartment Block)  1755
+ 7:                       Multi-Family (Conversion)  2239
+ 8:                  Multi-Family (Apartment Block)  1752
  9:                     Duplex, Strata Side by Side  1515
 10:             Row Housing (Single Unit Ownership)  1111
 11:                 Store(S) And Service Commercial   986
-12:               Property Subject To Section 19(8)   931
+12:               Property Subject To Section 19(8)   927
 13:                    Store(S) And Living Quarters   826
 14:                  Storage & Warehousing (Closed)   821
 15: Duplex, Non-Strata Side by Side or Front / Back   760
@@ -446,17 +446,17 @@ Top 2019 actualUseDescription values:
 +             , .N, by = actualUseDescription][order(-N)])
 + }
 
-[singleFamily] R1-1 filter: 73596 -> 62800 rows
-  wrote 62800 rows -> /Users/tdavidof/DropboxExternal/dataProcessed//bca_vancouver_singleFamily.rds
-  diagnostics: folioID = 62800  lon/lat = 62800  sqft = NA  lotdim = 62766
+[singleFamily] R1-1 filter: 73539 -> 62753 rows
+  wrote 62753 rows -> /Users/davidoff/DropboxExternal/dataProcessed//bca_vancouver_singleFamily.rds
+  diagnostics: folioID = 62753  lon/lat = 62753  sqft = NA  lotdim = 62719
   category counts:
               actualUseDescription     N
                             <char> <int>
-1:          Single Family Dwelling 34507
-2: Residential Dwelling with Suite 28293
+1:          Single Family Dwelling 34476
+2: Residential Dwelling with Suite 28277
 
 [strata] no zoning filter (all zones kept): 89678 rows
-  wrote 89678 rows -> /Users/tdavidof/DropboxExternal/dataProcessed//bca_vancouver_strata.rds
+  wrote 89678 rows -> /Users/davidoff/DropboxExternal/dataProcessed//bca_vancouver_strata.rds
   diagnostics: folioID = 89678  lon/lat = 89678  sqft = NA  lotdim = 20
   category counts:
                  actualUseDescription     N
@@ -464,7 +464,7 @@ Top 2019 actualUseDescription values:
 1: Strata-Lot Residence (Condominium) 89678
 
 [duplex] no zoning filter (all zones kept): 4132 rows
-  wrote 4132 rows -> /Users/tdavidof/DropboxExternal/dataProcessed//bca_vancouver_duplex.rds
+  wrote 4132 rows -> /Users/davidoff/DropboxExternal/dataProcessed//bca_vancouver_duplex.rds
   diagnostics: folioID = 4132  lon/lat = 4132  sqft = 4132  lotdim = 4117
   category counts:
           actualUseDescription     N
@@ -478,4 +478,4 @@ Done.
 > 
 > proc.time()
    user  system elapsed 
-111.288   8.583 138.989 
+ 59.357   2.310  53.015 

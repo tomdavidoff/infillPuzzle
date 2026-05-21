@@ -13,14 +13,7 @@
 #                           each permit location.
 #
 # Cambie corridor (Oak to Main, south of W 16th Ave) is excluded from
-# BOTH the sales-side training data AND the permit fit points. The
-# corridor's pre-2019 SF sales reflect redevelopment-option value from
-# the 2011 Cambie Corridor Plan upzoning rather than the SF-density
-# structural pricing the model expects; including them contaminates the
-# GWR surfaces in adjacent areas via the kernel. The choice script
-# (vancouverDuplexChoice.R) applies the same exclusion to permits, so
-# row counts and order match across the surfaces RDS and the choice
-# script's choiceDT.
+# BOTH the sales-side training data AND the permit fit points.
 #
 # Fit points = COV permit locations, so the three surfaces overlay.
 # Property-type categories come from propertyTypeMap.rds (run
@@ -30,6 +23,16 @@
 # 05/18/26 (rev: replace duplex elasticity sample with duplex price-premium
 #           sample; renamed file)
 # 05/19/26 (rev: Cambie corridor exclusion on sales and permits)
+# 05/19/26 (rev: three matched localPPSF surfaces, one per race)
+# 05/20/26 (rev: Gaussian kernel with adaptive k-NN bandwidth, replaces
+#           bisquare. Eliminates the "no duplex sales in window" NA
+#           problem at small k, since all weights are positive. The
+#           bandwidth at each fit point is d_k * cfg$gaussianBwScale,
+#           where d_k is the distance to the k-th nearest sale.
+#           cfg$gaussianBwScale = 0.5 gives a Gaussian whose effective
+#           neighborhood (~2 sigma) roughly matches the old bisquare
+#           support, while the tails fall off smoothly rather than
+#           hitting a hard zero.)
 
 library(data.table)
 library(ggplot2)
@@ -39,20 +42,38 @@ library(sf)
 library(fixest)
 
 # ===========================================================================
-# 1. GENERIC TOOLS  (identical to vancouverLandAssessment.R)
+# 1. GENERIC TOOLS
 # ===========================================================================
-gwrLocal <- function(y, x, dataCoords, fitCoords, k = 1000, mcCores = 6) {
-  bisquare <- function(d, h) ifelse(d < h, (1 - (d/h)^2)^2, 0)
+# Adaptive Gaussian-kernel local linear regression.
+#
+# At each fit point s:
+#   1. Compute distances d to all data points.
+#   2. d_k = distance to the k-th nearest data point.
+#   3. h = d_k * bwScale (bandwidth; sigma of the Gaussian).
+#   4. w_i = exp(-0.5 * (d_i / h)^2).
+#   5. Truncate weights below `weightFloor` (small-w tail is dropped to
+#      avoid carrying ~0 weights through lm.wfit; default cuts at
+#      ~4*sigma).
+#   6. Run weighted OLS on (x, y) with weights w.
+#
+# vs the old bisquare:
+#   * All in-keep weights are strictly positive (no hard cutoff at d_k).
+#   * The "no variation in x within window" NA gate (sd(x)==0) almost
+#     never fires, because the window effectively spans the whole data.
+gwrLocal <- function(y, x, dataCoords, fitCoords, k = 1000, mcCores = 6,
+                     bwScale = 0.5, weightFloor = 1e-4) {
+  gaussian <- function(d, h) exp(-0.5 * (d / h)^2)
   naRow <- c(intercept = NA_real_, slope = NA_real_,
              seInt = NA_real_, seSlope = NA_real_, nEff = NA_real_)
   fitOne <- function(s) {
     tryCatch({
       d  <- sqrt((dataCoords[,1] - s[1])^2 + (dataCoords[,2] - s[2])^2)
       if (length(d) < k) return(naRow)
-      h  <- sort(d, partial = k)[k]
-      if (!is.finite(h) || h <= 0) return(naRow)
-      w  <- bisquare(d, h)
-      keep <- w > 0
+      dk <- sort(d, partial = k)[k]
+      if (!is.finite(dk) || dk <= 0) return(naRow)
+      h  <- dk * bwScale
+      w  <- gaussian(d, h)
+      keep <- w > weightFloor
       if (sum(keep) < 3) return(naRow)
       Xm <- cbind(1, x[keep]); ym <- y[keep]; wm <- w[keep]
       ok <- complete.cases(Xm, ym, wm) & is.finite(wm) & wm > 0
@@ -77,19 +98,20 @@ gwrLocal <- function(y, x, dataCoords, fitCoords, k = 1000, mcCores = 6) {
   dt[]
 }
 
-# Intercept-only adaptive-bandwidth local mean (bisquare, k-NN bw).
-# The local price level surface that does NOT condition on lot size --
-# used for cor(localPPSF, localSlope) against the elasticity surface.
-gwrLocalMean <- function(y, dataCoords, fitCoords, k = 1000, mcCores = 6) {
-  bisquare <- function(d, h) ifelse(d < h, (1 - (d/h)^2)^2, 0)
+# Intercept-only adaptive Gaussian local mean. Same kernel and scaling
+# as gwrLocal.
+gwrLocalMean <- function(y, dataCoords, fitCoords, k = 1000, mcCores = 6,
+                         bwScale = 0.5, weightFloor = 1e-4) {
+  gaussian <- function(d, h) exp(-0.5 * (d / h)^2)
   fitOne <- function(s) {
     tryCatch({
       d <- sqrt((dataCoords[,1] - s[1])^2 + (dataCoords[,2] - s[2])^2)
       if (length(d) < k) return(NA_real_)
-      h <- sort(d, partial = k)[k]
-      if (!is.finite(h) || h <= 0) return(NA_real_)
-      w <- bisquare(d, h)
-      keep <- w > 0 & is.finite(y)
+      dk <- sort(d, partial = k)[k]
+      if (!is.finite(dk) || dk <= 0) return(NA_real_)
+      h  <- dk * bwScale
+      w  <- gaussian(d, h)
+      keep <- w > weightFloor & is.finite(y)
       if (sum(keep) < 1) return(NA_real_)
       sum(w[keep] * y[keep]) / sum(w[keep])
     }, error = function(e) NA_real_)
@@ -117,11 +139,13 @@ projectCoords <- function(dt, crsOut) {
 runGWR <- function(dtData, yCol, xCol, fitPointsLL, cfg, k = 1000) {
   dataCoords <- projectCoords(dtData, cfg$crsProj)
   fitCoords  <- projectCoords(fitPointsLL, cfg$crsProj)
-  dtLocal <- gwrLocal(y          = dtData[[yCol]],
-                      x          = dtData[[xCol]],
-                      dataCoords = dataCoords,
-                      fitCoords  = fitCoords,
-                      k          = k)
+  dtLocal <- gwrLocal(y           = dtData[[yCol]],
+                      x           = dtData[[xCol]],
+                      dataCoords  = dataCoords,
+                      fitCoords   = fitCoords,
+                      k           = k,
+                      bwScale     = cfg$gaussianBwScale,
+                      weightFloor = cfg$gaussianWeightFloor)
   dtLocal[, `:=`(lon = fitPointsLL$lon, lat = fitPointsLL$lat)]
   dtLocal[]
 }
@@ -129,8 +153,12 @@ runGWR <- function(dtData, yCol, xCol, fitPointsLL, cfg, k = 1000) {
 runGWRMean <- function(dtData, yCol, fitPointsLL, cfg, k = 1000) {
   dataCoords <- projectCoords(dtData, cfg$crsProj)
   fitCoords  <- projectCoords(fitPointsLL, cfg$crsProj)
-  gwrLocalMean(y = dtData[[yCol]],
-               dataCoords = dataCoords, fitCoords = fitCoords, k = k)
+  gwrLocalMean(y           = dtData[[yCol]],
+               dataCoords  = dataCoords,
+               fitCoords   = fitCoords,
+               k           = k,
+               bwScale     = cfg$gaussianBwScale,
+               weightFloor = cfg$gaussianWeightFloor)
 }
 
 plotHeatmap <- function(dt, valueCol, cfg, legendTitle, outPath,
@@ -147,11 +175,7 @@ plotHeatmap <- function(dt, valueCol, cfg, legendTitle, outPath,
   invisible(p)
 }
 
-# Drop rows inside cfg$excludeBox (Cambie corridor). Applied to any
-# data.table with lon/lat. NULL or missing box -> no-op. Matched 1:1
-# with the same helper in vancouverDuplexChoice.R so the choice script
-# evaluates the surfaces on the same set of permits used as fit points
-# here.
+# Drop rows inside cfg$excludeBox (Cambie corridor).
 applyExcludeBox <- function(dt, cfg, label = "") {
   bx <- cfg$excludeBox
   if (is.null(bx)) return(dt)
@@ -166,30 +190,35 @@ applyExcludeBox <- function(dt, cfg, label = "") {
 # 2. COV CONFIG
 # ===========================================================================
 cfg <- list(
-  city            = "Vancouver",
-  crsProj         = 26910,
-  xlim            = c(-123.23, -123.02),
-  ylim            = c( 49.20,   49.32),
-  tileZoom        = 12,
-  sqliteFile      = "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3",
-  parcelRDSDir    = "~/DropboxExternal/dataProcessed/",
-  permitFile      = "~/DropboxExternal/dataRaw/issued-building-permits.csv",
-  zoningGeojson   = "~/DropboxExternal/dataRaw/vancouver_zoning.geojson",
-  targetZone      = "R1-1",
-  propertyTypeMap = "~/DropboxExternal/dataProcessed/propertyTypeMap.rds",
-  trimDimsQ       = 0.05,
-  trimYQ          = 0.01,
-  salesYearRange  = c(2014, 2018),
-  permitYearRange = c(2019, 2023),
-  bandwidthK      = 1000,
+  city                = "Vancouver",
+  crsProj             = 26910,
+  xlim                = c(-123.23, -123.02),
+  ylim                = c( 49.20,   49.32),
+  tileZoom            = 12,
+  sqliteFile          = "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3",
+  parcelRDSDir        = "~/DropboxExternal/dataProcessed/",
+  permitFile          = "~/DropboxExternal/dataRaw/issued-building-permits.csv",
+  zoningGeojson       = "~/DropboxExternal/dataRaw/vancouver_zoning.geojson",
+  targetZone          = "R1-1",
+  propertyTypeMap     = "~/DropboxExternal/dataProcessed/propertyTypeMap.rds",
+  trimDimsQ           = 0.05,
+  trimYQ              = 0.01,
+  salesYearRange      = c(2014, 2018),
+  permitYearRange     = c(2019, 2023),
+  bandwidthK          = 250,
+  # Gaussian kernel parameters. bwScale * d_k is the sigma at each fit
+  # point. 0.5 gives a Gaussian whose ~95% mass region roughly matches
+  # the old bisquare support at the same k. weightFloor drops the tail
+  # below e^-4.6 (~0.01) to save time on near-zero weights.
+  gaussianBwScale     = 0.5,
+  gaussianWeightFloor = 1e-4,
   # 33' lot band for the duplex-premium sample. Width measured in feet
   # in BCA. The band absorbs measurement slop without bleeding into
   # 50'/66' lots.
-  lotWidthBand    = c(32, 34),
+  lotWidthBand        = c(32, 34),
   # Cambie corridor exclusion: Oak St (W) to Main St (E), south of W
-  # 16th Ave, southern edge open. Same box as vancouverDuplexChoice.R.
-  # Coordinates: Oak ~-123.130, Main ~-123.101, W 16th lat ~49.258.
-  excludeBox      = list(
+  # 16th Ave, southern edge open.
+  excludeBox          = list(
     lonMin = -123.130,
     lonMax = -123.101,
     latMax =   49.258,
@@ -211,14 +240,8 @@ for (nm in c("singleFamily","strata","duplex")) {
 }
 
 # ===========================================================================
-# 4. RAW LOADS  (one parcel RDS per type, one sales loader)
+# 4. RAW LOADS
 # ===========================================================================
-# Parcel RDS files are produced by bcaVancouverParcelExtract.R with the
-# unified schema:
-#   folioID, rollNumber, jurisdiction, actualUseDescription,
-#   landWidth, landDepth, MB_effective_year, MB_total_finished_area,
-#   lon, lat
-# Strata rows have NA landWidth/landDepth; SF/duplex have them populated.
 loadParcels <- function(cfg, type) {
   path <- file.path(path.expand(cfg$parcelRDSDir),
                     sprintf("bca_vancouver_%s.rds", type))
@@ -227,8 +250,6 @@ loadParcels <- function(cfg, type) {
   as.data.table(readRDS(path))
 }
 
-# Sales merged to a given parcels table. Adds year, sqft, age, landArea
-# (NA for strata where dims aren't populated).
 loadSales <- function(cfg, dtParcels) {
   con <- dbConnect(SQLite(), cfg$sqliteFile)
   dt  <- as.data.table(dbGetQuery(con,
@@ -278,12 +299,8 @@ loadPermits <- function(cfg) {
 }
 
 # ===========================================================================
-# 5. SAMPLE BUILDERS  (one per analysis)
+# 5. SAMPLE BUILDERS
 # ===========================================================================
-# Each returns a data.table with columns:
-#   lon, lat, y (LHS), x (RHS) -- plus diagnostics retained.
-# Trimming is uniform.
-
 mkSampleSF <- function(salesAll, cfg) {
   use <- propertyTypeMap$singleFamily
   d <- salesAll[actualUseDescription %in% use &
@@ -312,11 +329,6 @@ mkSampleStrata <- function(salesStrata, cfg) {
   d[!is.na(lon) & !is.na(lat) & is.finite(y) & is.finite(x)]
 }
 
-# ---- duplex price-premium sample -----------------------------------------
-# Pool SF + duplex sales on ~33' lots, 2014-2018. y = log(price), x = isDuplex.
-# GWR slope at each permit = local duplex log-price premium.
-# Note: width band absorbs BCA measurement slop without including 2x33'=66'
-# duplex lots, which represent a structurally different transaction.
 mkSampleDuplexPremium <- function(salesAll, cfg) {
   useSF  <- propertyTypeMap$singleFamily
   useDup <- propertyTypeMap$duplex
@@ -334,9 +346,6 @@ mkSampleDuplexPremium <- function(salesAll, cfg) {
   d[]
 }
 
-# Config list. Each entry: builder, label, optional reference value, file tag,
-# and an optional `extraGlobal` function for sample-specific diagnostics
-# (e.g. the simple duplex log-price delta).
 sampleConfigs <- list(
   singleFamilyPre = list(
     builder     = mkSampleSF,
@@ -358,8 +367,6 @@ sampleConfigs <- list(
     label       = "Duplex price premium, 2014-2018, 33' lots",
     refValue    = NA_real_,
     fileTag     = "duplexPrem33",
-    # Simple year-FE regression of logPrice on isDuplex.
-    # The coefficient IS the "simple delta" the project starts from.
     extraGlobal = function(d) {
       reg <- feols(y ~ x | year, data = d)
       cm  <- coeftable(reg)
@@ -385,12 +392,6 @@ salesSFDuplex <- rbindlist(list(salesSF, salesDuplex), use.names = TRUE,
 
 permits   <- loadPermits(cfg)
 
-# ---- Cambie corridor exclusion -------------------------------------------
-# Drop rows inside cfg$excludeBox from BOTH sides:
-#   - sales (the training data feeding the GWRs)
-#   - permits (the fit points where surfaces are evaluated)
-# Same box used by vancouverDuplexChoice.R so the permit row counts and
-# order match across scripts.
 cat("\n---- Applying Cambie corridor exclusion ----\n")
 salesSF       <- applyExcludeBox(salesSF,       cfg, "salesSF")
 salesStrata   <- applyExcludeBox(salesStrata,   cfg, "salesStrata")
@@ -458,10 +459,7 @@ for (nm in names(sampleConfigs)) {
 }
 
 # ---------------------------------------------------------------------------
-# Cross-sample comparison at common permit fit points.
-# `cmp` is enriched in section 7 with localPPSF and slope SEs, then saved
-# once at the very end so downstream scripts (duplex-choice) get a single
-# unified file.
+# Cross-sample slope comparison.
 # ---------------------------------------------------------------------------
 if (length(resultsBoard) >= 2) {
   cmp <- data.table(lon = permits$lon, lat = permits$lat)
@@ -475,47 +473,76 @@ if (length(resultsBoard) >= 2) {
 }
 
 # ===========================================================================
-# 7. COV ANALOGUE OF GREATER-VAN: cor(localPPSF, localSlope) at permits
+# 7. THREE MATCHED LOCAL-PRICE-LEVEL SURFACES (one per race)
 # ===========================================================================
-# Mirrors the Greater-Van cross-aggregation-level diagnostic, but here
-# the spatial scale is fixed at cfg$bandwidthK and the "level" is the
-# COV permits. Single-family only -- this is where the
-# elasticity-meets-price-level theoretical prediction lives. For strata
-# (no regulation) and duplex (different LHS) the same exercise isn't
-# parallel.
+# For each of the three samples, residualize y on the global linear FE
+# structure (sample-appropriate), then run intercept-only GWR on the
+# residuals at the permit fit points.
 #
-# Method:
-#   1. From the SF sample, residualize log(ppsf) on log(age) + year FE
-#      globally. The residuals are a pure location effect, matching the
-#      Greater-Van ppsf_fe construction.
-#   2. Run intercept-only GWR on those residuals at permits -> localPPSF.
-#   3. localSlope already estimated as the SF elasticity surface above.
-#   4. Cor(localPPSF, localSlope) -- unweighted (headline), precision-
-#      weighted by 1/seSlope^2, SE-trimmed, all parallel to the
-#      Greater-Van weightedCorDiagnostic output.
+# Residualization controls (sample-by-sample):
+#   singleFamilyPre  -- y = log(land ppsf).      Control: log(age) + year FE.
+#   strataPre        -- y = log(floor ppsf).     Control: log(sqft) + year FE.
+#   duplexPremium33  -- y = log(price).          Control: isDuplex + year FE.
+
 if (!is.null(resultsBoard$singleFamilyPre)) {
+  cat("\n---- SF localPPSF (residualized log ppsf, log(age) + year FE) ----\n")
+  dSF <- resultsBoard$singleFamilyPre$sample
+  regResSF <- feols(y ~ log(age) | year, data = dSF)
+  dSF[, yResid := y - predict(regResSF, newdata = dSF)]
+  localPPSF_singleFamilyPre <- runGWRMean(dSF, yCol = "yResid",
+                                          fitPointsLL = permits, cfg = cfg,
+                                          k = cfg$bandwidthK)
+  if (exists("cmp")) {
+    cmp[, localPPSF_singleFamilyPre := localPPSF_singleFamilyPre]
+    cmp[, localPPSF := localPPSF_singleFamilyPre]
+  }
+  cat(sprintf("  finite values: %d / %d\n",
+              sum(is.finite(localPPSF_singleFamilyPre)),
+              length(localPPSF_singleFamilyPre)))
+}
+
+if (!is.null(resultsBoard$strataPre)) {
+  cat("\n---- Strata localPPSF (residualized log ppsf, log(sqft) + year FE) ----\n")
+  dS <- resultsBoard$strataPre$sample
+  regResS <- feols(y ~ x | year, data = dS)
+  dS[, yResid := y - predict(regResS, newdata = dS)]
+  localPPSF_strataPre <- runGWRMean(dS, yCol = "yResid",
+                                    fitPointsLL = permits, cfg = cfg,
+                                    k = cfg$bandwidthK)
+  if (exists("cmp")) cmp[, localPPSF_strataPre := localPPSF_strataPre]
+  cat(sprintf("  finite values: %d / %d\n",
+              sum(is.finite(localPPSF_strataPre)),
+              length(localPPSF_strataPre)))
+}
+
+if (!is.null(resultsBoard$duplexPremium33)) {
+  cat("\n---- Duplex33 localPPSF (residualized log price, isDuplex + year FE) ----\n")
+  dD <- resultsBoard$duplexPremium33$sample
+  regResD <- feols(y ~ x | year, data = dD)
+  dD[, yResid := y - predict(regResD, newdata = dD)]
+  localPPSF_duplexPremium33 <- runGWRMean(dD, yCol = "yResid",
+                                          fitPointsLL = permits, cfg = cfg,
+                                          k = cfg$bandwidthK)
+  if (exists("cmp"))
+    cmp[, localPPSF_duplexPremium33 := localPPSF_duplexPremium33]
+  cat(sprintf("  finite values: %d / %d\n",
+              sum(is.finite(localPPSF_duplexPremium33)),
+              length(localPPSF_duplexPremium33)))
+}
+
+# ===========================================================================
+# 7B. COV ANALOGUE OF GREATER-VAN: cor(localPPSF, localSlope) at permits
+# ===========================================================================
+if (!is.null(resultsBoard$singleFamilyPre) &&
+    exists("localPPSF_singleFamilyPre")) {
   cat("\n============== COV: cor(localPPSF, localSlope) at permits ==============\n")
-  dSF      <- resultsBoard$singleFamilyPre$sample
-  dtSlope  <- resultsBoard$singleFamilyPre$gwr   # row-aligned to permits
+  dtSlope <- resultsBoard$singleFamilyPre$gwr
 
-  # Step 1: residualize log(ppsf) on log(age) + year, globally.
-  regRes <- feols(y ~ log(age) | year, data = dSF)
-  dSF[, yResid := y - predict(regRes, newdata = dSF)]
-
-  # Step 2: intercept-only GWR on residuals at permits.
-  localPPSF <- runGWRMean(dSF, yCol = "yResid",
-                          fitPointsLL = permits, cfg = cfg,
-                          k = cfg$bandwidthK)
-
-  # Attach to the cross-sample comparison table for unified export.
-  if (exists("cmp")) cmp[, localPPSF := localPPSF]
-
-  # Step 3: assemble and report.
-  covDiag <- data.table(lon       = permits$lon,
-                        lat       = permits$lat,
-                        localPPSF = localPPSF,
-                        localSlope    = dtSlope$slope,
-                        seLocalSlope  = dtSlope$seSlope)
+  covDiag <- data.table(lon          = permits$lon,
+                        lat          = permits$lat,
+                        localPPSF    = localPPSF_singleFamilyPre,
+                        localSlope   = dtSlope$slope,
+                        seLocalSlope = dtSlope$seSlope)
   ok <- covDiag[is.finite(localPPSF) & is.finite(localSlope) &
                 is.finite(seLocalSlope) & seLocalSlope > 0]
   cat(sprintf("Permits with finite estimates: %d / %d\n",
@@ -551,7 +578,6 @@ if (!is.null(resultsBoard$singleFamilyPre)) {
     saveRDS(diagCOV,
             "~/DropboxExternal/dataProcessed/covElasticityPrice_diagCOV.rds")
 
-    # Diagnostic scatter: localPPSF vs localSlope, point size ~ 1/seSlope^2.
     okPlot <- ok[, .(localPPSF, localSlope,
                      w = 1 / seLocalSlope^2)]
     pScatter <- ggplot(okPlot,
@@ -575,15 +601,6 @@ if (!is.null(resultsBoard$singleFamilyPre)) {
 # ===========================================================================
 # 8. UNIFIED EXPORT for downstream scripts (e.g. vancouverDuplexChoice.R)
 # ===========================================================================
-# cmp now carries, at each permit fit point:
-#   lon, lat
-#   slope_singleFamilyPre / strataPre / duplexPremium33    (local slopes)
-#   seSlope_*                                              (slope SEs)
-#   localPPSF                                              (age/year-resid'd
-#                                                           log-ppsf level, SF)
-# NB: permits has been exclude-box-filtered, so cmp has fewer rows than
-# the pre-exclusion permits set. vancouverDuplexChoice.R must apply the
-# same exclusion to its permits load so row-aligned cbind works.
 if (exists("cmp")) {
   cat(sprintf("\nUnified export: %d permits x %d columns\n",
               nrow(cmp), ncol(cmp)))

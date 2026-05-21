@@ -1,0 +1,32 @@
+
+\begin{table}[htbp]
+   \caption{\label{tab:horseRace_strata_default} Horse race: strata. Default SEs.}
+   \centering
+   \begin{tabular}{lccc}
+      \tabularnewline \midrule \midrule
+      Dependent Variable: & \multicolumn{3}{c}{isDuplex}\\
+                             & A: localPPSF\_strataPre\_z only   & B: slope\_strataPre\_z only   & C: both \\   
+      Model:                 & (1)                               & (2)                           & (3)\\  
+      \midrule
+      \emph{Variables}\\
+      Constant               & 1.51                              & 3.26$^{**}$                   & 1.30\\   
+                             & (1.34)                            & (1.29)                        & (1.36)\\   
+      log(lot area)          & -0.374$^{**}$                     & -0.570$^{***}$                & -0.350$^{**}$\\   
+                             & (0.159)                           & (0.153)                       & (0.160)\\   
+      Local PPSF (strata), z & -0.604$^{***}$                    &                               & -0.576$^{***}$\\   
+                             & (0.051)                           &                               & (0.056)\\   
+      Strata slope, z        &                                   & -0.301$^{***}$                & -0.063\\   
+                             &                                   & (0.045)                       & (0.048)\\   
+      \midrule
+      \emph{Fit statistics}\\
+      Observations           & 3,514                             & 3,514                         & 3,514\\  
+      Squared Correlation    & 0.04667                           & 0.01850                       & 0.04727\\  
+      Pseudo R$^2$           & 0.05699                           & 0.02390                       & 0.05751\\  
+      BIC                    & 3,106.7                           & 3,214.9                       & 3,113.2\\  
+      \midrule \midrule
+      \multicolumn{4}{l}{\emph{IID standard-errors in parentheses}}\\
+      \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+   \end{tabular}
+\end{table}
+
+

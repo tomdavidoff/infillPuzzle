@@ -1,0 +1,32 @@
+
+\begin{table}[htbp]
+   \caption{\label{tab:horseRace_avgSlope_conley} Horse race: avgSlope. Conley SEs, 3.0 km cutoff.}
+   \centering
+   \begin{tabular}{lccc}
+      \tabularnewline \midrule \midrule
+      Dependent Variable: & \multicolumn{3}{c}{isDuplex}\\
+                                         & A: localPPSF\_singleFamilyPre\_z only   & B: avgSlope\_z only  & C: both \\   
+      Model:                             & (1)                                     & (2)                  & (3)\\  
+      \midrule
+      \emph{Variables}\\
+      Constant                           & -1.51                                   & 0.196                & -1.41\\   
+                                         & (4.49)                                  & (3.78)               & (4.49)\\   
+      log(lot area)                      & -0.025                                  & -0.215               & -0.035\\   
+                                         & (0.523)                                 & (0.448)              & (0.523)\\   
+      Local PPSF (SF), z                 & -0.747$^{***}$                          &                      & -0.778$^{***}$\\   
+                                         & (0.138)                                 &                      & (0.129)\\   
+      Avg slope (3-surface composite), z &                                         & -0.694$^{***}$       & 0.053\\   
+                                         &                                         & (0.153)              & (0.041)\\   
+      \midrule
+      \emph{Fit statistics}\\
+      Observations                       & 3,514                                   & 3,514                & 3,514\\  
+      Squared Correlation                & 0.05439                                 & 0.03156              & 0.05443\\  
+      Pseudo R$^2$                       & 0.06319                                 & 0.04017              & 0.06326\\  
+      BIC                                & 3,086.5                                 & 3,161.7              & 3,094.4\\  
+      \midrule \midrule
+      \multicolumn{4}{l}{\emph{Conley (3km) standard-errors in parentheses}}\\
+      \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
+   \end{tabular}
+\end{table}
+
+
