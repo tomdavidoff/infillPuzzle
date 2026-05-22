@@ -2,54 +2,66 @@
 # Downstream of vancouverElasticityPrice.R.
 # Permit-level discrete choice: does a permit build a duplex or a single
 # detached house? Regressors are:
-#   - permitLogArea           -- log(lot area), permit's own scale choice
-#   - logBcaLandPPSF          -- BCA 2019 assessed land value per sqft
-#                                of lot (at the permit's own parcel).
-#                                Replaces the three sales-GWR localPPSF
-#                                surfaces previously used. One measure
-#                                of local land value, not three; built
-#                                by appraisers rather than from sales;
-#                                universal coverage; matched in time
-#                                to the permit window (BCA 2019 vs
-#                                permits 2019-2023).
-#   - slope_singleFamilyPre   -- local SF elasticity surface
-#   - slope_strataPre         -- local strata elasticity surface
-#   - slope_duplexPremium33   -- local duplex log-price premium on 33' lots
-#   - avgSlope                -- composite of the three slopes (sign-
-#                                aligned, z-scored, averaged). Z-scoring
-#                                is REQUIRED here to give each surface
-#                                equal weight in the composite, and
-#                                sign-flipping is required to put the
-#                                duplex premium on the same "positive
-#                                predicts duplex" axis as the other two
-#                                slopes. Other regressors enter in
-#                                their natural units.
+#   - permitLogArea                 -- log(lot area), permit's own scale choice.
+#   - logBcaLandPPSF                -- BCA 2019 assessed land value per sqft
+#                                      of lot. Built by appraisers, universal
+#                                      coverage, matched in time to the
+#                                      permit window (BCA 2019 vs permits
+#                                      2019-2023). Expected POSITIVE coef
+#                                      (high land value -> redevelop as duplex).
+#   - elasticity_singleFamilyPre    -- local elasticity of SF land-ppsf wrt
+#                                      log(lot area), GWR slope from upstream.
+#                                      A theta-proxy: dX/dtheta > 0, signed so
+#                                      it positively tracks rich-neighborhood
+#                                      WTP-for-quality. Expected NEGATIVE coef
+#                                      (rich neighborhoods don't duplex).
+#   - elasticity_duplexPenalty33    -- (-1) * upstream slope_duplexPremium33.
+#                                      Upstream is now in price-per-sqft space
+#                                      (Tsur 5/21/26): SF - duplex log(ppsf)
+#                                      premium on 33' lots, GWR slope. Positive
+#                                      = SF premium = rich neighborhood.
+#                                      Expected NEGATIVE coef.
+#   - avgElasticity                 -- z-scored average of the two
+#                                      elasticities. Both already on a
+#                                      "dX/dtheta > 0" axis; z-score preserves
+#                                      signs and balances scales. Expected
+#                                      NEGATIVE coef.
 #
-# Horse races: nine specs total. Model column order in the etable
-# output:
+# Sign convention: the two elasticities are theta-proxies in the sense
+# that they correlate POSITIVELY with neighborhood quality / rich
+# residents' WTP. Their literal sign (positive or negative in levels)
+# doesn't matter; what matters is that they all move together with
+# theta. The cor matrix on `est` is the diagnostic -- all pairwise cors
+# among the two elasticities and logBcaLandPPSF should be positive. If
+# elasticity_singleFamilyPre comes out NEGATIVELY correlated with the
+# others, flip its sign at the rename step.
+#
+# Strata surface was dropped per Tsur 5/21/26.
+#
+# Horse races: seven specs total. Model column order:
 #   (1) A      : BCA only
-#   (2) B-SF   : SF slope only
-#   (3) B-S    : strata slope only
-#   (4) B-D    : duplex premium only
-#   (5) B-avg  : avg slope only
-#   (6) C-SF   : BCA + SF slope
-#   (7) C-S    : BCA + strata slope
-#   (8) C-D    : BCA + duplex premium
-#   (9) C-avg  : BCA + avg slope
+#   (2) B-SF   : SF elasticity only
+#   (3) B-D    : duplex penalty only
+#   (4) B-avg  : avg elasticity only
+#   (5) C-SF   : BCA + SF elasticity
+#   (6) C-D    : BCA + duplex penalty
+#   (7) C-avg  : BCA + avg elasticity
 #
 # Hypothesis: BCA land value alone (spec A) should be a strong predictor;
-# adding any one elasticity surface (C specs) should add little once
-# land value is conditioned on.
+# adding any one elasticity (C specs) should add little once land value
+# is conditioned on. (BCA enters with +; elasticities with -; so the
+# coefficients in C specs do NOT carry the same sign as in A and B.)
 #
 # Inference: Conley SEs at cutoff = 2 * GWR median effective radius.
 #
 # Tom Davidoff
 # 05/18/26
-# 05/20/26 (rev: BCA land value replaces the three sales-GWR localPPSF
-#           surfaces; z-scoring confined to the avgSlope construction;
-#           etable calls stripped to defaults to avoid fixest 0.13.2
-#           argument-parsing quirks; user can hand-edit the TeX output
-#           for the paper)
+# 05/20/26 (rev: BCA land value replaces sales-GWR localPPSF surfaces;
+#           etable calls stripped to defaults; user hand-edits TeX.)
+# 05/21/26 (rev: dropped strata; renamed slope_singleFamilyPre to
+#           elasticity_singleFamilyPre; flipped sign of slope_duplexPremium33
+#           to make elasticity_duplexPenalty33; avgSlope -> avgElasticity;
+#           7 specs not 9.)
 
 library(data.table)
 library(sf)
@@ -64,7 +76,7 @@ library(RSQLite)
 cfg <- list(
   crsProj           = 26910,
   permitFile        = "~/DropboxExternal/dataRaw/issued-building-permits.csv",
-  zoningGeojson    = "~/DropboxExternal/dataRaw/vancouver_zoning.geojson",
+  zoningGeojson     = "~/DropboxExternal/dataRaw/vancouver_zoning.geojson",
   targetZone        = "R1-1",
   permitYearRange   = c(2019, 2023),
   parcelRDSDir      = "~/DropboxExternal/dataProcessed/",
@@ -233,6 +245,18 @@ if (nrow(permits) != nrow(surfaces))
 
 choiceDT <- cbind(permits, surfaces[, !c("lon","lat"), with = FALSE])
 
+# --- Rename / sign-flip per 5/21/26 spec --------------------------------
+# elasticity_singleFamilyPre: pure rename of slope_singleFamilyPre. Sign
+# is whatever upstream produces; what matters is that it tracks theta in
+# the same direction as the duplex penalty and logBcaLandPPSF. The cor
+# matrix on `est` is the diagnostic.
+choiceDT[, elasticity_singleFamilyPre := slope_singleFamilyPre]
+# elasticity_duplexPenalty33: SIGN-FLIPPED from slope_duplexPremium33.
+# Upstream is now SF-duplex log(ppsf) premium (Tsur 5/21/26); positive
+# upstream = duplex commands a premium = poor neighborhood. Flipping
+# gives us "SF premium = rich neighborhood = positive."
+choiceDT[, elasticity_duplexPenalty33 := -slope_duplexPremium33]
+
 dtSF <- readRDS(file.path(path.expand(cfg$parcelRDSDir),
                           "bca_vancouver_singleFamily.rds"))
 choiceDT <- attachOwnLotArea(choiceDT, dtSF, cfg)
@@ -255,12 +279,11 @@ cat(sprintf("\nformer-SF restriction: %d / %d permits retained\n",
             sum(choiceDT$formerSF), nrow(choiceDT)))
 
 # ---------------------------------------------------------------------------
-# 4. Estimation sample + avgSlope construction
+# 4. Estimation sample + avgElasticity construction
 # ---------------------------------------------------------------------------
 needed <- c("isDuplex","permitLogArea","logBcaLandPPSF",
-            "slope_singleFamilyPre",
-            "slope_strataPre",
-            "slope_duplexPremium33")
+            "elasticity_singleFamilyPre",
+            "elasticity_duplexPenalty33")
 est <- choiceDT[formerSF == TRUE &
                 complete.cases(choiceDT[, ..needed]) &
                 is.finite(permitLogArea) &
@@ -268,27 +291,28 @@ est <- choiceDT[formerSF == TRUE &
 cat(sprintf("\nEstimation sample: n = %d  (duplex = %d, SF = %d)\n",
             nrow(est), sum(est$isDuplex == 1L), sum(est$isDuplex == 0L)))
 
-# ---- avgSlope: the ONE place z-scoring is used ---------------------------
-# Sign-align each slope so positive = predicts duplex, z-score on est,
-# then average. avgSlope is the only constructed regressor that uses
-# z-scoring. All other regressors enter in natural units.
+# ---- avgElasticity: z-scored composite, both inputs already aligned ------
+# Both elasticities are theta-proxies on the same axis (dX/dtheta > 0).
+# z-score preserves signs and balances units (one is an elasticity, one
+# a log-ppsf gap). Expected negative regression coefficient.
 zscore <- function(x) {
   m <- mean(x, na.rm = TRUE)
   s <- sd(x,   na.rm = TRUE)
   (x - m) / s
 }
-est[, avgSlope := rowMeans(cbind(
-  zscore( slope_singleFamilyPre),
-  zscore( slope_strataPre),
-  zscore(-slope_duplexPremium33)),
+est[, avgElasticity := rowMeans(cbind(
+  zscore(elasticity_singleFamilyPre),
+  zscore(elasticity_duplexPenalty33)),
   na.rm = FALSE)]
 
-cat("\nCorrelations among regressors on est (natural units, except avgSlope):\n")
+cat("\nCorrelations among regressors on est (natural units, except avgElasticity):\n")
+cat("All pairwise cors among the three theta-proxies should be POSITIVE.\n")
+cat("If elasticity_singleFamilyPre cor with the others is negative, flip\n")
+cat("its sign at the rename step above.\n")
 diagCols <- c("logBcaLandPPSF",
-              "slope_singleFamilyPre",
-              "slope_strataPre",
-              "slope_duplexPremium33",
-              "avgSlope")
+              "elasticity_singleFamilyPre",
+              "elasticity_duplexPenalty33",
+              "avgElasticity")
 print(round(cor(est[, ..diagCols], use = "complete.obs"), 3))
 
 # ---------------------------------------------------------------------------
@@ -316,32 +340,28 @@ dir.create(path.expand(cfg$outDir), showWarnings = FALSE, recursive = TRUE)
 mA <- fitLogit(mkFml("logBcaLandPPSF"), est)
 
 # B specs (each elasticity alone)
-mB_SF  <- fitLogit(mkFml("slope_singleFamilyPre"), est)
-mB_S   <- fitLogit(mkFml("slope_strataPre"),       est)
-mB_D   <- fitLogit(mkFml("slope_duplexPremium33"), est)
-mB_avg <- fitLogit(mkFml("avgSlope"),              est)
+mB_SF  <- fitLogit(mkFml("elasticity_singleFamilyPre"), est)
+mB_D   <- fitLogit(mkFml("elasticity_duplexPenalty33"), est)
+mB_avg <- fitLogit(mkFml("avgElasticity"),              est)
 
 # C specs (BCA + each elasticity)
-mC_SF  <- fitLogit(mkFml("logBcaLandPPSF + slope_singleFamilyPre"), est)
-mC_S   <- fitLogit(mkFml("logBcaLandPPSF + slope_strataPre"),       est)
-mC_D   <- fitLogit(mkFml("logBcaLandPPSF + slope_duplexPremium33"), est)
-mC_avg <- fitLogit(mkFml("logBcaLandPPSF + avgSlope"),              est)
+mC_SF  <- fitLogit(mkFml("logBcaLandPPSF + elasticity_singleFamilyPre"), est)
+mC_D   <- fitLogit(mkFml("logBcaLandPPSF + elasticity_duplexPenalty33"), est)
+mC_avg <- fitLogit(mkFml("logBcaLandPPSF + avgElasticity"),              est)
 
-allFits <- list(mA,
-                mB_SF, mB_S, mB_D, mB_avg,
-                mC_SF, mC_S, mC_D, mC_avg)
+allFits <- list(mA, mB_SF, mB_D, mB_avg, mC_SF, mC_D, mC_avg)
 
 cat("\n========== HORSE RACE: BCA land value vs elasticities ==========\n")
 
 cat("\n-- Default SEs --\n")
-print(etable(mA, mB_SF, mB_S, mB_D, mB_avg, mC_SF, mC_S, mC_D, mC_avg))
+print(etable(mA, mB_SF, mB_D, mB_avg, mC_SF, mC_D, mC_avg))
 
 cat("\n-- Conley SEs --\n")
-print(etable(mA, mB_SF, mB_S, mB_D, mB_avg, mC_SF, mC_S, mC_D, mC_avg,
+print(etable(mA, mB_SF, mB_D, mB_avg, mC_SF, mC_D, mC_avg,
              vcov = conleyVcov))
 
-# TeX dump -- everything, default formatting. Hand-edit for the paper.
-etable(mA, mB_SF, mB_S, mB_D, mC_D, mC_avg,
+# TeX dump -- subset for the paper, default formatting. Hand-edit.
+etable(mA, mB_D, mC_D,
        vcov = conleyVcov,
        tex = TRUE,
        file = file.path(cfg$outDir, "horseRace_all.tex"),
@@ -417,14 +437,11 @@ plotChoiceHeatmap(choiceDT, cfg, cfg$width50, "50-ft",
 plotSurfaceHeatmap(choiceDT, "logBcaLandPPSF", cfg,
                    "BCA log(land $/sqft)",
                    file.path(cfg$outDir, "surface_logBcaLandPPSF.png"))
-plotSurfaceHeatmap(choiceDT, "slope_singleFamilyPre", cfg,
-                   "SF slope",
-                   file.path(cfg$outDir, "surface_slope_singleFamilyPre.png"))
-plotSurfaceHeatmap(choiceDT, "slope_strataPre", cfg,
-                   "Strata slope",
-                   file.path(cfg$outDir, "surface_slope_strataPre.png"))
-plotSurfaceHeatmap(choiceDT, "slope_duplexPremium33", cfg,
-                   "Duplex premium slope (33-ft)",
-                   file.path(cfg$outDir, "surface_slope_duplexPremium33.png"))
+plotSurfaceHeatmap(choiceDT, "elasticity_singleFamilyPre", cfg,
+                   "SF elasticity",
+                   file.path(cfg$outDir, "surface_elasticity_singleFamilyPre.png"))
+plotSurfaceHeatmap(choiceDT, "elasticity_duplexPenalty33", cfg,
+                   "Duplex penalty (33-ft, ppsf)",
+                   file.path(cfg$outDir, "surface_elasticity_duplexPenalty33.png"))
 
 cat("\nDone.\n")

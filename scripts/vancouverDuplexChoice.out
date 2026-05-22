@@ -21,54 +21,66 @@ Type 'q()' to quit R.
 > # Downstream of vancouverElasticityPrice.R.
 > # Permit-level discrete choice: does a permit build a duplex or a single
 > # detached house? Regressors are:
-> #   - permitLogArea           -- log(lot area), permit's own scale choice
-> #   - logBcaLandPPSF          -- BCA 2019 assessed land value per sqft
-> #                                of lot (at the permit's own parcel).
-> #                                Replaces the three sales-GWR localPPSF
-> #                                surfaces previously used. One measure
-> #                                of local land value, not three; built
-> #                                by appraisers rather than from sales;
-> #                                universal coverage; matched in time
-> #                                to the permit window (BCA 2019 vs
-> #                                permits 2019-2023).
-> #   - slope_singleFamilyPre   -- local SF elasticity surface
-> #   - slope_strataPre         -- local strata elasticity surface
-> #   - slope_duplexPremium33   -- local duplex log-price premium on 33' lots
-> #   - avgSlope                -- composite of the three slopes (sign-
-> #                                aligned, z-scored, averaged). Z-scoring
-> #                                is REQUIRED here to give each surface
-> #                                equal weight in the composite, and
-> #                                sign-flipping is required to put the
-> #                                duplex premium on the same "positive
-> #                                predicts duplex" axis as the other two
-> #                                slopes. Other regressors enter in
-> #                                their natural units.
+> #   - permitLogArea                 -- log(lot area), permit's own scale choice.
+> #   - logBcaLandPPSF                -- BCA 2019 assessed land value per sqft
+> #                                      of lot. Built by appraisers, universal
+> #                                      coverage, matched in time to the
+> #                                      permit window (BCA 2019 vs permits
+> #                                      2019-2023). Expected POSITIVE coef
+> #                                      (high land value -> redevelop as duplex).
+> #   - elasticity_singleFamilyPre    -- local elasticity of SF land-ppsf wrt
+> #                                      log(lot area), GWR slope from upstream.
+> #                                      A theta-proxy: dX/dtheta > 0, signed so
+> #                                      it positively tracks rich-neighborhood
+> #                                      WTP-for-quality. Expected NEGATIVE coef
+> #                                      (rich neighborhoods don't duplex).
+> #   - elasticity_duplexPenalty33    -- (-1) * upstream slope_duplexPremium33.
+> #                                      Upstream is now in price-per-sqft space
+> #                                      (Tsur 5/21/26): SF - duplex log(ppsf)
+> #                                      premium on 33' lots, GWR slope. Positive
+> #                                      = SF premium = rich neighborhood.
+> #                                      Expected NEGATIVE coef.
+> #   - avgElasticity                 -- z-scored average of the two
+> #                                      elasticities. Both already on a
+> #                                      "dX/dtheta > 0" axis; z-score preserves
+> #                                      signs and balances scales. Expected
+> #                                      NEGATIVE coef.
 > #
-> # Horse races: nine specs total. Model column order in the etable
-> # output:
+> # Sign convention: the two elasticities are theta-proxies in the sense
+> # that they correlate POSITIVELY with neighborhood quality / rich
+> # residents' WTP. Their literal sign (positive or negative in levels)
+> # doesn't matter; what matters is that they all move together with
+> # theta. The cor matrix on `est` is the diagnostic -- all pairwise cors
+> # among the two elasticities and logBcaLandPPSF should be positive. If
+> # elasticity_singleFamilyPre comes out NEGATIVELY correlated with the
+> # others, flip its sign at the rename step.
+> #
+> # Strata surface was dropped per Tsur 5/21/26.
+> #
+> # Horse races: seven specs total. Model column order:
 > #   (1) A      : BCA only
-> #   (2) B-SF   : SF slope only
-> #   (3) B-S    : strata slope only
-> #   (4) B-D    : duplex premium only
-> #   (5) B-avg  : avg slope only
-> #   (6) C-SF   : BCA + SF slope
-> #   (7) C-S    : BCA + strata slope
-> #   (8) C-D    : BCA + duplex premium
-> #   (9) C-avg  : BCA + avg slope
+> #   (2) B-SF   : SF elasticity only
+> #   (3) B-D    : duplex penalty only
+> #   (4) B-avg  : avg elasticity only
+> #   (5) C-SF   : BCA + SF elasticity
+> #   (6) C-D    : BCA + duplex penalty
+> #   (7) C-avg  : BCA + avg elasticity
 > #
 > # Hypothesis: BCA land value alone (spec A) should be a strong predictor;
-> # adding any one elasticity surface (C specs) should add little once
-> # land value is conditioned on.
+> # adding any one elasticity (C specs) should add little once land value
+> # is conditioned on. (BCA enters with +; elasticities with -; so the
+> # coefficients in C specs do NOT carry the same sign as in A and B.)
 > #
 > # Inference: Conley SEs at cutoff = 2 * GWR median effective radius.
 > #
 > # Tom Davidoff
 > # 05/18/26
-> # 05/20/26 (rev: BCA land value replaces the three sales-GWR localPPSF
-> #           surfaces; z-scoring confined to the avgSlope construction;
-> #           etable calls stripped to defaults to avoid fixest 0.13.2
-> #           argument-parsing quirks; user can hand-edit the TeX output
-> #           for the paper)
+> # 05/20/26 (rev: BCA land value replaces sales-GWR localPPSF surfaces;
+> #           etable calls stripped to defaults; user hand-edits TeX.)
+> # 05/21/26 (rev: dropped strata; renamed slope_singleFamilyPre to
+> #           elasticity_singleFamilyPre; flipped sign of slope_duplexPremium33
+> #           to make elasticity_duplexPenalty33; avgSlope -> avgElasticity;
+> #           7 specs not 9.)
 > 
 > library(data.table)
 > library(sf)
@@ -84,7 +96,7 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > cfg <- list(
 +   crsProj           = 26910,
 +   permitFile        = "~/DropboxExternal/dataRaw/issued-building-permits.csv",
-+   zoningGeojson    = "~/DropboxExternal/dataRaw/vancouver_zoning.geojson",
++   zoningGeojson     = "~/DropboxExternal/dataRaw/vancouver_zoning.geojson",
 +   targetZone        = "R1-1",
 +   permitYearRange   = c(2019, 2023),
 +   parcelRDSDir      = "~/DropboxExternal/dataProcessed/",
@@ -290,6 +302,18 @@ applyExcludeBox: dropping 640 / 6336 rows in Cambie box
 > 
 > choiceDT <- cbind(permits, surfaces[, !c("lon","lat"), with = FALSE])
 > 
+> # --- Rename / sign-flip per 5/21/26 spec --------------------------------
+> # elasticity_singleFamilyPre: pure rename of slope_singleFamilyPre. Sign
+> # is whatever upstream produces; what matters is that it tracks theta in
+> # the same direction as the duplex penalty and logBcaLandPPSF. The cor
+> # matrix on `est` is the diagnostic.
+> choiceDT[, elasticity_singleFamilyPre := slope_singleFamilyPre]
+> # elasticity_duplexPenalty33: SIGN-FLIPPED from slope_duplexPremium33.
+> # Upstream is now SF-duplex log(ppsf) premium (Tsur 5/21/26); positive
+> # upstream = duplex commands a premium = poor neighborhood. Flipping
+> # gives us "SF premium = rich neighborhood = positive."
+> choiceDT[, elasticity_duplexPenalty33 := -slope_duplexPremium33]
+> 
 > dtSF <- readRDS(file.path(path.expand(cfg$parcelRDSDir),
 +                           "bca_vancouver_singleFamily.rds"))
 > choiceDT <- attachOwnLotArea(choiceDT, dtSF, cfg)
@@ -326,12 +350,11 @@ isDuplex classification (post-Multiple/mixed drop):
 former-SF restriction: 4435 / 5696 permits retained
 > 
 > # ---------------------------------------------------------------------------
-> # 4. Estimation sample + avgSlope construction
+> # 4. Estimation sample + avgElasticity construction
 > # ---------------------------------------------------------------------------
 > needed <- c("isDuplex","permitLogArea","logBcaLandPPSF",
-+             "slope_singleFamilyPre",
-+             "slope_strataPre",
-+             "slope_duplexPremium33")
++             "elasticity_singleFamilyPre",
++             "elasticity_duplexPenalty33")
 > est <- choiceDT[formerSF == TRUE &
 +                 complete.cases(choiceDT[, ..needed]) &
 +                 is.finite(permitLogArea) &
@@ -339,44 +362,46 @@ former-SF restriction: 4435 / 5696 permits retained
 > cat(sprintf("\nEstimation sample: n = %d  (duplex = %d, SF = %d)\n",
 +             nrow(est), sum(est$isDuplex == 1L), sum(est$isDuplex == 0L)))
 
-Estimation sample: n = 3173  (duplex = 594, SF = 2579)
+Estimation sample: n = 3171  (duplex = 593, SF = 2578)
 > 
-> # ---- avgSlope: the ONE place z-scoring is used ---------------------------
-> # Sign-align each slope so positive = predicts duplex, z-score on est,
-> # then average. avgSlope is the only constructed regressor that uses
-> # z-scoring. All other regressors enter in natural units.
+> # ---- avgElasticity: z-scored composite, both inputs already aligned ------
+> # Both elasticities are theta-proxies on the same axis (dX/dtheta > 0).
+> # z-score preserves signs and balances units (one is an elasticity, one
+> # a log-ppsf gap). Expected negative regression coefficient.
 > zscore <- function(x) {
 +   m <- mean(x, na.rm = TRUE)
 +   s <- sd(x,   na.rm = TRUE)
 +   (x - m) / s
 + }
-> est[, avgSlope := rowMeans(cbind(
-+   zscore( slope_singleFamilyPre),
-+   zscore( slope_strataPre),
-+   zscore(-slope_duplexPremium33)),
+> est[, avgElasticity := rowMeans(cbind(
++   zscore(elasticity_singleFamilyPre),
++   zscore(elasticity_duplexPenalty33)),
 +   na.rm = FALSE)]
 > 
-> cat("\nCorrelations among regressors on est (natural units, except avgSlope):\n")
+> cat("\nCorrelations among regressors on est (natural units, except avgElasticity):\n")
 
-Correlations among regressors on est (natural units, except avgSlope):
+Correlations among regressors on est (natural units, except avgElasticity):
+> cat("All pairwise cors among the three theta-proxies should be POSITIVE.\n")
+All pairwise cors among the three theta-proxies should be POSITIVE.
+> cat("If elasticity_singleFamilyPre cor with the others is negative, flip\n")
+If elasticity_singleFamilyPre cor with the others is negative, flip
+> cat("its sign at the rename step above.\n")
+its sign at the rename step above.
 > diagCols <- c("logBcaLandPPSF",
-+               "slope_singleFamilyPre",
-+               "slope_strataPre",
-+               "slope_duplexPremium33",
-+               "avgSlope")
++               "elasticity_singleFamilyPre",
++               "elasticity_duplexPenalty33",
++               "avgElasticity")
 > print(round(cor(est[, ..diagCols], use = "complete.obs"), 3))
-                      logBcaLandPPSF slope_singleFamilyPre slope_strataPre
-logBcaLandPPSF                 1.000                 0.417           0.515
-slope_singleFamilyPre          0.417                 1.000           0.443
-slope_strataPre                0.515                 0.443           1.000
-slope_duplexPremium33         -0.577                -0.359          -0.715
-avgSlope                       0.614                 0.734           0.878
-                      slope_duplexPremium33 avgSlope
-logBcaLandPPSF                       -0.577    0.614
-slope_singleFamilyPre                -0.359    0.734
-slope_strataPre                      -0.715    0.878
-slope_duplexPremium33                 1.000   -0.844
-avgSlope                             -0.844    1.000
+                           logBcaLandPPSF elasticity_singleFamilyPre
+logBcaLandPPSF                      1.000                      0.415
+elasticity_singleFamilyPre          0.415                      1.000
+elasticity_duplexPenalty33          0.494                      0.233
+avgElasticity                       0.579                      0.785
+                           elasticity_duplexPenalty33 avgElasticity
+logBcaLandPPSF                                  0.494         0.579
+elasticity_singleFamilyPre                      0.233         0.785
+elasticity_duplexPenalty33                      1.000         0.785
+avgElasticity                                   0.785         1.000
 > 
 > # ---------------------------------------------------------------------------
 > # 5. Horse races
@@ -403,20 +428,16 @@ avgSlope                             -0.844    1.000
 > mA <- fitLogit(mkFml("logBcaLandPPSF"), est)
 > 
 > # B specs (each elasticity alone)
-> mB_SF  <- fitLogit(mkFml("slope_singleFamilyPre"), est)
-> mB_S   <- fitLogit(mkFml("slope_strataPre"),       est)
-> mB_D   <- fitLogit(mkFml("slope_duplexPremium33"), est)
-> mB_avg <- fitLogit(mkFml("avgSlope"),              est)
+> mB_SF  <- fitLogit(mkFml("elasticity_singleFamilyPre"), est)
+> mB_D   <- fitLogit(mkFml("elasticity_duplexPenalty33"), est)
+> mB_avg <- fitLogit(mkFml("avgElasticity"),              est)
 > 
 > # C specs (BCA + each elasticity)
-> mC_SF  <- fitLogit(mkFml("logBcaLandPPSF + slope_singleFamilyPre"), est)
-> mC_S   <- fitLogit(mkFml("logBcaLandPPSF + slope_strataPre"),       est)
-> mC_D   <- fitLogit(mkFml("logBcaLandPPSF + slope_duplexPremium33"), est)
-> mC_avg <- fitLogit(mkFml("logBcaLandPPSF + avgSlope"),              est)
+> mC_SF  <- fitLogit(mkFml("logBcaLandPPSF + elasticity_singleFamilyPre"), est)
+> mC_D   <- fitLogit(mkFml("logBcaLandPPSF + elasticity_duplexPenalty33"), est)
+> mC_avg <- fitLogit(mkFml("logBcaLandPPSF + avgElasticity"),              est)
 > 
-> allFits <- list(mA,
-+                 mB_SF, mB_S, mB_D, mB_avg,
-+                 mC_SF, mC_S, mC_D, mC_avg)
+> allFits <- list(mA, mB_SF, mB_D, mB_avg, mC_SF, mC_D, mC_avg)
 > 
 > cat("\n========== HORSE RACE: BCA land value vs elasticities ==========\n")
 
@@ -425,124 +446,154 @@ avgSlope                             -0.844    1.000
 > cat("\n-- Default SEs --\n")
 
 -- Default SEs --
-> print(etable(mA, mB_SF, mB_S, mB_D, mB_avg, mC_SF, mC_S, mC_D, mC_avg))
-                                      mA               mB_SF               mB_S
-Dependent Var.:                 isDuplex            isDuplex           isDuplex
-                                                                               
-Constant                25.76*** (2.430)      3.189* (1.288)     0.5200 (1.364)
-permitLogArea         -1.171*** (0.1756) -0.5969*** (0.1491)   -0.2580 (0.1600)
-logBcaLandPPSF        -2.969*** (0.2519)                                       
-slope_singleFamilyPre                     -1.089*** (0.2885)                   
-slope_strataPre                                              -2.926*** (0.3686)
-slope_duplexPremium33                                                          
-avgSlope                                                                       
-_____________________ __________________ ___________________ __________________
-S.E. type                            IID                 IID                IID
-Observations                       3,173               3,173              3,173
-Squared Cor.                     0.05492             0.00900            0.02237
-Pseudo R2                        0.06999             0.01323            0.02953
-BIC                              2,869.7             3,043.4            2,993.5
+> print(etable(mA, mB_SF, mB_D, mB_avg, mC_SF, mC_D, mC_avg))
+                                           mA               mB_SF
+Dependent Var.:                      isDuplex            isDuplex
+                                                                 
+Constant                     25.88*** (2.438)      3.202* (1.289)
+permitLogArea              -1.174*** (0.1758) -0.5986*** (0.1492)
+logBcaLandPPSF             -2.985*** (0.2530)                    
+elasticity_singleFamilyPre                     -1.089*** (0.2891)
+elasticity_duplexPenalty33                                       
+avgElasticity                                                    
+__________________________ __________________ ___________________
+S.E. type                                 IID                 IID
+Observations                            3,171               3,171
+Squared Cor.                          0.05523             0.00903
+Pseudo R2                             0.07037             0.01327
+BIC                                   2,865.0             3,039.5
 
-                                   mB_D              mB_avg              mC_SF
-Dependent Var.:                isDuplex            isDuplex           isDuplex
-                                                                              
-Constant                 -1.511 (1.384)      -1.176 (1.393)   27.12*** (2.617)
-permitLogArea           0.1341 (0.1680)    -0.0452 (0.1639) -1.239*** (0.1831)
-logBcaLandPPSF                                              -3.072*** (0.2613)
-slope_singleFamilyPre                                          0.4805 (0.3369)
-slope_strataPre                                                               
-slope_duplexPremium33 3.132*** (0.2953)                                       
-avgSlope                                -0.6680*** (0.0731)                   
-_____________________ _________________ ___________________ __________________
-S.E. type                           IID                 IID                IID
-Observations                      3,173               3,173              3,173
-Squared Cor.                    0.04850             0.03243            0.05511
-Pseudo R2                       0.05191             0.03910            0.07066
-BIC                             2,925.0             2,964.2            2,875.7
+                                         mB_D              mB_avg
+Dependent Var.:                      isDuplex            isDuplex
+                                                                 
+Constant                      -0.9119 (1.393)      0.1303 (1.338)
+permitLogArea                -0.1367 (0.1621)    -0.1982 (0.1575)
+logBcaLandPPSF                                                   
+elasticity_singleFamilyPre                                       
+elasticity_duplexPenalty33 -3.453*** (0.3357)                    
+avgElasticity                                 -0.6419*** (0.0716)
+__________________________ __________________ ___________________
+S.E. type                                 IID                 IID
+Observations                            3,171               3,171
+Squared Cor.                          0.04442             0.03241
+Pseudo R2                             0.04660             0.03744
+BIC                                   2,937.7             2,965.7
 
-                                    mC_S                mC_D             mC_avg
-Dependent Var.:                 isDuplex            isDuplex           isDuplex
-                                                                               
-Constant                26.80*** (3.093)    21.33*** (3.718)   27.46*** (3.615)
-permitLogArea         -1.226*** (0.2032) -0.9082*** (0.2421) -1.265*** (0.2305)
-logBcaLandPPSF        -3.063*** (0.3059)  -2.549*** (0.3670) -3.121*** (0.3475)
-slope_singleFamilyPre                                                          
-slope_strataPre          0.2663 (0.4890)                                       
-slope_duplexPremium33                        0.6639 (0.4354)                   
-avgSlope                                                        0.0684 (0.1069)
-_____________________ __________________ ___________________ __________________
-S.E. type                            IID                 IID                IID
-Observations                       3,173               3,173              3,173
-Squared Cor.                     0.05484             0.05736            0.05459
-Pseudo R2                        0.07009             0.07076            0.07013
-BIC                              2,877.5             2,875.4            2,877.4
+                                        mC_SF                mC_D
+Dependent Var.:                      isDuplex            isDuplex
+                                                                 
+Constant                     27.22*** (2.622)    20.16*** (2.989)
+permitLogArea              -1.241*** (0.1833) -0.8782*** (0.1978)
+logBcaLandPPSF             -3.086*** (0.2622)  -2.472*** (0.2962)
+elasticity_singleFamilyPre    0.4742 (0.3373)                    
+elasticity_duplexPenalty33                      -1.283** (0.4047)
+avgElasticity                                                    
+__________________________ __________________ ___________________
+S.E. type                                 IID                 IID
+Observations                            3,171               3,171
+Squared Cor.                          0.05540             0.06162
+Pseudo R2                             0.07102             0.07374
+BIC                                   2,871.1             2,862.8
+
+                                       mC_avg
+Dependent Var.:                      isDuplex
+                                             
+Constant                     24.05*** (3.042)
+permitLogArea              -1.072*** (0.2021)
+logBcaLandPPSF             -2.819*** (0.3022)
+elasticity_singleFamilyPre                   
+elasticity_duplexPenalty33                   
+avgElasticity                -0.0918 (0.0922)
+__________________________ __________________
+S.E. type                                 IID
+Observations                            3,171
+Squared Cor.                          0.05647
+Pseudo R2                             0.07070
+BIC                                   2,872.1
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 > 
 > cat("\n-- Conley SEs --\n")
 
 -- Conley SEs --
-> print(etable(mA, mB_SF, mB_S, mB_D, mB_avg, mC_SF, mC_S, mC_D, mC_avg,
+> print(etable(mA, mB_SF, mB_D, mB_avg, mC_SF, mC_D, mC_avg,
 +              vcov = conleyVcov))
-                                      mA            mB_SF               mB_S
-Dependent Var.:                 isDuplex         isDuplex           isDuplex
-                                                                            
-Constant                25.76*** (2.785)    3.189 (4.796)     0.5200 (3.387)
-permitLogArea         -1.171*** (0.3194) -0.5969 (0.5871)   -0.2580 (0.4062)
-logBcaLandPPSF        -2.969*** (0.3406)                                    
-slope_singleFamilyPre                     -1.089 (0.8036)                   
-slope_strataPre                                           -2.926*** (0.8297)
-slope_duplexPremium33                                                       
-avgSlope                                                                    
-_____________________ __________________ ________________ __________________
-S.E. type                   Conley (3km)     Conley (3km)       Conley (3km)
-Observations                       3,173            3,173              3,173
-Squared Cor.                     0.05492          0.00900            0.02237
-Pseudo R2                        0.06999          0.01323            0.02953
-BIC                              2,869.7          3,043.4            2,993.5
+                                           mA            mB_SF
+Dependent Var.:                      isDuplex         isDuplex
+                                                              
+Constant                     25.88*** (2.767)    3.202 (4.794)
+permitLogArea              -1.174*** (0.3168) -0.5986 (0.5869)
+logBcaLandPPSF             -2.985*** (0.3417)                 
+elasticity_singleFamilyPre                     -1.089 (0.8060)
+elasticity_duplexPenalty33                                    
+avgElasticity                                                 
+__________________________ __________________ ________________
+S.E. type                        Conley (3km)     Conley (3km)
+Observations                            3,171            3,171
+Squared Cor.                          0.05523          0.00903
+Pseudo R2                             0.07037          0.01327
+BIC                                   2,865.0          3,039.5
 
-                                   mB_D              mB_avg              mC_SF
-Dependent Var.:                isDuplex            isDuplex           isDuplex
-                                                                              
-Constant                 -1.511 (3.718)      -1.176 (3.894)   27.12*** (3.582)
-permitLogArea           0.1341 (0.4565)    -0.0452 (0.4590) -1.239*** (0.3507)
-logBcaLandPPSF                                              -3.072*** (0.3345)
-slope_singleFamilyPre                                          0.4805 (0.3496)
-slope_strataPre                                                               
-slope_duplexPremium33 3.132*** (0.5397)                                       
-avgSlope                                -0.6680*** (0.1264)                   
-_____________________ _________________ ___________________ __________________
-S.E. type                  Conley (3km)        Conley (3km)       Conley (3km)
-Observations                      3,173               3,173              3,173
-Squared Cor.                    0.04850             0.03243            0.05511
-Pseudo R2                       0.05191             0.03910            0.07066
-BIC                             2,925.0             2,964.2            2,875.7
+                                         mB_D              mB_avg
+Dependent Var.:                      isDuplex            isDuplex
+                                                                 
+Constant                      -0.9119 (3.538)      0.1303 (4.264)
+permitLogArea                -0.1367 (0.4203)    -0.1982 (0.5053)
+logBcaLandPPSF                                                   
+elasticity_singleFamilyPre                                       
+elasticity_duplexPenalty33 -3.453*** (0.2624)                    
+avgElasticity                                 -0.6419*** (0.1347)
+__________________________ __________________ ___________________
+S.E. type                        Conley (3km)        Conley (3km)
+Observations                            3,171               3,171
+Squared Cor.                          0.04442             0.03241
+Pseudo R2                             0.04660             0.03744
+BIC                                   2,937.7             2,965.7
 
-                                    mC_S               mC_D             mC_avg
-Dependent Var.:                 isDuplex           isDuplex           isDuplex
-                                                                              
-Constant                26.80*** (3.937)    21.33** (7.002)   27.46*** (5.803)
-permitLogArea         -1.226*** (0.3671)   -0.9082 (0.5867)  -1.265** (0.4801)
-logBcaLandPPSF        -3.063*** (0.3985) -2.549*** (0.4982) -3.121*** (0.4620)
-slope_singleFamilyPre                                                         
-slope_strataPre          0.2663 (0.3147)                                      
-slope_duplexPremium33                       0.6639 (0.9717)                   
-avgSlope                                                       0.0684 (0.1519)
-_____________________ __________________ __________________ __________________
-S.E. type                   Conley (3km)       Conley (3km)       Conley (3km)
-Observations                       3,173              3,173              3,173
-Squared Cor.                     0.05484            0.05736            0.05459
-Pseudo R2                        0.07009            0.07076            0.07013
-BIC                              2,877.5            2,875.4            2,877.4
+                                        mC_SF               mC_D
+Dependent Var.:                      isDuplex           isDuplex
+                                                                
+Constant                     27.22*** (3.549)   20.16*** (3.647)
+permitLogArea              -1.241*** (0.3481)  -0.8782* (0.3643)
+logBcaLandPPSF             -3.086*** (0.3344) -2.472*** (0.2898)
+elasticity_singleFamilyPre    0.4742 (0.3526)                   
+elasticity_duplexPenalty33                      -1.283* (0.5247)
+avgElasticity                                                   
+__________________________ __________________ __________________
+S.E. type                        Conley (3km)       Conley (3km)
+Observations                            3,171              3,171
+Squared Cor.                          0.05540            0.06162
+Pseudo R2                             0.07102            0.07374
+BIC                                   2,871.1            2,862.8
+
+                                       mC_avg
+Dependent Var.:                      isDuplex
+                                             
+Constant                     24.05*** (4.710)
+permitLogArea                -1.072* (0.4242)
+logBcaLandPPSF             -2.819*** (0.4020)
+elasticity_singleFamilyPre                   
+elasticity_duplexPenalty33                   
+avgElasticity                -0.0918 (0.1851)
+__________________________ __________________
+S.E. type                        Conley (3km)
+Observations                            3,171
+Squared Cor.                          0.05647
+Pseudo R2                             0.07070
+BIC                                   2,872.1
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+Warning message:
+The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
 > 
-> # TeX dump -- everything, default formatting. Hand-edit for the paper.
-> etable(mA, mB_SF, mB_S, mB_D, mC_D, mC_avg,
+> # TeX dump -- subset for the paper, default formatting. Hand-edit.
+> etable(mA, mB_D, mC_D,
 +        vcov = conleyVcov,
 +        tex = TRUE,
 +        file = file.path(cfg$outDir, "horseRace_all.tex"),
 +        replace = TRUE)
+Warning message:
+The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
 > 
 > cat("\n-- Average marginal effects --\n")
 
@@ -553,31 +604,29 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 + }
 Model 1:
  permitLogArea logBcaLandPPSF 
-       -0.1678        -0.4255 
+       -0.1680        -0.4274 
 Model 2:
-        permitLogArea slope_singleFamilyPre 
-              -0.0897               -0.1636 
+             permitLogArea elasticity_singleFamilyPre 
+                   -0.0899                    -0.1635 
 Model 3:
-  permitLogArea slope_strataPre 
-        -0.0382         -0.4327 
+             permitLogArea elasticity_duplexPenalty33 
+                   -0.0199                    -0.5019 
 Model 4:
-        permitLogArea slope_duplexPremium33 
-               0.0195                0.4546 
+permitLogArea avgElasticity 
+      -0.0291       -0.0942 
 Model 5:
-permitLogArea      avgSlope 
-      -0.0066       -0.0980 
+             permitLogArea             logBcaLandPPSF 
+                   -0.1775                    -0.4413 
+elasticity_singleFamilyPre 
+                    0.0678 
 Model 6:
-        permitLogArea        logBcaLandPPSF slope_singleFamilyPre 
-              -0.1774               -0.4398                0.0688 
+             permitLogArea             logBcaLandPPSF 
+                   -0.1252                    -0.3525 
+elasticity_duplexPenalty33 
+                   -0.1829 
 Model 7:
-  permitLogArea  logBcaLandPPSF slope_strataPre 
-        -0.1757         -0.4389          0.0382 
-Model 8:
-        permitLogArea        logBcaLandPPSF slope_duplexPremium33 
-              -0.1300               -0.3650                0.0951 
-Model 9:
- permitLogArea logBcaLandPPSF       avgSlope 
-       -0.1813        -0.4472         0.0098 
+ permitLogArea logBcaLandPPSF  avgElasticity 
+       -0.1535        -0.4036        -0.0131 
 > 
 > cat("\nDone with estimation.\n")
 
@@ -655,23 +704,17 @@ Zoom: 12
 
 Surface heatmap [logBcaLandPPSF]: n=4435  range=[5.04, 8.03]
 Zoom: 12
-> plotSurfaceHeatmap(choiceDT, "slope_singleFamilyPre", cfg,
-+                    "SF slope",
-+                    file.path(cfg$outDir, "surface_slope_singleFamilyPre.png"))
+> plotSurfaceHeatmap(choiceDT, "elasticity_singleFamilyPre", cfg,
++                    "SF elasticity",
++                    file.path(cfg$outDir, "surface_elasticity_singleFamilyPre.png"))
 
-Surface heatmap [slope_singleFamilyPre]: n=5696  range=[-0.825, 0.189]
+Surface heatmap [elasticity_singleFamilyPre]: n=5696  range=[-0.825, 0.189]
 Zoom: 12
-> plotSurfaceHeatmap(choiceDT, "slope_strataPre", cfg,
-+                    "Strata slope",
-+                    file.path(cfg$outDir, "surface_slope_strataPre.png"))
+> plotSurfaceHeatmap(choiceDT, "elasticity_duplexPenalty33", cfg,
++                    "Duplex penalty (33-ft, ppsf)",
++                    file.path(cfg$outDir, "surface_elasticity_duplexPenalty33.png"))
 
-Surface heatmap [slope_strataPre]: n=5696  range=[-0.441, 0.331]
-Zoom: 12
-> plotSurfaceHeatmap(choiceDT, "slope_duplexPremium33", cfg,
-+                    "Duplex premium slope (33-ft)",
-+                    file.path(cfg$outDir, "surface_slope_duplexPremium33.png"))
-
-Surface heatmap [slope_duplexPremium33]: n=5199  range=[-1.21, -0.0626]
+Surface heatmap [elasticity_duplexPenalty33]: n=5196  range=[-0.454, 0.579]
 Zoom: 12
 > 
 > cat("\nDone.\n")
@@ -680,4 +723,4 @@ Done.
 > 
 > proc.time()
    user  system elapsed 
- 30.353   1.881  26.596 
+ 27.516   1.891  23.943 

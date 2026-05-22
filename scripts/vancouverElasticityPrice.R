@@ -6,11 +6,13 @@
 #                           slope surface, not the point estimate.
 #   (b) Single-family    -- 2014-2018, land-ppsf elasticity wrt log(lot area).
 #   (c) Duplex premium   -- 2014-2018, pooled SF + duplex on ~33' lots.
-#                           y = log(conveyancePrice), x = isDuplex.
-#                           Global benchmark: feols(logPrice ~ isDuplex | year)
-#                           gives the average log-price premium. The GWR
-#                           slope surface gives that premium locally at
-#                           each permit location.
+#                           y = log(conveyancePrice / MB_total_finished_area),
+#                           x = isDuplex. Premium is in price-per-sqft space
+#                           (Tsur 5/21/26), so the SF/duplex comparison is
+#                           apples-to-apples on the per-sqft margin.
+#                           Global benchmark: feols(logPPSF ~ isDuplex | year)
+#                           gives the average log-ppsf premium. The GWR slope
+#                           surface gives that premium locally at each permit.
 #
 # Cambie corridor (Oak to Main, south of W 16th Ave) is excluded from
 # BOTH the sales-side training data AND the permit fit points.
@@ -33,6 +35,12 @@
 #           neighborhood (~2 sigma) roughly matches the old bisquare
 #           support, while the tails fall off smoothly rather than
 #           hitting a hard zero.)
+# 05/21/26 (rev: duplex premium LHS changed from log(conveyancePrice) to
+#           log(conveyancePrice / MB_total_finished_area). Tsur's
+#           apples-to-apples per-sqft comparison. Affects
+#           mkSampleDuplexPremium only; section 7 inherits via the sample.
+#           Column name slope_duplexPremium33 unchanged in the export, but
+#           interpretation is now a log-ppsf premium, not a log-price one.)
 
 library(data.table)
 library(ggplot2)
@@ -329,16 +337,24 @@ mkSampleStrata <- function(salesStrata, cfg) {
   d[!is.na(lon) & !is.na(lat) & is.finite(y) & is.finite(x)]
 }
 
+# Duplex price-per-sqft premium sample (Tsur 5/21/26 rev).
+# LHS: log(conveyancePrice / MB_total_finished_area). Apples-to-apples
+# per-sqft comparison between SF and duplex on ~33' lots. The GWR slope
+# on isDuplex (returned as slope_duplexPremium33 downstream) is then a
+# local log-ppsf premium for duplex vs SF.
 mkSampleDuplexPremium <- function(salesAll, cfg) {
   useSF  <- propertyTypeMap$singleFamily
   useDup <- propertyTypeMap$duplex
   d <- salesAll[actualUseDescription %in% c(useSF, useDup) &
                 year %between% cfg$salesYearRange &
-                conveyancePrice > 0 & landWidth > 0 & landDepth > 0]
+                conveyancePrice > 0 & landWidth > 0 & landDepth > 0 &
+                !is.na(sqft) & sqft > 0]
   d[, isDuplex := as.integer(actualUseDescription %in% useDup)]
   d <- d[landWidth %between% cfg$lotWidthBand]
-  d <- trimByQuantile(d, "conveyancePrice", cfg$trimYQ)
-  d[, `:=`(y = log(conveyancePrice), x = as.numeric(isDuplex))]
+  d[, ppsf := conveyancePrice / sqft]
+  d <- d[is.finite(ppsf) & ppsf > 0]
+  d <- trimByQuantile(d, "ppsf", cfg$trimYQ)
+  d[, `:=`(y = log(ppsf), x = as.numeric(isDuplex))]
   d <- d[!is.na(lon) & !is.na(lat) & is.finite(y)]
   cat(sprintf("  width band [%.1f, %.1f]: n_SF = %d, n_duplex = %d\n",
               cfg$lotWidthBand[1], cfg$lotWidthBand[2],
@@ -364,14 +380,14 @@ sampleConfigs <- list(
   duplexPremium33 = list(
     builder     = mkSampleDuplexPremium,
     dataSource  = "salesSFDuplex",
-    label       = "Duplex price premium, 2014-2018, 33' lots",
+    label       = "Duplex price-per-sqft premium, 2014-2018, 33' lots",
     refValue    = NA_real_,
     fileTag     = "duplexPrem33",
     extraGlobal = function(d) {
       reg <- feols(y ~ x | year, data = d)
       cm  <- coeftable(reg)
-      cat("\n  Simple duplex log-price delta (year FE):\n")
-      cat(sprintf("    beta = %.4f  SE = %.4f  ->  premium ~ %.1f%%\n",
+      cat("\n  Simple duplex log-ppsf delta (year FE):\n")
+      cat(sprintf("    beta = %.4f  SE = %.4f  ->  ppsf premium ~ %.1f%%\n",
                   cm["x", 1], cm["x", 2], 100 * (exp(cm["x", 1]) - 1)))
       invisible(reg)
     })
@@ -482,7 +498,8 @@ if (length(resultsBoard) >= 2) {
 # Residualization controls (sample-by-sample):
 #   singleFamilyPre  -- y = log(land ppsf).      Control: log(age) + year FE.
 #   strataPre        -- y = log(floor ppsf).     Control: log(sqft) + year FE.
-#   duplexPremium33  -- y = log(price).          Control: isDuplex + year FE.
+#   duplexPremium33  -- y = log(price/sqft).     Control: isDuplex + year FE.
+#                       (post 5/21/26: y is already in ppsf space.)
 
 if (!is.null(resultsBoard$singleFamilyPre)) {
   cat("\n---- SF localPPSF (residualized log ppsf, log(age) + year FE) ----\n")
@@ -516,7 +533,7 @@ if (!is.null(resultsBoard$strataPre)) {
 }
 
 if (!is.null(resultsBoard$duplexPremium33)) {
-  cat("\n---- Duplex33 localPPSF (residualized log price, isDuplex + year FE) ----\n")
+  cat("\n---- Duplex33 localPPSF (residualized log ppsf, isDuplex + year FE) ----\n")
   dD <- resultsBoard$duplexPremium33$sample
   regResD <- feols(y ~ x | year, data = dD)
   dD[, yResid := y - predict(regResD, newdata = dD)]
