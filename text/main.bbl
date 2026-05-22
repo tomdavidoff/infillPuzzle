@@ -62,10 +62,10 @@
     \endentry
     \entry{Anagol_etal2021}{report}{}{}
       \name{author}{3}{}{%
-        {{un=0,uniquepart=base,hash=c14b405cbd83dddf8a740476c89dd72b}{%
+        {{un=0,uniquepart=base,hash=11df1531d931de9076ae1a80bcc8b2a5}{%
            family={Anagol},
            familyi={A\bibinitperiod},
-           given={Sanoth},
+           given={Santosh},
            giveni={S\bibinitperiod},
            givenun=0}}%
         {{un=0,uniquepart=base,hash=641392d6764c644e3fd922f198251945}{%
@@ -84,14 +84,14 @@
       \list{institution}{1}{%
         {NBER}%
       }
-      \strng{namehash}{33f68a6b90b1df15da5d65c1fd91c135}
-      \strng{fullhash}{33f68a6b90b1df15da5d65c1fd91c135}
-      \strng{fullhashraw}{33f68a6b90b1df15da5d65c1fd91c135}
-      \strng{bibnamehash}{33f68a6b90b1df15da5d65c1fd91c135}
-      \strng{authorbibnamehash}{33f68a6b90b1df15da5d65c1fd91c135}
-      \strng{authornamehash}{33f68a6b90b1df15da5d65c1fd91c135}
-      \strng{authorfullhash}{33f68a6b90b1df15da5d65c1fd91c135}
-      \strng{authorfullhashraw}{33f68a6b90b1df15da5d65c1fd91c135}
+      \strng{namehash}{b8e8517d490837fe48561cfdb637aaec}
+      \strng{fullhash}{b8e8517d490837fe48561cfdb637aaec}
+      \strng{fullhashraw}{b8e8517d490837fe48561cfdb637aaec}
+      \strng{bibnamehash}{b8e8517d490837fe48561cfdb637aaec}
+      \strng{authorbibnamehash}{b8e8517d490837fe48561cfdb637aaec}
+      \strng{authornamehash}{b8e8517d490837fe48561cfdb637aaec}
+      \strng{authorfullhash}{b8e8517d490837fe48561cfdb637aaec}
+      \strng{authorfullhashraw}{b8e8517d490837fe48561cfdb637aaec}
       \field{sortinit}{A}
       \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
       \field{extradatescope}{labelyear}
