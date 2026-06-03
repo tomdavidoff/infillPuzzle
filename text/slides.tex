@@ -4,6 +4,8 @@
 \usepackage{cancel}
 \usepackage{booktabs}
 \usetheme{metropolis}
+\usepackage[style=authoryear]{biblatex}
+\addbibresource{infillPuzzle.bib}
 % Define Sauder green
 \definecolor{saudergreen}{RGB}{91,191,33}
 % Or: \definecolor{saudergreen}{HTML}{A3BD00}
@@ -15,8 +17,65 @@
 \begin{document}
 
 \title{Where does the infill housing go? \\Addition versus division}
-\author{Thomas Davidoff and Tsur Somerville\\Sauder, UBC}
+\author{Thomas Davidoff, Robert Helsley, and Tsur Somerville\\Sauder, UBC}
 \frame{\titlepage}
+
+\begin{frame}
+	\frametitle{Puzzle introduced and resolved}
+	\begin{block}{Puzzle}
+		\begin{itemize}
+			\item Density limits have greatest deadweight loss in high-priced areas
+				\begin{itemize}
+					\item Across metros \textcite{HsiehMoretti}
+					\item Within metros \textcite{bruecknerSingh}
+				\end{itemize}
+			\item But recent ``missing middle'' upzoning uptake - sorted within metros
+		\end{itemize}
+	\end{block}
+	\begin{block}{Resolution}
+		\begin{itemize}
+			\item Addition of space, sure
+			\item But a lot of infill upzoning is ``division''
+				\begin{itemize}
+					\item Same space, more units
+					\item More valuable where poorer people live by concavity
+					\item With mandated home sizes, rich get better locations
+				\end{itemize}
+		\end{itemize}
+	\end{block}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Some examples from Vancouver: Dunbar  vs less rich Hastings-Sunrise}
+	\pgfimage[width=1.2\textwidth]{dunbarHastings}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Literature}
+	\begin{itemize}
+		\item Ma: high-income households less harmed by large home mandates
+		\item Studies showing negative sorting of infill takeup:
+			\begin{itemize}
+				\item Vancouver laneway (Davidoff, Pavlov, Somerville, 2022)
+				\item ADUs in California (Marantz-Elmendorf and Kim, 2023; Brueckner and Thomaz, 2024)
+				\item Duplexes and triplexes in Seattle (Huang et al, 2023)
+				\item Portland's Residential Infill Project (RIP) (Dong and Hansz, 2019)
+			\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Spatially smoothed price per square foot Vancouver}
+	 Price per square foot of single family homes in 2018, just before the reform, across locations in Vancouver. Top panel, spatially weighted transaction residuals 2014-2018, bottom panel lot-level BC Assessment estimates of land value per lot square foot
+	\pgfimage[width=.4\textwidth]{surface_LocalPPSF.png}
+	\pgfimage[width=.4\textwidth]{surface_bcaLogLandPPSF.png}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Elasticity spatial vancouver}
+\end{frame}
+
+\end{document}
 
 \begin{frame}
 	\frametitle{Overview}
