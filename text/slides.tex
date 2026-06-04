@@ -45,9 +45,16 @@
 	\end{block}
 \end{frame}
 
+ 
 \begin{frame}
-	\frametitle{Some examples from Vancouver: Dunbar  vs less rich Hastings-Sunrise}
-	\pgfimage[width=1.2\textwidth]{dunbarHastings}
+	\frametitle{Roadmap}
+	\begin{itemize}
+		\item Budding literature on infill upzoning takeup sorting
+		\item Model of sorting with relaxation of initial zoning
+		\item Pure ``division'' duplex zoning in Vancouver
+		\item Mixed empirical support for the model
+		\item A few words about Minneapolis and Portland
+	\end{itemize}
 \end{frame}
 
 \begin{frame}
@@ -63,6 +70,162 @@
 			\end{itemize}
 	\end{itemize}
 \end{frame}
+
+\begin{frame}
+	\frametitle{Zoning deadweight loss greatest in best locations}
+	\begin{itemize}
+		\item Glaeser and Gyourko (2003) and Brueckner and Singh (2008): compare marginal price to cost /sqft
+		\item Cities' natural shape: tallest, densest use closest to downtown
+		\item For structure MC = price, need a very tall building downtown
+		\item For land and structure  bang-for-buck equality,\\ need low density in suburbs
+		\item Policy guidance re: upzoning to improve affordability: \\\begin{tiny} The model in this report identifies the lots most ripe for redevelopment under
+the specified density scenarios, where the gains for converting from the exist-
+ing single family properties are highest, as the size of the wedge. Consistent
+with the basic model in urban economics, these are areas where land values
+for single family lots are highest. In Metro Vancouver, the City of Vancouver
+(especially its west side), the North Shore, Richmond and Burnaby stand
+out. These results correspond well with expectations that high amenity ar-
+eas closest in to the metropolitan centre would receive the greatest attention
+for higher density redevelopment if it were enabled.\end{tiny}
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Upzonings in Vancouver}
+	\begin{itemize}
+		\item Predominant Zoning: R1-1 now, used to be several R zones
+		\item Baseline was single family detached homes
+		\item 1980s-2004: Basement suites permitted citywide 
+		\item 2009: laneway homes permitted in single family homes
+			\begin{itemize}
+				\item Add square feet, but must be rented, lose garage space
+				\item Laneway allowed .16-.25 FSR
+			\end{itemize}
+		\item Sept 2018: duplexes allowable throughout R zones
+			\begin{itemize}
+				\item No extra square feet (FSR .6-.7), but can sell 2 vs 1 home
+				\item Generally \emph{can't} add a laneway
+				\item Hence division and \emph{negative} addition 
+			\end{itemize}
+		\item 2023: multiplexes allowed
+			\begin{itemize}
+				\item 4-6 units permitted depending on lot size
+					\begin{itemize}
+						\item Much more attractive on wider lots
+						\item Roughly 50\% of Vancouver lots 33' standard
+					\end{itemize}
+				\item FSR goes from .7 to 1.0
+				\item Hence more division, more addition than duplex
+				\item Also: single family down to .6 FSR, .7 for duplex
+			\end{itemize}
+	\end{itemize}
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{Theoretical claim}
+	\begin{itemize}
+		\item Plausible that
+			\begin{itemize}
+				\item Highest types sort into best (highest price/sqft) locations
+				\item Value of \emph{adding} space greatest there
+				\item Value of \emph{dividing} space greater in low-value locations
+			\end{itemize}
+		\item Relates to monocentric city horse race:
+			\begin{itemize}
+				\item Gradient of rent in distance: $\frac{\text{marginal transport cost}}{\text{housing consumption}}$
+				\item Numerator (maybe) and denominator greater for high types
+				\item With fixed housing consumption, denominator effect disappears
+				\item So if infill zoning modest, we may expect persistent + sorting
+			\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{General model}
+	\begin{itemize} 
+		\item $U\left(\underbrace{y-p\left(\theta,\bar{S},{N}\right)}_{\text{numeraire}},\underbrace{\theta}_{\text{location}},\underbrace{\frac{\bar{S}}{N}}_{\text{size}},N\right)$
+		\item Single crossing in $\theta$ with enough separability
+		\item Standard urban model: choice over size complicates this
+		\item For $S$, $N$ fixed by zoning, rich get better locations
+		\item Open city, boundary $\theta^{*}$ separates high/low $y$.
+		\item Higher $\theta$ is better location
+		\item $\theta^{*}$ rises with $N$ 
+		\item $\theta^{*}$ falls with $S$
+		\item Assuming both types are in the city
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Theoretical ambiguity in a graph}
+	\pgfimage[width=\textwidth]{bidRentModel.png}
+\end{frame}
+
+
+\begin{frame}
+	\frametitle{City of Vancouver unit regressions by type: zoning binds!\\Single, Duplex, condo (unconstrained!)}
+	\begin{footnotesize}
+		\input{ppsfElasticityByType.tex}
+	\end{footnotesize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Is it true that $p_{s\theta}>0$ ?}
+	\begin{itemize}
+		\item BCA Single Family sales 2023-2024, Metro Vancouver
+		\item Observation: a neighbourhood
+		\item Elasticity $<-1$ means $p_{s}<0$, $>0$ means want lot assembly
+			\begin{itemize}
+				\item Both implausible
+			\end{itemize}
+	\end{itemize}
+	\pgfimage[width=.8\textwidth]{ppsfElasticitysingleMetroRecent}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Econometric issues}
+	\begin{itemize}
+		\item We would like to do a horse race:
+			\begin{itemize}
+				\item Reg lot-level infill takeup on local price, + (puzzle)
+				\item Add local price elasticity, price coef $\rightarrow 0$ (resolution)
+			\end{itemize}
+		\item Excuse for coming results: 
+			\begin{itemize}
+				\item Local price level better estimated than elasticity
+				\item Cor(level, elasticity) in Greater Vancouver 
+					\begin{itemize}
+						\item .25 at nbhd level unweighted
+						\item .83 at jurisidction level weighted
+					\end{itemize}
+				\item Plausible to us that industry would act as if identical
+			\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Duplex-era examples: Dunbar  vs less rich Hastings-Sunrise}
+	\pgfimage[width=1.2\textwidth]{dunbarHastings}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Geography of price levels, Vancouver}
+	 Left: spatially weighted transaction residuals 2014-2018, source BC Assessment at CoV permit locations (Vancouver open data). Right: lot-level BC Assessment estimates of land value per lot square foot \\
+	 \pgfimage[width=.475\textwidth]{surface_LocalPPSF.png}
+	\pgfimage[width=.475\textwidth]{surface_bcaLogLandPPSF.png}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Geography of elasticity, Vancouver\\ Price penalty among homes on 33 foot lots for duplex vs single}
+	\includegraphics[width=.9\textwidth]{surface_slope_duplexPremium33.png}
+\end{frame}
+
+
+
+
+
+
+\end{document}
 
 \begin{frame}
 	\frametitle{2x2x2 model of housing choice and sorting}
@@ -95,11 +258,6 @@
 			\end{itemize}
 	\end{itemize}
 \end{frame}
-
-\begin{frame}
-	\frametitle{Remark on duplex split premium}
-	\begin{itemize}
-		\item $p(E,D)/p(E,H) = e^{A_{s}} > p(W,D)/p(W,H)
 
 \begin{frame}
 	\frametitle{Contrived example that ``works''}
@@ -141,17 +299,6 @@
 		Revenue Delta & 2.07 & 103.93 \\
 		\hline
 	\end{tabular}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Spatially smoothed price per square foot Vancouver}
-	 Price per square foot of single family homes in 2018, just before the reform, across locations in Vancouver. Top panel, spatially weighted transaction residuals 2014-2018, bottom panel lot-level BC Assessment estimates of land value per lot square foot
-	\pgfimage[width=.4\textwidth]{surface_LocalPPSF.png}
-	\pgfimage[width=.4\textwidth]{surface_bcaLogLandPPSF.png}
-\end{frame}
-
-\begin{frame}
-	\frametitle{Elasticity spatial vancouver}
 \end{frame}
 
 \end{document}
