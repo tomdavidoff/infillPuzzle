@@ -65,6 +65,85 @@
 \end{frame}
 
 \begin{frame}
+	\frametitle{2x2x2 model of housing choice and sorting}
+	\begin{itemize}
+		\item Types of households: high/low income 
+		\item Types of locations $\theta$: East (worse), West better
+		\item Types of homes $s$: duplex (worse), house better
+		\item $U(y,\theta,s) = \underbrace{\text{concave}}u(y-p(\theta,s)) + A_{\theta}(\theta) + A_s(s)$
+		\item Open city, outside option $U_(0)(y) = u(y-x) + A_{0}$
+		\item Specify $u(c) = log(c)$ for starters
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Some features of equilibrium}
+	\begin{itemize}
+		\item Set zero amenity to East and Duplex
+		\item By open city $U(\text{East,Duplex}) = \log(y-p(E,D)) = \log(y-x) + A_0$
+		\item $p(E,D) = y - (y-x)e^{A_0}$
+		\item $p(E,H) = y - (y-x)e^{A_0 - A_s}$
+		\item $p(W,D) = y - (y-x)e^{A_0 - A_{\theta}}$
+		\item $p(W,H) = y - (y-x)e^{A_0 - A_{\theta} - A_s}$
+		\item $\left[p(W,H)-p(W,D)\right]-\left[p(E,H)-p(E,D)\right] = (y-x)e^{A_0}\left(e^{-A_{\theta}} - 1\right) < 0$
+		\item Amenity and size are normal
+		\item Low types outbidding for East, need $A_{\theta} > A_s$, $A_{0}$, $x$ large
+		\item Duplex split more profitable East requires:
+			\begin{itemize}
+				\item $2p(E,D) - p(E,H)-c > 2p(W,D) - p(W,H)-c$
+				\item $c$ a construction cost
+			\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Remark on duplex split premium}
+	\begin{itemize}
+		\item $p(E,D)/p(E,H) = e^{A_{s}} > p(W,D)/p(W,H)
+
+\begin{frame}
+	\frametitle{Contrived example that ``works''}
+	\begin{tabular}{lcc}
+		\hline
+		& Low Type & High Type \\
+		\hline\hline
+		Income & 100 & 200 \\
+		Outside $x$ & 95 & 95\\
+		Outside $A$ & 2 & 2 \\
+		Outside $U$ & 3.61 & 6.65 \\
+		Awest & 2 & 2 \\
+		Ahouse & 1.5 & 1.5 \\
+		pED & 63.05 & -575.85 \\
+		pWD & 95 & 95 \\
+		pEH & 91.76 & 26.88 \\
+		pWH & 98.88 & 176.57 \\
+		Revenue Delta & 34.35 & 13.43 \\
+		\hline
+	\end{tabular}
+\end{frame}
+
+\begin{frame}
+	\frametitle{Initial equilibrium all high, highs outbid for splits}
+	\begin{tabular}{lcc}
+		\hline
+		& Low Type & High Type \\
+		\hline\hline
+		Income & 100 & 200 \\
+		Outside $x$ & 40 & 40\\
+		Outside $A$ & 0 & 0 \\
+		Outside $U$ & 4.09 & 5.08 \\
+		Awest & 1 & 1 \\
+		Ahouse & 1 & 1 \\
+		pED & 40 & 40 \\
+		pWD & 77.93 & 141.14 \\
+		pEH & 77.93 & 141.14 \\
+		pWH & 91.88 & 178.35 \\
+		Revenue Delta & 2.07 & 103.93 \\
+		\hline
+	\end{tabular}
+\end{frame}
+
+\begin{frame}
 	\frametitle{Spatially smoothed price per square foot Vancouver}
 	 Price per square foot of single family homes in 2018, just before the reform, across locations in Vancouver. Top panel, spatially weighted transaction residuals 2014-2018, bottom panel lot-level BC Assessment estimates of land value per lot square foot
 	\pgfimage[width=.4\textwidth]{surface_LocalPPSF.png}
