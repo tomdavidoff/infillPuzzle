@@ -39,6 +39,10 @@ print(nrow(dps))
 dps <- st_join(dps, dCT[,c("CTUID","CTNAME")], join=st_within)
 print(nrow(dps))
 
+dtIncome <- fread("~/DropboxExternal/dataRaw/9810005801_databaseLoadingData.csv") #select = c("GEO", "DGUID", "Household income statistics (6)", "VALUE"))
+dtIncome <- dtIncome[`Household income statistics (6)` == "Median household total income (2020) (2020 constant dollars)"]
 
+print(names(dtIncome))
+print(names(dps))
 
 q("no")

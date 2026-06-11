@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -7696,7 +7696,7 @@ Service Stations, Repair Garages (572)            Single Detached House (110)
 > # merge with census tract data
 > dCT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
 Reading layer `lct_000b21a_e' from data source 
-  `/Volumes/Micron2TB/Dropbox/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
+  `/Volumes/Crucial X10/Dropbox/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
   using driver `ESRI Shapefile'
 Simple feature collection with 6247 features and 5 fields
 Geometry type: MULTIPOLYGON
@@ -7737,7 +7737,39 @@ logical   64498    2939
 > print(nrow(dps))
 [1] 64498
 > 
+> dtIncome <- fread("~/DropboxExternal/dataRaw/9810005801_databaseLoadingData.csv") #select = c("GEO", "DGUID", "Household income statistics (6)", "VALUE"))
+> dtIncome <- dtIncome[`Household income statistics (6)` == "Median household total income (2020) (2020 constant dollars)"]
+> 
+> print(names(dtIncome))
+ [1] "REF_DATE"                                             
+ [2] "GEO"                                                  
+ [3] "DGUID"                                                
+ [4] "Household size (7)"                                   
+ [5] "Household type including census family structure (11)"
+ [6] "Household income statistics (6)"                      
+ [7] "UOM"                                                  
+ [8] "UOM_ID"                                               
+ [9] "SCALAR_FACTOR"                                        
+[10] "SCALAR_ID"                                            
+[11] "VECTOR"                                               
+[12] "COORDINATE"                                           
+[13] "VALUE"                                                
+[14] "STATUS"                                               
+[15] "SYMBOL"                                               
+[16] "TERMINATED"                                           
+[17] "DECIMALS"                                             
+> print(names(dps))
+ [1] "Row ID"               "PERMIT_DATE"          "PERMIT_NUMBER"       
+ [4] "REPORT_PERMIT_DATE"   "YEAR"                 "MONTH_NUMBER"        
+ [7] "JOB_CATEGORY"         "JOB_DESCRIPTION"      "BUILDING_TYPE"       
+[10] "WORK_TYPE"            "CONSTRUCTION_VALUE"   "FLOOR_AREA"          
+[13] "UNITS_ADDED"          "ADDRESS"              "LEGAL_DESCRIPTION"   
+[16] "ZONING"               "NEIGHBOURHOOD_NUMBER" "NEIGHBOURHOOD"       
+[19] "BIA"                  "COUNT"                "LOCATION"            
+[22] "Geometry Point"       "Occupancy Date"       "permitMonth"         
+[25] "CTUID"                "CTNAME"               "geometry"            
+> 
 > q("no")
 > proc.time()
    user  system elapsed 
-  5.102   0.258   2.993 
+ 14.668   5.201   5.847 
