@@ -18,464 +18,111 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 Type 'q()' to quit R.
 
 > # bcaVancouverParcelExtract.R
-> # One-time generalized spatial extract for City of Vancouver BCA parcels.
-> # Iterates over property types in propertyTypeMap (singleFamily, strata,
-> # duplex) and writes one folio-keyed RDS per type with a unified schema:
-> #
-> #   folioID, rollNumber, jurisdiction, actualUseDescription,
-> #   landWidth, landDepth, MB_effective_year, MB_total_finished_area,
-> #   lon, lat, zoning2025, geom
-> #
-> # IMPORTANT: actualUseDescription is the BCA 2019 vintage, pulled from
-> # folioDescription in REVD19_and_inventory_extracts.sqlite3. The
-> # geopackage carries a 2025-vintage ACTUAL_USE_DESCRIPTION which would
-> # misclassify parcels that have since been redeveloped (e.g. a 2019 SF
-> # parcel built as a duplex in 2022 shows up as duplex in the 2025
-> # layer). Using the 2019 type preserves the "former single family"
-> # sample correctly for downstream permit choice work.
-> #
-> # zoning2025 comes from a spatial join against vancouver_zoning.geojson
-> # (2025 vintage). For singleFamily and duplex outputs we additionally
-> # filter to zoning2025 == "R1-1" so the written file is exactly the
-> # parcels eligible for the R1-1 small-multiplex policy regime. Strata
-> # is written unfiltered (strata buildings are allowed anywhere).
-> #
-> # Output is an sf object (geom column is the parcel polygon) so that
-> # downstream point-in-polygon joins (e.g. attaching permits to parcels
-> # via st_within) work directly. lon/lat are the polygon centroids and
-> # remain available for non-spatial workflows.
-> #
-> # For strata, landWidth/landDepth will mostly be NA (unit-level folios
-> # carry no meaningful lot dimensions on the spatial layer). For SF and
-> # duplex, both are populated. The COV pipeline filters on lot dims
-> # only when relevant.
-> #
-> # Output files (one per type present in the map):
-> #   ~/DropboxExternal/dataProcessed/bca_vancouver_singleFamily.rds  (R1-1 only)
-> #   ~/DropboxExternal/dataProcessed/bca_vancouver_strata.rds        (all zones)
-> #   ~/DropboxExternal/dataProcessed/bca_vancouver_duplex.rds        (R1-1 only)
-> #
-> # Tom Davidoff
-> # 05/18/26
+> # Extract COV BCA parcels by type (from propertyTypeMap), write one sf RDS each.
+> # Types classified by 2019 actualUseDescription (SQLite), NOT the 2025 gpkg field,
+> # so redeveloped parcels keep their former-SF status. roll_base routing also uses
+> # the 2019 strata flag on all sides: strata = full rollNumber, else floor(/1000).
+> # Tom Davidoff 05/18/26
 > 
 > library(data.table)
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
-> library(DBI)
 > library(RSQLite)
 > 
-> # ---------------------------------------------------------------------------
-> # Config
-> # ---------------------------------------------------------------------------
-> BCA_GPKG_DIR    <- "~/bigFiles/latestSpatialBCA/"
-> SQLITE_FILE     <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
-> ZONING_GEOJSON  <- "~/DropboxExternal/dataRaw/vancouver_zoning.geojson"
-> TYPE_MAP_FILE   <- "~/DropboxExternal/dataProcessed/propertyTypeMap.rds"
-> OUT_DIR         <- "~/DropboxExternal/dataProcessed/"
-> VANCOUVER_JUR   <- "200"
-> TYPES_TO_RUN    <- c("singleFamily", "strata", "duplex")
-> # Types that should be filtered to R1-1 before writing. Strata is
-> # unfiltered (strata buildings are allowed anywhere). Duplex is also
-> # unfiltered -- most duplexes in COV are in RT zones, not R1-1, and
-> # downstream analyses want access to the full duplex parcel population
-> # for hedonic estimation. The R1-1 filter can be applied per-use
-> # downstream.
-> TYPES_R1_1_ONLY <- c("singleFamily")
-> TARGET_ZONE     <- "R1-1"
+> GPKG_DIR    <- "~/bigFiles/latestSpatialBCA/"
+> SQLITE_FILE <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
+> ZONING_FILE <- "~/DropboxExternal/dataRaw/vancouver_zoning.geojson"
+> OUT_DIR     <- "~/DropboxExternal/dataProcessed/"
+> JUR         <- "200"
+> R1_1_ONLY   <- "singleFamily" # duplex/strata written unfiltered
 > 
-> # ---------------------------------------------------------------------------
-> # Inputs
-> # ---------------------------------------------------------------------------
-> if (!file.exists(path.expand(TYPE_MAP_FILE)))
-+   stop("propertyTypeMap.rds not found. Run bcaPropertyTypes.R first.")
-> typeMap <- readRDS(path.expand(TYPE_MAP_FILE))
+> typeMap <- readRDS(path.expand(file.path(OUT_DIR, "propertyTypeMap.rds")))
 > 
-> cat("\nProperty types to extract:\n")
-
-Property types to extract:
-> for (tp in TYPES_TO_RUN) {
-+   cats <- typeMap[[tp]]
-+   cat(sprintf(" -- %s (%d categories) --\n", tp, length(cats)))
-+   for (s in cats) cat("    ", s, "\n")
-+ }
- -- singleFamily (2 categories) --
-     Single Family Dwelling 
-     Residential Dwelling with Suite 
- -- strata (1 categories) --
-     Strata-Lot Residence (Condominium) 
- -- duplex (2 categories) --
-     Duplex, Strata Front / Back 
-     Duplex, Strata Side by Side 
-> 
-> allCats <- unique(unlist(typeMap[TYPES_TO_RUN]))
-> if (length(allCats) == 0) stop("No categories to extract; check propertyTypeMap.")
-> 
-> gpkgFiles <- list.files(path.expand(BCA_GPKG_DIR),
-+                         pattern = "\\.gpkg$", full.names = TRUE)
-> if (length(gpkgFiles) == 0) stop("No .gpkg in ", BCA_GPKG_DIR)
-> gpkg <- gpkgFiles[1]
-> 
-> # ---------------------------------------------------------------------------
-> # 1. Spatial pull -- ALL Vancouver residential parcels. We will filter
-> #    on type using the 2019 vintage from SQLite, not the 2025 vintage
-> #    that lives in the geopackage. roll_base routing (strata vs SF/duplex)
-> #    is decided per-parcel by joining against the 2019 SQLite-derived
-> #    strata flag, NOT by the 2026 geopackage type. A 2019 SF parcel that
-> #    became a 2026 strata duplex would mis-route if we used the 2026 flag.
-> # ---------------------------------------------------------------------------
-> cat(sprintf("\nReading geopackage: %s\n", gpkg))
-
-Reading geopackage: /Users/davidoff/bigFiles/latestSpatialBCA//2026-04-08_bca_folios.gpkg
-> qSpatial <- sprintf(paste(
-+   "SELECT ROLL_NUMBER, JURISDICTION_CODE, geom",
-+   "FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
-+   "WHERE JURISDICTION_CODE = '%s'"),
-+   VANCOUVER_JUR)
-> 
-> sfAll <- st_read(gpkg,
-+                  layer = "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV",
-+                  query = qSpatial, quiet = TRUE)
+> # spatial: all COV parcels, centroids, 2025 zoning by centroid-in-polygon
+> gpkg  <- list.files(path.expand(GPKG_DIR), pattern = "\\.gpkg$", full.names = TRUE)[1]
+> lyr   <- "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV"
+> sfAll <- st_read(gpkg, layer = lyr, quiet = TRUE,
++                  query = sprintf("SELECT ROLL_NUMBER, JURISDICTION_CODE, geom FROM %s WHERE JURISDICTION_CODE = '%s'", lyr, JUR))
 Warning message:
 In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
   argument layer is ignored when query is specified
-> cat(sprintf("Spatial rows pulled (all Vancouver): %d\n", nrow(sfAll)))
-Spatial rows pulled (all Vancouver): 223152
-> if (nrow(sfAll) == 0) stop("Spatial query returned zero rows.")
-> 
-> sfAll <- st_transform(sfAll, 4326)
-> # Some BCA parcel polygons have self-intersecting loops; fix before any
-> # geometry op (centroid / spatial join) that uses S2.
-> sfAll <- st_make_valid(sfAll)
+> sfAll <- st_make_valid(st_transform(sfAll, 4326))
 > cent  <- st_centroid(st_geometry(sfAll))
 > sfAll$lon <- st_coordinates(cent)[, 1]
 > sfAll$lat <- st_coordinates(cent)[, 2]
 > 
-> # ---- Zoning join (2025 vintage) -------------------------------------------
-> cat(sprintf("Reading zoning: %s\n", ZONING_GEOJSON))
-Reading zoning: ~/DropboxExternal/dataRaw/vancouver_zoning.geojson
-> sfZone <- st_read(path.expand(ZONING_GEOJSON), quiet = TRUE)
-> sfZone <- st_transform(sfZone, 4326)
-> sfZone <- sfZone[, "zoning_district"]
-> sfZone <- st_make_valid(sfZone)
-> 
-> # Assign each parcel the zoning polygon that contains its CENTROID.
-> # This is much faster than parcel-polygon to zoning-polygon overlay with
-> # largest=TRUE, and parcels are small enough relative to zoning blocks
-> # that the difference is negligible for COV. (If a parcel straddles a
-> # zoning boundary, the centroid lands in one zone and that wins.)
-> sfCent <- st_as_sf(data.frame(idx = seq_len(nrow(sfAll))),
-+                    geometry = cent, crs = 4326)
-> zHit   <- st_join(sfCent, sfZone, join = st_within)
-> # Centroid in a single polygon -> one row per parcel; if zoning has
-> # overlapping polygons we'd get duplicates, so collapse to first match.
+> sfZone <- st_make_valid(st_transform(st_read(path.expand(ZONING_FILE), quiet = TRUE), 4326))
+> zHit   <- st_join(st_as_sf(data.frame(idx = seq_len(nrow(sfAll))), geometry = cent, crs = 4326),
++                   sfZone[, "zoning_district"], join = st_within)
 > zHit   <- zHit[!duplicated(zHit$idx), ]
 > sfAll$zoning2025 <- NA_character_
 > sfAll$zoning2025[zHit$idx] <- as.character(zHit$zoning_district)
-> cat(sprintf("Parcels with a 2025 zoning match: %d / %d\n",
-+             sum(!is.na(sfAll$zoning2025)), nrow(sfAll)))
-Parcels with a 2025 zoning match: 223137 / 223152
-> cat("Top zoning2025 counts:\n")
-Top zoning2025 counts:
-> print(as.data.table(st_drop_geometry(sfAll))[
-+         !is.na(zoning2025), .N, by = zoning2025][order(-N)][1:15])
-    zoning2025     N
-        <char> <int>
- 1:       R1-1 66652
- 2:         DD 15401
- 3:        C-2  7828
- 4:       R3-3  6270
- 5:       C-3A  6173
- 6:       RM-4  5787
- 7:       RT-5  3865
- 8:       R5-3  2873
- 9:       R3-2  2837
-10:      RM-3A  2764
-11: CD-1 (324)  2484
-12: CD-1 (314)  2331
-13:       RT-2  2153
-14:      RM-5B  2083
-15:      FCCDD  2066
 > 
-> # Keep geometry. Carry it through as a list-column on a data.table so
-> # the existing keyed joins below work unchanged; re-promote to sf at
-> # write time.
 > sfAll$rollNumber   <- trimws(as.character(sfAll$ROLL_NUMBER))
 > sfAll$jurisdiction <- trimws(as.character(sfAll$JURISDICTION_CODE))
-> sfAll <- sfAll[, c("rollNumber","jurisdiction",
-+                    "lon","lat","zoning2025")]
-> sfAll <- sfAll[!is.na(sfAll$rollNumber) & sfAll$rollNumber != "", ]
-> dtSpatial <- as.data.table(st_drop_geometry(sfAll))
+> dtSpatial <- as.data.table(st_drop_geometry(sfAll))[, .(rollNumber, jurisdiction, lon, lat, zoning2025)]
 > dtSpatial[, geom := st_geometry(sfAll)]
-> # NB: 2026 ACTUAL_USE_DESCRIPTION is NOT used as the roll_base routing
-> # flag. A 2019 SF parcel that became a 2026 strata-duplex would route
-> # itself as strata-2026 (full rollNumber), but its 2019 parent is an SF
-> # folio at the truncated rollNumber -- so the two sides would use
-> # different roll_base formulas and never match. We instead route by the
-> # 2019 strata flag (built below alongside folio/inventory), which makes
-> # the spatial and SQLite sides use the same rule.
+> dtSpatial <- dtSpatial[!is.na(rollNumber) & rollNumber != ""]
 > 
-> # dtSpatial roll_base computation is deferred until after rollIsStrata
-> # is built from the 2019 SQLite side. See section 2 below.
-> 
-> # ---------------------------------------------------------------------------
-> # 2. SQLite pulls -- folio (folioID), inventory (sqft, year, dims),
-> #    and folioDescription (2019 actualUseDescription + dim fallback).
-> # ---------------------------------------------------------------------------
+> # SQLite: folio, inventory, description (2019 vintage)
 > con <- dbConnect(SQLite(), SQLITE_FILE)
-> folio <- as.data.table(dbGetQuery(con,
-+   sprintf("SELECT folioID, rollNumber, jurisdictionCode FROM folio
-+            WHERE jurisdictionCode = %s", VANCOUVER_JUR)))
-> inventory <- as.data.table(dbGetQuery(con,
-+   sprintf("SELECT roll_number, jurisdiction,
-+                   land_width, land_depth,
-+                   MB_effective_year, MB_total_finished_area
-+            FROM residentialInventory
-+            WHERE jurisdiction = %s", VANCOUVER_JUR)))
+> folio <- as.data.table(dbGetQuery(con, sprintf(
++   "SELECT folioID, rollNumber, jurisdictionCode AS jurisdiction FROM folio WHERE jurisdictionCode = %s", JUR)))
+> inventory <- as.data.table(dbGetQuery(con, sprintf(
++   "SELECT roll_number AS rollNumber, jurisdiction, land_width, land_depth,
++    MB_effective_year, MB_total_finished_area FROM residentialInventory WHERE jurisdiction = %s", JUR)))
 > description <- as.data.table(dbGetQuery(con,
-+   "SELECT folioID, actualUseDescription, landWidth, landDepth
-+    FROM folioDescription"))
++   "SELECT folioID, actualUseDescription, landWidth AS fdLandWidth, landDepth AS fdLandDepth FROM folioDescription"))
 > dbDisconnect(con)
 > 
-> folio[, rollNumber   := trimws(as.character(rollNumber))]
-> folio[, jurisdiction := trimws(as.character(jurisdictionCode))]
-> folio[, folioID      := as.character(folioID)]
-> folio <- folio[, .(folioID, rollNumber, jurisdiction)]
-> 
-> inventory[, rollNumber   := trimws(as.character(roll_number))]
-> inventory[, jurisdiction := trimws(as.character(jurisdiction))]
-> inventory <- inventory[, .(rollNumber, jurisdiction,
-+                            land_width, land_depth,
-+                            MB_effective_year, MB_total_finished_area)]
-> 
-> # folioDescription is the 2019-vintage source of actualUseDescription.
-> # Rename width/depth here so the inventory join doesn't collide and so
-> # the fallback reference is unambiguous downstream.
+> for (d in list(folio, inventory)) d[, `:=`(rollNumber = trimws(as.character(rollNumber)),
++                                            jurisdiction = trimws(as.character(jurisdiction)))]
+> folio[, folioID := as.character(folioID)]
 > description[, folioID := as.character(folioID)]
-> setnames(description, c("landWidth","landDepth"),
-+                       c("fdLandWidth","fdLandDepth"))
 > description <- unique(description, by = "folioID")
 > 
-> # Build a (rollNumber, jurisdiction) -> isStrata2019 lookup once. Used
-> # on BOTH folio and inventory to route roll_base conditionally:
-> #   - Strata folios in 2019: full rollNumber as roll_base. Strata units
-> #     are unit-level and stable; truncation would collapse all units in
-> #     a building to one arbitrary row, losing 99%+ of sqft data.
-> #   - SF / duplex / everything else: floor(rollNumber / 1000) so we can
-> #     reach the 2019 parent of a 2026 subdivided strata duplex.
-> # We assume no meaningful 2019 SF -> 2026 strata-with-new-rolls flow.
-> rollIsStrata <- unique(
-+   merge(folio[, .(folioID, rollNumber, jurisdiction)],
-+         description[, .(folioID, actualUseDescription)],
-+         by = "folioID", all.x = TRUE)[
-+     , .(rollNumber, jurisdiction,
-+         isStrata2019 = grepl("Strata", actualUseDescription,
-+                              ignore.case = TRUE))],
-+   by = c("rollNumber","jurisdiction"))
-> cat(sprintf("rollIsStrata: %d rolls, %d strata (%.1f%%)\n",
-+             nrow(rollIsStrata), sum(rollIsStrata$isStrata2019),
-+             100 * mean(rollIsStrata$isStrata2019)))
-rollIsStrata: 208724 rolls, 104006 strata (49.8%)
+> # 2019 strata flag -> conditional roll_base, applied identically to all three tables
+> rollIsStrata <- unique(merge(folio, description[, .(folioID, actualUseDescription)], by = "folioID")[
++   , .(rollNumber, jurisdiction, isStrata2019 = grepl("Strata", actualUseDescription, ignore.case = TRUE))],
++   by = c("rollNumber", "jurisdiction"))
 > 
-> # Apply to folio.
-> folio <- merge(folio, rollIsStrata,
-+                by = c("rollNumber","jurisdiction"), all.x = TRUE)
-> folio[is.na(isStrata2019), isStrata2019 := FALSE]
-> folio[, roll_base := NA_real_]
-> folio[(isStrata2019),  roll_base := as.numeric(rollNumber)]
-> folio[!(isStrata2019), roll_base := floor(as.numeric(rollNumber) / 1000)]
-> folio <- folio[!is.na(roll_base)]
-> folio <- unique(folio, by = c("roll_base","jurisdiction"))
-> folio <- folio[, .(folioID, roll_base, jurisdiction)]
-> 
-> # Apply to inventory. Rolls that don't appear in folio (rare for COV
-> # residential) default to non-strata. These will fall out anyway via
-> # the type filter at split time.
-> inventory <- merge(inventory, rollIsStrata,
-+                    by = c("rollNumber","jurisdiction"), all.x = TRUE)
-> inventory[is.na(isStrata2019), isStrata2019 := FALSE]
-> inventory[, roll_base := NA_real_]
-> inventory[(isStrata2019),  roll_base := as.numeric(rollNumber)]
-> inventory[!(isStrata2019), roll_base := floor(as.numeric(rollNumber) / 1000)]
-> inventory <- inventory[!is.na(roll_base)]
-> inventory <- unique(inventory, by = c("roll_base","jurisdiction"))
-> inventory <- inventory[, .(roll_base, jurisdiction,
-+                            land_width, land_depth,
-+                            MB_effective_year, MB_total_finished_area)]
-> cat(sprintf("Inventory rows after conditional roll_base + dedup: %d\n",
-+             nrow(inventory)))
-Inventory rows after conditional roll_base + dedup: 172753
-> 
-> # Apply the same lookup to dtSpatial. A 2026 polygon's rollNumber is
-> # strata-routed (full rollNumber) ONLY if that exact rollNumber also
-> # appears as a 2019 strata folio in rollIsStrata. Otherwise (including
-> # 2026 strata-duplex children whose 2019 parent was SF), we use the
-> # truncated /1000 form so the merge hits the 2019 parent. This makes
-> # the spatial and SQLite sides use the same routing rule.
-> dtSpatial <- merge(dtSpatial, rollIsStrata,
-+                    by = c("rollNumber","jurisdiction"), all.x = TRUE)
-> dtSpatial[is.na(isStrata2019), isStrata2019 := FALSE]
-> cat(sprintf("Spatial rows by 2019 strata flag for roll_base routing: strata=%d, other=%d\n",
-+             sum(dtSpatial$isStrata2019), sum(!dtSpatial$isStrata2019)))
-Spatial rows by 2019 strata flag for roll_base routing: strata=103321, other=119831
-> dtSpatial[, roll_base := NA_real_]
-> dtSpatial[(isStrata2019),  roll_base := as.numeric(rollNumber)]
-> dtSpatial[!(isStrata2019), roll_base := floor(as.numeric(rollNumber) / 1000)]
-> nBefore <- nrow(dtSpatial)
-> dtSpatial <- dtSpatial[!duplicated(roll_base)]
-> cat(sprintf("Deduped spatial rows by roll_base: %d -> %d\n",
-+             nBefore, nrow(dtSpatial)))
-Deduped spatial rows by roll_base: 223152 -> 192278
-> 
-> # ---------------------------------------------------------------------------
-> # 3. Merge: spatial -> inventory (by roll/jurisdiction), then -> folio,
-> #    then attach folioDescription (which brings the 2019 actualUseDescription
-> #    and dim fallback). Result is folio-keyed.
-> # ---------------------------------------------------------------------------
-> setkey(dtSpatial, roll_base, jurisdiction)
-> setkey(inventory, roll_base, jurisdiction)
-> dt <- inventory[dtSpatial, nomatch = NA]
-> 
-> setkey(folio, roll_base, jurisdiction)
-> setkey(dt,    roll_base, jurisdiction)
-> dt <- folio[dt, nomatch = NA, allow.cartesian = TRUE]
-> 
-> dt[, folioID := as.character(folioID)]
-> setkey(description, folioID)
-> setkey(dt,          folioID)
-> dt <- description[dt, nomatch = NA]
-> 
-> # Unify lot-dimension columns: prefer inventory.land_width/land_depth,
-> # fall back to folioDescription.fdLandWidth/fdLandDepth.
-> dt[, landWidth := as.numeric(land_width)]
-> dt[, landDepth := as.numeric(land_depth)]
-> dt[is.na(landWidth) & !is.na(fdLandWidth), landWidth := as.numeric(fdLandWidth)]
-> dt[is.na(landDepth) & !is.na(fdLandDepth), landDepth := as.numeric(fdLandDepth)]
-> 
-> dtOut <- dt[, .(folioID, rollNumber, jurisdiction,
-+                 actualUseDescription,
-+                 landWidth, landDepth,
-+                 MB_effective_year, MB_total_finished_area,
-+                 lon, lat, zoning2025, geom)]
-> 
-> cat(sprintf("\nMerged folio-keyed rows: %d\n", nrow(dtOut)))
-
-Merged folio-keyed rows: 192278
-> cat(sprintf("  with folioID:                   %d\n",
-+             sum(!is.na(dtOut$folioID))))
-  with folioID:                   191268
-> cat(sprintf("  with 2019 actualUseDescription: %d\n",
-+             sum(!is.na(dtOut$actualUseDescription))))
-  with 2019 actualUseDescription: 191268
-> cat(sprintf("  with 2025 zoning2025:           %d\n",
-+             sum(!is.na(dtOut$zoning2025))))
-  with 2025 zoning2025:           192264
-> cat(sprintf("  in R1-1:                        %d\n",
-+             sum(dtOut$zoning2025 == TARGET_ZONE, na.rm = TRUE)))
-  in R1-1:                        65329
-> cat(sprintf("  with lon/lat:                   %d\n",
-+             sum(!is.na(dtOut$lon) & !is.na(dtOut$lat))))
-  with lon/lat:                   192278
-> cat(sprintf("  with sqft:                      %d\n",
-+             sum(!is.na(dtOut$MB_total_finished_area) &
-+                 as.numeric(dtOut$MB_total_finished_area) > 0)))
-  with sqft:                      NA
-> cat(sprintf("  with lot dims:                  %d\n",
-+             sum(!is.na(dtOut$landWidth) & !is.na(dtOut$landDepth) &
-+                 dtOut$landWidth > 0 & dtOut$landDepth > 0)))
-  with lot dims:                  88127
-> 
-> cat("\nTop 2019 actualUseDescription values:\n")
-
-Top 2019 actualUseDescription values:
-> print(dtOut[!is.na(actualUseDescription),
-+             .N, by = actualUseDescription][order(-N)][1:15])
-                               actualUseDescription     N
-                                             <char> <int>
- 1:              Strata-Lot Residence (Condominium) 89678
- 2:                          Single Family Dwelling 38979
- 3:                 Residential Dwelling with Suite 34560
- 4:                           Commercial Strata-Lot  5128
- 5:             Individual Strata Lot (Hotel/Motel)  2745
- 6:                     Duplex, Strata Front / Back  2617
- 7:                       Multi-Family (Conversion)  2239
- 8:                  Multi-Family (Apartment Block)  1752
- 9:                     Duplex, Strata Side by Side  1515
-10:             Row Housing (Single Unit Ownership)  1111
-11:                 Store(S) And Service Commercial   986
-12:               Property Subject To Section 19(8)   927
-13:                    Store(S) And Living Quarters   826
-14:                  Storage & Warehousing (Closed)   821
-15: Duplex, Non-Strata Side by Side or Front / Back   760
-> 
-> # ---------------------------------------------------------------------------
-> # 4. Split by property type (2019 vintage), apply R1-1 filter for SF and
-> #    duplex, write one RDS each as sf.
-> # ---------------------------------------------------------------------------
-> for (tp in TYPES_TO_RUN) {
-+   cats <- typeMap[[tp]]
-+   if (length(cats) == 0) {
-+     cat(sprintf("\n[%s] no categories; skipping.\n", tp)); next
-+   }
-+   d <- dtOut[actualUseDescription %in% cats]
-+   preFilter <- nrow(d)
-+   if (tp %in% TYPES_R1_1_ONLY) {
-+     d <- d[!is.na(zoning2025) & zoning2025 == TARGET_ZONE]
-+     cat(sprintf("\n[%s] R1-1 filter: %d -> %d rows\n", tp, preFilter, nrow(d)))
-+   } else {
-+     cat(sprintf("\n[%s] no zoning filter (all zones kept): %d rows\n",
-+                 tp, nrow(d)))
-+   }
-+   if (nrow(d) == 0) {
-+     cat(sprintf("  [%s] zero rows after filter; skipping.\n", tp)); next
-+   }
-+   # Promote to sf: the geom list-column becomes the active geometry.
-+   sfTp <- st_as_sf(d, sf_column_name = "geom", crs = 4326)
-+   outPath <- file.path(path.expand(OUT_DIR),
-+                        sprintf("bca_vancouver_%s.rds", tp))
-+   saveRDS(sfTp, outPath)
-+   cat(sprintf("  wrote %d rows -> %s\n", nrow(sfTp), outPath))
-+   cat(sprintf("  diagnostics: folioID = %d  lon/lat = %d  sqft = %d  lotdim = %d\n",
-+               sum(!is.na(sfTp$folioID)),
-+               sum(!is.na(sfTp$lon) & !is.na(sfTp$lat)),
-+               sum(!is.na(sfTp$MB_total_finished_area) &
-+                   as.numeric(sfTp$MB_total_finished_area) > 0),
-+               sum(!is.na(sfTp$landWidth) & !is.na(sfTp$landDepth) &
-+                   sfTp$landWidth > 0 & sfTp$landDepth > 0)))
-+   cat("  category counts:\n")
-+   print(as.data.table(st_drop_geometry(sfTp))[
-+             , .N, by = actualUseDescription][order(-N)])
+> routeRollBase <- function(d) {
++   d <- merge(d, rollIsStrata, by = c("rollNumber", "jurisdiction"), all.x = TRUE)
++   d[is.na(isStrata2019), isStrata2019 := FALSE]
++   d[, roll_base := fifelse(isStrata2019, as.numeric(rollNumber), floor(as.numeric(rollNumber) / 1000))]
++   d[!is.na(roll_base)]
 + }
-
-[singleFamily] R1-1 filter: 73539 -> 62753 rows
-  wrote 62753 rows -> /Users/davidoff/DropboxExternal/dataProcessed//bca_vancouver_singleFamily.rds
-  diagnostics: folioID = 62753  lon/lat = 62753  sqft = NA  lotdim = 62719
-  category counts:
-              actualUseDescription     N
-                            <char> <int>
-1:          Single Family Dwelling 34476
-2: Residential Dwelling with Suite 28277
-
-[strata] no zoning filter (all zones kept): 89678 rows
-  wrote 89678 rows -> /Users/davidoff/DropboxExternal/dataProcessed//bca_vancouver_strata.rds
-  diagnostics: folioID = 89678  lon/lat = 89678  sqft = NA  lotdim = 20
-  category counts:
-                 actualUseDescription     N
-                               <char> <int>
-1: Strata-Lot Residence (Condominium) 89678
-
-[duplex] no zoning filter (all zones kept): 4132 rows
-  wrote 4132 rows -> /Users/davidoff/DropboxExternal/dataProcessed//bca_vancouver_duplex.rds
-  diagnostics: folioID = 4132  lon/lat = 4132  sqft = 4132  lotdim = 4117
-  category counts:
-          actualUseDescription     N
-                        <char> <int>
-1: Duplex, Strata Front / Back  2617
-2: Duplex, Strata Side by Side  1515
+> folio     <- unique(routeRollBase(folio),     by = c("roll_base", "jurisdiction"))[, .(folioID, roll_base, jurisdiction)]
+> inventory <- unique(routeRollBase(inventory), by = c("roll_base", "jurisdiction"))[
++   , .(roll_base, jurisdiction, land_width, land_depth, MB_effective_year, MB_total_finished_area)]
+> dtSpatial <- routeRollBase(dtSpatial)[!duplicated(roll_base)]
 > 
-> cat("\nDone.\n")
-
-Done.
+> # merge spatial -> inventory -> folio -> description; dim fallback to folioDescription
+> setkey(dtSpatial, roll_base, jurisdiction); setkey(inventory, roll_base, jurisdiction)
+> dt <- inventory[dtSpatial]
+> setkey(folio, roll_base, jurisdiction); setkey(dt, roll_base, jurisdiction)
+> dt <- folio[dt, allow.cartesian = TRUE]
+> setkey(description, folioID); setkey(dt, folioID)
+> dt <- description[dt]
+> dt[, landWidth := fcoalesce(as.numeric(land_width), as.numeric(fdLandWidth))]
+> dt[, landDepth := fcoalesce(as.numeric(land_depth), as.numeric(fdLandDepth))]
+> dtOut <- dt[, .(folioID, rollNumber, jurisdiction, actualUseDescription, landWidth, landDepth,
++                 MB_effective_year, MB_total_finished_area, lon, lat, zoning2025, geom)]
+> cat(sprintf("Merged rows: %d (R1-1: %d)\n", nrow(dtOut), sum(dtOut$zoning2025 == "R1-1", na.rm = TRUE)))
+Merged rows: 192278 (R1-1: 65329)
+> 
+> for (tp in c("singleFamily", "strata", "duplex")) {
++   d <- dtOut[actualUseDescription %in% typeMap[[tp]]]
++   if (tp %in% R1_1_ONLY) d <- d[zoning2025 == "R1-1"]
++   if (nrow(d) == 0) { cat(sprintf("[%s] zero rows; skipped\n", tp)); next }
++   outPath <- file.path(path.expand(OUT_DIR), sprintf("bca_vancouver_%s.rds", tp))
++   saveRDS(st_as_sf(d, sf_column_name = "geom", crs = 4326), outPath)
++   cat(sprintf("[%s] %d rows -> %s\n", tp, nrow(d), outPath))
++ }
+[singleFamily] 62753 rows -> /Users/davidoff/DropboxExternal/dataProcessed//bca_vancouver_singleFamily.rds
+[strata] 89678 rows -> /Users/davidoff/DropboxExternal/dataProcessed//bca_vancouver_strata.rds
+[duplex] 4132 rows -> /Users/davidoff/DropboxExternal/dataProcessed//bca_vancouver_duplex.rds
 > 
 > proc.time()
    user  system elapsed 
- 59.357   2.310  53.015 
+ 60.100   1.733  51.611 

@@ -1,0 +1,502 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # vancouverPermitCost.R
+> # cost per square foot for new builds by geography
+> # Tom Davidoff
+> # 06/10/26
+> 
+> library(ggplot2)
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> # permit data
+> dp <- fread("~/DropboxExternal/dataRaw/issued-building-permits.csv",select=c("PermitNumber","geo_point_2d","IssueDate","ProjectValue","TypeOfWork","PropertyUse","SpecificUseCategory"))
+> # merge with oldest available lat-lon
+> dp <- dp[PropertyUse=="Dwelling Uses"]
+> print(table(dp[,SpecificUseCategory]))
+
+                                                                                
+                                                                              1 
+                               1FD on Sites w/ More Than One Principal Building 
+                                                                              1 
+                                                            1FD w/ Family Suite 
+                                                                             10 
+                                            2FD on Sites w/ Mult Principal Bldg 
+                                                                              3 
+                                                                      Apartment 
+                                                                             63 
+                                                            Apartment,Townhouse 
+                                                                              9 
+                                                                         Duplex 
+                                                                           2092 
+                                                       Duplex w/Secondary Suite 
+                                                                            711 
+                                        Duplex w/Secondary Suite,Lock -off Unit 
+                                                                              3 
+                                       Duplex w/Secondary Suite,Secondary Suite 
+                                                                            134 
+                                                                  Duplex,Infill 
+                                                                              1 
+                                                          Duplex,Lock -off Unit 
+                                                                             21 
+                                          Duplex,Lock -off Unit,Secondary Suite 
+                                                                              1 
+                                                         Duplex,Secondary Suite 
+                                                                              1 
+                                                   Duplex,Single Detached House 
+                                                                              2 
+                                                                  Dwelling Unit 
+                                                                            802 
+                                                     Dwelling Unit w/ Other Use 
+                                                                             15 
+                                   Dwelling Unit,Mixed-Use Residential Building 
+                                                                              1 
+                                                Dwelling Unit,Multiple Dwelling 
+                                                                              2 
+                                            Dwelling Unit,Single Detached House 
+                                                                              1 
+                                                              Freehold Rowhouse 
+                                                                             10 
+                                                              Housekeeping Unit 
+                                                                              1 
+                                                                         Infill 
+                                                                             40 
+                                                                  Infill Duplex 
+                                                                              6 
+                                                       Infill Multiple Dwelling 
+                                                                              7 
+                                                   Infill Single Detached House 
+                                                                            209 
+                      Infill Single Detached House,Multiple Conversion Dwelling 
+                                                                              5 
+Infill Single Detached House,Multiple Conversion Dwelling,Single Detached House 
+                                                                              3 
+                             Infill Single Detached House,Single Detached House 
+                                                                              1 
+                 Infill Single Detached House,Single Detached House w/Sec Suite 
+                                                                              1 
+Infill Single Detached House,Single Detached House,Multiple Conversion Dwelling 
+                                                                              2 
+                                                     Infill Two-Family Dwelling 
+                                                                             20 
+                   Infill Two-Family Dwelling,Single Detached House w/Sec Suite 
+                                                                              1 
+                                            Infill,Infill Single Detached House 
+                                                                              1 
+                      Infill,Multiple Conversion Dwelling,Single Detached House 
+                                                                              2 
+                                 Infill,Multiple Dwelling,Single Detached House 
+                                                                              1 
+                                                   Infill,Single Detached House 
+                                                                              1 
+                                                                  Laneway House 
+                                                                           4149 
+                                            Laneway House,Single Detached House 
+                                                                              2 
+                                Laneway House,Single Detached House w/Sec Suite 
+                                                                              1 
+                                                          Lock -off Unit,Duplex 
+                                                                             12 
+                                        Lock -off Unit,Duplex w/Secondary Suite 
+                                                                              6 
+                                                                 Micro Dwelling 
+                                                                             12 
+                                                 Mixed-Use Residential Building 
+                                                                             37 
+                                         Multiple Conv Dwelling w/ Family Suite 
+                                                                              1 
+                                            Multiple Conv Dwelling w/ Sec Suite 
+                                                                              1 
+                                                   Multiple Conversion Dwelling 
+                                                                            381 
+                                            Multiple Conversion Dwelling,Duplex 
+                                                                              1 
+                                            Multiple Conversion Dwelling,Infill 
+                                                                              1 
+                                 Multiple Conversion Dwelling,Multiple Dwelling 
+                                                                              2 
+                                    Multiple Conversion Dwelling,Not Applicable 
+                                                                              1 
+                             Multiple Conversion Dwelling,Single Detached House 
+                                                                              2 
+                 Multiple Conversion Dwelling,Single Detached House w/Sec Suite 
+                                                                              1 
+                                                              Multiple Dwelling 
+                                                                           6524 
+                                 Multiple Dwelling,Infill,Single Detached House 
+                                                                              1 
+              Multiple Dwelling,Residential Unit Associated w/ an Artist Studio 
+                                                                              1 
+                                                Multiple Dwelling,Rooming House 
+                                                                              1 
+                                    Multiple Dwelling,Temporary Modular Housing 
+                                                                              1 
+                                                                 Not Applicable 
+                                                                             63 
+                                             Principal Dwelling Unit w/Lock Off 
+                                                                              8 
+                                Residential Unit Associated w/ an Artist Studio 
+                                                                              4 
+              Residential Unit Associated w/ an Artist Studio,Multiple Dwelling 
+                                                                              1 
+                                                      Residential/Business Unit 
+                                                                              2 
+                                                                  Rooming House 
+                                                                             39 
+                                                                Secondary Suite 
+                                                                              5 
+                                       Secondary Suite,Duplex w/Secondary Suite 
+                                                                             54 
+                 Secondary Suite,Duplex w/Secondary Suite,Single Detached House 
+                                                                              1 
+                              Secondary Suite,Single Detached House w/Sec Suite 
+                                                                              1 
+                                            Seniors Supportive/Assisted Housing 
+                                                                             27 
+                                                          Single Detached House 
+                                                                          13692 
+                                              Single Detached House w/Sec Suite 
+                                                                           5975 
+                 Single Detached House w/Sec Suite,Infill Single Detached House 
+                                                                              1 
+                        Single Detached House w/Sec Suite,Single Detached House 
+                                                                             17 
+                                                   Single Detached House,Duplex 
+                                                                              3 
+                                            Single Detached House,Dwelling Unit 
+                                                                              2 
+                             Single Detached House,Infill Single Detached House 
+                                                                              1 
+Single Detached House,Infill Single Detached House,Multiple Conversion Dwelling 
+                                                                              2 
+                             Single Detached House,Multiple Conversion Dwelling 
+                                                                              2 
+                                        Single Detached House,Multiple Dwelling 
+                                                                              1 
+                                           Single Detached House,Not Applicable 
+                                                                              1 
+                        Single Detached House,Single Detached House w/Sec Suite 
+                                                                             19 
+                                                                  Sleeping Unit 
+                                                                              3 
+                                                      Temporary Modular Housing 
+                                                                             15 
+                                                                      Townhouse 
+                                                                             49 
+> dp <- dp[SpecificUseCategory %in% c("Duplex","Duplex w/Secondary Suite","Single Detached House","Single Detached House w/Sec Suite")]
+> print(table(dp[,SpecificUseCategory]))
+
+                           Duplex          Duplex w/Secondary Suite 
+                             2092                               711 
+            Single Detached House Single Detached House w/Sec Suite 
+                            13692                              5975 
+> print(table(dp[,TypeOfWork]))
+
+               Addition / Alteration          Demolition / Deconstruction 
+                                4979                                 6174 
+                        New Building Outdoor Uses (No Buildings Proposed) 
+                                5224                                   18 
+               Salvage and Abatement       Temporary Building / Structure 
+                                6071                                    4 
+> dp <- dp[TypeOfWork=="New Building"]
+> 
+> # merge with single family file
+> ssf <- readRDS("~/DropboxExternal/dataProcessed/bca_vancouver_singleFamily.rds")
+> 
+> # convert dp to spatial with centroid as geo_point_2d. then merge with ssf geom as point within
+> dp[, lat := as.numeric(sub(",.*", "", geo_point_2d))]
+> dp[, lon := as.numeric(sub(".*,", "", geo_point_2d))]
+> dp <- dp[!is.na(lat)]
+> print(nrow(dp))
+[1] 5115
+> sdp <- st_as_sf(dp,coords=c("lon","lat"),crs=4326)
+> print(nrow(sdp))
+[1] 5115
+> ssf <- st_transform(ssf,crs=4326)
+> print(head(ssf))
+Simple feature collection with 6 features and 11 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: -123.2248 ymin: 49.27383 xmax: -123.2201 ymax: 49.27515
+Geodetic CRS:  WGS 84
+     folioID      rollNumber jurisdiction   actualUseDescription landWidth
+1 A000000009 001019632060000          200 Single Family Dwelling        NA
+2 A00000000A 001019632290000          200 Single Family Dwelling       195
+3 A00000000B 001019632450000          200 Single Family Dwelling       150
+4 A00000000C 001019632650000          200 Single Family Dwelling       150
+5 A00000000D 001019632760000          200 Single Family Dwelling       170
+6 A00000000E 001019635070000          200 Single Family Dwelling       170
+  landDepth MB_effective_year MB_total_finished_area       lon      lat
+1        NA              2019                  11895 -123.2229 49.27488
+2     251.9              1997                   7760 -123.2243 49.27431
+3     250.0              1945                   3215 -123.2236 49.27424
+4     250.0              2011                   8673 -123.2230 49.27420
+5     215.2              2000                   7238 -123.2206 49.27456
+6     217.8              1995                   4739 -123.2214 49.27416
+  zoning2025                           geom
+1       R1-1 MULTIPOLYGON (((-123.2224 4...
+2       R1-1 MULTIPOLYGON (((-123.2248 4...
+3       R1-1 MULTIPOLYGON (((-123.2234 4...
+4       R1-1 MULTIPOLYGON (((-123.2234 4...
+5       R1-1 MULTIPOLYGON (((-123.221 49...
+6       R1-1 MULTIPOLYGON (((-123.2207 4...
+> dp_sf <- st_join(sdp,ssf,join=st_within)
+> print(head(dp_sf))
+Simple feature collection with 6 features and 18 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -123.1841 ymin: 49.22009 xmax: -123.0655 ymax: 49.25709
+Geodetic CRS:  WGS 84
+   PermitNumber             geo_point_2d  IssueDate ProjectValue   TypeOfWork
+1 DB-2025-00474 49.2200871, -123.0847553 2025-06-12       672000 New Building
+2 DB-2021-04671 49.2283997, -123.1490267 2022-08-17      1065262 New Building
+3 DB-2024-05167 49.2521848, -123.0911856 2025-03-20      1100000 New Building
+4 DB-2026-00285 49.2570906, -123.1840887 2026-05-04       900000 New Building
+5 DB-2025-00496 49.2463554, -123.0655269 2025-09-23       750000 New Building
+6 DB-2025-01438 49.2359555, -123.0949623 2025-09-04      1200000 New Building
+    PropertyUse   SpecificUseCategory    folioID      rollNumber jurisdiction
+1 Dwelling Uses                Duplex A000002DVA 017805216370000          200
+2 Dwelling Uses Single Detached House A000001ATY 010097765260000          200
+3 Dwelling Uses Single Detached House A0000024GS 015698203310000          200
+4 Dwelling Uses                Duplex A000000GKD 003691040260000          200
+5 Dwelling Uses                Duplex A00000238B 015250705250000          200
+6 Dwelling Uses                Duplex A0000029HV 016741197560000          200
+             actualUseDescription landWidth landDepth MB_effective_year
+1 Residential Dwelling with Suite      43.6      90.2              1980
+2          Single Family Dwelling      54.0     139.0              1960
+3          Single Family Dwelling      25.0     122.7              1970
+4 Residential Dwelling with Suite      33.0     113.4              1960
+5 Residential Dwelling with Suite      33.0     115.2              1947
+6          Single Family Dwelling      33.0     117.2              1965
+  MB_total_finished_area       lon      lat zoning2025
+1                   1509 -123.0848 49.22009       R1-1
+2                   2503 -123.1490 49.22841       R1-1
+3                   1170 -123.0912 49.25219       R1-1
+4                   1628 -123.1841 49.25709       R1-1
+5                   2009 -123.0655 49.24636       R1-1
+6                   1820 -123.0950 49.23595       R1-1
+                    geometry
+1 POINT (-123.0848 49.22009)
+2   POINT (-123.149 49.2284)
+3 POINT (-123.0912 49.25218)
+4 POINT (-123.1841 49.25709)
+5 POINT (-123.0655 49.24636)
+6  POINT (-123.095 49.23596)
+> print(nrow(dp_sf))
+[1] 5115
+> print(table(dp_sf$zoning2025))
+
+R1-1 
+3780 
+> dt <- as.data.table(dp_sf)
+> dt[,landArea:=landWidth*landDepth]
+> print(table(dt[,SpecificUseCategory]))
+
+                           Duplex          Duplex w/Secondary Suite 
+                             1063                               427 
+            Single Detached House Single Detached House w/Sec Suite 
+                             1402                              2223 
+> print(dt[,summary(round(landWidth)),by=SpecificUseCategory])
+                  SpecificUseCategory               V1
+                               <char> <summaryDefault>
+ 1:                            Duplex            25.00
+ 2:                            Duplex            33.00
+ 3:                            Duplex            33.00
+ 4:                            Duplex            35.38
+ 5:                            Duplex            33.00
+ 6:                            Duplex            75.00
+ 7:                            Duplex           523.00
+ 8:             Single Detached House            20.00
+ 9:             Single Detached House            33.00
+10:             Single Detached House            50.00
+11:             Single Detached House            49.96
+12:             Single Detached House            60.00
+13:             Single Detached House           175.00
+14:             Single Detached House           301.00
+15: Single Detached House w/Sec Suite            24.00
+16: Single Detached House w/Sec Suite            33.00
+17: Single Detached House w/Sec Suite            33.00
+18: Single Detached House w/Sec Suite            39.49
+19: Single Detached House w/Sec Suite            45.00
+20: Single Detached House w/Sec Suite           109.00
+21: Single Detached House w/Sec Suite           408.00
+22:          Duplex w/Secondary Suite            30.00
+23:          Duplex w/Secondary Suite            33.00
+24:          Duplex w/Secondary Suite            43.00
+25:          Duplex w/Secondary Suite            44.16
+26:          Duplex w/Secondary Suite            50.00
+27:          Duplex w/Secondary Suite            74.00
+28:          Duplex w/Secondary Suite           110.00
+                  SpecificUseCategory               V1
+                               <char> <summaryDefault>
+> print(table(dt[,round(landWidth)==33,by=SpecificUseCategory]))
+                                   V1
+SpecificUseCategory                 FALSE TRUE
+  Duplex                              163  377
+  Duplex w/Secondary Suite            241   76
+  Single Detached House               812  289
+  Single Detached House w/Sec Suite  1000  815
+> dt <- dt[round(landWidth)==33]
+> print(table(dt[,SpecificUseCategory]))
+
+                           Duplex          Duplex w/Secondary Suite 
+                              377                                76 
+            Single Detached House Single Detached House w/Sec Suite 
+                              289                               815 
+> print(nrow(dt))
+[1] 1557
+> FSR <- 0.7 # appx
+> dt[,costPerSqFt:=ProjectValue/(landArea*FSR)]
+> dt <- dt[!is.na(costPerSqFt)]
+> print(table(dt[,SpecificUseCategory]))
+
+                           Duplex          Duplex w/Secondary Suite 
+                              377                                76 
+            Single Detached House Single Detached House w/Sec Suite 
+                              289                               815 
+> 
+> print(table(dt[,SpecificUseCategory]))
+
+                           Duplex          Duplex w/Secondary Suite 
+                              377                                76 
+            Single Detached House Single Detached House w/Sec Suite 
+                              289                               815 
+> print(dt[,summary(costPerSqFt),by=SpecificUseCategory])
+                  SpecificUseCategory               V1
+                               <char> <summaryDefault>
+ 1:                            Duplex             0.00
+ 2:                            Duplex           249.92
+ 3:                            Duplex           255.87
+ 4:                            Duplex           280.66
+ 5:                            Duplex           300.63
+ 6:                            Duplex           577.42
+ 7:             Single Detached House             0.00
+ 8:             Single Detached House           246.44
+ 9:             Single Detached House           249.91
+10:             Single Detached House           244.39
+11:             Single Detached House           256.15
+12:             Single Detached House           745.16
+13:          Duplex w/Secondary Suite           163.13
+14:          Duplex w/Secondary Suite           249.51
+15:          Duplex w/Secondary Suite           250.10
+16:          Duplex w/Secondary Suite           255.33
+17:          Duplex w/Secondary Suite           254.87
+18:          Duplex w/Secondary Suite           407.26
+19: Single Detached House w/Sec Suite             9.13
+20: Single Detached House w/Sec Suite           249.12
+21: Single Detached House w/Sec Suite           249.98
+22: Single Detached House w/Sec Suite           256.03
+23: Single Detached House w/Sec Suite           254.70
+24: Single Detached House w/Sec Suite          2777.25
+                  SpecificUseCategory               V1
+                               <char> <summaryDefault>
+> # might be a plug number
+> print(head(dt))
+    PermitNumber             geo_point_2d  IssueDate ProjectValue   TypeOfWork
+          <char>                   <char>     <IDat>        <num>       <char>
+1: DB-2026-00285 49.2570906, -123.1840887 2026-05-04       900000 New Building
+2: DB-2025-00496 49.2463554, -123.0655269 2025-09-23       750000 New Building
+3: DB-2025-01438 49.2359555, -123.0949623 2025-09-04      1200000 New Building
+4: DB-2025-00071  49.2648992, -123.204853 2025-05-09       900000 New Building
+5: DB-2022-00523 49.2845326, -123.0530636 2023-01-13       719100 New Building
+6: DB-2024-01347 49.2535438, -123.1941926 2024-09-26       800000 New Building
+     PropertyUse      SpecificUseCategory    folioID      rollNumber
+          <char>                   <char>     <char>          <char>
+1: Dwelling Uses                   Duplex A000000GKD 003691040260000
+2: Dwelling Uses                   Duplex A00000238B 015250705250000
+3: Dwelling Uses                   Duplex A0000029HV 016741197560000
+4: Dwelling Uses    Single Detached House A0000001PX 001655026370000
+5: Dwelling Uses Duplex w/Secondary Suite A000002QJ7 020580271660001
+6: Dwelling Uses                   Duplex A000000H3U 003698030820000
+   jurisdiction            actualUseDescription landWidth landDepth
+         <char>                          <char>     <num>     <num>
+1:          200 Residential Dwelling with Suite        33     113.4
+2:          200 Residential Dwelling with Suite        33     115.2
+3:          200          Single Family Dwelling        33     117.2
+4:          200          Single Family Dwelling        33     115.0
+5:          200          Single Family Dwelling        33     122.0
+6:          200          Single Family Dwelling        33     122.0
+   MB_effective_year MB_total_finished_area       lon      lat zoning2025
+              <char>                 <char>     <num>    <num>     <char>
+1:              1960                   1628 -123.1841 49.25709       R1-1
+2:              1947                   2009 -123.0655 49.24636       R1-1
+3:              1965                   1820 -123.0950 49.23595       R1-1
+4:              1965                   1949 -123.2048 49.26490       R1-1
+5:              1955                   1854 -123.0531 49.28453       R1-1
+6:              1948                   1904 -123.1942 49.25355       R1-1
+                     geometry landArea costPerSqFt
+                  <sfc_POINT>    <num>       <num>
+1: POINT (-123.1841 49.25709)   3742.2    343.5718
+2: POINT (-123.0655 49.24636)   3801.6    281.8362
+3:  POINT (-123.095 49.23596)   3867.6    443.2428
+4:  POINT (-123.2049 49.2649)   3795.0    338.7916
+5: POINT (-123.0531 49.28453)   4026.0    255.1629
+6: POINT (-123.1942 49.25354)   4026.0    283.8691
+> dt[,issueMonth:=substring(IssueDate,1,7)]
+> print(dt[SpecificUseCategory=="Duplex",summary(costPerSqFt),by=c("SpecificUseCategory","issueMonth")])
+     SpecificUseCategory issueMonth               V1
+                  <char>     <char> <summaryDefault>
+  1:              Duplex    2026-05            343.6
+  2:              Duplex    2026-05            343.6
+  3:              Duplex    2026-05            343.6
+  4:              Duplex    2026-05            343.6
+  5:              Duplex    2026-05            343.6
+ ---                                                
+458:              Duplex    2021-04            249.4
+459:              Duplex    2021-04            249.4
+460:              Duplex    2021-04            249.4
+461:              Duplex    2021-04            249.4
+462:              Duplex    2021-04            249.4
+> dt[,monthCategory:=paste0(issueMonth,SpecificUseCategory)]
+> dt[,nMonthCategory:=.N,by=monthCategory]
+> print(summary(dt[nMonthCategory>5,var(costPerSqFt),by=monthCategory]))
+ monthCategory            V1           
+ Length:108         Min.   :2.691e-01  
+ Class :character   1st Qu.:1.648e+02  
+ Mode  :character   Median :7.721e+02  
+                    Mean   :1.771e+03  
+                    3rd Qu.:1.964e+03  
+                    Max.   :1.407e+04  
+> q5 <- quantile(dt$costPerSqFt,probs=0.05)
+> q95 <- quantile(dt$costPerSqFt,probs=0.95)
+> dt[,meanCostPerSqFt:=mean(costPerSqFt),by=monthCategory]
+> dt[,devCostPerSqFt:=costPerSqFt-meanCostPerSqFt]
+> 
+> 
+> 
+> # plot costPerSqFt by lon,lat
+> 
+> library(ggspatial)
+> 
+> dplot <- st_as_sf(dt[costPerSqFt %between% c(q5, q95) & SpecificUseCategory == "Duplex"])  # geometry column survived as.data.table
+> ggplot(dplot) +
++   annotation_map_tile(type = "cartolight", zoomin = 0) +
++   geom_sf(aes(color = devCostPerSqFt), size = 0.8) +
++   scale_color_viridis_c(name = "$/sqft dev.") +
++   theme_void()
+Loading required namespace: raster
+Zoom: 12
+> ggsave("text/vancouverCostMap.png", width = 6, height = 6, dpi = 300)
+Zoom: 12
+> 
+> proc.time()
+   user  system elapsed 
+  8.181   0.684   9.447 
