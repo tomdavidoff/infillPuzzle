@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -7696,7 +7696,7 @@ Service Stations, Repair Garages (572)            Single Detached House (110)
 > # merge with census tract data
 > dCT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
 Reading layer `lct_000b21a_e' from data source 
-  `/Volumes/Crucial X10/Dropbox/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
   using driver `ESRI Shapefile'
 Simple feature collection with 6247 features and 5 fields
 Geometry type: MULTIPOLYGON
@@ -7740,36 +7740,170 @@ logical   64498    2939
 > dtIncome <- fread("~/DropboxExternal/dataRaw/9810005801_databaseLoadingData.csv") #select = c("GEO", "DGUID", "Household income statistics (6)", "VALUE"))
 > dtIncome <- dtIncome[`Household income statistics (6)` == "Median household total income (2020) (2020 constant dollars)"]
 > 
-> print(names(dtIncome))
- [1] "REF_DATE"                                             
- [2] "GEO"                                                  
- [3] "DGUID"                                                
- [4] "Household size (7)"                                   
- [5] "Household type including census family structure (11)"
- [6] "Household income statistics (6)"                      
- [7] "UOM"                                                  
- [8] "UOM_ID"                                               
- [9] "SCALAR_FACTOR"                                        
-[10] "SCALAR_ID"                                            
-[11] "VECTOR"                                               
-[12] "COORDINATE"                                           
-[13] "VALUE"                                                
-[14] "STATUS"                                               
-[15] "SYMBOL"                                               
-[16] "TERMINATED"                                           
-[17] "DECIMALS"                                             
-> print(names(dps))
- [1] "Row ID"               "PERMIT_DATE"          "PERMIT_NUMBER"       
- [4] "REPORT_PERMIT_DATE"   "YEAR"                 "MONTH_NUMBER"        
- [7] "JOB_CATEGORY"         "JOB_DESCRIPTION"      "BUILDING_TYPE"       
-[10] "WORK_TYPE"            "CONSTRUCTION_VALUE"   "FLOOR_AREA"          
-[13] "UNITS_ADDED"          "ADDRESS"              "LEGAL_DESCRIPTION"   
-[16] "ZONING"               "NEIGHBOURHOOD_NUMBER" "NEIGHBOURHOOD"       
-[19] "BIA"                  "COUNT"                "LOCATION"            
-[22] "Geometry Point"       "Occupancy Date"       "permitMonth"         
-[25] "CTUID"                "CTNAME"               "geometry"            
+> ## from Gemini
+> #2021 (Vintage year)
+> #S (Spatial type)
+> #0507 (The specific geographic boundary type code, which is why it always ends in 507 for this dataset).
+> dtIncome[,CTUID:=gsub("2021S0507","",DGUID)]
 > 
-> q("no")
+> print(nrow(dps))
+[1] 64498
+> dps <- merge(dps, dtIncome[,c("CTUID","VALUE")], by="CTUID")
+> print(nrow(dps))
+[1] 64498
+> print(summary(dps))
+    CTUID              Row ID           PERMIT_DATE         PERMIT_NUMBER 
+ Length:64498       Length:64498       Min.   :2009-01-05   Mode:logical  
+ Class :character   Class :character   1st Qu.:2014-08-06   NA's:64498    
+ Mode  :character   Mode  :character   Median :2018-06-14                 
+                                       Mean   :2018-06-04                 
+                                       3rd Qu.:2022-07-12                 
+                                       Max.   :2026-06-08                 
+                                                                          
+ REPORT_PERMIT_DATE        YEAR       MONTH_NUMBER    JOB_CATEGORY      
+ Min.   :2009-01-05   Min.   :2009   Min.   : 1.000   Length:64498      
+ 1st Qu.:2014-08-06   1st Qu.:2014   1st Qu.: 4.000   Class :character  
+ Median :2018-06-14   Median :2018   Median : 7.000   Mode  :character  
+ Mean   :2018-06-04   Mean   :2018   Mean   : 6.708                     
+ 3rd Qu.:2022-07-12   3rd Qu.:2022   3rd Qu.: 9.000                     
+ Max.   :2026-06-08   Max.   :2026   Max.   :12.000                     
+                                                                        
+ JOB_DESCRIPTION    BUILDING_TYPE       WORK_TYPE         CONSTRUCTION_VALUE
+ Length:64498       Length:64498       Length:64498       Min.   :     -1   
+ Class :character   Class :character   Class :character   1st Qu.:   4500   
+ Mode  :character   Mode  :character   Mode  :character   Median :  10000   
+                                                          Mean   :  85163   
+                                                          3rd Qu.:  50000   
+                                                          Max.   :8000000   
+                                                          NA's   :16017     
+   FLOOR_AREA       UNITS_ADDED        ADDRESS          LEGAL_DESCRIPTION 
+ Min.   :      0   Min.   :-4.0000   Length:64498       Length:64498      
+ 1st Qu.:    322   1st Qu.: 0.0000   Class :character   Class :character  
+ Median :    854   Median : 0.0000   Mode  :character   Mode  :character  
+ Mean   :   1288   Mean   : 0.4631                                        
+ 3rd Qu.:   1834   3rd Qu.: 1.0000                                        
+ Max.   :1000000   Max.   :36.0000                                        
+ NA's   :35218     NA's   :25746                                          
+    ZONING          NEIGHBOURHOOD_NUMBER NEIGHBOURHOOD          BIA           
+ Length:64498       Length:64498         Length:64498       Length:64498      
+ Class :character   Class :character     Class :character   Class :character  
+ Mode  :character   Mode  :character     Mode  :character   Mode  :character  
+                                                                              
+                                                                              
+                                                                              
+                                                                              
+     COUNT     LOCATION         Geometry Point     Occupancy Date      
+ Min.   :1   Length:64498       Length:64498       Min.   :2022-01-04  
+ 1st Qu.:1   Class :character   Class :character   1st Qu.:2023-04-11  
+ Median :1   Mode  :character   Mode  :character   Median :2024-05-30  
+ Mean   :1                                         Mean   :2024-05-12  
+ 3rd Qu.:1                                         3rd Qu.:2025-07-17  
+ Max.   :1                                         Max.   :2026-06-08  
+                                                   NA's   :62263       
+ permitMonth           CTNAME              VALUE                 geometry    
+ Length:64498       Length:64498       Min.   : 43200   POINT        :64498  
+ Class :character   Class :character   1st Qu.: 74500   epsg:3347    :    0  
+ Mode  :character   Mode  :character   Median : 87000   +proj=lcc ...:    0  
+                                       Mean   : 94098                        
+                                       3rd Qu.:114000                        
+                                       Max.   :172000                        
+                                       NA's   :2                             
+> 
+> dps <- data.table(dps)[YEAR>2023]
+> print(summary(dps))
+    CTUID              Row ID           PERMIT_DATE         PERMIT_NUMBER 
+ Length:10116       Length:10116       Min.   :2024-01-02   Mode:logical  
+ Class :character   Class :character   1st Qu.:2024-08-07   NA's:10116    
+ Mode  :character   Mode  :character   Median :2025-04-09                 
+                                       Mean   :2025-03-26                 
+                                       3rd Qu.:2025-10-24                 
+                                       Max.   :2026-06-08                 
+                                                                          
+ REPORT_PERMIT_DATE        YEAR       MONTH_NUMBER    JOB_CATEGORY      
+ Min.   :2024-01-02   Min.   :2024   Min.   : 1.000   Length:10116      
+ 1st Qu.:2024-08-07   1st Qu.:2024   1st Qu.: 3.000   Class :character  
+ Median :2025-04-09   Median :2025   Median : 6.000   Mode  :character  
+ Mean   :2025-03-26   Mean   :2025   Mean   : 6.022                     
+ 3rd Qu.:2025-10-24   3rd Qu.:2025   3rd Qu.: 9.000                     
+ Max.   :2026-06-08   Max.   :2026   Max.   :12.000                     
+                                                                        
+ JOB_DESCRIPTION    BUILDING_TYPE       WORK_TYPE         CONSTRUCTION_VALUE
+ Length:10116       Length:10116       Length:10116       Min.   :      0   
+ Class :character   Class :character   Class :character   1st Qu.:  18000   
+ Mode  :character   Mode  :character   Mode  :character   Median :  50000   
+                                                          Mean   : 182880   
+                                                          3rd Qu.: 289188   
+                                                          Max.   :3961074   
+                                                          NA's   :5702      
+   FLOOR_AREA     UNITS_ADDED       ADDRESS          LEGAL_DESCRIPTION 
+ Min.   :    0   Min.   :-2.000   Length:10116       Length:10116      
+ 1st Qu.: 1411   1st Qu.: 1.000   Class :character   Class :character  
+ Median : 2956   Median : 2.000   Mode  :character   Mode  :character  
+ Mean   : 3167   Mean   : 3.591                                        
+ 3rd Qu.: 4698   3rd Qu.: 7.000                                        
+ Max.   :16146   Max.   :36.000                                        
+ NA's   :8350    NA's   :8329                                          
+    ZONING          NEIGHBOURHOOD_NUMBER NEIGHBOURHOOD          BIA           
+ Length:10116       Length:10116         Length:10116       Length:10116      
+ Class :character   Class :character     Class :character   Class :character  
+ Mode  :character   Mode  :character     Mode  :character   Mode  :character  
+                                                                              
+                                                                              
+                                                                              
+                                                                              
+     COUNT     LOCATION         Geometry Point     Occupancy Date      
+ Min.   :1   Length:10116       Length:10116       Min.   :2022-09-06  
+ 1st Qu.:1   Class :character   Class :character   1st Qu.:2025-05-06  
+ Median :1   Mode  :character   Mode  :character   Median :2025-10-23  
+ Mean   :1                                         Mean   :2025-09-11  
+ 3rd Qu.:1                                         3rd Qu.:2026-02-18  
+ Max.   :1                                         Max.   :2026-06-08  
+                                                   NA's   :9346        
+ permitMonth           CTNAME              VALUE                 geometry    
+ Length:10116       Length:10116       Min.   : 43200   POINT        :10116  
+ Class :character   Class :character   1st Qu.: 74500   epsg:3347    :    0  
+ Mode  :character   Mode  :character   Median : 85000   +proj=lcc ...:    0  
+                                       Mean   : 91975                        
+                                       3rd Qu.:107000                        
+                                       Max.   :172000                        
+                                       NA's   :2                             
+> dps[,meanRow:=mean(grepl("Row House",BUILDING_TYPE)),by=CTUID]
+> dps[,meanSingle:=mean(grepl("Single Detached House",BUILDING_TYPE)),by=CTUID]
+> dps[,shareRow:=meanRow/(meanSingle+meanRow)]
+> print(cor(dps[,.(meanRow,shareRow,VALUE)],use="complete.obs"))
+            meanRow   shareRow      VALUE
+meanRow   1.0000000  0.9909838 -0.4505947
+shareRow  0.9909838  1.0000000 -0.4750042
+VALUE    -0.4505947 -0.4750042  1.0000000
+> print(dps[,mean(UNITS_ADDED,na.rm=TRUE),by=BUILDING_TYPE])
+                             BUILDING_TYPE         V1
+                                    <char>      <num>
+ 1:            Single Detached House (110)  1.2692308
+ 2:         Day Cares, Nursing Homes (650) -0.7733333
+ 3:                                         0.0000000
+ 4:                        Row House (330)  7.3519737
+ 5:              Semi-Detached House (210)  3.7500000
+ 6:                   Backyard House (110)  1.4543011
+ 7:                  Detached Garage (010)        NaN
+ 8:              Other Accommodation (534) -0.7500000
+ 9:                       Apartments (310)  5.1538462
+10:                       Row Houses (330)  5.3571429
+11:    Storage Buildings, Warehouses (460)  0.0000000
+12:                           Duplex (210)  2.0000000
+13:              Religious Buildings (660)  0.0000000
+14:                         Hoarding (910)  0.0000000
+15:                 Office Buildings (520) -0.5000000
+16:                 Row House Condos (335)  2.0000000
+17: Service Stations, Repair Garages (572)  0.0000000
+18:               Elementary Schools (620)  0.0000000
+19:                        Apartment (310)        NaN
+20:              Semi Detached House (210)  0.0000000
+21:             Temporary Structures (999)  0.0000000
+22:          Manufacturing Buildings (430)  0.0000000
+23:                      Mobile Home (130)        NaN
+                             BUILDING_TYPE         V1
+                                    <char>      <num>
+> 
 > proc.time()
    user  system elapsed 
- 14.668   5.201   5.847 
+  6.215   0.317   3.872 

@@ -42,7 +42,21 @@ print(nrow(dps))
 dtIncome <- fread("~/DropboxExternal/dataRaw/9810005801_databaseLoadingData.csv") #select = c("GEO", "DGUID", "Household income statistics (6)", "VALUE"))
 dtIncome <- dtIncome[`Household income statistics (6)` == "Median household total income (2020) (2020 constant dollars)"]
 
-print(names(dtIncome))
-print(names(dps))
+## from Gemini
+#2021 (Vintage year)
+#S (Spatial type)
+#0507 (The specific geographic boundary type code, which is why it always ends in 507 for this dataset).
+dtIncome[,CTUID:=gsub("2021S0507","",DGUID)]
 
-q("no")
+print(nrow(dps))
+dps <- merge(dps, dtIncome[,c("CTUID","VALUE")], by="CTUID")
+print(nrow(dps))
+print(summary(dps))
+
+dps <- data.table(dps)[YEAR>2023]
+print(summary(dps))
+dps[,meanRow:=mean(grepl("Row House",BUILDING_TYPE)),by=CTUID]
+dps[,meanSingle:=mean(grepl("Single Detached House",BUILDING_TYPE)),by=CTUID]
+dps[,shareRow:=meanRow/(meanSingle+meanRow)]
+print(cor(dps[,.(meanRow,shareRow,VALUE)],use="complete.obs"))
+print(dps[,mean(UNITS_ADDED,na.rm=TRUE),by=BUILDING_TYPE])
