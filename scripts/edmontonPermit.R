@@ -5,7 +5,7 @@
 
 library(data.table)
 library(sf)
-FILENAME <- "~/DropboxExternal/dataRaw/edmontonBuildingPermits.csv"
+FILENAME <- "~/DropboxExternal/dataRaw/edmonton/edmontonBuildingPermits.csv"
 if (!file.exists(FILENAME)) {
   dp <- fread("https://data.edmonton.ca/api/views/24uj-dj8v/rows.csv?accessType=DOWNLOAD")
   fwrite(dp, FILENAME)
@@ -60,3 +60,43 @@ dps[,meanSingle:=mean(grepl("Single Detached House",BUILDING_TYPE)),by=CTUID]
 dps[,shareRow:=meanRow/(meanSingle+meanRow)]
 print(cor(dps[,.(meanRow,shareRow,VALUE)],use="complete.obs"))
 print(dps[,mean(UNITS_ADDED,na.rm=TRUE),by=BUILDING_TYPE])
+
+# verify what's feasible with building inventory 2026
+dtI <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv",select=c("Latitude","Longitude","Point Location","zoning","year_built","lot_size","House Number","Street Name","Total Gross Area"))
+print(table(dtI[,zoning]))
+dtI <- dtI[zoning=="RS" & year_built>2023]
+print(summary(dtI))
+# print(table(dtI[,is.na(Suite) | Suite==""])) # suite almost always missing or ""
+
+# do permit and inventory merge as an alternative test
+
+dtP <- fread(FILENAME,select=c("YEAR","LATITUDE","LONGITUDE","Geometry Point","ADDRESS","ZONING","WORK_TYPE","BUILDING_TYPE","UNITS_ADDED","CONSTRUCTION_VALUE"))
+dtP <- dtP[YEAR>=2023 & ZONING=="RS"]
+dtP <- dtP[grepl("Row House",BUILDING_TYPE) | grepl("Single Detached House",BUILDING_TYPE)]
+print(table(dtP[,.(BUILDING_TYPE,WORK_TYPE)]))
+print(dtP[,mean(UNITS_ADDED,na.rm=TRUE),by=BUILDING_TYPE])
+print(dtP[,mean(CONSTRUCTION_VALUE,na.rm=TRUE),by=BUILDING_TYPE])
+print(dtP[,mean(is.na(UNITS_ADDED)),by=BUILDING_TYPE])
+
+## nearest-neighbour join ----------------------------------------------
+sfP <- st_as_sf(dtP[!is.na(LATITUDE)], coords = c("LONGITUDE","LATITUDE"),
+                crs = 4326, remove = FALSE)
+sfI <- st_as_sf(dtI[!is.na(Latitude)], coords = c("Longitude","Latitude"),
+                crs = 4326, remove = FALSE)
+
+dtM <- st_join(sfI, sfP, join = st_nearest_feature)
+print(head(dtM))
+
+dtM$dist <- st_distance(st_geometry(dtM), st_as_sfc(dtM[["Geometry Point"]], crs = 4326), by_element = TRUE) |> as.numeric()
+
+dtM <- as.data.table(dtM)
+print(summary(dtM[,dist]))
+print(dtM[,summary(dist),by=.(BUILDING_TYPE)])
+print(dtM[,summary(as.numeric(lot_size)),by=.(BUILDING_TYPE)])
+print(dtM[,mean(`Total Gross Area`,na.rm=TRUE),by=BUILDING_TYPE])
+print(dtM[grepl("Row House",BUILDING_TYPE)][order(ADDRESS)])
+print(head(dtM))
+print(head(dtM[dist<60]))
+print(head(dtM[dist<30]))
+
+
