@@ -99,4 +99,25 @@ print(head(dtM))
 print(head(dtM[dist<60]))
 print(head(dtM[dist<30]))
 
+library(ggplot2)
 
+# Create an indicator for Single Family vs Not
+dps[, is_single_family := ifelse(grepl("Single Detached House", BUILDING_TYPE), "Single Family", "Not Single Family")]
+
+# Convert back to sf for plotting since ggplot handles sf objects beautifully
+dps_sf <- st_as_sf(dps)
+
+# Plot the map and the permit locations
+ggplot() +
+  # 1. Plot the city census tracts as the background map
+  geom_sf(data = dCT, fill = "gray95", color = "white", linewidth = 0.2) +
+  # 2. Overlay the permit points colored by family type
+  geom_sf(data = dps_sf, aes(color = is_single_family), alpha = 0.6, size = 1.5) +
+  # 3. Restrict map view to the bounding box of your permits so you aren't zoomed out to all of Alberta
+  coord_sf(xlim = st_bbox(dps_sf)[c(1, 3)], ylim = st_bbox(dps_sf)[c(2, 4)]) +
+  # Formatting
+  scale_color_manual(values = c("Single Family" = "#2c7bb6", "Not Single Family" = "#d7191c")) +
+  labs(title = "Edmonton Building Permits (Post-2023)",
+       color = "Building Type") 
+ ggsave("text/edmontonPermitMap.png", width = 10, height = 8) 
+  theme_minimal()
