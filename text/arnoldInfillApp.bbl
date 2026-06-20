@@ -1,0 +1,221 @@
+% $ biblatex auxiliary file $
+% $ biblatex bbl format version 3.3 $
+% Do not modify the above lines!
+%
+% This is an auxiliary file used by the 'biblatex' package.
+% This file may safely be deleted. It will be recreated by
+% biber as required.
+%
+\begingroup
+\makeatletter
+\@ifundefined{ver@biblatex.sty}
+  {\@latex@error
+     {Missing 'biblatex' package}
+     {The bibliography requires the 'biblatex' package.}
+      \aftergroup\endinput}
+  {}
+\endgroup
+
+
+\refsection{0}
+  \datalist[entry]{nyt/global//global/global/global}
+    \entry{vonBergmann_etal_2023}{report}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=6018b2636f333c4800523ea81378740f}{%
+           family={Bergmann},
+           familyi={B\bibinitperiod},
+           given={Jens},
+           giveni={J\bibinitperiod},
+           givenun=0,
+           prefix={von},
+           prefixi={v\bibinitperiod},
+           prefixun=0}}%
+        {{un=0,uniquepart=base,hash=d5a1764dcb36f8683837327b4f420c6f}{%
+           family={Davidoff},
+           familyi={D\bibinitperiod},
+           given={Thomas},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=81bad66d90fac60056ad8f25095d0475}{%
+           family={Huang},
+           familyi={H\bibinitperiod},
+           given={Albert},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=2916b5aad78a353ee164c179a4baf688}{%
+           family={Lauster},
+           familyi={L\bibinitperiod},
+           given={Nathanael},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=9bf800fb1e02772131896a538b06b070}{%
+           family={Somerville},
+           familyi={S\bibinitperiod},
+           given={Tsur},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {Ministry of Housing, Province of British Columbia}%
+      }
+      \strng{namehash}{7555d695b156c0480b93235d9f1564a6}
+      \strng{fullhash}{36c854174cf85bc7c1f14553acf3b764}
+      \strng{fullhashraw}{36c854174cf85bc7c1f14553acf3b764}
+      \strng{bibnamehash}{7555d695b156c0480b93235d9f1564a6}
+      \strng{authorbibnamehash}{7555d695b156c0480b93235d9f1564a6}
+      \strng{authornamehash}{7555d695b156c0480b93235d9f1564a6}
+      \strng{authorfullhash}{36c854174cf85bc7c1f14553acf3b764}
+      \strng{authorfullhashraw}{36c854174cf85bc7c1f14553acf3b764}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{12}
+      \field{title}{{SSMUH} and {TOA} Scenarios in {British Columbia}}
+      \field{type}{Technical Report}
+      \field{year}{2023}
+      \verb{urlraw}
+      \verb https://www2.gov.bc.ca/assets/gov/housing-and-tenancy/tools-for-government/local-governments-and-housing/ssmuh_toa_scenarios.pdf
+      \endverb
+      \verb{url}
+      \verb https://www2.gov.bc.ca/assets/gov/housing-and-tenancy/tools-for-government/local-governments-and-housing/ssmuh_toa_scenarios.pdf
+      \endverb
+    \endentry
+    \entry{BruecknerThomaz2024}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=475960db9d449cfe8f8ab1ecb8a46ff5}{%
+           family={Brueckner},
+           familyi={B\bibinitperiod},
+           given={Jan\bibnamedelima K.},
+           giveni={J\bibinitperiod\bibinitdelim K\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=91d6127f9d276518f28cde4355e8e8c3}{%
+           family={Thomaz},
+           familyi={T\bibinitperiod},
+           given={Sarah},
+           giveni={S\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{fullhash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{fullhashraw}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{bibnamehash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{authorbibnamehash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{authornamehash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{authorfullhash}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \strng{authorfullhashraw}{aa832b71b585feb03ee4c7287b6ca9b9}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Real Estate Economics}
+      \field{number}{3}
+      \field{title}{ADUs in Los Angeles: Where are they located and by how much do they raise property value{?}}
+      \field{volume}{52}
+      \field{year}{2024}
+      \field{pages}{885\bibrangedash 907}
+      \range{pages}{23}
+      \verb{doi}
+      \verb https://doi.org/10.1111/1540-6229.12471
+      \endverb
+      \verb{urlraw}
+      \verb https://onlinelibrary.wiley.com/doi/abs/10.1111/1540-6229.12471
+      \endverb
+      \verb{url}
+      \verb https://onlinelibrary.wiley.com/doi/abs/10.1111/1540-6229.12471
+      \endverb
+    \endentry
+    \entry{DongHansz_2019}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=ea4a980a1171f2b40739d2c547ba49b5}{%
+           family={Dong},
+           familyi={D\bibinitperiod},
+           given={Hongwei},
+           giveni={H\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=b6dbbf61c816d35026713b32be744dd0}{%
+           family={Hansz},
+           familyi={H\bibinitperiod},
+           given={J.\bibnamedelimi Andy},
+           giveni={J\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{fullhash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{fullhashraw}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{bibnamehash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{authorbibnamehash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{authornamehash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{authorfullhash}{e097f51a156c5b199534f4a37a3df62e}
+      \strng{authorfullhashraw}{e097f51a156c5b199534f4a37a3df62e}
+      \field{sortinit}{D}
+      \field{sortinithash}{6f385f66841fb5e82009dc833c761848}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Urban Studies}
+      \field{number}{16}
+      \field{title}{Zoning, density, and rising housing prices: A case study in Portland, Oregon}
+      \field{volume}{56}
+      \field{year}{2019}
+      \field{pages}{3486\bibrangedash 3503}
+      \range{pages}{18}
+    \endentry
+    \entry{MarantzElmendorfKim2023_ADUReforms}{report}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=e38c548987f44fc8a28a89c15f297ae1}{%
+           family={Marantz},
+           familyi={M\bibinitperiod},
+           given={Nicholas\bibnamedelima J.},
+           giveni={N\bibinitperiod\bibinitdelim J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=8130206805c2dbfd465376ce7e8f31c6}{%
+           family={Elmendorf},
+           familyi={E\bibinitperiod},
+           given={Christopher\bibnamedelima S.},
+           giveni={C\bibinitperiod\bibinitdelim S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=f09be64c99d9a0f38c9ab9021028a843}{%
+           family={Kim},
+           familyi={K\bibinitperiod},
+           given={Youjin\bibnamedelima B.},
+           giveni={Y\bibinitperiod\bibinitdelim B\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {NYU Furman Center}%
+      }
+      \strng{namehash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{fullhash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{fullhashraw}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{bibnamehash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{authorbibnamehash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{authornamehash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{authorfullhash}{c53f135836357177a40914fa5e4e0ad1}
+      \strng{authorfullhashraw}{c53f135836357177a40914fa5e4e0ad1}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{1}
+      \field{title}{Evaluating California’s Accessory Dwelling Unit Reforms: Preliminary Evidence and Lessons for State Governments}
+      \field{type}{Research Report}
+      \field{year}{2023}
+      \verb{urlraw}
+      \verb https://furmancenter.org/files/Evaluating_California%E2%80%99s_Accessory_Dwelling_Unit_Reforms_508.pdf
+      \endverb
+      \verb{url}
+      \verb https://furmancenter.org/files/Evaluating_California%E2%80%99s_Accessory_Dwelling_Unit_Reforms_508.pdf
+      \endverb
+    \endentry
+  \enddatalist
+\endrefsection
+\endinput
+
