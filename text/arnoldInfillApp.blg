@@ -1,18 +1,18 @@
 [0] Config.pm:308> INFO - This is Biber 2.20
 [0] Config.pm:311> INFO - Logfile is 'text/arnoldInfillApp.blg'
-[31] biber-darwin:340> INFO - === Fri Jun 19, 2026, 15:08:46
-[39] Biber.pm:420> INFO - Reading 'text/arnoldInfillApp.bcf'
-[73] Biber.pm:994> INFO - Found 4 citekeys in bib section 0
-[80] Biber.pm:4463> INFO - Processing section 0
-[84] Biber.pm:4654> INFO - Looking for bibtex file 'infillPuzzle.bib' for section 0
-[90] bibtex.pm:1713> INFO - LaTeX decoding ...
-[196] bibtex.pm:1519> INFO - Found BibTeX data source 'text/infillPuzzle.bib'
-[230] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
-[230] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
-[230] Biber.pm:4283> INFO - Sorting list 'nyt/global//global/global/global' of type 'entry' with template 'nyt' and locale 'en-US'
-[230] Biber.pm:4289> INFO - No sort tailoring available for locale 'en-US'
-[235] bbl.pm:676> INFO - Writing 'text/arnoldInfillApp.bbl' with encoding 'UTF-8'
-[237] bbl.pm:779> INFO - Output to text/arnoldInfillApp.bbl
-[237] Biber.pm:131> WARN - legacy month field 'January' in entry 'MarantzElmendorfKim2023_ADUReforms' is not an integer - this will probably not sort properly.
-[237] Biber.pm:131> WARN - legacy month field 'December' in entry 'vonBergmann_etal_2023' is not an integer - this will probably not sort properly.
-[237] Biber.pm:133> INFO - WARNINGS: 2
+[49] biber-darwin:340> INFO - === Fri Jun 19, 2026, 19:17:49
+[62] Biber.pm:420> INFO - Reading 'text/arnoldInfillApp.bcf'
+[110] Biber.pm:994> INFO - Found 4 citekeys in bib section 0
+[119] Biber.pm:4463> INFO - Processing section 0
+[129] Biber.pm:4654> INFO - Looking for bibtex file 'infillPuzzle.bib' for section 0
+[136] bibtex.pm:1713> INFO - LaTeX decoding ...
+[287] bibtex.pm:1519> INFO - Found BibTeX data source 'text/infillPuzzle.bib'
+[339] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[339] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[340] Biber.pm:4283> INFO - Sorting list 'nyt/global//global/global/global' of type 'entry' with template 'nyt' and locale 'en-US'
+[340] Biber.pm:4289> INFO - No sort tailoring available for locale 'en-US'
+[348] bbl.pm:676> INFO - Writing 'text/arnoldInfillApp.bbl' with encoding 'UTF-8'
+[350] bbl.pm:779> INFO - Output to text/arnoldInfillApp.bbl
+[350] Biber.pm:131> WARN - legacy month field 'January' in entry 'MarantzElmendorfKim2023_ADUReforms' is not an integer - this will probably not sort properly.
+[350] Biber.pm:131> WARN - legacy month field 'December' in entry 'vonBergmann_etal_2023' is not an integer - this will probably not sort properly.
+[350] Biber.pm:133> INFO - WARNINGS: 2
