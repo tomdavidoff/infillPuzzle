@@ -1,0 +1,147 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # edmontonAssessedPSF.R
+> # get 2023 assessed value per square foot for 2026 buildings built before 2023
+> # And plot lat/lon
+> # Tom Davidoff 
+> # 06/23/26
+> 
+> library(data.table)
+> library(ggspatial)
+> # inventory 2026 for building info
+> dtA  <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv",select=c("Account Number","Assessed Value","Assessment Year","Latitude","Longitude"))
+> print(head(dtA))
+   Account Number Assessed Value Assessment Year Latitude Longitude
+            <int>         <char>           <int>    <num>     <num>
+1:        1477850    $269,500.00            2013 53.55330 -113.5794
+2:        1437631    $324,000.00            2017 53.55166 -113.5987
+3:        1457910    $326,500.00            2018 53.54966 -113.5846
+4:        1433606     $50,500.00            2019 53.55200 -113.6076
+5:        1476985      $3,000.00            2012 53.54993 -113.5786
+6:        1491398    $247,500.00            2018 53.55723 -113.5816
+> dtA <- dtA[`Assessment Year`==2023]
+> 
+> dtI <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv",select=c("Account Number","zoning","lot_size","Total Gross Area","year_built"))
+> dtI <- dtI[zoning=="RS"]
+> print(head(dtI))
+   Account Number zoning lot_size Total Gross Area year_built
+            <int> <char>   <char>            <num>      <int>
+1:        2460657     RS  645.037           101.66       1957
+2:        5094362     RS  575.637             0.00       2025
+3:        5115167     RS  565.285           227.33       1987
+4:        3836038     RS  278.142            86.84       1992
+5:        5038161     RS  557.293            99.70       1964
+6:        1452317     RS   91.251             0.00         NA
+> 
+> dtI <- dtI[year_built<2023]
+> 
+> dtM <- merge(dtA,dtI,by="Account Number")
+> print(head(dtM))
+Key: <Account Number>
+   Account Number Assessed Value Assessment Year Latitude Longitude zoning
+            <int>         <char>           <int>    <num>     <num> <char>
+1:        1003904  $1,046,500.00            2023 53.48529 -113.6312     RS
+2:        1006949    $335,000.00            2023 53.61422 -113.4770     RS
+3:        1006956    $349,500.00            2023 53.61421 -113.4772     RS
+4:        1006972    $370,500.00            2023 53.61421 -113.4775     RS
+5:        1006980    $345,500.00            2023 53.61421 -113.4777     RS
+6:        1007004    $386,000.00            2023 53.61421 -113.4779     RS
+   lot_size Total Gross Area year_built
+     <char>            <num>      <int>
+1:  905.488           201.70       2017
+2:  570.463            94.25       1983
+3:  478.983           130.72       1981
+4:  478.973           122.49       1981
+5:   478.94            98.48       1983
+6:  478.933           132.31       1983
+> 
+> # convert value to number $386,000.00 
+> dtM[,assessedValue:=as.numeric(gsub("\\$|,","",`Assessed Value`))]
+> dtM[,ppsf:=assessedValue/`Total Gross Area`]
+> dtM <- dtM[ppsf>quantile(ppsf,0.01) & ppsf<quantile(ppsf,0.99)]
+> dtM[,lot_size:=as.numeric(lot_size)]
+Warning message:
+In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+> dtM <- dtM[!is.na(lot_size) & lot_size>0]
+> dtM[,ppsfLot:=assessedValue/lot_size]
+> dtM <- dtM[ppsfLot>quantile(ppsfLot,0.01) & ppsfLot<quantile(ppsfLot,0.99)]
+> print(summary(dtM$ppsf))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   1883    2760    3171    3256    3640    5873 
+> 
+> # make spatial and make pretty map of value/gross area
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(ggplot2)
+> dtM <- st_as_sf(dtM[!is.na(Longitude)],coords=c("Longitude","Latitude"),crs=4326)
+> # make a map with streets and stuff
+> ggplot() + 
++   # Automatically fetches and overlays a clean, light street grid background
++   annotation_map_tile(type = "cartolight", zoom = 12, progress = "none") +
++   
++   # Your initial data layer
++   geom_sf(data = dtM, aes(color = ppsf), size = 1.5, alpha = 0.8) +
++   
++   # Crucial step: crop the map tightly to your data's bounding box
++   coord_sf(xlim = st_bbox(dtM)[c(1, 3)], 
++            ylim = st_bbox(dtM)[c(2, 4)],
++            crs = 4326) +
++   
++   # Your original styling
++   scale_color_viridis_c(labels = scales::comma) + 
++   theme_minimal() + 
++   labs(title = "Assessed Value per Square Foot for Edmonton Buildings Built Before 2023",
++        color = "Assessed Value per Sq Ft") +
++   theme(
++     legend.position = "bottom",
++     panel.grid = element_blank() # Removes the harsh lat/long grid lines over the streets
++   )
+Loading required namespace: raster
+> 
+> # Save the high-res result
+> ggsave("~/text/edmontonMapPPSF.png", width = 10, height = 8, dpi = 300)
+> 
+> ggplot() + 
++   # Automatically fetches and overlays a clean, light street grid background
++   annotation_map_tile(type = "cartolight", zoom = 12, progress = "none") +
++   
++   # Your initial data layer
++   geom_sf(data = dtM, aes(color = ppsfLot), size = 1.5, alpha = 0.8) +
++   
++   # Crucial step: crop the map tightly to your data's bounding box
++   coord_sf(xlim = st_bbox(dtM)[c(1, 3)], 
++            ylim = st_bbox(dtM)[c(2, 4)],
++            crs = 4326) +
++   
++   # Your original styling
++   scale_color_viridis_c(labels = scales::comma) + 
++   theme_minimal() + 
++   labs(title = "Assessed Value per  lot area for Edmonton Buildings Built Before 2023",
++        color = "Assessed Value per lot area") +
++   theme(
++     legend.position = "bottom",
++     panel.grid = element_blank() # Removes the harsh lat/long grid lines over the streets
++   )
+> ggsave("~/text/edmontonMapPPSFLot.png", width = 10, height = 8, dpi = 300)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 30.669   3.820  32.634 

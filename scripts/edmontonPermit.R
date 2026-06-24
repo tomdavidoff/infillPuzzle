@@ -5,6 +5,7 @@
 
 library(data.table)
 library(sf)
+library(ggspatial)
 FILENAME <- "~/DropboxExternal/dataRaw/edmonton/edmontonBuildingPermits.csv"
 if (!file.exists(FILENAME)) {
   dp <- fread("https://data.edmonton.ca/api/views/24uj-dj8v/rows.csv?accessType=DOWNLOAD")
@@ -107,6 +108,16 @@ dps[, is_single_family := ifelse(grepl("Single Detached House", BUILDING_TYPE), 
 # Convert back to sf for plotting since ggplot handles sf objects beautifully
 dps_sf <- st_as_sf(dps)
 
+dps_sf <- st_as_sf(dps)
+
+ggplot() +
+  geom_sf(data = dCT, fill = "gray95", color = "white", linewidth = 0.2) +
+  geom_sf(data = dps_sf, aes(color = VALUE), alpha = 0.7, size = 1.5) +
+  coord_sf(xlim = st_bbox(dps_sf)[c(1, 3)], ylim = st_bbox(dps_sf)[c(2, 4)]) +
+  scale_color_viridis_c(name = "Median HH income", labels = scales::comma) +
+  theme_minimal()
+ggsave("text/edmontonIncomeMap.png")
+
 # Plot the map and the permit locations
 ggplot() +
   # 1. Plot the city census tracts as the background map
@@ -117,7 +128,8 @@ ggplot() +
   coord_sf(xlim = st_bbox(dps_sf)[c(1, 3)], ylim = st_bbox(dps_sf)[c(2, 4)]) +
   # Formatting
   scale_color_manual(values = c("Single Family" = "#2c7bb6", "Not Single Family" = "#d7191c")) +
-  labs(title = "Edmonton Building Permits (Post-2023)",
-       color = "Building Type") 
- ggsave("text/edmontonPermitMap.png", width = 10, height = 8) 
+  labs(title = "Edmonton Building Permits (Post-2023)", color = "Building Type") +
   theme_minimal()
+ ggsave("text/edmontonPermitMap.png", width = 10, height = 8) 
+
+
