@@ -25,6 +25,7 @@ Type 'q()' to quit R.
 > 
 > library(data.table)
 > library(ggspatial)
+> library(fixest)
 > # inventory 2026 for building info
 > dtA  <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv",select=c("Account Number","Assessed Value","Assessment Year","Latitude","Longitude"))
 > print(head(dtA))
@@ -86,6 +87,54 @@ In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
    1883    2760    3171    3256    3640    5873 
 > 
+> reg <- feols(assessedValue ~ `Total Gross Area` + I(`Total Gross Area`^2) + I(`Total Gross Area`^3) + year_built + I(year_built^2) + I(year_built^3) + lot_size+I(lot_size^2)+I(lot_size^3), data=dtM)
+> print(summary(reg))
+OLS estimation, Dep. Var.: assessedValue
+Observations: 132,319
+Standard-errors: IID 
+                                Estimate   Std. Error    t value   Pr(>|t|)    
+(Intercept)                -1.177791e+10 1.129918e+08 -104.23689  < 2.2e-16 ***
+`Total Gross Area`          1.706062e+03 4.762868e+01   35.82006  < 2.2e-16 ***
+I(I(`Total Gross Area`^2))  7.006110e-01 2.221100e-01    3.15435 1.6089e-03 ** 
+I(I(`Total Gross Area`^3))  1.417000e-03 3.180000e-04    4.45263 8.4892e-06 ***
+year_built                  1.802782e+07 1.720846e+05  104.76136  < 2.2e-16 ***
+I(I(year_built^2))         -9.197175e+03 8.735497e+01 -105.28508  < 2.2e-16 ***
+I(I(year_built^3))          1.563827e+00 1.478000e-02  105.80673  < 2.2e-16 ***
+lot_size                    2.364732e+03 4.593606e+01   51.47878  < 2.2e-16 ***
+I(I(lot_size^2))           -3.479840e+00 7.894100e-02  -44.08142  < 2.2e-16 ***
+I(I(lot_size^3))            1.799000e-03 4.300000e-05   41.51772  < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 84,379.5   Adj. R2: 0.675289
+Warning message:
+The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+> dtM[,residualValue:=residuals(reg)]
+> print(cor(dtM[,.(residualValue,ppsf,ppsfLot)],use="complete.obs"))
+              residualValue      ppsf   ppsfLot
+residualValue     1.0000000 0.7332038 0.4626735
+ppsf              0.7332038 1.0000000 0.1190910
+ppsfLot           0.4626735 0.1190910 1.0000000
+> logReg <- feols(log(assessedValue) ~ log(lot_size) + log(`Total Gross Area`) + log(2024-year_built), data=dtM)
+> print(summary(logReg))
+OLS estimation, Dep. Var.: log(assessedValue)
+Observations: 132,319
+Standard-errors: IID 
+                         Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)              8.570977   0.012936 662.5507 < 2.2e-16 ***
+log(lot_size)            0.282489   0.002304 122.5858 < 2.2e-16 ***
+log(`Total Gross Area`)  0.591558   0.001927 306.9421 < 2.2e-16 ***
+log(2024 - year_built)  -0.084300   0.001160 -72.6523 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.176126   Adj. R2: 0.65623
+> dtM[,logResidualValue:=residuals(logReg)]
+> print(cor(dtM[,.(logResidualValue,ppsf,ppsfLot,residualValue)],use="complete.obs"))
+                 logResidualValue      ppsf   ppsfLot residualValue
+logResidualValue        1.0000000 0.8571825 0.5235075     0.8707038
+ppsf                    0.8571825 1.0000000 0.1190910     0.7332038
+ppsfLot                 0.5235075 0.1190910 1.0000000     0.4626735
+residualValue           0.8707038 0.7332038 0.4626735     1.0000000
+> 
 > # make spatial and make pretty map of value/gross area
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
@@ -141,7 +190,30 @@ Loading required namespace: raster
 +   )
 > ggsave("~/text/edmontonMapPPSFLot.png", width = 10, height = 8, dpi = 300)
 > 
+> # plot residuals - otherwise same as PPSF stuff
+> ggplot() + 
++   # Automatically fetches and overlays a clean, light street grid background
++   annotation_map_tile(type = "cartolight", zoom = 12, progress = "none") +
++   
++   # Your initial data layer
++   geom_sf(data = dtM, aes(color = residualValue), size = 1.5, alpha = 0.8) +
++   
++   # Crucial step: crop the map tightly to your data's bounding box
++   coord_sf(xlim = st_bbox(dtM)[c(1, 3)], 
++ 	   ylim = st_bbox(dtM)[c(2, 4)],
++ 	   crs = 4326) +
++   
++   # Your original styling
++   scale_color_viridis_c(labels = scales::comma) + 
++   theme_minimal() + 
++   labs(title = "Residual Assessed Value for Edmonton Buildings Built Before 2023",
++        color = "Residual Assessed Value") +
++   theme(
++     legend.position = "bottom",
++     panel.grid = element_blank() # Removes the harsh lat/long grid lines over the streets
++   )
+>   ggsave("~/text/edmontonMapResiduals.png", width = 10, height = 8, dpi = 300)
 > 
 > proc.time()
    user  system elapsed 
- 30.669   3.820  32.634 
+ 43.064   5.254  46.751 
