@@ -1,0 +1,304 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> # --- Load ---
+> perm <- fread("~/DropboxExternal/dataRaw/edmonton/edmontonBuildingPermits.csv")
+> prop <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv")
+> 
+> # --- Filter: RS permits, year 2024 ---
+> perm <- perm[ZONING == "RS" & YEAR == 2024]
+> 
+> # --- Normalize addresses for exact match ---
+> norm_addr <- function(x) {
++   x <- toupper(trimws(x))
++   x <- gsub("\\s+", " ", x)
++   x <- gsub("[.,]", "", x)
++   x
++ }
+> 
+> # Build a comparable address on the property side
+> prop[, prop_addr := norm_addr(paste(`House Number`, `Street Name`))]
+> perm[, perm_addr := norm_addr(ADDRESS)]
+> 
+> # --- Step 1: exact address match ---
+> prop_addr_dt <- prop[!is.na(prop_addr) & prop_addr != "",
++                      .(prop_addr, account_addr = `Account Number`)]
+> # keep one property per address (first); adjust if you want all
+> prop_addr_dt <- unique(prop_addr_dt, by = "prop_addr")
+> 
+> perm <- merge(perm, prop_addr_dt, by.x = "perm_addr", by.y = "prop_addr",
++               all.x = TRUE, sort = FALSE)
+> 
+> # --- Step 2: nearest-neighbour for unmatched (needs coords on both) ---
+> perm[, LATITUDE  := as.numeric(LATITUDE)]
+> perm[, LONGITUDE := as.numeric(LONGITUDE)]
+> prop[, Latitude  := as.numeric(Latitude)]
+> prop[, Longitude := as.numeric(Longitude)]
+> 
+> unmatched <- is.na(perm$account_addr) & !is.na(perm$LATITUDE) & !is.na(perm$LONGITUDE)
+> 
+> prop_geo <- prop[!is.na(Latitude) & !is.na(Longitude)]
+> prop_sf  <- st_as_sf(prop_geo, coords = c("Longitude", "Latitude"), crs = 4326)
+> prop_utm <- st_transform(prop_sf, 32612)   # UTM 12N (Edmonton)
+> 
+> if (any(unmatched)) {
++   perm_sf  <- st_as_sf(perm[unmatched], coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
++   perm_utm <- st_transform(perm_sf, 32612)
++ 
++   nn <- st_nearest_feature(perm_utm, prop_utm)
++   dist_m <- as.numeric(st_distance(perm_utm, prop_utm[nn, ], by_element = TRUE))
++ 
++   perm[unmatched, account_nn   := prop_geo$`Account Number`[nn]]
++   perm[unmatched, nn_dist_m    := dist_m]
++ }
+> 
+> # --- Final account: address match wins, else nearest ---
+> perm[, matched_account := fifelse(!is.na(account_addr), account_addr, account_nn)]
+> perm[, match_type      := fifelse(!is.na(account_addr), "address", "nearest")]
+> 
+> # --- Attach full property record ---
+> result <- merge(perm, prop, by.x = "matched_account", by.y = "Account Number",
++                 all.x = TRUE, sort = FALSE)
+> print(result)
+      matched_account                   perm_addr      Row ID PERMIT_DATE
+                <int>                      <char>      <char>      <IDat>
+   1:         1254937        15411 - 90 AVENUE NW 2-391165004  2024-03-11
+   2:        11219677         8541 - 89 STREET NW 2-488711873  2024-03-12
+   3:         2770808      11537G - 125 STREET NW 2-498286076  2024-04-16
+   4:         7912082        11412 - 53 AVENUE NW 1-528271162  2024-09-05
+   5:         7934748        5619 - 142 STREET NW 1-530088059  2024-09-16
+  ---                                                                    
+4182:              NA       10915 - 153 STREET NW 4-502243207  2024-04-26
+4183:              NA       11230 - 125 STREET NW 4-508688643  2024-08-01
+4184:         4681904        11932 - 64 STREET NW 4-501408521  2024-05-01
+4185:         5211743 224 - HOMESTEAD CRESCENT NW 1-537324688  2024-10-30
+4186:              NA        11316 - 75 AVENUE NW 1-501950655  2024-03-18
+      PERMIT_NUMBER REPORT_PERMIT_DATE  YEAR MONTH_NUMBER
+             <lgcl>             <IDat> <int>        <int>
+   1:            NA         2024-03-11  2024            3
+   2:            NA         2024-03-12  2024            3
+   3:            NA         2024-04-16  2024            4
+   4:            NA         2024-09-05  2024            9
+   5:            NA         2024-09-16  2024            9
+  ---                                                    
+4182:            NA         2024-04-26  2024            4
+4183:            NA         2024-08-01  2024            8
+4184:            NA         2024-05-01  2024            5
+4185:            NA         2024-10-30  2024           10
+4186:            NA         2024-03-18  2024            3
+                            JOB_CATEGORY
+                                  <char>
+   1: Single, Semi-detached & Rowhousing
+   2: Single, Semi-detached & Rowhousing
+   3: Single, Semi-detached & Rowhousing
+   4:                   Home Improvement
+   5:                   Home Improvement
+  ---                                   
+4182:                   Home Improvement
+4183:                   Home Improvement
+4184:                   Home Improvement
+4185:                   Home Improvement
+4186:                   Home Improvement
+                                                                                                                                                                                             JOB_DESCRIPTION
+                                                                                                                                                                                                      <char>
+   1:                                                                                                                      To construct a 4 Dwelling unit Row House and 4 Secondary Suites in the Basements.
+   2:                                                                                                                                      To construct a Single Detached House with Unenclosed Front Porch.
+   3:                                                                                                        To construct a Residential Use building in the form of a 2 Dwelling Backyard House with Garage.
+   4:                                                                                                                                                   To demolish an Accessory building (detached Garage).
+   5:               To install a Renewable Energy Device On a House (30 Solar PhotoVoltaic (PV) Panel(s) on the Roof) and on an Accessory Building, Garage (8 Solar PhotoVoltaic (PV) Panel(s) on the Roof).
+  ---                                                                                                                                                                                                       
+4182:                                                                                                                                 To construct an Accessory building (detached Garage, 5.79 m x 6.71 m).
+4183:                                                                                                                                   To construct an Accessory building (detached Garage, 5.79m x 6.71m).
+4184:                                                                                                                                   To construct an Accessory building (detached Garage, 7.32m x 6.71m).
+4185:                                                                                                     To install a Renewable Energy Device On a House (12 Solar PhotoVoltaic (PV) Panel(s) on the Roof).
+4186: To add a Dwelling to a Residential Use building (Secondary Suite in the Basement of a Semi-Detached House)\t(2 bedrooms, dining room, kitchen, living room, mechanical room and bathroom) (New Suite).
+                    BUILDING_TYPE           WORK_TYPE CONSTRUCTION_VALUE
+                           <char>              <char>              <int>
+   1:             Row House (330) (01) Building - New             568080
+   2: Single Detached House (110) (01) Building - New             208250
+   3:        Backyard House (110) (01) Building - New             134500
+   4: Single Detached House (110)                                     NA
+   5: Single Detached House (110)                                     NA
+  ---                                                                   
+4182: Single Detached House (110)                                     NA
+4183: Single Detached House (110)                                     NA
+4184: Single Detached House (110)                                     NA
+4185: Single Detached House (110)                                     NA
+4186:   Semi-Detached House (210)                                  43000
+      FLOOR_AREA UNITS_ADDED                     ADDRESS
+           <num>       <num>                      <char>
+   1:       4734           8        15411 - 90 AVENUE NW
+   2:       1666           1         8541 - 89 STREET NW
+   3:       1076           2      11537G - 125 STREET NW
+   4:         NA          NA        11412 - 53 AVENUE NW
+   5:         NA          NA        5619 - 142 STREET NW
+  ---                                                   
+4182:         NA          NA       10915 - 153 STREET NW
+4183:         NA          NA       11230 - 125 STREET NW
+4184:         NA          NA        11932 - 64 STREET NW
+4185:         NA          NA 224 - HOMESTEAD CRESCENT NW
+4186:         NA          NA        11316 - 75 AVENUE NW
+               LEGAL_DESCRIPTION ZONING NEIGHBOURHOOD_NUMBER NEIGHBOURHOOD
+                          <char> <char>               <char>        <char>
+   1:   Plan 5191HW Blk 7 Lot 12     RS                 4230   JASPER PARK
+   2: Plan 2322633 Blk 3 Lot 20A     RS                 6040   BONNIE DOON
+   3:    Plan RN46 Blk 28 Lot 13     RS                 3240     INGLEWOOD
+   4:   Plan 2955MC Blk 2 Lot 30     RS                 5270 LENDRUM PLACE
+   5:   Plan 6469NY Blk 8 Lot 29     RS                 5090     BROOKSIDE
+  ---                                                                     
+4182: Plan 2420398 Blk 31 Lot 4B     RS                 4200     HIGH PARK
+4183:  Plan 2420805 Blk 8 Lot 6B     RS                 3240     INGLEWOOD
+4184:  Plan 5119AC Blk 15 Lot 10     RS                 2550      MONTROSE
+4185:   Plan 4907TR Blk 17 Lot 4     RS                 2350   HOMESTEADER
+4186:  Plan 2522340 Blk 3 Lot 4C     RS                 5290      MCKERNAN
+         BIA COUNT LATITUDE LONGITUDE                                  LOCATION
+      <char> <int>    <num>     <num>                                    <char>
+   1:            1 53.52294 -113.5881  (53.52294035550594, -113.58808310371799)
+   2:            1 53.52228 -113.4634 (53.522277222917744, -113.46339852198925)
+   3:            1 53.56639 -113.5372  (53.56638937899561, -113.53720984906495)
+   4:            1 53.48997 -113.5248   (53.48997491300453, -113.5248110071733)
+   5:            1 53.49410 -113.5645  (53.49410134080416, -113.56451956818559)
+  ---                                                                          
+4182:            1       NA        NA                                          
+4183:            1       NA        NA                                          
+4184:            1 53.57289 -113.4403 (53.572886180920946, -113.44030871150221)
+4185:            1 53.58424 -113.3987 (53.584239563528016, -113.39872340074736)
+4186:            1       NA        NA                                          
+                                      Geometry Point Occupancy Date
+                                              <char>         <IDat>
+   1:  POINT (-113.58808310371799 53.52294035550594)     2025-10-15
+   2: POINT (-113.46339852198925 53.522277222917744)     2024-07-17
+   3:  POINT (-113.53720984906495 53.56638937899561)     2025-02-25
+   4:   POINT (-113.5248110071733 53.48997491300453)           <NA>
+   5:  POINT (-113.56451956818559 53.49410134080416)           <NA>
+  ---                                                              
+4182:                                                          <NA>
+4183:                                                          <NA>
+4184: POINT (-113.44030871150221 53.572886180920946)           <NA>
+4185: POINT (-113.39872340074736 53.584239563528016)           <NA>
+4186:                                                          <NA>
+      account_addr account_nn    nn_dist_m match_type  Suite House Number
+             <int>      <int>        <num>     <char> <char>        <int>
+   1:           NA    1254937 0.0008520798    nearest               15411
+   2:           NA   11219677 0.0023327493    nearest                8541
+   3:           NA    2770808 0.0045466300    nearest               11537
+   4:           NA    7912082 0.0014279094    nearest               11412
+   5:           NA    7934748 6.3227158707    nearest                5619
+  ---                                                                    
+4182:           NA         NA           NA    nearest   <NA>           NA
+4183:           NA         NA           NA    nearest   <NA>           NA
+4184:           NA    4681904 0.0006843463    nearest               11932
+4185:           NA    5211743 0.7422653264    nearest                 224
+4186:           NA         NA           NA    nearest   <NA>           NA
+                Street Name                 legal_description zoning  lot_size
+                     <char>                            <char> <char>    <char>
+   1:          90 AVENUE NW   Plan: 5191HW  Block: 7  Lot: 12     RS   687.601
+   2:          89 STREET NW Plan: 2322633  Block: 3  Lot: 20A     RS   348.194
+   3:         125 STREET NW    Plan: RN46  Block: 28  Lot: 13     RS   695.765
+   4:          53 AVENUE NW   Plan: 2955MC  Block: 2  Lot: 30     RS   569.091
+   5:         142 STREET NW   Plan: 6469NY  Block: 8  Lot: 29     RS 1,087.021
+  ---                                                                         
+4182:                  <NA>                              <NA>   <NA>      <NA>
+4183:                  <NA>                              <NA>   <NA>      <NA>
+4184:          64 STREET NW  Plan: 5119AC  Block: 15  Lot: 10     RS   376.689
+4185: HOMESTEAD CRESCENT NW   Plan: 4907TR  Block: 17  Lot: 4     RS   615.038
+4186:                  <NA>                              <NA>   <NA>      <NA>
+      Total Gross Area year_built garage Neighbourhood ID Neighbourhood
+                 <num>      <int> <lgcl>            <int>        <char>
+   1:           440.20       2024  FALSE             4230   JASPER PARK
+   2:           154.60       2023   TRUE             6040   BONNIE DOON
+   3:           326.00       2024  FALSE             3240     INGLEWOOD
+   4:           150.95       1970  FALSE             5270 LENDRUM PLACE
+   5:           191.97       1972   TRUE             5090     BROOKSIDE
+  ---                                                                  
+4182:               NA         NA     NA               NA          <NA>
+4183:               NA         NA     NA               NA          <NA>
+4184:           174.90       2024   TRUE             2550      MONTROSE
+4185:            97.82       1975   TRUE             2350   HOMESTEADER
+4186:               NA         NA     NA               NA          <NA>
+               Ward Latitude Longitude
+             <char>    <num>     <num>
+   1: sipiwiyiniwak 53.52294 -113.5881
+   2:         Métis 53.52228 -113.4634
+   3:       Anirniq 53.56639 -113.5372
+   4:      papastew 53.48997 -113.5248
+   5:     pihêsiwin 53.49415 -113.5646
+  ---                                 
+4182:          <NA>       NA        NA
+4183:          <NA>       NA        NA
+4184:         Métis 53.57289 -113.4403
+4185:          Dene 53.58424 -113.3987
+4186:          <NA>       NA        NA
+                                      Point Location                 prop_addr
+                                              <char>                    <char>
+   1: POINT (-113.58808311037316 53.522940355478525)        15411 90 AVENUE NW
+   2:   POINT (-113.4633984881329 53.52227721113488)         8541 89 STREET NW
+   3: POINT (-113.53720988894194 53.566389413637836)       11537 125 STREET NW
+   4:  POINT (-113.52481100131999 53.48997489825767)        11412 53 AVENUE NW
+   5:  POINT (-113.56457933339286 53.49414558464726)        5619 142 STREET NW
+  ---                                                                         
+4182:                                           <NA>                      <NA>
+4183:                                           <NA>                      <NA>
+4184:   POINT (-113.4403087200416 53.57288617854937)        11932 64 STREET NW
+4185: POINT (-113.39873222734786 53.584235449590025) 224 HOMESTEAD CRESCENT NW
+4186:                                           <NA>                      <NA>
+> print(result[grepl("Row House",BUILDING_TYPE) | grepl("Single Detached",BUILDING_TYPE),summary(as.numeric(lot_size)),by=BUILDING_TYPE])
+                  BUILDING_TYPE               V1
+                         <char> <summaryDefault>
+ 1:             Row House (330)            173.9
+ 2:             Row House (330)            575.5
+ 3:             Row House (330)            655.4
+ 4:             Row House (330)            618.6
+ 5:             Row House (330)            696.2
+ 6:             Row House (330)            926.6
+ 7:             Row House (330)              7.0
+ 8: Single Detached House (110)            151.3
+ 9: Single Detached House (110)            505.2
+10: Single Detached House (110)            581.1
+11: Single Detached House (110)            579.1
+12: Single Detached House (110)            663.7
+13: Single Detached House (110)            998.7
+14: Single Detached House (110)            262.0
+15:            Row Houses (330)            424.5
+16:            Row Houses (330)            490.1
+17:            Row Houses (330)            555.7
+18:            Row Houses (330)            555.7
+19:            Row Houses (330)            621.3
+20:            Row Houses (330)            686.9
+21:      Row House Condos (335)               NA
+22:      Row House Condos (335)               NA
+23:      Row House Condos (335)               NA
+24:      Row House Condos (335)              NaN
+25:      Row House Condos (335)               NA
+26:      Row House Condos (335)               NA
+27:      Row House Condos (335)              1.0
+                  BUILDING_TYPE               V1
+                         <char> <summaryDefault>
+Warning messages:
+1: In summary(as.numeric(lot_size)) : NAs introduced by coercion
+2: In summary(as.numeric(lot_size)) : NAs introduced by coercion
+3: In summary(as.numeric(lot_size)) : NAs introduced by coercion
+> 
+> proc.time()
+   user  system elapsed 
+ 11.492   0.193   5.780 

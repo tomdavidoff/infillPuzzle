@@ -18,7 +18,7 @@ RAWDIR <- "~/DropboxExternal/dataRaw/edmonton/"
 PERMITFILE <- paste0(RAWDIR,"edmontonBuildingPermits.csv")
 CTFILE <- "~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
 INCOMEFILE <- "~/DropboxExternal/dataRaw/9810005801_databaseLoadingData.csv"
-OUTDIR <- "~/text/"
+OUTDIR <- "text/"
 UTMCRS <- 26912 # edmonton UTM zone 12N, metric distances
 
 # ---------------------------------------------------------------------
@@ -49,10 +49,10 @@ dtA  <- fread(paste0(RAWDIR,"Property_Assessment_Data_(Historical)_20260611.csv"
 dtA <- dtA[`Assessment Year`==2023]
 print(head(dtA))
 
-dtI <- fread(paste0(RAWDIR,"Property_Information_(Current_Calendar_Year)_20260612.csv"),
-             select=c("Account Number","zoning","lot_size","Total Gross Area","year_built"))
+dtI <- fread(paste0(RAWDIR,"Property_Information_(Current_Calendar_Year)_20260612.csv"), select=c("Account Number","zoning","lot_size","Total Gross Area","year_built","Suite","garage"))
 dtI <- dtI[zoning=="RS"]
-dtI <- dtI[year_built<2023]
+dtI <- dtI[year_built<2023] # assessment data is stock based on 2025 use
+dtI <- dtI[garage==TRUE & Suite==""]
 print(head(dtI))
 
 dtPrice <- merge(dtA,dtI,by="Account Number")
@@ -87,6 +87,15 @@ newZone <- c("RS")
 formerZones  <- c("RF1","RF2","RF3","RF4","RF4t","RF4T")
 dp <- dp[ZONING %in% formerZones | ZONING %in% newZone]
 print(table(dp[,ZONING]))
+print(table(dp[,WORK_TYPE]))
+print(summary(dp[,CONSTRUCTION_VALUE]))
+dp[,isNew:= WORK_TYPE %in% c("(01) New","(01) Building - New")]
+print(dp[,summary(CONSTRUCTION_VALUE),by=isNew])
+dp[,costPSF:=CONSTRUCTION_VALUE/FLOOR_AREA]
+print(dp[,summary(costPSF),by=isNew])
+q25New <- dp[isNew==TRUE,quantile(costPSF,0.25,na.rm=TRUE)]
+dp <- dp[isNew==TRUE | costPSF>quantile(q25New)]
+
 
 dCT <- st_read(CTFILE)
 
@@ -105,6 +114,14 @@ print(nrow(dps))
 dps <- merge(dps, dtIncome[,c("CTUID","VALUE")], by="CTUID")
 print(nrow(dps))
 dtPermit <- data.table(dps)[YEAR>2023]
+# permit-level rowhouse indicator (0/1) - same grepl as edmontonPermit.R
+print(table(dtPermit[,BUILDING_TYPE]))
+dtPermit[,isRow:= as.integer(grepl("Row House", BUILDING_TYPE))]
+print(dtPermit[,summary(CONSTRUCTION_VALUE),by=isRow])
+print(dtPermit[,summary(FLOOR_AREA),by=isRow])
+print(dtPermit[,summary(costPSF),by=isRow])
+dtPermit[,isSingle:= as.integer(grepl("Single Detached", BUILDING_TYPE))]
+dtPermit <- dtPermit[isRow==1 | isSingle==1]
 print(summary(dtPermit))
 
 # ---- pooled OLS analog before going local ---------------------------
@@ -124,12 +141,15 @@ sfPermit$elasticity <- gwr$elasticity
 sfPermit$priceLevel <- gwr$priceLevel
 sfPermit$bw <- gwr$bw
 
-# permit-level rowhouse indicator (0/1) - same grepl as edmontonPermit.R
-sfPermit$isRow <- as.integer(grepl("Row House", sfPermit$BUILDING_TYPE))
-sfPermit$isSingle <- as.integer(grepl("Single Detached House", sfPermit$BUILDING_TYPE))
 
 dtLook <- as.data.table(st_drop_geometry(sfPermit))
 print(cor(dtLook[,.(elasticity,priceLevel,VALUE,isRow)],use="complete.obs"))
+print(summary(feols(isRow ~ elasticity + priceLevel + log(VALUE), data=dtLook)))
+print(summary(feols(isRow ~  priceLevel + log(VALUE), data=dtLook)))
+print(summary(feols(isRow ~  priceLevel + elasticity, data=dtLook)))
+
+# u-shape?
+print(dtLook[order(priceLevel),mean(isRow),by=round(frank(priceLevel)/length(priceLevel),1)])
 
 # ---- maps -----------------------------------------------------------
 # single family vs row house: just color by the 0/1 isRow, viridis handles it
@@ -152,5 +172,28 @@ plotPPSF(sfPermit, "priceLevel",
 plotPPSF(sfPermit, "elasticity",
          "Local Elasticity of Assessed Value wrt Gross Area at Permit Locations",
          "Local elasticity", paste0(OUTDIR,"edmontonMapElasticity.png"))
+
+# ---- local (spatially weighted) median lot size at each permit ------
+wtdMedian <- function(x, w) {
+  o <- order(x); x <- x[o]; w <- w[o]
+  cw <- cumsum(w)/sum(w)
+  x[which(cw >= 0.5)[1]]
+}
+
+priceCoords  <- st_coordinates(sfPrice)
+permitCoords <- st_coordinates(sfPermit)
+k <- 200
+
+sfPermit$medLotSize <- apply(permitCoords, 1, function(pt) {
+  d  <- sqrt((priceCoords[,1]-pt[1])^2 + (priceCoords[,2]-pt[2])^2)
+  nn <- order(d)[1:k]
+  bw <- d[nn][k]                       # adaptive bandwidth = kth distance
+  w  <- (1 - (d[nn]/bw)^2)^2           # bisquare
+  wtdMedian(sfPrice$lot_size[nn], w)
+})
+
+plotPPSF(sfPermit, "medLotSize",
+         "Spatially Weighted Median RS Lot Size near Permit Locations (Pre-2023 Stock)",
+         "Median lot size (sq units)", paste0(OUTDIR,"edmontonMapMedLotSize.png"))
 
 print("done")
