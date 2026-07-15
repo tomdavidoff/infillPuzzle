@@ -61,11 +61,14 @@ print(head(dtPrice))
 # convert value to number $386,000.00
 dtPrice[,assessedValue:=as.numeric(gsub("\\$|,","",`Assessed Value`))]
 dtPrice[,ppsf:=assessedValue/`Total Gross Area`]
-dtPrice <- dtPrice[ppsf>quantile(ppsf,0.01,na.rm=TRUE) & ppsf<quantile(ppsf,0.99,na.rm=TRUE)]
+# Choose quantiles to truncate
+MAXQUANT <- 0.99
+MINQUANT <- 1-MAXQUANT
+dtPrice <- dtPrice[ppsf>quantile(ppsf,MINQUANT,na.rm=TRUE) & ppsf<quantile(ppsf,MAXQUANT,na.rm=TRUE)]
 dtPrice[,lot_size:=as.numeric(lot_size)]
 dtPrice <- dtPrice[!is.na(lot_size) & lot_size>0]
 dtPrice[,ppsfLot:=assessedValue/lot_size]
-dtPrice <- dtPrice[ppsfLot>quantile(ppsfLot,0.01,na.rm=TRUE) & ppsfLot<quantile(ppsfLot,0.99,na.rm=TRUE)]
+dtPrice <- dtPrice[ppsfLot>quantile(ppsfLot,MINQUANT,na.rm=TRUE) & ppsfLot<quantile(ppsfLot,MAXQUANT,na.rm=TRUE)]
 dtPrice <- dtPrice[!is.na(Longitude) & !is.na(Latitude) & `Total Gross Area`>0]
 
 # logs for the GWR formula
@@ -121,6 +124,7 @@ print(dtPermit[,summary(CONSTRUCTION_VALUE),by=isRow])
 print(dtPermit[,summary(FLOOR_AREA),by=isRow])
 print(dtPermit[,summary(costPSF),by=isRow])
 dtPermit[,isSingle:= as.integer(grepl("Single Detached", BUILDING_TYPE))]
+print(dtPermit[,table(isSingle,isNew,YEAR)]) # check ratio trends up
 dtPermit <- dtPermit[isRow==1 | isSingle==1]
 print(summary(dtPermit))
 
@@ -150,12 +154,27 @@ print(summary(feols(isRow ~  priceLevel + elasticity, data=dtLook)))
 
 # u-shape?
 print(dtLook[order(priceLevel),mean(isRow),by=round(frank(priceLevel)/length(priceLevel),1)])
+print(dtLook[YEAR>2024][ order(priceLevel),mean(isRow),by=round(frank(priceLevel)/length(priceLevel),1)])
+print(dtLook[YEAR>2025][ order(priceLevel),mean(isRow),by=round(frank(priceLevel)/length(priceLevel),1)])
+print(dtLook[priceLevel>quantile(priceLevel,.9) & isSingle])
 
 # ---- maps -----------------------------------------------------------
 # single family vs row house: just color by the 0/1 isRow, viridis handles it
+
+sfPermit$logCV <- log(sfPermit$CONSTRUCTION_VALUE)
+plotPPSF(st_as_sf(sfPermit), "logCV",
+         "Edmonton RS Permits: Row House (1) vs Single Family (0), Post-2023",
+         "Row house", paste0(OUTDIR,"edmontonMapConstructionValue.png"))
+
+
 plotPPSF(st_as_sf(sfPermit), "isRow",
          "Edmonton RS Permits: Row House (1) vs Single Family (0), Post-2023",
          "Row house", paste0(OUTDIR,"edmontonMapBuildType.png"))
+
+sfPermitPost24 <- st_as_sf(sfPermit[sfPermit$YEAR>2025,])
+plotPPSF(st_as_sf(sfPermitPost24), "isRow",
+         "Edmonton RS Permits: Row House (1) vs Single Family (0), Post-2023",
+         "Row house", paste0(OUTDIR,"edmontonMapBuildTypePost24.png"))
 
 plotPPSF(sfPrice, "ppsf",
          "Assessed Value per Square Foot for Edmonton Buildings Built Before 2023",

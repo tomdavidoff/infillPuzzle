@@ -1,0 +1,54 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # genericHorseRace
+> # does the worse-measured of 2-highly correlated variables lose?
+> # Tom Davidoff 
+> # 06/29/26
+> 
+> N <- 1000 # obs
+> T <- 1000 # simulations
+> rho  <- .9 # correlation between the two variables
+> library(MASS)
+> library(data.table)
+> 
+> betaHat <- data.table(xw=numeric(),xB=numeric())
+> for (i in 1:T) {
++ 	# create bivariate normal with high correlation for the two 
++ 	x <- mvrnorm(N, mu = c(0, 0), Sigma = matrix(c(1, rho, rho, 1), nrow = 2))
++ 	xw <- x[,1] # well-measured variable
++ 	xb <- x[,2] # badly-measured variable
++ 	xB <- xb+rnorm(N, mean = 0, sd = 1) # badly-measured variable with noise
++ 	y <- xw + xb + rnorm(N, mean = 0, sd = 1) # outcome variable
++ 	reg <- summary(lm(y ~ xw + xB))
++ 	betaHat <- rbind(betaHat, data.table(xw=reg$coefficients[2,1],xB=reg$coefficients[3,1]))
++ }
+> print(summary(betaHat))
+       xw              xB         
+ Min.   :1.581   Min.   :0.06099  
+ 1st Qu.:1.727   1st Qu.:0.14042  
+ Median :1.756   Median :0.16143  
+ Mean   :1.755   Mean   :0.16099  
+ 3rd Qu.:1.785   3rd Qu.:0.18257  
+ Max.   :1.887   Max.   :0.26684  
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.752   0.051   0.795 
