@@ -140,7 +140,7 @@ sfPermit <- st_as_sf(dtPermit[!is.na(LATITUDE)], coords=c("LONGITUDE","LATITUDE"
 sfPermit <- st_transform(sfPermit, UTMCRS)
 
 # ---- GWR: local elasticity + price level at each permit -------------
-gwr <- gwrAtPoints(sfPermit, sfPrice, k=200)
+gwr <- gwrAtPoints(sfPermit, sfPrice, k=30) # check 200 vs 400 200 is default
 sfPermit$elasticity <- gwr$elasticity
 sfPermit$priceLevel <- gwr$priceLevel
 sfPermit$bw <- gwr$bw

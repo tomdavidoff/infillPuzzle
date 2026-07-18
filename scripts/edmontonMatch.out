@@ -134,6 +134,16 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 6:  POINT (-113.45576940967753 53.51676923327373)          <NA>
 > dtP <- dtP[grepl("Building - New",workType,ignore.case=TRUE)]
 > dtA[,lotSize:=as.numeric(gsub(",","",lotSize))]
+> print(summary(dtA[,lotSize]))
+    Min.  1st Qu.   Median     Mean  3rd Qu.     Max.     NA's 
+     0.0    482.6    566.1    578.8    652.3 503138.9     3632 
+> print(quantile(dtA[!is.na(lotSize),lotSize],seq(.2,.8,by=.1)))
+    20%     30%     40%     50%     60%     70%     80% 
+440.367 508.420 544.000 566.113 594.393 630.281 682.294 
+> print(summary(dtA[!is.na(lotSize),lotSize%between%c(500,600)]))
+   Mode   FALSE    TRUE 
+logical 1431989  723541 
+> 
 > dtA[,legal:=gsub("Block:","Blk",legalDescription)]
 > dtA[,legal:=gsub(":","",legal)]
 > dtA[,legal:=gsub("  "," ",legal)] # double spaces
@@ -571,6 +581,180 @@ Key: <legal>
 31:                Duplex (210)           383.02
                    buildingType               V1
                          <char> <summaryDefault>
+> print(dtM[year==2026,summary(lotSize),by=buildingType])
+                   buildingType               V1
+                         <char> <summaryDefault>
+ 1: Single Detached House (110)            232.4
+ 2: Single Detached House (110)            487.2
+ 3: Single Detached House (110)            598.0
+ 4: Single Detached House (110)            690.9
+ 5: Single Detached House (110)            718.4
+ 6: Single Detached House (110)           2117.3
+ 7:   Semi-Detached House (210)            334.0
+ 8:   Semi-Detached House (210)            377.4
+ 9:   Semi-Detached House (210)            508.0
+10:   Semi-Detached House (210)            483.6
+11:   Semi-Detached House (210)            557.2
+12:   Semi-Detached House (210)            696.0
+13:             Row House (330)            404.9
+14:             Row House (330)            577.0
+15:             Row House (330)            662.7
+16:             Row House (330)            642.7
+17:             Row House (330)            696.4
+18:             Row House (330)            891.2
+19:        Backyard House (110)            255.5
+20:        Backyard House (110)            510.8
+21:        Backyard House (110)            557.2
+22:        Backyard House (110)            560.8
+23:        Backyard House (110)            664.1
+24:        Backyard House (110)            780.0
+                   buildingType               V1
+                         <char> <summaryDefault>
+> print(dtM[lotSize %between% c(500,700),summary(floorArea),by=buildingType])
+                   buildingType               V1
+                         <char> <summaryDefault>
+ 1: Single Detached House (110)            922.0
+ 2: Single Detached House (110)           2398.0
+ 3: Single Detached House (110)           2694.0
+ 4: Single Detached House (110)           2805.9
+ 5: Single Detached House (110)           3338.0
+ 6: Single Detached House (110)           4620.0
+ 7:             Row House (330)           2142.0
+ 8:             Row House (330)           4552.0
+ 9:             Row House (330)           4919.0
+10:             Row House (330)           5152.7
+11:             Row House (330)           5392.0
+12:             Row House (330)          10104.0
+13:        Backyard House (110)            220.0
+14:        Backyard House (110)            642.0
+15:        Backyard House (110)            792.0
+16:        Backyard House (110)            944.4
+17:        Backyard House (110)           1126.0
+18:        Backyard House (110)           4880.0
+19:   Semi-Detached House (210)           1344.0
+20:   Semi-Detached House (210)           2986.0
+21:   Semi-Detached House (210)           3300.0
+22:   Semi-Detached House (210)           3291.1
+23:   Semi-Detached House (210)           3508.0
+24:   Semi-Detached House (210)           5556.0
+                   buildingType               V1
+                         <char> <summaryDefault>
+> print(dtM[lotSize %between% c(500,600) & year==2026,summary(floorArea),by=buildingType])
+                   buildingType               V1
+                         <char> <summaryDefault>
+ 1:             Row House (330)           3352.0
+ 2:             Row House (330)           4020.0
+ 3:             Row House (330)           4459.0
+ 4:             Row House (330)           4650.1
+ 5:             Row House (330)           5186.0
+ 6:             Row House (330)           6837.0
+ 7:   Semi-Detached House (210)           2165.0
+ 8:   Semi-Detached House (210)           2906.0
+ 9:   Semi-Detached House (210)           3318.0
+10:   Semi-Detached House (210)           3165.1
+11:   Semi-Detached House (210)           3485.0
+12:   Semi-Detached House (210)           4030.0
+13:        Backyard House (110)            460.0
+14:        Backyard House (110)            615.0
+15:        Backyard House (110)            686.0
+16:        Backyard House (110)            842.4
+17:        Backyard House (110)            916.0
+18:        Backyard House (110)           2368.0
+19: Single Detached House (110)           1984.0
+20: Single Detached House (110)           2351.0
+21: Single Detached House (110)           2591.0
+22: Single Detached House (110)           2863.3
+23: Single Detached House (110)           3530.0
+24: Single Detached House (110)           4583.0
+                   buildingType               V1
+                         <char> <summaryDefault>
+> print(dtM[lotSize %between% c(600,700) & year==2026,summary(floorArea),by=buildingType])
+                   buildingType               V1
+                         <char> <summaryDefault>
+ 1:             Row House (330)             2142
+ 2:             Row House (330)             4785
+ 3:             Row House (330)             5016
+ 4:             Row House (330)             5291
+ 5:             Row House (330)             5616
+ 6:             Row House (330)             9628
+ 7:        Backyard House (110)              530
+ 8:        Backyard House (110)              641
+ 9:        Backyard House (110)              936
+10:        Backyard House (110)             1007
+11:        Backyard House (110)             1177
+12:        Backyard House (110)             2404
+13: Single Detached House (110)             2681
+14: Single Detached House (110)             2982
+15: Single Detached House (110)             3333
+16: Single Detached House (110)             3291
+17: Single Detached House (110)             3482
+18: Single Detached House (110)             3927
+19:   Semi-Detached House (210)             3040
+20:   Semi-Detached House (210)             3040
+21:   Semi-Detached House (210)             3200
+22:   Semi-Detached House (210)             3200
+23:   Semi-Detached House (210)             3360
+24:   Semi-Detached House (210)             3360
+                   buildingType               V1
+                         <char> <summaryDefault>
+> print(dtM[lotSize %between% c(500,600) & year==2026,summary(constructionValue),by=buildingType])
+                   buildingType               V1
+                         <char> <summaryDefault>
+ 1:             Row House (330)           419000
+ 2:             Row House (330)           502500
+ 3:             Row House (330)           557375
+ 4:             Row House (330)           581268
+ 5:             Row House (330)           648250
+ 6:             Row House (330)           854625
+ 7:   Semi-Detached House (210)           270625
+ 8:   Semi-Detached House (210)           363250
+ 9:   Semi-Detached House (210)           414750
+10:   Semi-Detached House (210)           395632
+11:   Semi-Detached House (210)           435625
+12:   Semi-Detached House (210)           503750
+13:        Backyard House (110)            57500
+14:        Backyard House (110)            76875
+15:        Backyard House (110)            85750
+16:        Backyard House (110)           105295
+17:        Backyard House (110)           114500
+18:        Backyard House (110)           296000
+19: Single Detached House (110)           248000
+20: Single Detached House (110)           293875
+21: Single Detached House (110)           323875
+22: Single Detached House (110)           357913
+23: Single Detached House (110)           441250
+24: Single Detached House (110)           572875
+                   buildingType               V1
+                         <char> <summaryDefault>
+> print(dtM[lotSize %between% c(600,700) & year==2026,summary(constructionValue),by=buildingType])
+                   buildingType               V1
+                         <char> <summaryDefault>
+ 1:             Row House (330)           267750
+ 2:             Row House (330)           598125
+ 3:             Row House (330)           627000
+ 4:             Row House (330)           661378
+ 5:             Row House (330)           702000
+ 6:             Row House (330)          1203500
+ 7:        Backyard House (110)            66250
+ 8:        Backyard House (110)            80125
+ 9:        Backyard House (110)           117000
+10:        Backyard House (110)           125857
+11:        Backyard House (110)           147125
+12:        Backyard House (110)           300500
+13: Single Detached House (110)           335125
+14: Single Detached House (110)           372750
+15: Single Detached House (110)           416625
+16: Single Detached House (110)           411373
+17: Single Detached House (110)           435250
+18: Single Detached House (110)           490875
+19:   Semi-Detached House (210)           380000
+20:   Semi-Detached House (210)           380000
+21:   Semi-Detached House (210)           400000
+22:   Semi-Detached House (210)           400000
+23:   Semi-Detached House (210)           420000
+24:   Semi-Detached House (210)           420000
+                   buildingType               V1
+                         <char> <summaryDefault>
 > print(summary(dtP[,year]))
    Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
    2024    2024    2025    2025    2025    2026 
@@ -696,9 +880,47 @@ lotSize                                   1.3943e-12 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 RMSE: 164,276.7   Adj. R2: 0.213406
+> print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(500,600)])))
+OLS estimation, Dep. Var.: meanVal
+Observations: 204
+Standard-errors: IID 
+                                             Estimate Std. Error   t value
+(Intercept)                               384826.4286 188331.239  2.043349
+buildingType::Row House (330)             -16815.9105  21793.546 -0.771600
+buildingType::Semi-Detached House (210)   -21397.6007  27235.930 -0.785639
+buildingType::Single Detached House (110) 134412.2339  30850.356  4.356910
+lotSize                                       96.0308    345.012  0.278341
+                                            Pr(>|t|)    
+(Intercept)                               4.2336e-02 *  
+buildingType::Row House (330)             4.4127e-01    
+buildingType::Semi-Detached House (210)   4.3301e-01    
+buildingType::Single Detached House (110) 2.1116e-05 ***
+lotSize                                   7.8104e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 120,729.7   Adj. R2: 0.121463
+> print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)])))
+OLS estimation, Dep. Var.: meanVal
+Observations: 263
+Standard-errors: IID 
+                                             Estimate Std. Error   t value
+(Intercept)                                501673.626 261802.557  1.916229
+buildingType::Row House (330)              -19540.302  37312.969 -0.523687
+buildingType::Semi-Detached House (210)   -154468.450 105636.928 -1.462258
+buildingType::Single Detached House (110)  256291.243  57290.257  4.473557
+lotSize                                       -82.011    387.034 -0.211896
+                                            Pr(>|t|)    
+(Intercept)                               5.6441e-02 .  
+buildingType::Row House (330)             6.0095e-01    
+buildingType::Semi-Detached House (210)   1.4489e-01    
+buildingType::Single Detached House (110) 1.1543e-05 ***
+lotSize                                   8.3236e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 197,054.7   Adj. R2: 0.11509
 > 
 > fwrite(dtM[assessmentClass1=="RESIDENTIAL",.(houseNumber,streetName)],file="~/Downloads/addressesFun.csv")
 > q('no')
 > proc.time()
    user  system elapsed 
- 30.626   0.556  13.454 
+ 29.067   0.460  13.257 

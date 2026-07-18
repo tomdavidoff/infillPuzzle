@@ -37,6 +37,10 @@ print(meanP)
 print(head(dtP))
 dtP <- dtP[grepl("Building - New",workType,ignore.case=TRUE)]
 dtA[,lotSize:=as.numeric(gsub(",","",lotSize))]
+print(summary(dtA[,lotSize]))
+print(quantile(dtA[!is.na(lotSize),lotSize],seq(.2,.8,by=.1)))
+print(summary(dtA[!is.na(lotSize),lotSize%between%c(500,600)]))
+
 dtA[,legal:=gsub("Block:","Blk",legalDescription)]
 dtA[,legal:=gsub(":","",legal)]
 dtA[,legal:=gsub("  "," ",legal)] # double spaces
@@ -47,6 +51,12 @@ print(head(dtA))
 print(head(dtM))
 print(dtM[!is.na(lotSize)])
 print(dtM[,summary(lotSize),by=buildingType])
+print(dtM[year==2026,summary(lotSize),by=buildingType])
+print(dtM[lotSize %between% c(500,700),summary(floorArea),by=buildingType])
+print(dtM[lotSize %between% c(500,600) & year==2026,summary(floorArea),by=buildingType])
+print(dtM[lotSize %between% c(600,700) & year==2026,summary(floorArea),by=buildingType])
+print(dtM[lotSize %between% c(500,600) & year==2026,summary(constructionValue),by=buildingType])
+print(dtM[lotSize %between% c(600,700) & year==2026,summary(constructionValue),by=buildingType])
 print(summary(dtP[,year]))
 print(summary(dtM[,year]))
 print(table(dtM[,neighbourhood.x==neighbourhood.y]))
@@ -58,6 +68,8 @@ print(summary(regData))
 print(summary(feols(meanVal ~ i(buildingType), data=regData)))
 print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData)))
 print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026])))
+print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(500,600)])))
+print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)])))
 
 fwrite(dtM[assessmentClass1=="RESIDENTIAL",.(houseNumber,streetName)],file="~/Downloads/addressesFun.csv")
 q('no')

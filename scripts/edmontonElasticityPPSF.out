@@ -1,0 +1,4064 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # edmontonElasticityPPSF.R
+> # R to identify the relationship between price per square foot and elasticity of price per square foot wrt elasticity
+> # Tom Davidoff 
+> # 07/17/26
+> 
+> library(data.table)
+> library(fixest)
+> library(ggplot2)
+> 
+> dtA <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv")
+> modWord <- function(word) {
++ 	# anything after a Space is capitalized -- already true 
++ 	# first set all to lower
++ 	x <- tolower(word)
++ 	x <- gsub("_", " ", x)
++ 	x <- gsub("\\s+([a-z])", "\\U\\1",x, perl = TRUE)
++ 	x <- gsub(" ", "", x)
++ 	x <- gsub("^([A-Za-z])", "\\L\\1", x, perl = TRUE)
++ 	return(x)
++ }
+> setnames(dtA,names(dtA),modWord(names(dtA)))
+> dtA <- dtA[assessmentYear==2023]
+> print(names(dtA))
+ [1] "accountNumber"     "assessmentYear"    "suite"            
+ [4] "houseNumber"       "streetName"        "legalDescription" 
+ [7] "latitude"          "longitude"         "pointLocation"    
+[10] "neighbourhood"     "actualYearBuilt"   "garage"           
+[13] "zoning"            "lotSize"           "assessedValue"    
+[16] "assessmentClass1"  "assessmentClass%1" "assessmentClass2" 
+[19] "assessmentClass%2" "assessmentClass3"  "assessmentClass%3"
+> dtA <- dtA[assessmentClass1=="RESIDENTIAL" & zoning %in% c("RF1","RF2","RF3","RF4","RS")]
+> dtT <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv")
+> setnames(dtT,names(dtT),modWord(names(dtT)))
+> MINYEAR <- 1995
+> dtT <- dtT[zoning=="RS" & lotSize %between% c(500,600) & yearBuilt<2023,.(accountNumber,totalGrossArea,yearBuilt)]
+> print(head(dtT))
+   accountNumber totalGrossArea yearBuilt
+           <int>          <num>     <int>
+1:       5115167         227.33      1987
+2:       5038161          99.70      1964
+3:       6417281         104.48      1961
+4:       7873474          97.82      1965
+5:       2456689          91.64      1956
+6:       1162726         177.12      1983
+> setkey(dtT,accountNumber)
+> setkey(dtA,accountNumber)
+> print(nrow(dtT))
+[1] 50266
+> dtM <- dtA[dtT]
+> print(nrow(dtM))
+[1] 50266
+> dtM[,assessedValue:=gsub(",","",assessedValue)]
+> dtM[,assessedValue:=as.numeric(gsub("\\$","",assessedValue))]
+> dtM[,ppsf:=assessedValue/totalGrossArea]
+> for (n in unique(dtM[,neighbourhood])) {
++ 	print(n)
++ 	dX <- dtM[neighbourhood==n & lotSize %between% c(500,600) & !is.na(ppsf) & !is.na(totalGrossArea),.(ppsf,totalGrossArea)]
++ 	if (nrow(dX)>10) {
++ 		print(summary(dX))
++ 		reg <- feols(log(ppsf)~log(totalGrossArea),data=dX)
++ 		print(summary(reg))
++ 	}
++ }
+[1] "EVANSDALE"
+      ppsf      totalGrossArea  
+ Min.   :2119   Min.   : 77.13  
+ 1st Qu.:3004   1st Qu.: 96.54  
+ Median :3147   Median :108.86  
+ Mean   :3181   Mean   :109.78  
+ 3rd Qu.:3380   3rd Qu.:116.90  
+ Max.   :4589   Max.   :215.41  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 580
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.984268   0.064584 170.0776 < 2.2e-16 ***
+log(totalGrossArea) -0.623928   0.013772 -45.3046 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.047874   Adj. R2: 0.77989
+[1] "RHATIGAN RIDGE"
+      ppsf      totalGrossArea 
+ Min.   :2132   Min.   :105.3  
+ 1st Qu.:2524   1st Qu.:156.3  
+ Median :2800   Median :181.0  
+ Mean   :2871   Mean   :183.1  
+ 3rd Qu.:3124   3rd Qu.:212.3  
+ Max.   :4235   Max.   :277.1  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 164
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.029629   0.142542  77.3779 < 2.2e-16 ***
+log(totalGrossArea) -0.593298   0.027453 -21.6117 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.07347   Adj. R2: 0.740885
+[1] "WESTRIDGE"
+      ppsf      totalGrossArea 
+ Min.   :1965   Min.   :112.2  
+ 1st Qu.:2375   1st Qu.:165.6  
+ Median :2575   Median :195.2  
+ Mean   :2662   Mean   :191.7  
+ 3rd Qu.:2832   3rd Qu.:211.5  
+ Max.   :4641   Max.   :335.7  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 59
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         11.196408   0.292928  38.2224  < 2.2e-16 ***
+log(totalGrossArea) -0.634504   0.055905 -11.3496 2.9658e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.085193   Adj. R2: 0.68786
+[1] "LA PERLE"
+      ppsf      totalGrossArea  
+ Min.   :1668   Min.   : 79.26  
+ 1st Qu.:2982   1st Qu.:108.25  
+ Median :3385   Median :116.11  
+ Mean   :3251   Mean   :126.76  
+ 3rd Qu.:3578   3rd Qu.:146.12  
+ Max.   :4654   Max.   :322.28  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 261
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.384688   0.078494 145.0397 < 2.2e-16 ***
+log(totalGrossArea) -0.687286   0.016279 -42.2179 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.05749   Adj. R2: 0.872633
+[1] "BEARSPAW"
+      ppsf      totalGrossArea  
+ Min.   :2062   Min.   : 90.68  
+ 1st Qu.:2599   1st Qu.:120.98  
+ Median :3067   Median :145.40  
+ Mean   :3033   Mean   :153.62  
+ 3rd Qu.:3443   3rd Qu.:179.60  
+ Max.   :4416   Max.   :299.51  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 275
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.097230   0.076735 144.6183 < 2.2e-16 ***
+log(totalGrossArea) -0.618085   0.015317 -40.3526 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.061282   Adj. R2: 0.855891
+[1] "NEWTON"
+      ppsf      totalGrossArea  
+ Min.   :1650   Min.   : 47.60  
+ 1st Qu.:2629   1st Qu.: 88.07  
+ Median :2865   Median : 98.60  
+ Mean   :2830   Mean   :108.33  
+ 3rd Qu.:3065   3rd Qu.:117.34  
+ Max.   :4535   Max.   :329.80  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 699
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.904186   0.058221 170.1142 < 2.2e-16 ***
+log(totalGrossArea) -0.423633   0.012516 -33.8472 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.091969   Adj. R2: 0.621194
+[1] "DELTON"
+      ppsf      totalGrossArea  
+ Min.   :1299   Min.   : 52.93  
+ 1st Qu.:2689   1st Qu.: 76.27  
+ Median :2949   Median : 86.42  
+ Mean   :2951   Mean   : 98.19  
+ 3rd Qu.:3188   3rd Qu.:106.33  
+ Max.   :4638   Max.   :311.04  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 163
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.896640   0.124797  79.3017 < 2.2e-16 ***
+log(totalGrossArea) -0.424572   0.027501 -15.4384 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.112513   Adj. R2: 0.594336
+[1] "KEHEEWIN"
+      ppsf      totalGrossArea  
+ Min.   :1855   Min.   : 77.25  
+ 1st Qu.:2516   1st Qu.:120.77  
+ Median :2858   Median :161.43  
+ Mean   :3015   Mean   :159.07  
+ 3rd Qu.:3401   3rd Qu.:190.27  
+ Max.   :4886   Max.   :261.89  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 124
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.32847   0.097794 115.8398 < 2.2e-16 ***
+log(totalGrossArea) -0.66390   0.019417 -34.1919 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.062557   Adj. R2: 0.904732
+[1] "LAGO LINDO"
+      ppsf      totalGrossArea  
+ Min.   :1917   Min.   : 70.07  
+ 1st Qu.:2940   1st Qu.:102.40  
+ Median :3195   Median :111.20  
+ Mean   :3086   Mean   :120.15  
+ 3rd Qu.:3345   3rd Qu.:124.85  
+ Max.   :4210   Max.   :234.80  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 338
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.227028   0.063127 177.8473 < 2.2e-16 ***
+log(totalGrossArea) -0.672446   0.013237 -50.7996 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.052009   Adj. R2: 0.884455
+[1] "KILKENNY"
+      ppsf      totalGrossArea  
+ Min.   :1708   Min.   : 84.32  
+ 1st Qu.:2996   1st Qu.:102.48  
+ Median :3141   Median :108.08  
+ Mean   :3132   Mean   :112.93  
+ 3rd Qu.:3302   3rd Qu.:114.33  
+ Max.   :4404   Max.   :296.70  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 722
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.156914   0.062824 177.5914 < 2.2e-16 ***
+log(totalGrossArea) -0.660793   0.013323 -49.5967 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.055947   Adj. R2: 0.773259
+[1] "KIRKNESS"
+      ppsf      totalGrossArea  
+ Min.   :1802   Min.   : 75.82  
+ 1st Qu.:2915   1st Qu.: 96.47  
+ Median :3139   Median :108.15  
+ Mean   :3149   Mean   :115.24  
+ 3rd Qu.:3455   3rd Qu.:122.25  
+ Max.   :4298   Max.   :259.48  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 182
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.885781   0.103005 105.6825 < 2.2e-16 ***
+log(totalGrossArea) -0.602168   0.021801 -27.6208 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.066007   Adj. R2: 0.808041
+[1] "WEST JASPER PLACE"
+      ppsf      totalGrossArea  
+ Min.   :2793   Min.   : 69.73  
+ 1st Qu.:3109   1st Qu.: 86.42  
+ Median :3316   Median :100.04  
+ Mean   :3391   Mean   :112.43  
+ 3rd Qu.:3552   3rd Qu.:119.11  
+ Max.   :4268   Max.   :221.05  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 11
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.323228   0.459265 20.30034 7.9607e-09 ***
+log(totalGrossArea) -0.257278   0.098119 -2.62209 2.7716e-02 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.090114   Adj. R2: 0.370093
+[1] "PATRICIA HEIGHTS"
+      ppsf      totalGrossArea 
+ Min.   :2942   Min.   :100.2  
+ 1st Qu.:3555   1st Qu.:107.5  
+ Median :3823   Median :112.0  
+ Mean   :3699   Mean   :125.6  
+ 3rd Qu.:3933   3rd Qu.:123.0  
+ Max.   :4388   Max.   :271.2  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 16
+Standard-errors: IID 
+                     Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)          8.247606   0.622731 13.244250 2.6105e-09 ***
+log(totalGrossArea) -0.007917   0.129593 -0.061089 9.5215e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.11374   Adj. R2: -0.071143
+[1] "HENDERSON ESTATES"
+      ppsf      totalGrossArea 
+ Min.   :2157   Min.   :107.7  
+ 1st Qu.:2496   1st Qu.:170.3  
+ Median :2631   Median :197.2  
+ Mean   :2754   Mean   :193.9  
+ 3rd Qu.:2870   3rd Qu.:212.5  
+ Max.   :5565   Max.   :279.2  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 124
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.042476   0.265841  41.5378 < 2.2e-16 ***
+log(totalGrossArea) -0.596679   0.050590 -11.7945 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.100262   Adj. R2: 0.528933
+[1] "RIO TERRACE"
+      ppsf      totalGrossArea 
+ Min.   :3391   Min.   : 90.6  
+ 1st Qu.:4035   1st Qu.:104.8  
+ Median :4250   Median :106.3  
+ Mean   :4388   Mean   :114.8  
+ 3rd Qu.:4749   3rd Qu.:111.6  
+ Max.   :5348   Max.   :214.9  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 19
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.269783   0.604940 16.97652 4.2782e-12 ***
+log(totalGrossArea) -0.400111   0.127947 -3.12715 6.1367e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.095252   Adj. R2: 0.327833
+[1] "LYNNWOOD"
+      ppsf      totalGrossArea  
+ Min.   :2218   Min.   : 74.48  
+ 1st Qu.:3436   1st Qu.: 96.38  
+ Median :3630   Median : 98.32  
+ Mean   :3651   Mean   :102.92  
+ 3rd Qu.:3823   3rd Qu.:108.80  
+ Max.   :4949   Max.   :169.36  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 460
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.876283   0.184681  58.8921 < 2.2e-16 ***
+log(totalGrossArea) -0.578602   0.039887 -14.5061 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.081371   Adj. R2: 0.313313
+[1] "LYMBURN"
+      ppsf      totalGrossArea  
+ Min.   :1858   Min.   : 77.84  
+ 1st Qu.:2584   1st Qu.:103.09  
+ Median :3366   Median :114.72  
+ Mean   :3204   Mean   :128.13  
+ 3rd Qu.:3708   3rd Qu.:155.15  
+ Max.   :4372   Max.   :248.40  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 322
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.773270   0.058463 201.3781 < 2.2e-16 ***
+log(totalGrossArea) -0.772157   0.012114 -63.7386 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.05525   Adj. R2: 0.926756
+[1] "ELMWOOD"
+      ppsf      totalGrossArea  
+ Min.   :1613   Min.   : 74.02  
+ 1st Qu.:3167   1st Qu.: 96.38  
+ Median :3390   Median : 97.93  
+ Mean   :3361   Mean   :100.59  
+ 3rd Qu.:3569   3rd Qu.:103.70  
+ Max.   :4644   Max.   :281.74  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 595
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.145129   0.122082  91.2923 < 2.2e-16 ***
+log(totalGrossArea) -0.659167   0.026524 -24.8520 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.087898   Adj. R2: 0.509343
+[1] "JAMIESON PLACE"
+      ppsf      totalGrossArea 
+ Min.   :1943   Min.   : 80.8  
+ 1st Qu.:2548   1st Qu.:113.8  
+ Median :3046   Median :141.2  
+ Mean   :3106   Mean   :146.1  
+ 3rd Qu.:3598   3rd Qu.:177.2  
+ Max.   :4568   Max.   :240.3  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 262
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.32389   0.078903 143.5162 < 2.2e-16 ***
+log(totalGrossArea) -0.66705   0.015921 -41.8988 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.068963   Adj. R2: 0.870504
+[1] "HILLVIEW"
+      ppsf      totalGrossArea  
+ Min.   :1930   Min.   : 75.02  
+ 1st Qu.:2941   1st Qu.: 96.83  
+ Median :3325   Median :108.89  
+ Mean   :3246   Mean   :120.06  
+ 3rd Qu.:3595   3rd Qu.:128.04  
+ Max.   :4891   Max.   :262.21  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 346
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.20229   0.060838 184.1339 < 2.2e-16 ***
+log(totalGrossArea) -0.65901   0.012782 -51.5569 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.060145   Adj. R2: 0.885081
+[1] "ALDERGROVE"
+      ppsf      totalGrossArea  
+ Min.   :2009   Min.   : 86.08  
+ 1st Qu.:2497   1st Qu.:114.06  
+ Median :2976   Median :132.74  
+ Mean   :2951   Mean   :137.31  
+ 3rd Qu.:3362   3rd Qu.:158.74  
+ Max.   :4130   Max.   :222.08  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 275
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.957176   0.092821 128.8203 < 2.2e-16 ***
+log(totalGrossArea) -0.812117   0.018917 -42.9306 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.06111   Adj. R2: 0.870513
+[1] "CALDER"
+      ppsf      totalGrossArea  
+ Min.   :1299   Min.   : 45.75  
+ 1st Qu.:2397   1st Qu.: 91.46  
+ Median :2796   Median : 99.71  
+ Mean   :2733   Mean   :106.41  
+ 3rd Qu.:2998   3rd Qu.:111.05  
+ Max.   :4185   Max.   :283.00  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 504
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.619831   0.113230  84.9580 < 2.2e-16 ***
+log(totalGrossArea) -0.371711   0.024415 -15.2246 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.142688   Adj. R2: 0.314515
+[1] "MEADOWLARK PARK"
+      ppsf      totalGrossArea  
+ Min.   :1826   Min.   : 79.94  
+ 1st Qu.:3272   1st Qu.: 96.90  
+ Median :3493   Median :103.49  
+ Mean   :3490   Mean   :106.45  
+ 3rd Qu.:3697   3rd Qu.:110.92  
+ Max.   :4714   Max.   :223.44  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 630
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.426113   0.105767 108.0311 < 2.2e-16 ***
+log(totalGrossArea) -0.702966   0.022695 -30.9744 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.072308   Adj. R2: 0.603759
+[1] "WEST MEADOWLARK PARK"
+      ppsf      totalGrossArea  
+ Min.   :1980   Min.   : 84.68  
+ 1st Qu.:3100   1st Qu.: 96.38  
+ Median :3338   Median :101.95  
+ Mean   :3292   Mean   :106.08  
+ 3rd Qu.:3522   3rd Qu.:109.47  
+ Max.   :4522   Max.   :221.93  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 434
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.602719   0.102212 113.5160 < 2.2e-16 ***
+log(totalGrossArea) -0.754711   0.021959 -34.3696 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.066666   Adj. R2: 0.731601
+[1] "RIVERDALE"
+      ppsf      totalGrossArea  
+ Min.   :2884   Min.   : 77.72  
+ 1st Qu.:3374   1st Qu.:117.89  
+ Median :3885   Median :132.76  
+ Mean   :4012   Mean   :161.89  
+ 3rd Qu.:4343   3rd Qu.:218.85  
+ Max.   :5762   Max.   :324.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 16
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.136999   0.480428 21.09993 5.1980e-12 ***
+log(totalGrossArea) -0.371956   0.095684 -3.88733 1.6422e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.143153   Adj. R2: 0.484736
+[1] "SUMMERLEA"
+      ppsf      totalGrossArea  
+ Min.   :1703   Min.   : 85.91  
+ 1st Qu.:2417   1st Qu.:139.85  
+ Median :2531   Median :157.67  
+ Mean   :2730   Mean   :155.82  
+ 3rd Qu.:2991   3rd Qu.:174.87  
+ Max.   :4010   Max.   :348.26  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 135
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.390256   0.115481  98.6334 < 2.2e-16 ***
+log(totalGrossArea) -0.694445   0.022952 -30.2561 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.05583   Adj. R2: 0.87219
+[1] "WEINLOS"
+      ppsf      totalGrossArea 
+ Min.   :1868   Min.   : 72.7  
+ 1st Qu.:2999   1st Qu.:100.9  
+ Median :3236   Median :109.8  
+ Mean   :3216   Mean   :118.0  
+ 3rd Qu.:3466   3rd Qu.:121.4  
+ Max.   :4817   Max.   :346.8  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 327
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.458263   0.081473 128.3642 < 2.2e-16 ***
+log(totalGrossArea) -0.504981   0.017177 -29.3990 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.074405   Adj. R2: 0.725889
+[1] "JASPER PARK"
+      ppsf      totalGrossArea  
+ Min.   :3221   Min.   : 69.16  
+ 1st Qu.:3473   1st Qu.: 73.18  
+ Median :3648   Median : 94.79  
+ Mean   :3764   Mean   : 87.31  
+ 3rd Qu.:4048   3rd Qu.: 97.24  
+ Max.   :4625   Max.   :108.98  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 24
+Standard-errors: IID 
+                    Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.52577   0.296367 35.51596  < 2.2e-16 ***
+log(totalGrossArea) -0.51525   0.066442 -7.75487 9.8572e-08 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.04795   Adj. R2: 0.719983
+[1] "SHERWOOD"
+      ppsf      totalGrossArea  
+ Min.   :2336   Min.   : 62.05  
+ 1st Qu.:3280   1st Qu.: 64.14  
+ Median :3695   Median : 69.49  
+ Mean   :3603   Mean   : 83.03  
+ 3rd Qu.:3995   3rd Qu.: 94.39  
+ Max.   :4464   Max.   :154.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 18
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.149006   0.344176 29.48787 2.2487e-15 ***
+log(totalGrossArea) -0.450018   0.078461 -5.73555 3.0676e-05 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.08587   Adj. R2: 0.652327
+[1] "BEAUMARIS"
+      ppsf      totalGrossArea 
+ Min.   :1663   Min.   : 98.6  
+ 1st Qu.:2186   1st Qu.:137.6  
+ Median :2379   Median :168.8  
+ Mean   :2529   Mean   :169.7  
+ 3rd Qu.:2869   3rd Qu.:193.8  
+ Max.   :3953   Max.   :312.5  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 380
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.203283   0.064321 174.1778 < 2.2e-16 ***
+log(totalGrossArea) -0.662238   0.012583 -52.6304 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.057647   Adj. R2: 0.879605
+[1] "OLESKIW"
+      ppsf      totalGrossArea 
+ Min.   :2320   Min.   :109.1  
+ 1st Qu.:2553   1st Qu.:177.7  
+ Median :2713   Median :194.7  
+ Mean   :2833   Mean   :195.6  
+ 3rd Qu.:3013   3rd Qu.:215.4  
+ Max.   :4618   Max.   :274.6  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 74
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.148285   0.294954  37.7968 < 2.2e-16 ***
+log(totalGrossArea) -0.609792   0.056025 -10.8842 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.081768   Adj. R2: 0.616729
+[1] "STRATHCONA"
+      ppsf      totalGrossArea  
+ Min.   :1735   Min.   : 62.05  
+ 1st Qu.:4095   1st Qu.: 88.28  
+ Median :4767   Median :128.20  
+ Mean   :4875   Mean   :145.58  
+ 3rd Qu.:5679   3rd Qu.:163.69  
+ Max.   :7953   Max.   :358.70  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 58
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.542735   0.246895 42.70130  < 2.2e-16 ***
+log(totalGrossArea) -0.428161   0.050512 -8.47643 1.2795e-11 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.175346   Adj. R2: 0.554165
+[1] "MAYLIEWAN"
+      ppsf      totalGrossArea  
+ Min.   :1966   Min.   : 86.65  
+ 1st Qu.:2483   1st Qu.:138.60  
+ Median :2927   Median :160.90  
+ Mean   :2842   Mean   :166.72  
+ 3rd Qu.:3152   3rd Qu.:186.43  
+ Max.   :4156   Max.   :330.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 479
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.983267   0.080984 135.6229 < 2.2e-16 ***
+log(totalGrossArea) -0.597461   0.015890 -37.5990 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.075969   Adj. R2: 0.747182
+[1] "LARKSPUR"
+      ppsf      totalGrossArea 
+ Min.   :1973   Min.   : 87.6  
+ 1st Qu.:2509   1st Qu.:121.1  
+ Median :3014   Median :144.9  
+ Mean   :2991   Mean   :152.7  
+ 3rd Qu.:3410   3rd Qu.:182.0  
+ Max.   :4462   Max.   :244.0  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 313
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.53884   0.048214 239.3267 < 2.2e-16 ***
+log(totalGrossArea) -0.71023   0.009633 -73.7296 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.040848   Adj. R2: 0.945711
+[1] "GLENWOOD"
+      ppsf      totalGrossArea  
+ Min.   :1897   Min.   : 55.51  
+ 1st Qu.:2995   1st Qu.: 91.64  
+ Median :3202   Median :103.70  
+ Mean   :3245   Mean   :102.18  
+ 3rd Qu.:3457   3rd Qu.:108.50  
+ Max.   :4390   Max.   :317.40  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 277
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.663422   0.102768  94.0319 < 2.2e-16 ***
+log(totalGrossArea) -0.344995   0.022327 -15.4516 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.087834   Adj. R2: 0.462775
+[1] NA
+[1] "BRITANNIA YOUNGSTOWN"
+      ppsf      totalGrossArea  
+ Min.   :1600   Min.   : 62.05  
+ 1st Qu.:2911   1st Qu.: 89.06  
+ Median :3097   Median : 96.38  
+ Mean   :3089   Mean   : 94.88  
+ 3rd Qu.:3292   3rd Qu.: 97.28  
+ Max.   :4621   Max.   :204.40  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 307
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.013794   0.240715  45.7546 < 2.2e-16 ***
+log(totalGrossArea) -0.657072   0.052938 -12.4122 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.107226   Adj. R2: 0.333424
+[1] "MAYFIELD"
+      ppsf      totalGrossArea  
+ Min.   :1540   Min.   : 73.73  
+ 1st Qu.:2858   1st Qu.: 89.06  
+ Median :3206   Median : 93.50  
+ Mean   :3166   Mean   : 96.41  
+ 3rd Qu.:3450   3rd Qu.: 96.38  
+ Max.   :4550   Max.   :320.60  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 633
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.381484   0.143199  72.4969 < 2.2e-16 ***
+log(totalGrossArea) -0.511715   0.031419 -16.2870 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.119028   Adj. R2: 0.294852
+[1] "HIGH PARK"
+      ppsf      totalGrossArea  
+ Min.   :1936   Min.   : 57.22  
+ 1st Qu.:3016   1st Qu.: 91.88  
+ Median :3180   Median : 96.38  
+ Mean   :3220   Mean   : 98.29  
+ 3rd Qu.:3420   3rd Qu.:103.70  
+ Max.   :4968   Max.   :210.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 141
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.958498   0.162340  61.3434 < 2.2e-16 ***
+log(totalGrossArea) -0.414252   0.035539 -11.6562 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.093955   Adj. R2: 0.490664
+[1] "CANORA"
+      ppsf      totalGrossArea  
+ Min.   :2650   Min.   : 76.75  
+ 1st Qu.:2872   1st Qu.: 91.64  
+ Median :3106   Median :102.88  
+ Mean   :3150   Mean   :108.92  
+ 3rd Qu.:3439   3rd Qu.:123.45  
+ Max.   :3748   Max.   :170.40  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 15
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.959878   0.320706 31.05615 1.3934e-13 ***
+log(totalGrossArea) -0.409629   0.068679 -5.96444 4.7115e-05 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.056215   Adj. R2: 0.711783
+[1] "THORNCLIFF"
+      ppsf      totalGrossArea 
+ Min.   :2001   Min.   : 86.9  
+ 1st Qu.:2989   1st Qu.:109.1  
+ Median :3118   Median :113.8  
+ Mean   :3080   Mean   :120.3  
+ 3rd Qu.:3271   3rd Qu.:126.9  
+ Max.   :4059   Max.   :275.3  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 151
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.102924   0.130728  84.9317 < 2.2e-16 ***
+log(totalGrossArea) -0.644507   0.027361 -23.5553 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.056449   Adj. R2: 0.786888
+[1] "CALLINGWOOD NORTH"
+      ppsf      totalGrossArea  
+ Min.   :2156   Min.   : 89.45  
+ 1st Qu.:3018   1st Qu.:111.06  
+ Median :3196   Median :113.92  
+ Mean   :3106   Mean   :123.18  
+ 3rd Qu.:3297   3rd Qu.:122.98  
+ Max.   :4041   Max.   :213.35  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 56
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.551671   0.171671  67.2896 < 2.2e-16 ***
+log(totalGrossArea) -0.733164   0.035751 -20.5074 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.043063   Adj. R2: 0.884101
+[1] "BELMEAD"
+      ppsf      totalGrossArea 
+ Min.   :1989   Min.   : 89.9  
+ 1st Qu.:2470   1st Qu.:120.6  
+ Median :2803   Median :158.3  
+ Mean   :2895   Mean   :153.9  
+ 3rd Qu.:3310   3rd Qu.:181.2  
+ Max.   :4433   Max.   :222.9  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 195
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.562136   0.084941 136.1193 < 2.2e-16 ***
+log(totalGrossArea) -0.719786   0.016935 -42.5037 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.053862   Adj. R2: 0.902979
+[1] "ORMSBY PLACE"
+      ppsf      totalGrossArea  
+ Min.   :1796   Min.   : 79.58  
+ 1st Qu.:2472   1st Qu.:117.46  
+ Median :2933   Median :155.03  
+ Mean   :2938   Mean   :158.00  
+ 3rd Qu.:3380   3rd Qu.:192.10  
+ Max.   :4280   Max.   :288.90  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 488
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.019269   0.065396 168.5015 < 2.2e-16 ***
+log(totalGrossArea) -0.606646   0.012990 -46.7014 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.076359   Adj. R2: 0.817399
+[1] "DECHENE"
+      ppsf      totalGrossArea 
+ Min.   :2178   Min.   : 97.9  
+ 1st Qu.:2454   1st Qu.:148.2  
+ Median :2612   Median :174.4  
+ Mean   :2822   Mean   :169.1  
+ 3rd Qu.:3152   3rd Qu.:193.3  
+ Max.   :4535   Max.   :256.7  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 216
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.725168   0.085132 137.7285 < 2.2e-16 ***
+log(totalGrossArea) -0.742194   0.016644 -44.5926 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.049823   Adj. R2: 0.902384
+[1] "GARIEPY"
+      ppsf      totalGrossArea 
+ Min.   :1766   Min.   :111.4  
+ 1st Qu.:2196   1st Qu.:174.5  
+ Median :2409   Median :193.4  
+ Mean   :2476   Mean   :198.7  
+ 3rd Qu.:2704   3rd Qu.:218.9  
+ Max.   :3790   Max.   :321.2  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 123
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.180857   0.159827  69.9559 < 2.2e-16 ***
+log(totalGrossArea) -0.641718   0.030318 -21.1665 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.074573   Adj. R2: 0.785596
+[1] "LAURIER HEIGHTS"
+      ppsf      totalGrossArea  
+ Min.   :2823   Min.   : 62.05  
+ 1st Qu.:4018   1st Qu.:101.12  
+ Median :4284   Median :108.80  
+ Mean   :4352   Mean   :118.66  
+ 3rd Qu.:4565   3rd Qu.:118.95  
+ Max.   :7330   Max.   :315.40  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 111
+Standard-errors: IID 
+                     Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept)          8.443868   0.258770 32.630787 < 2.2e-16 ***
+log(totalGrossArea) -0.015644   0.054464 -0.287241   0.77447    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.130085   Adj. R2: -0.008411
+[1] "PARKVIEW"
+      ppsf      totalGrossArea  
+ Min.   :1611   Min.   : 57.67  
+ 1st Qu.:3786   1st Qu.:102.25  
+ Median :4336   Median :108.29  
+ Mean   :4354   Mean   :121.41  
+ 3rd Qu.:4845   3rd Qu.:125.72  
+ Max.   :6693   Max.   :302.00  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 498
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.340153   0.131078 71.25632  < 2.2e-16 ***
+log(totalGrossArea) -0.204989   0.027499 -7.45431 4.0554e-13 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.162074   Adj. R2: 0.098931
+[1] "CRESTWOOD"
+      ppsf      totalGrossArea  
+ Min.   :2549   Min.   : 64.26  
+ 1st Qu.:3731   1st Qu.:105.17  
+ Median :4087   Median :117.80  
+ Mean   :4316   Mean   :139.47  
+ 3rd Qu.:4967   3rd Qu.:138.16  
+ Max.   :6317   Max.   :401.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 68
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         7.704508   0.345749 22.28351 < 2.2e-16 ***
+log(totalGrossArea) 0.132400   0.070823  1.86946  0.065996 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.199076   Adj. R2: 0.0359
+[1] "GROVENOR"
+      ppsf      totalGrossArea  
+ Min.   :2101   Min.   : 53.23  
+ 1st Qu.:3397   1st Qu.: 83.52  
+ Median :3785   Median :103.40  
+ Mean   :3928   Mean   :119.34  
+ 3rd Qu.:4387   3rd Qu.:128.95  
+ Max.   :7016   Max.   :431.40  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 169
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.142535   0.163909 55.77829 < 2.2e-16 ***
+log(totalGrossArea) -0.188501   0.034785 -5.41896 2.065e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.176058   Adj. R2: 0.144451
+[1] "MCQUEEN"
+      ppsf      totalGrossArea  
+ Min.   :2248   Min.   : 78.76  
+ 1st Qu.:3336   1st Qu.: 93.70  
+ Median :3570   Median :103.70  
+ Mean   :3571   Mean   :105.81  
+ 3rd Qu.:3820   3rd Qu.:107.11  
+ Max.   :4899   Max.   :234.00  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 288
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.967050   0.140898  77.8366 < 2.2e-16 ***
+log(totalGrossArea) -0.601079   0.030295 -19.8406 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.080256   Adj. R2: 0.577724
+[1] "WELLINGTON"
+      ppsf      totalGrossArea  
+ Min.   :1807   Min.   : 74.40  
+ 1st Qu.:2944   1st Qu.: 93.90  
+ Median :3110   Median : 96.60  
+ Mean   :3127   Mean   : 98.26  
+ 3rd Qu.:3353   3rd Qu.: 97.60  
+ Max.   :4534   Max.   :226.90  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 579
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.631540   0.218642  48.6253 < 2.2e-16 ***
+log(totalGrossArea) -0.565397   0.047702 -11.8528 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.109134   Adj. R2: 0.194412
+[1] "KENSINGTON"
+      ppsf      totalGrossArea  
+ Min.   :1991   Min.   : 55.51  
+ 1st Qu.:2909   1st Qu.: 96.00  
+ Median :3066   Median : 96.68  
+ Mean   :3107   Mean   : 98.84  
+ 3rd Qu.:3309   3rd Qu.: 99.81  
+ Max.   :5131   Max.   :169.36  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 534
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.556704   0.211008  50.0300 < 2.2e-16 ***
+log(totalGrossArea) -0.549517   0.045972 -11.9533 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.099887   Adj. R2: 0.210231
+[1] "ATHLONE"
+      ppsf      totalGrossArea  
+ Min.   :1533   Min.   : 59.47  
+ 1st Qu.:2549   1st Qu.: 91.46  
+ Median :2905   Median : 97.37  
+ Mean   :2896   Mean   :104.98  
+ 3rd Qu.:3212   3rd Qu.:106.78  
+ Max.   :4378   Max.   :296.60  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 442
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.907689   0.167849  59.0273 < 2.2e-16 ***
+log(totalGrossArea) -0.421892   0.036225 -11.6463 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.159846   Adj. R2: 0.233893
+[1] "SHERBROOKE"
+      ppsf      totalGrossArea  
+ Min.   :1807   Min.   : 77.35  
+ 1st Qu.:2876   1st Qu.: 89.83  
+ Median :3291   Median : 96.03  
+ Mean   :3200   Mean   :103.82  
+ 3rd Qu.:3468   3rd Qu.:116.48  
+ Max.   :4028   Max.   :241.60  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 179
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.298824   0.138339  81.6750 < 2.2e-16 ***
+log(totalGrossArea) -0.699757   0.029882 -23.4177 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.06939   Adj. R2: 0.754614
+[1] "PRINCE CHARLES"
+      ppsf        totalGrossArea  
+ Min.   : 943.8   Min.   : 56.25  
+ 1st Qu.:2877.4   1st Qu.: 75.75  
+ Median :3179.9   Median : 86.05  
+ Mean   :3135.6   Mean   : 98.34  
+ 3rd Qu.:3483.2   3rd Qu.: 99.50  
+ Max.   :5244.1   Max.   :343.30  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 141
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.640311   0.138653  76.7408 < 2.2e-16 ***
+log(totalGrossArea) -0.575916   0.030534 -18.8614 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.110276   Adj. R2: 0.717029
+[1] "GLENORA"
+      ppsf      totalGrossArea 
+ Min.   :3209   Min.   : 78.2  
+ 1st Qu.:4032   1st Qu.:113.2  
+ Median :4666   Median :152.3  
+ Mean   :4704   Mean   :172.3  
+ 3rd Qu.:5152   3rd Qu.:225.5  
+ Max.   :7412   Max.   :398.5  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 67
+Standard-errors: IID 
+                    Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept)         8.434109   0.292043 28.879687 < 2.2e-16 ***
+log(totalGrossArea) 0.000934   0.057457  0.016259   0.98708    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.184247   Adj. R2: -0.01538
+[1] "WESTMOUNT"
+      ppsf      totalGrossArea  
+ Min.   :2444   Min.   : 53.29  
+ 1st Qu.:3564   1st Qu.: 91.83  
+ Median :4277   Median :122.36  
+ Mean   :4204   Mean   :138.77  
+ 3rd Qu.:4816   3rd Qu.:174.82  
+ Max.   :6046   Max.   :266.60  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 96
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.747227   0.227083 42.92372  < 2.2e-16 ***
+log(totalGrossArea) -0.293546   0.046623 -6.29622 9.6738e-09 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.177906   Adj. R2: 0.289148
+[1] "NORTH GLENORA"
+      ppsf      totalGrossArea  
+ Min.   :2107   Min.   : 71.54  
+ 1st Qu.:3117   1st Qu.: 89.06  
+ Median :3768   Median :113.02  
+ Mean   :3783   Mean   :114.34  
+ 3rd Qu.:4333   3rd Qu.:127.55  
+ Max.   :5857   Max.   :257.80  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 231
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.029937   0.148909  74.0719 < 2.2e-16 ***
+log(totalGrossArea) -0.597696   0.031612 -18.9070 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.124303   Adj. R2: 0.607827
+[1] "INGLEWOOD"
+      ppsf      totalGrossArea 
+ Min.   :1957   Min.   : 54.4  
+ 1st Qu.:2950   1st Qu.: 81.5  
+ Median :3432   Median :108.3  
+ Mean   :3426   Mean   :106.5  
+ 3rd Qu.:3924   3rd Qu.:116.5  
+ Max.   :4783   Max.   :427.2  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 101
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.697494   0.162345  65.8934 < 2.2e-16 ***
+log(totalGrossArea) -0.557998   0.035088 -15.9028 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.102845   Adj. R2: 0.715828
+[1] "WOODCROFT"
+      ppsf      totalGrossArea  
+ Min.   :2236   Min.   : 64.69  
+ 1st Qu.:2978   1st Qu.: 94.89  
+ Median :3376   Median :101.84  
+ Mean   :3319   Mean   :109.17  
+ 3rd Qu.:3640   3rd Qu.:120.94  
+ Max.   :4800   Max.   :252.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 156
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.222455   0.194977  57.5577 < 2.2e-16 ***
+log(totalGrossArea) -0.668588   0.041669 -16.0452 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.092417   Adj. R2: 0.623282
+[1] "DOVERCOURT"
+      ppsf      totalGrossArea  
+ Min.   :2322   Min.   : 73.73  
+ 1st Qu.:3254   1st Qu.: 85.80  
+ Median :3492   Median : 91.40  
+ Mean   :3461   Mean   : 96.29  
+ 3rd Qu.:3714   3rd Qu.:100.90  
+ Max.   :4755   Max.   :258.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 175
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.825068   0.180037  60.1268 < 2.2e-16 ***
+log(totalGrossArea) -0.589297   0.039516 -14.9128 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.08179   Adj. R2: 0.559929
+[1] "DUNLUCE"
+      ppsf      totalGrossArea  
+ Min.   :1961   Min.   : 70.28  
+ 1st Qu.:2941   1st Qu.: 99.68  
+ Median :3106   Median :108.92  
+ Mean   :3112   Mean   :111.90  
+ 3rd Qu.:3342   3rd Qu.:115.54  
+ Max.   :4731   Max.   :213.76  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 477
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.265384   0.076336 147.5755 < 2.2e-16 ***
+log(totalGrossArea) -0.687329   0.016226 -42.3594 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.062   Adj. R2: 0.790246
+[1] "SPRUCE AVENUE"
+      ppsf      totalGrossArea  
+ Min.   :1853   Min.   : 68.71  
+ 1st Qu.:2307   1st Qu.: 92.02  
+ Median :2870   Median :118.89  
+ Mean   :2757   Mean   :133.43  
+ 3rd Qu.:3170   3rd Qu.:168.01  
+ Max.   :3668   Max.   :289.80  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 20
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.079927   0.275093 36.64185  < 2.2e-16 ***
+log(totalGrossArea) -0.452844   0.056986 -7.94663 2.6955e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.096304   Adj. R2: 0.765863
+[1] "DUGGAN"
+      ppsf      totalGrossArea  
+ Min.   :2089   Min.   : 83.24  
+ 1st Qu.:3407   1st Qu.:106.64  
+ Median :3606   Median :113.14  
+ Mean   :3582   Mean   :118.52  
+ 3rd Qu.:3848   3rd Qu.:123.13  
+ Max.   :4952   Max.   :227.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 464
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         12.096719   0.090989 132.9466 < 2.2e-16 ***
+log(totalGrossArea) -0.823563   0.019095 -43.1292 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.062577   Adj. R2: 0.800614
+[1] "PARKDALE"
+      ppsf        totalGrossArea  
+ Min.   : 919.6   Min.   : 57.25  
+ 1st Qu.:2228.6   1st Qu.: 84.31  
+ Median :2547.5   Median : 96.79  
+ Mean   :2558.5   Mean   :104.40  
+ 3rd Qu.:2820.3   3rd Qu.:116.18  
+ Max.   :4805.3   Max.   :214.24  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 134
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.342933   0.217564  47.5398 < 2.2e-16 ***
+log(totalGrossArea) -0.546623   0.047140 -11.5957 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.15227   Adj. R2: 0.500862
+[1] "OGILVIE RIDGE"
+      ppsf      totalGrossArea 
+ Min.   :2111   Min.   :153.2  
+ 1st Qu.:2499   1st Qu.:207.9  
+ Median :2686   Median :220.0  
+ Mean   :2804   Mean   :227.2  
+ 3rd Qu.:2951   3rd Qu.:245.6  
+ Max.   :4159   Max.   :299.6  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 34
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.505288   0.879688 11.94206 2.4905e-13 ***
+log(totalGrossArea) -0.476381   0.162405 -2.93330 6.1541e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.140023   Adj. R2: 0.187277
+[1] "CARLISLE"
+      ppsf      totalGrossArea  
+ Min.   :1658   Min.   : 76.85  
+ 1st Qu.:2803   1st Qu.: 97.86  
+ Median :3058   Median :108.42  
+ Mean   :2985   Mean   :118.29  
+ 3rd Qu.:3315   3rd Qu.:122.43  
+ Max.   :4505   Max.   :304.04  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 346
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.576959   0.058763 197.0122 < 2.2e-16 ***
+log(totalGrossArea) -0.757367   0.012376 -61.1989 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.053962   Adj. R2: 0.915634
+[1] "BLUE QUILL"
+      ppsf      totalGrossArea 
+ Min.   :1834   Min.   :100.1  
+ 1st Qu.:2239   1st Qu.:140.8  
+ Median :2482   Median :180.3  
+ Mean   :2662   Mean   :179.4  
+ 3rd Qu.:3149   3rd Qu.:207.0  
+ Max.   :3883   Max.   :275.2  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 110
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.590858   0.125231  92.5561 < 2.2e-16 ***
+log(totalGrossArea) -0.722272   0.024257 -29.7753 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.065755   Adj. R2: 0.890405
+[1] "ELMWOOD PARK"
+      ppsf      totalGrossArea  
+ Min.   :2032   Min.   : 63.05  
+ 1st Qu.:2610   1st Qu.: 85.29  
+ Median :2819   Median : 97.52  
+ Mean   :2788   Mean   :101.56  
+ 3rd Qu.:2987   3rd Qu.:111.28  
+ Max.   :3640   Max.   :176.90  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 47
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.718892   0.286263 33.95090  < 2.2e-16 ***
+log(totalGrossArea) -0.390083   0.062202 -6.27121 1.2344e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.090491   Adj. R2: 0.454512
+[1] "GARNEAU"
+      ppsf      totalGrossArea  
+ Min.   :3365   Min.   : 76.81  
+ 1st Qu.:4027   1st Qu.:132.85  
+ Median :4531   Median :175.17  
+ Mean   :4650   Mean   :182.46  
+ 3rd Qu.:5305   3rd Qu.:215.08  
+ Max.   :6269   Max.   :385.90  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 19
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.707647   0.415835 23.34493 2.3575e-14 ***
+log(totalGrossArea) -0.249966   0.080982 -3.08669 6.6927e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.143095   Adj. R2: 0.321463
+[1] "GREENVIEW"
+      ppsf      totalGrossArea  
+ Min.   :2036   Min.   : 71.20  
+ 1st Qu.:2747   1st Qu.: 98.24  
+ Median :3374   Median :115.22  
+ Mean   :3260   Mean   :127.67  
+ 3rd Qu.:3673   3rd Qu.:155.00  
+ Max.   :4754   Max.   :246.32  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 300
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.166086   0.060260 185.2971 < 2.2e-16 ***
+log(totalGrossArea) -0.642729   0.012503 -51.4045 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.057942   Adj. R2: 0.898314
+[1] "YORK"
+      ppsf      totalGrossArea  
+ Min.   :1724   Min.   : 64.27  
+ 1st Qu.:2814   1st Qu.: 89.22  
+ Median :2977   Median : 96.56  
+ Mean   :2978   Mean   :101.64  
+ 3rd Qu.:3168   3rd Qu.:107.03  
+ Max.   :4357   Max.   :273.35  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 515
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.569967   0.076382 138.3828 < 2.2e-16 ***
+log(totalGrossArea) -0.559341   0.016571 -33.7545 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.06068   Adj. R2: 0.688931
+[1] "MINCHAU"
+      ppsf      totalGrossArea  
+ Min.   :1782   Min.   : 51.16  
+ 1st Qu.:2745   1st Qu.: 97.46  
+ Median :3111   Median :108.64  
+ Mean   :3172   Mean   :115.01  
+ 3rd Qu.:3422   3rd Qu.:126.28  
+ Max.   :5756   Max.   :292.90  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 405
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.893021   0.062283 174.8960 < 2.2e-16 ***
+log(totalGrossArea) -0.605723   0.013216 -45.8333 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.076159   Adj. R2: 0.838639
+[1] "BERGMAN"
+      ppsf      totalGrossArea  
+ Min.   :1529   Min.   : 62.05  
+ 1st Qu.:2898   1st Qu.: 96.38  
+ Median :3125   Median :103.40  
+ Mean   :3099   Mean   :111.01  
+ 3rd Qu.:3359   3rd Qu.:116.20  
+ Max.   :4597   Max.   :314.19  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 333
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.342439   0.089885 115.0629 < 2.2e-16 ***
+log(totalGrossArea) -0.494503   0.019188 -25.7716 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.083675   Adj. R2: 0.66639
+[1] "KILLARNEY"
+      ppsf      totalGrossArea  
+ Min.   :1805   Min.   : 65.66  
+ 1st Qu.:2597   1st Qu.: 96.38  
+ Median :2841   Median : 99.53  
+ Mean   :2826   Mean   :109.62  
+ 3rd Qu.:3026   3rd Qu.:113.27  
+ Max.   :4129   Max.   :233.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 200
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.838413   0.188092  52.3065 < 2.2e-16 ***
+log(totalGrossArea) -0.406511   0.040192 -10.1143 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.109358   Adj. R2: 0.337325
+[1] "BULYEA HEIGHTS"
+      ppsf      totalGrossArea 
+ Min.   :2351   Min.   :114.8  
+ 1st Qu.:2720   1st Qu.:193.7  
+ Median :2828   Median :212.9  
+ Mean   :2925   Mean   :210.1  
+ 3rd Qu.:2997   3rd Qu.:227.5  
+ Max.   :4301   Max.   :302.6  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 289
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.127564   0.138596  80.2876 < 2.2e-16 ***
+log(totalGrossArea) -0.590743   0.025959 -22.7568 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.065235   Adj. R2: 0.642179
+[1] "PLEASANTVIEW"
+      ppsf      totalGrossArea  
+ Min.   :1073   Min.   : 65.48  
+ 1st Qu.:3882   1st Qu.: 96.95  
+ Median :4203   Median : 99.36  
+ Mean   :4107   Mean   :122.33  
+ 3rd Qu.:4437   3rd Qu.:117.27  
+ Max.   :5921   Max.   :328.10  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 291
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.422044   0.149208 63.14720 < 2.2e-16 ***
+log(totalGrossArea) -0.235350   0.031377 -7.50082 7.851e-13 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.172876   Adj. R2: 0.160059
+[1] "HOLYROOD"
+      ppsf      totalGrossArea  
+ Min.   :2187   Min.   : 73.79  
+ 1st Qu.:3521   1st Qu.: 93.44  
+ Median :3853   Median :104.79  
+ Mean   :3860   Mean   :109.75  
+ 3rd Qu.:4230   3rd Qu.:115.03  
+ Max.   :5889   Max.   :276.80  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 284
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.485088   0.155163  67.5747 < 2.2e-16 ***
+log(totalGrossArea) -0.478999   0.033170 -14.4407 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.117452   Adj. R2: 0.423076
+[1] "BISSET"
+      ppsf      totalGrossArea  
+ Min.   :2093   Min.   : 72.52  
+ 1st Qu.:3083   1st Qu.:102.92  
+ Median :3254   Median :108.97  
+ Mean   :3233   Mean   :114.11  
+ 3rd Qu.:3423   3rd Qu.:113.32  
+ Max.   :4447   Max.   :385.90  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 325
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.646964   0.090573 117.5518 < 2.2e-16 ***
+log(totalGrossArea) -0.545488   0.019188 -28.4279 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.064447   Adj. R2: 0.713565
+[1] "PARKALLEN"
+      ppsf      totalGrossArea  
+ Min.   :1543   Min.   : 66.43  
+ 1st Qu.:3562   1st Qu.:101.61  
+ Median :3964   Median :115.85  
+ Mean   :4119   Mean   :128.01  
+ 3rd Qu.:4681   3rd Qu.:138.42  
+ Max.   :7023   Max.   :379.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 430
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.880337   0.111901  88.2954 < 2.2e-16 ***
+log(totalGrossArea) -0.328852   0.023297 -14.1159 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.161632   Adj. R2: 0.316071
+[1] "SATOO"
+      ppsf      totalGrossArea  
+ Min.   :1937   Min.   : 74.66  
+ 1st Qu.:2950   1st Qu.: 99.68  
+ Median :3110   Median :109.94  
+ Mean   :3121   Mean   :113.62  
+ 3rd Qu.:3335   3rd Qu.:116.00  
+ Max.   :4210   Max.   :243.93  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 312
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.901766   0.096738 112.6938 < 2.2e-16 ***
+log(totalGrossArea) -0.607173   0.020499 -29.6201 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.063461   Adj. R2: 0.738073
+[1] "MCLEOD"
+      ppsf      totalGrossArea  
+ Min.   :1847   Min.   : 79.76  
+ 1st Qu.:2731   1st Qu.: 96.38  
+ Median :2990   Median :106.10  
+ Mean   :2916   Mean   :122.84  
+ 3rd Qu.:3196   3rd Qu.:123.89  
+ Max.   :4336   Max.   :251.22  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 280
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.582097   0.062102 170.3997 < 2.2e-16 ***
+log(totalGrossArea) -0.549003   0.013004 -42.2186 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.060716   Adj. R2: 0.86459
+[1] "CENTRAL MCDOUGALL"
+[1] "TWIN BROOKS"
+      ppsf      totalGrossArea  
+ Min.   :2213   Min.   : 91.89  
+ 1st Qu.:2574   1st Qu.:157.56  
+ Median :2749   Median :185.88  
+ Mean   :2967   Mean   :181.94  
+ 3rd Qu.:3308   3rd Qu.:208.88  
+ Max.   :4744   Max.   :285.80  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 490
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.101589   0.098266 112.9752 < 2.2e-16 ***
+log(totalGrossArea) -0.602826   0.018958 -31.7975 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.09708   Adj. R2: 0.6738
+[1] "OXFORD"
+      ppsf      totalGrossArea 
+ Min.   :1882   Min.   :103.5  
+ 1st Qu.:2338   1st Qu.:123.2  
+ Median :2576   Median :170.3  
+ Mean   :2739   Mean   :164.1  
+ 3rd Qu.:3228   3rd Qu.:188.8  
+ Max.   :3815   Max.   :270.2  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 134
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.436952   0.107716 106.1770 < 2.2e-16 ***
+log(totalGrossArea) -0.696878   0.021205 -32.8634 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.056046   Adj. R2: 0.890264
+[1] "CAERNARVON"
+      ppsf      totalGrossArea  
+ Min.   :1747   Min.   : 75.36  
+ 1st Qu.:2954   1st Qu.:103.70  
+ Median :3086   Median :110.66  
+ Mean   :3069   Mean   :114.50  
+ 3rd Qu.:3213   3rd Qu.:115.90  
+ Max.   :4004   Max.   :275.59  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 340
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.771870   0.085666 125.7432 < 2.2e-16 ***
+log(totalGrossArea) -0.581465   0.018115 -32.0982 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.052943   Adj. R2: 0.752246
+[1] "KLARVATTEN"
+      ppsf      totalGrossArea  
+ Min.   :2159   Min.   : 79.84  
+ 1st Qu.:2514   1st Qu.:110.30  
+ Median :3143   Median :129.26  
+ Mean   :3048   Mean   :142.02  
+ 3rd Qu.:3509   3rd Qu.:175.88  
+ Max.   :4929   Max.   :236.40  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 132
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.331760   0.128095  88.4640 < 2.2e-16 ***
+log(totalGrossArea) -0.675518   0.025980 -26.0012 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.073957   Adj. R2: 0.837482
+[1] "FOREST HEIGHTS"
+      ppsf      totalGrossArea  
+ Min.   :1701   Min.   : 52.44  
+ 1st Qu.:3746   1st Qu.: 94.25  
+ Median :4073   Median :106.49  
+ Mean   :4090   Mean   :116.54  
+ 3rd Qu.:4456   3rd Qu.:120.47  
+ Max.   :6693   Max.   :310.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 635
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.099780   0.074939 134.7733 < 2.2e-16 ***
+log(totalGrossArea) -0.381252   0.015878 -24.0113 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.116359   Adj. R2: 0.475836
+[1] "CROMDALE"
+[1] "SAKAW"
+      ppsf      totalGrossArea  
+ Min.   :1957   Min.   : 70.28  
+ 1st Qu.:3111   1st Qu.: 96.55  
+ Median :3277   Median :104.20  
+ Mean   :3287   Mean   :107.53  
+ 3rd Qu.:3467   3rd Qu.:110.60  
+ Max.   :4568   Max.   :254.02  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 547
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.706882   0.078802 135.8700 < 2.2e-16 ***
+log(totalGrossArea) -0.560645   0.016886 -33.2011 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.062299   Adj. R2: 0.668551
+[1] "PRINCE RUPERT"
+      ppsf      totalGrossArea  
+ Min.   :1978   Min.   : 73.01  
+ 1st Qu.:2984   1st Qu.: 87.96  
+ Median :3306   Median :100.14  
+ Mean   :3297   Mean   :103.00  
+ 3rd Qu.:3571   3rd Qu.:110.61  
+ Max.   :5171   Max.   :274.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 188
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.902674   0.163873  66.5314 < 2.2e-16 ***
+log(totalGrossArea) -0.609397   0.035478 -17.1766 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.090606   Adj. R2: 0.611256
+[1] "ELSINORE"
+      ppsf      totalGrossArea 
+ Min.   :2049   Min.   :104.9  
+ 1st Qu.:2235   1st Qu.:135.6  
+ Median :2417   Median :188.4  
+ Mean   :2650   Mean   :175.9  
+ 3rd Qu.:3039   3rd Qu.:207.2  
+ Max.   :3967   Max.   :250.1  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 201
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.70919   0.073500 159.3077 < 2.2e-16 ***
+log(totalGrossArea) -0.74772   0.014278 -52.3685 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.048331   Adj. R2: 0.932006
+[1] "JACKSON HEIGHTS"
+      ppsf      totalGrossArea  
+ Min.   :1950   Min.   : 93.07  
+ 1st Qu.:2482   1st Qu.:115.75  
+ Median :3208   Median :136.34  
+ Mean   :3059   Mean   :150.62  
+ 3rd Qu.:3552   3rd Qu.:185.47  
+ Max.   :4113   Max.   :285.69  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 245
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.485158   0.052547 218.5711 < 2.2e-16 ***
+log(totalGrossArea) -0.698875   0.010543 -66.2871 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.044682   Adj. R2: 0.94738
+[1] "OZERNA"
+      ppsf      totalGrossArea  
+ Min.   :1946   Min.   : 95.98  
+ 1st Qu.:2452   1st Qu.:123.39  
+ Median :2976   Median :153.70  
+ Mean   :2906   Mean   :162.75  
+ 3rd Qu.:3306   3rd Qu.:191.88  
+ Max.   :4188   Max.   :339.80  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 495
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.797830   0.058359 185.0234 < 2.2e-16 ***
+log(totalGrossArea) -0.561135   0.011528 -48.6761 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.068547   Adj. R2: 0.827416
+[1] "DALY GROVE"
+      ppsf      totalGrossArea  
+ Min.   :1161   Min.   : 65.71  
+ 1st Qu.:3125   1st Qu.: 97.24  
+ Median :3303   Median :104.57  
+ Mean   :3301   Mean   :109.01  
+ 3rd Qu.:3485   3rd Qu.:110.86  
+ Max.   :5456   Max.   :366.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 499
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.659436   0.085472 124.7131 < 2.2e-16 ***
+log(totalGrossArea) -0.548648   0.018275 -30.0225 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.071477   Adj. R2: 0.643865
+[1] "CRAWFORD PLAINS"
+      ppsf      totalGrossArea  
+ Min.   :2042   Min.   : 71.68  
+ 1st Qu.:3177   1st Qu.: 98.43  
+ Median :3384   Median :105.69  
+ Mean   :3342   Mean   :110.71  
+ 3rd Qu.:3592   3rd Qu.:115.79  
+ Max.   :4584   Max.   :218.70  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 614
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.814334   0.074707 144.7568 < 2.2e-16 ***
+log(totalGrossArea) -0.577424   0.015920 -36.2702 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.071408   Adj. R2: 0.681976
+[1] "KINISKI GARDENS"
+      ppsf      totalGrossArea  
+ Min.   :1962   Min.   : 97.97  
+ 1st Qu.:2509   1st Qu.:122.70  
+ Median :2880   Median :163.36  
+ Mean   :2914   Mean   :169.61  
+ 3rd Qu.:3348   3rd Qu.:197.93  
+ Max.   :3973   Max.   :339.48  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 195
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.672075   0.073587 145.0257 < 2.2e-16 ***
+log(totalGrossArea) -0.532447   0.014438 -36.8792 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.059881   Adj. R2: 0.875086
+[1] "FALCONER HEIGHTS"
+      ppsf      totalGrossArea 
+ Min.   :2052   Min.   :117.3  
+ 1st Qu.:2510   1st Qu.:171.7  
+ Median :2664   Median :197.1  
+ Mean   :2762   Mean   :195.9  
+ 3rd Qu.:2932   3rd Qu.:218.5  
+ Max.   :4250   Max.   :326.1  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 168
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.413771   0.179381  63.6286 < 2.2e-16 ***
+log(totalGrossArea) -0.665287   0.034071 -19.5262 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.079044   Adj. R2: 0.694851
+[1] "MATT BERRY"
+      ppsf      totalGrossArea  
+ Min.   :1908   Min.   : 70.52  
+ 1st Qu.:2219   1st Qu.:138.91  
+ Median :2482   Median :175.00  
+ Mean   :2667   Mean   :174.42  
+ 3rd Qu.:3113   3rd Qu.:205.73  
+ Max.   :5360   Max.   :263.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 344
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.787848   0.055670 211.7444 < 2.2e-16 ***
+log(totalGrossArea) -0.763345   0.010834 -70.4608 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.048774   Adj. R2: 0.935365
+[1] "CARTER CREST"
+      ppsf      totalGrossArea  
+ Min.   :2304   Min.   : 90.54  
+ 1st Qu.:2685   1st Qu.:166.25  
+ Median :2839   Median :187.13  
+ Mean   :3021   Mean   :190.81  
+ 3rd Qu.:3188   3rd Qu.:213.17  
+ Max.   :4965   Max.   :296.44  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 115
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.745289   0.238161  49.3166 < 2.2e-16 ***
+log(totalGrossArea) -0.715629   0.045472 -15.7379 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.090373   Adj. R2: 0.683931
+[1] "WEDGEWOOD HEIGHTS"
+      ppsf      totalGrossArea 
+ Min.   :2065   Min.   :127.1  
+ 1st Qu.:2391   1st Qu.:173.0  
+ Median :2479   Median :190.8  
+ Mean   :2607   Mean   :192.1  
+ 3rd Qu.:2746   3rd Qu.:210.5  
+ Max.   :3874   Max.   :268.2  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 85
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.942765   0.360532 30.35170  < 2.2e-16 ***
+log(totalGrossArea) -0.588409   0.068698 -8.56517 4.8427e-13 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.099165   Adj. R2: 0.462786
+[1] "HOLLICK-KENYON"
+      ppsf      totalGrossArea  
+ Min.   :1865   Min.   : 89.32  
+ 1st Qu.:2282   1st Qu.:130.87  
+ Median :2645   Median :166.27  
+ Mean   :2728   Mean   :170.68  
+ 3rd Qu.:3179   3rd Qu.:201.55  
+ Max.   :3952   Max.   :302.42  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 288
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.089077   0.095817 115.7317 < 2.2e-16 ***
+log(totalGrossArea) -0.625621   0.018741 -33.3831 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.082477   Adj. R2: 0.795064
+[1] "CANOSSA"
+      ppsf      totalGrossArea  
+ Min.   :2147   Min.   : 98.07  
+ 1st Qu.:2470   1st Qu.:121.65  
+ Median :3223   Median :148.00  
+ Mean   :3017   Mean   :148.66  
+ 3rd Qu.:3454   3rd Qu.:175.27  
+ Max.   :4270   Max.   :212.46  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 46
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.965185   0.221490  54.0212 < 2.2e-16 ***
+log(totalGrossArea) -0.797791   0.044457 -17.9453 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.065564   Adj. R2: 0.877061
+[1] "BELLEVUE"
+      ppsf      totalGrossArea 
+ Min.   :1969   Min.   : 53.1  
+ 1st Qu.:3223   1st Qu.: 82.4  
+ Median :3776   Median :101.9  
+ Mean   :3828   Mean   :107.2  
+ 3rd Qu.:4386   3rd Qu.:117.0  
+ Max.   :6153   Max.   :310.5  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 135
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.355968   0.186771  55.4474 < 2.2e-16 ***
+log(totalGrossArea) -0.460019   0.040317 -11.4100 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.144671   Adj. R2: 0.490859
+[1] "MCKERNAN"
+      ppsf      totalGrossArea  
+ Min.   :2491   Min.   : 62.05  
+ 1st Qu.:3903   1st Qu.: 87.89  
+ Median :4412   Median :115.12  
+ Mean   :4575   Mean   :134.26  
+ 3rd Qu.:5253   3rd Qu.:152.12  
+ Max.   :7539   Max.   :358.60  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 361
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.922644   0.093643 105.9627 < 2.2e-16 ***
+log(totalGrossArea) -0.315096   0.019408 -16.2351 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.153488   Adj. R2: 0.421761
+[1] "BALWIN"
+      ppsf      totalGrossArea  
+ Min.   :1752   Min.   : 44.53  
+ 1st Qu.:2827   1st Qu.: 94.75  
+ Median :2962   Median : 97.91  
+ Mean   :2987   Mean   : 98.54  
+ 3rd Qu.:3155   3rd Qu.:102.14  
+ Max.   :4673   Max.   :298.00  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 506
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.951415   0.113135  87.9605 < 2.2e-16 ***
+log(totalGrossArea) -0.427433   0.024707 -17.3004 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.091415   Adj. R2: 0.371345
+[1] "KING EDWARD PARK"
+      ppsf      totalGrossArea  
+ Min.   :1328   Min.   : 58.81  
+ 1st Qu.:3460   1st Qu.: 80.36  
+ Median :3976   Median : 96.60  
+ Mean   :3941   Mean   :109.87  
+ 3rd Qu.:4388   3rd Qu.:117.74  
+ Max.   :7421   Max.   :358.52  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 603
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.01647   0.083593 119.8237 < 2.2e-16 ***
+log(totalGrossArea) -0.37835   0.017981 -21.0421 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.144575   Adj. R2: 0.423245
+[1] "BEACON HEIGHTS"
+      ppsf      totalGrossArea  
+ Min.   :1341   Min.   : 50.11  
+ 1st Qu.:2756   1st Qu.: 73.32  
+ Median :2960   Median : 90.06  
+ Mean   :2978   Mean   : 91.76  
+ 3rd Qu.:3199   3rd Qu.: 99.20  
+ Max.   :4667   Max.   :342.10  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 743
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.918157   0.059634 166.3168 < 2.2e-16 ***
+log(totalGrossArea) -0.430260   0.013280 -32.3996 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.091877   Adj. R2: 0.585644
+[1] "BONNIE DOON"
+      ppsf      totalGrossArea  
+ Min.   :2362   Min.   : 52.51  
+ 1st Qu.:3839   1st Qu.: 89.51  
+ Median :4310   Median :108.27  
+ Mean   :4319   Mean   :120.87  
+ 3rd Qu.:4779   3rd Qu.:130.11  
+ Max.   :6475   Max.   :293.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 215
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.911543   0.114370  86.6619 < 2.2e-16 ***
+log(totalGrossArea) -0.328318   0.024105 -13.6204 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.119149   Adj. R2: 0.463008
+[1] "ALBERTA AVENUE"
+      ppsf        totalGrossArea  
+ Min.   : 948.2   Min.   : 60.97  
+ 1st Qu.:2275.6   1st Qu.: 83.11  
+ Median :2637.2   Median : 98.27  
+ Mean   :2656.4   Mean   :114.07  
+ 3rd Qu.:3047.7   3rd Qu.:127.45  
+ Max.   :3899.9   Max.   :389.14  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 51
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.700514   0.224116  47.7455 < 2.2e-16 ***
+log(totalGrossArea) -0.610678   0.047970 -12.7303 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.121681   Adj. R2: 0.763102
+[1] "FRASER"
+      ppsf        totalGrossArea  
+ Min.   : 869.6   Min.   : 70.68  
+ 1st Qu.:2705.5   1st Qu.: 93.18  
+ Median :3030.2   Median :114.25  
+ Mean   :3009.5   Mean   :136.24  
+ 3rd Qu.:3341.9   3rd Qu.:158.50  
+ Max.   :5327.0   Max.   :357.10  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 322
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.497974   0.103938  91.3809 < 2.2e-16 ***
+log(totalGrossArea) -0.310957   0.021425 -14.5136 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.143889   Adj. R2: 0.395076
+[1] "BEVERLY HEIGHTS"
+      ppsf      totalGrossArea  
+ Min.   :1670   Min.   : 53.50  
+ 1st Qu.:2961   1st Qu.: 80.30  
+ Median :3158   Median : 96.20  
+ Mean   :3175   Mean   : 96.41  
+ 3rd Qu.:3377   3rd Qu.:103.90  
+ Max.   :5019   Max.   :352.60  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 881
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.892668   0.055285 178.9392 < 2.2e-16 ***
+log(totalGrossArea) -0.404987   0.012166 -33.2880 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.085706   Adj. R2: 0.557141
+[1] "CUMBERLAND"
+      ppsf      totalGrossArea 
+ Min.   :2305   Min.   : 87.1  
+ 1st Qu.:2590   1st Qu.:110.4  
+ Median :3339   Median :123.7  
+ Mean   :3166   Mean   :134.3  
+ 3rd Qu.:3619   3rd Qu.:159.2  
+ Max.   :4145   Max.   :235.8  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 56
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.703464   0.140525  83.2838 < 2.2e-16 ***
+log(totalGrossArea) -0.751452   0.028814 -26.0794 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.050571   Adj. R2: 0.925082
+[1] "HOMESTEADER"
+      ppsf      totalGrossArea  
+ Min.   :2401   Min.   : 80.30  
+ 1st Qu.:2814   1st Qu.: 96.38  
+ Median :3019   Median : 99.68  
+ Mean   :3000   Mean   :104.58  
+ 3rd Qu.:3164   3rd Qu.:109.88  
+ Max.   :4533   Max.   :143.31  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 99
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.101784   0.254434  43.6333 < 2.2e-16 ***
+log(totalGrossArea) -0.667643   0.054778 -12.1882 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.06048   Adj. R2: 0.600901
+[1] "KERNOHAN"
+      ppsf      totalGrossArea 
+ Min.   :1684   Min.   : 79.0  
+ 1st Qu.:2653   1st Qu.:100.0  
+ Median :2875   Median :109.9  
+ Mean   :2889   Mean   :111.2  
+ 3rd Qu.:3105   3rd Qu.:115.9  
+ Max.   :4236   Max.   :269.7  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 302
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.189349   0.130098  86.0070 < 2.2e-16 ***
+log(totalGrossArea) -0.687051   0.027670 -24.8306 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.07256   Adj. R2: 0.671597
+[1] "OVERLANDERS"
+      ppsf      totalGrossArea  
+ Min.   :2237   Min.   : 81.08  
+ 1st Qu.:2907   1st Qu.:100.29  
+ Median :3134   Median :112.45  
+ Mean   :3152   Mean   :113.71  
+ 3rd Qu.:3390   3rd Qu.:118.47  
+ Max.   :4221   Max.   :192.23  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 136
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.923729   0.208179  52.4729 < 2.2e-16 ***
+log(totalGrossArea) -0.609136   0.044074 -13.8207 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.079463   Adj. R2: 0.584631
+[1] "WILD ROSE"
+      ppsf      totalGrossArea 
+ Min.   :2066   Min.   : 91.9  
+ 1st Qu.:2447   1st Qu.:139.3  
+ Median :2680   Median :178.9  
+ Mean   :2810   Mean   :180.8  
+ 3rd Qu.:3114   3rd Qu.:202.1  
+ Max.   :4195   Max.   :360.9  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 220
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.703679   0.078040 137.1568 < 2.2e-16 ***
+log(totalGrossArea) -0.538015   0.015104 -35.6209 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.061345   Adj. R2: 0.852709
+[1] "BELMONT"
+      ppsf      totalGrossArea 
+ Min.   :2051   Min.   : 67.1  
+ 1st Qu.:2668   1st Qu.:103.8  
+ Median :2955   Median :111.3  
+ Mean   :2954   Mean   :118.6  
+ 3rd Qu.:3196   3rd Qu.:128.7  
+ Max.   :4094   Max.   :217.1  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 263
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.361338   0.138225  74.9600 < 2.2e-16 ***
+log(totalGrossArea) -0.499934   0.029032 -17.2201 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.086275   Adj. R2: 0.530072
+[1] "LORELEI"
+      ppsf      totalGrossArea 
+ Min.   :1901   Min.   : 67.6  
+ 1st Qu.:2889   1st Qu.:103.7  
+ Median :3052   Median :110.6  
+ Mean   :3037   Mean   :116.7  
+ 3rd Qu.:3247   3rd Qu.:118.7  
+ Max.   :4357   Max.   :247.2  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 445
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.967281   0.059892 183.1173 < 2.2e-16 ***
+log(totalGrossArea) -0.624043   0.012628 -49.4167 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.051712   Adj. R2: 0.846101
+[1] "CASSELMAN"
+      ppsf      totalGrossArea 
+ Min.   :1848   Min.   :100.3  
+ 1st Qu.:2268   1st Qu.:130.9  
+ Median :2520   Median :165.5  
+ Mean   :2684   Mean   :165.4  
+ 3rd Qu.:3101   3rd Qu.:196.9  
+ Max.   :4024   Max.   :272.7  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 90
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.547104   0.112203 102.9125 < 2.2e-16 ***
+log(totalGrossArea) -0.721761   0.022057 -32.7222 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.048417   Adj. R2: 0.923192
+[1] "CLOVERDALE"
+[1] "ROSSDALE"
+[1] "BATURYN"
+      ppsf      totalGrossArea  
+ Min.   :1456   Min.   : 71.54  
+ 1st Qu.:2923   1st Qu.: 96.11  
+ Median :3103   Median :108.44  
+ Mean   :3093   Mean   :112.22  
+ 3rd Qu.:3330   3rd Qu.:113.83  
+ Max.   :4621   Max.   :334.74  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 526
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.187690   0.054089 206.8383 < 2.2e-16 ***
+log(totalGrossArea) -0.672934   0.011504 -58.4946 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.053702   Adj. R2: 0.866941
+[1] "MONTROSE"
+      ppsf      totalGrossArea  
+ Min.   :1503   Min.   : 44.53  
+ 1st Qu.:2663   1st Qu.: 74.34  
+ Median :2932   Median : 85.12  
+ Mean   :2910   Mean   : 92.47  
+ 3rd Qu.:3172   3rd Qu.: 98.27  
+ Max.   :4278   Max.   :385.80  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 339
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.817253   0.094314 104.0909 < 2.2e-16 ***
+log(totalGrossArea) -0.413638   0.021010 -19.6874 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.107097   Adj. R2: 0.533532
+[1] "WINDSOR PARK"
+[1] "STEINHAUER"
+      ppsf      totalGrossArea  
+ Min.   :1769   Min.   : 92.91  
+ 1st Qu.:2469   1st Qu.:115.03  
+ Median :3220   Median :135.98  
+ Mean   :3088   Mean   :147.55  
+ 3rd Qu.:3550   3rd Qu.:180.18  
+ Max.   :4480   Max.   :273.41  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 244
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.823515   0.077210 153.1337 < 2.2e-16 ***
+log(totalGrossArea) -0.767815   0.015544 -49.3951 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.061748   Adj. R2: 0.909392
+[1] "MENISA"
+      ppsf      totalGrossArea 
+ Min.   :2038   Min.   : 80.3  
+ 1st Qu.:3009   1st Qu.:100.0  
+ Median :3185   Median :109.0  
+ Mean   :3193   Mean   :112.1  
+ 3rd Qu.:3370   3rd Qu.:117.1  
+ Max.   :4610   Max.   :215.0  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 231
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.963953   0.101394 108.1317 < 2.2e-16 ***
+log(totalGrossArea) -0.616223   0.021529 -28.6233 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.049406   Adj. R2: 0.780596
+[1] "TIPASKAN"
+      ppsf      totalGrossArea  
+ Min.   :2053   Min.   : 78.41  
+ 1st Qu.:3091   1st Qu.: 96.98  
+ Median :3277   Median :105.44  
+ Mean   :3270   Mean   :109.20  
+ 3rd Qu.:3490   3rd Qu.:111.80  
+ Max.   :4227   Max.   :237.18  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 173
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.805285    0.10608 101.8595 < 2.2e-16 ***
+log(totalGrossArea) -0.581515    0.02267 -25.6510 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.052238   Adj. R2: 0.792515
+[1] "EASTWOOD"
+      ppsf      totalGrossArea  
+ Min.   :2063   Min.   : 61.45  
+ 1st Qu.:2384   1st Qu.: 81.71  
+ Median :2570   Median : 91.04  
+ Mean   :2679   Mean   :103.69  
+ 3rd Qu.:2888   3rd Qu.:115.93  
+ Max.   :3855   Max.   :217.89  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 16
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.784805   0.454330 21.53678 3.9331e-12 ***
+log(totalGrossArea) -0.414620   0.098686 -4.20140 8.8812e-04 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.10739   Adj. R2: 0.526093
+[1] "BELLE RIVE"
+      ppsf      totalGrossArea 
+ Min.   :1971   Min.   :106.5  
+ 1st Qu.:2343   1st Qu.:152.9  
+ Median :2615   Median :181.8  
+ Mean   :2688   Mean   :184.9  
+ 3rd Qu.:2954   3rd Qu.:216.3  
+ Max.   :4172   Max.   :290.5  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 424
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.895244   0.081744 133.2847 < 2.2e-16 ***
+log(totalGrossArea) -0.579137   0.015717 -36.8477 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.070579   Adj. R2: 0.762326
+[1] "MEYOKUMIN"
+      ppsf      totalGrossArea  
+ Min.   :1975   Min.   : 78.68  
+ 1st Qu.:3164   1st Qu.: 98.53  
+ Median :3297   Median :108.19  
+ Mean   :3308   Mean   :108.82  
+ 3rd Qu.:3491   3rd Qu.:111.02  
+ Max.   :4286   Max.   :283.00  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 246
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.514289   0.125898  83.5143 < 2.2e-16 ***
+log(totalGrossArea) -0.516231   0.026903 -19.1887 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.060282   Adj. R2: 0.599808
+[1] "KENILWORTH"
+      ppsf      totalGrossArea  
+ Min.   :1730   Min.   : 71.54  
+ 1st Qu.:3446   1st Qu.: 98.21  
+ Median :3676   Median :105.38  
+ Mean   :3697   Mean   :107.83  
+ 3rd Qu.:3915   3rd Qu.:114.02  
+ Max.   :5305   Max.   :289.60  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 614
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.889610   0.111617  97.5627 < 2.2e-16 ***
+log(totalGrossArea) -0.574056   0.023891 -24.0286 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.083163   Adj. R2: 0.484602
+[1] "VIRGINIA PARK"
+      ppsf      totalGrossArea  
+ Min.   :2132   Min.   : 67.58  
+ 1st Qu.:3484   1st Qu.: 82.09  
+ Median :4107   Median : 85.78  
+ Mean   :4039   Mean   :119.04  
+ 3rd Qu.:4528   3rd Qu.:131.03  
+ Max.   :5605   Max.   :384.10  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 40
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.471200   0.217754  48.0874  < 2.2e-16 ***
+log(totalGrossArea) -0.468883   0.046381 -10.1094 2.5207e-12 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.119831   Adj. R2: 0.721827
+[1] "HIGHLANDS"
+      ppsf      totalGrossArea  
+ Min.   :2040   Min.   : 61.87  
+ 1st Qu.:3291   1st Qu.: 87.96  
+ Median :3661   Median :111.01  
+ Mean   :3721   Mean   :115.23  
+ 3rd Qu.:4173   3rd Qu.:130.40  
+ Max.   :5645   Max.   :297.86  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 278
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.265618   0.121229  84.6798 < 2.2e-16 ***
+log(totalGrossArea) -0.437754   0.025724 -17.0170 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.122445   Adj. R2: 0.510237
+[1] "CANON RIDGE"
+[1] "RUNDLE HEIGHTS"
+      ppsf      totalGrossArea  
+ Min.   :2049   Min.   : 72.25  
+ 1st Qu.:2917   1st Qu.: 95.69  
+ Median :3076   Median :101.90  
+ Mean   :3106   Mean   :105.91  
+ 3rd Qu.:3289   3rd Qu.:108.41  
+ Max.   :4463   Max.   :273.85  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 323
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.997397   0.144478  69.1967 < 2.2e-16 ***
+log(totalGrossArea) -0.422059   0.031061 -13.5880 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.086327   Adj. R2: 0.363175
+[1] "SIFTON PARK"
+      ppsf      totalGrossArea  
+ Min.   :2178   Min.   : 80.30  
+ 1st Qu.:2938   1st Qu.: 97.58  
+ Median :3100   Median :104.92  
+ Mean   :3156   Mean   :104.28  
+ 3rd Qu.:3327   3rd Qu.:112.27  
+ Max.   :3985   Max.   :191.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 101
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.111588   0.185918  59.7662 < 2.2e-16 ***
+log(totalGrossArea) -0.660088   0.040078 -16.4700 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.056666   Adj. R2: 0.72992
+[1] "HAIRSINE"
+      ppsf      totalGrossArea  
+ Min.   :1825   Min.   : 73.75  
+ 1st Qu.:2838   1st Qu.: 97.34  
+ Median :3079   Median :106.96  
+ Mean   :3057   Mean   :110.72  
+ 3rd Qu.:3281   3rd Qu.:117.10  
+ Max.   :4312   Max.   :234.82  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 105
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.262730   0.217982  51.6682 < 2.2e-16 ***
+log(totalGrossArea) -0.693003   0.046456 -14.9174 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.087785   Adj. R2: 0.680521
+[1] "BANNERMAN"
+      ppsf      totalGrossArea  
+ Min.   :2144   Min.   : 74.02  
+ 1st Qu.:2867   1st Qu.: 92.72  
+ Median :3066   Median :100.86  
+ Mean   :3087   Mean   :102.23  
+ 3rd Qu.:3310   3rd Qu.:109.95  
+ Max.   :4541   Max.   :159.08  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 156
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.237692   0.199248  56.4007 < 2.2e-16 ***
+log(totalGrossArea) -0.694924   0.043125 -16.1140 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.070523   Adj. R2: 0.625297
+[1] "WESTWOOD"
+      ppsf      totalGrossArea  
+ Min.   :1972   Min.   : 56.21  
+ 1st Qu.:2711   1st Qu.: 85.12  
+ Median :2999   Median : 86.87  
+ Mean   :3044   Mean   : 97.53  
+ 3rd Qu.:3304   3rd Qu.:109.55  
+ Max.   :4996   Max.   :251.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 99
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.837056   0.217546 45.21830  < 2.2e-16 ***
+log(totalGrossArea) -0.403014   0.047827 -8.42643 3.3036e-13 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.12558   Adj. R2: 0.416683
+[1] "ROSSLYN"
+      ppsf      totalGrossArea  
+ Min.   :1521   Min.   : 74.48  
+ 1st Qu.:2819   1st Qu.: 96.38  
+ Median :3009   Median : 96.90  
+ Mean   :2999   Mean   :100.83  
+ 3rd Qu.:3175   3rd Qu.: 99.44  
+ Max.   :4695   Max.   :297.10  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 532
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.465867   0.197921  52.8790 < 2.2e-16 ***
+log(totalGrossArea) -0.536156   0.042969 -12.4776 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.119428   Adj. R2: 0.225599
+[1] "LAUDERDALE"
+      ppsf      totalGrossArea  
+ Min.   :2106   Min.   : 61.12  
+ 1st Qu.:2732   1st Qu.: 87.75  
+ Median :2910   Median : 96.41  
+ Mean   :2912   Mean   : 97.08  
+ 3rd Qu.:3080   3rd Qu.:103.70  
+ Max.   :4111   Max.   :264.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 146
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.286917   0.252443 36.78816  < 2.2e-16 ***
+log(totalGrossArea) -0.288678   0.055306 -5.21963 6.1425e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.104741   Adj. R2: 0.153258
+[1] "GLENGARRY"
+      ppsf      totalGrossArea  
+ Min.   :1801   Min.   : 73.03  
+ 1st Qu.:2967   1st Qu.: 96.38  
+ Median :3109   Median : 98.13  
+ Mean   :3126   Mean   :101.60  
+ 3rd Qu.:3277   3rd Qu.:101.87  
+ Max.   :4553   Max.   :233.46  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 528
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.788081   0.124205  86.8568 < 2.2e-16 ***
+log(totalGrossArea) -0.595223   0.026916 -22.1138 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.074599   Adj. R2: 0.480798
+[1] "DELWOOD"
+      ppsf      totalGrossArea  
+ Min.   :1464   Min.   : 47.53  
+ 1st Qu.:2908   1st Qu.: 94.76  
+ Median :3074   Median : 99.89  
+ Mean   :3111   Mean   :101.63  
+ 3rd Qu.:3342   3rd Qu.:105.08  
+ Max.   :4340   Max.   :253.16  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 644
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.964145   0.112122  97.7876 < 2.2e-16 ***
+log(totalGrossArea) -0.635486   0.024310 -26.1406 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.089411   Adj. R2: 0.514838
+[1] "BELVEDERE"
+      ppsf      totalGrossArea  
+ Min.   :1504   Min.   : 53.48  
+ 1st Qu.:2834   1st Qu.: 86.18  
+ Median :3007   Median : 95.30  
+ Mean   :3027   Mean   : 95.17  
+ 3rd Qu.:3193   3rd Qu.:100.04  
+ Max.   :4606   Max.   :208.47  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 445
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.915251   0.142935  69.3687 < 2.2e-16 ***
+log(totalGrossArea) -0.419302   0.031431 -13.3406 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.092325   Adj. R2: 0.28499
+[1] "KILDARE"
+      ppsf      totalGrossArea  
+ Min.   :2015   Min.   : 86.87  
+ 1st Qu.:2876   1st Qu.:101.95  
+ Median :2993   Median :107.95  
+ Mean   :3001   Mean   :110.14  
+ 3rd Qu.:3152   3rd Qu.:113.83  
+ Max.   :3830   Max.   :215.40  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 371
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.969411   0.099339 110.4235 < 2.2e-16 ***
+log(totalGrossArea) -0.631793   0.021152 -29.8687 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.04545   Adj. R2: 0.706614
+[1] "NORTHMOUNT"
+      ppsf      totalGrossArea  
+ Min.   :1797   Min.   : 79.04  
+ 1st Qu.:2826   1st Qu.:106.31  
+ Median :2965   Median :112.50  
+ Mean   :2976   Mean   :117.04  
+ 3rd Qu.:3129   3rd Qu.:121.09  
+ Max.   :4310   Max.   :342.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 450
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.916387   0.087218 125.1614 < 2.2e-16 ***
+log(totalGrossArea) -0.615612   0.018354 -33.5416 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.058724   Adj. R2: 0.714565
+[1] "ERMINESKIN"
+      ppsf      totalGrossArea  
+ Min.   :1805   Min.   : 84.68  
+ 1st Qu.:2617   1st Qu.:115.70  
+ Median :3178   Median :129.17  
+ Mean   :3078   Mean   :141.77  
+ 3rd Qu.:3493   3rd Qu.:164.50  
+ Max.   :4503   Max.   :283.07  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 182
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.331514   0.103790 109.1775 < 2.2e-16 ***
+log(totalGrossArea) -0.673269   0.021057 -31.9740 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.068516   Adj. R2: 0.84946
+[1] "SWEET GRASS"
+      ppsf      totalGrossArea  
+ Min.   :1568   Min.   : 96.38  
+ 1st Qu.:2504   1st Qu.:126.24  
+ Median :3061   Median :159.68  
+ Mean   :3096   Mean   :160.94  
+ 3rd Qu.:3690   3rd Qu.:192.70  
+ Max.   :4378   Max.   :260.93  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 74
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         12.142472   0.188229  64.5089 < 2.2e-16 ***
+log(totalGrossArea) -0.818327   0.037244 -21.9721 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.08264   Adj. R2: 0.868414
+[1] "BLUE QUILL ESTATES"
+[1] "SKYRATTLER"
+      ppsf      totalGrossArea  
+ Min.   :1892   Min.   : 97.58  
+ 1st Qu.:2378   1st Qu.:130.50  
+ Median :2749   Median :155.98  
+ Mean   :2796   Mean   :160.17  
+ 3rd Qu.:3189   3rd Qu.:182.08  
+ Max.   :3896   Max.   :254.44  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 71
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.345544   0.193402  58.6629 < 2.2e-16 ***
+log(totalGrossArea) -0.678381   0.038265 -17.7286 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.074611   Adj. R2: 0.817377
+[1] "GRANDVIEW HEIGHTS"
+[1] "BELGRAVIA"
+      ppsf      totalGrossArea 
+ Min.   :2595   Min.   : 62.8  
+ 1st Qu.:4438   1st Qu.:115.0  
+ Median :4988   Median :134.0  
+ Mean   :5014   Mean   :152.7  
+ 3rd Qu.:5519   3rd Qu.:177.7  
+ Max.   :7609   Max.   :323.4  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 132
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.078884   0.199584 50.49957  < 2.2e-16 ***
+log(totalGrossArea) -0.317367   0.040075 -7.91941 9.2859e-13 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.15724   Adj. R2: 0.320247
+[1] "LANSDOWNE"
+      ppsf      totalGrossArea 
+ Min.   :2663   Min.   :102.8  
+ 1st Qu.:3617   1st Qu.:112.3  
+ Median :3889   Median :121.8  
+ Mean   :3867   Mean   :128.1  
+ 3rd Qu.:4180   3rd Qu.:125.4  
+ Max.   :4456   Max.   :291.7  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 30
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.854843   0.389466 25.30350  < 2.2e-16 ***
+log(totalGrossArea) -0.331725   0.080628 -4.11428 0.00030908 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.090178   Adj. R2: 0.354513
+[1] "QUEEN ALEXANDRA"
+      ppsf      totalGrossArea  
+ Min.   :2233   Min.   : 64.45  
+ 1st Qu.:3643   1st Qu.: 73.17  
+ Median :4121   Median :100.36  
+ Mean   :4217   Mean   :110.20  
+ 3rd Qu.:4810   3rd Qu.:115.40  
+ Max.   :5877   Max.   :220.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 22
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.718287   0.316900 33.82225  < 2.2e-16 ***
+log(totalGrossArea) -0.518075   0.068296 -7.58576 2.6241e-07 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.115938   Adj. R2: 0.729185
+[1] "ALLENDALE"
+      ppsf      totalGrossArea  
+ Min.   :2315   Min.   : 62.05  
+ 1st Qu.:3577   1st Qu.: 93.31  
+ Median :4047   Median :107.91  
+ Mean   :4058   Mean   :114.61  
+ 3rd Qu.:4489   3rd Qu.:117.75  
+ Max.   :5618   Max.   :324.80  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 222
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.365792   0.126204  82.1351 < 2.2e-16 ***
+log(totalGrossArea) -0.440493   0.026811 -16.4294 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.107551   Adj. R2: 0.548911
+[1] "RAMSAY HEIGHTS"
+[1] "EMPIRE PARK"
+      ppsf      totalGrossArea  
+ Min.   :2157   Min.   : 84.68  
+ 1st Qu.:3837   1st Qu.: 91.47  
+ Median :4094   Median : 95.01  
+ Mean   :3996   Mean   : 99.94  
+ 3rd Qu.:4228   3rd Qu.:103.27  
+ Max.   :4653   Max.   :229.68  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 63
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.58078   0.150717  76.8378 < 2.2e-16 ***
+log(totalGrossArea) -0.71718   0.032805 -21.8616 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.037281   Adj. R2: 0.884957
+[1] "RIDEAU PARK"
+      ppsf      totalGrossArea 
+ Min.   :1830   Min.   : 83.9  
+ 1st Qu.:2456   1st Qu.:120.9  
+ Median :3051   Median :132.7  
+ Mean   :2934   Mean   :144.4  
+ 3rd Qu.:3211   3rd Qu.:172.5  
+ Max.   :4348   Max.   :215.8  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 136
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.671502   0.166816  69.9665 < 2.2e-16 ***
+log(totalGrossArea) -0.747287   0.033655 -22.2042 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.077244   Adj. R2: 0.784698
+[1] "GREENFIELD"
+      ppsf      totalGrossArea  
+ Min.   :1957   Min.   : 86.84  
+ 1st Qu.:3694   1st Qu.:104.84  
+ Median :3934   Median :113.14  
+ Mean   :3881   Mean   :119.96  
+ 3rd Qu.:4156   3rd Qu.:124.40  
+ Max.   :6284   Max.   :274.96  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 769
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.702897   0.083693 139.8317 < 2.2e-16 ***
+log(totalGrossArea) -0.723158   0.017532 -41.2471 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.083901   Adj. R2: 0.688858
+[1] "ASPEN GARDENS"
+      ppsf      totalGrossArea 
+ Min.   :2633   Min.   : 92.7  
+ 1st Qu.:3980   1st Qu.:109.5  
+ Median :4479   Median :121.6  
+ Mean   :4377   Mean   :133.1  
+ 3rd Qu.:4835   3rd Qu.:149.4  
+ Max.   :6031   Max.   :287.9  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 164
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.938107   0.190156  57.5219 < 2.2e-16 ***
+log(totalGrossArea) -0.528189   0.039072 -13.5182 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.115534   Adj. R2: 0.527183
+[1] "ROYAL GARDENS"
+      ppsf      totalGrossArea  
+ Min.   :2184   Min.   : 83.24  
+ 1st Qu.:3414   1st Qu.:107.06  
+ Median :3576   Median :114.56  
+ Mean   :3545   Mean   :118.53  
+ 3rd Qu.:3748   3rd Qu.:124.59  
+ Max.   :4838   Max.   :210.70  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 439
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.50245   0.107244 107.2548 < 2.2e-16 ***
+log(totalGrossArea) -0.70012   0.022498 -31.1194 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.065981   Adj. R2: 0.688349
+[1] "LENDRUM PLACE"
+      ppsf      totalGrossArea  
+ Min.   :2376   Min.   : 87.44  
+ 1st Qu.:3985   1st Qu.:100.08  
+ Median :4221   Median :108.11  
+ Mean   :4250   Mean   :112.26  
+ 3rd Qu.:4453   3rd Qu.:116.78  
+ Max.   :6006   Max.   :242.10  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 359
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.819163   0.161994  66.7876 < 2.2e-16 ***
+log(totalGrossArea) -0.524715   0.034379 -15.2628 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.091819   Adj. R2: 0.393171
+[1] "BROOKSIDE"
+      ppsf      totalGrossArea 
+ Min.   :2421   Min.   : 97.1  
+ 1st Qu.:2995   1st Qu.:122.0  
+ Median :3497   Median :134.8  
+ Mean   :3474   Mean   :144.2  
+ 3rd Qu.:3954   3rd Qu.:165.3  
+ Max.   :4918   Max.   :218.7  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 49
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         11.858948   0.328190  36.1344  < 2.2e-16 ***
+log(totalGrossArea) -0.751678   0.066235 -11.3487 4.6214e-15 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.091518   Adj. R2: 0.72695
+[1] "BRANDER GARDENS"
+[1] "MALMO PLAINS"
+      ppsf      totalGrossArea  
+ Min.   :2364   Min.   : 83.24  
+ 1st Qu.:3831   1st Qu.:104.09  
+ Median :4036   Median :110.36  
+ Mean   :4060   Mean   :113.34  
+ 3rd Qu.:4256   3rd Qu.:117.47  
+ Max.   :6096   Max.   :242.33  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 414
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.851550   0.153399  70.7405 < 2.2e-16 ***
+log(totalGrossArea) -0.539712   0.032478 -16.6177 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.083057   Adj. R2: 0.399839
+[1] "RITCHIE"
+      ppsf      totalGrossArea  
+ Min.   :1477   Min.   : 62.05  
+ 1st Qu.:3328   1st Qu.: 86.88  
+ Median :3959   Median :103.60  
+ Mean   :3960   Mean   :128.14  
+ 3rd Qu.:4517   3rd Qu.:169.94  
+ Max.   :6692   Max.   :347.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 200
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.630632   0.168527 57.14599 < 2.2e-16 ***
+log(totalGrossArea) -0.288199   0.035240 -8.17809 3.416e-14 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.203612   Adj. R2: 0.24872
+[1] "STRATHEARN"
+      ppsf      totalGrossArea  
+ Min.   :2270   Min.   : 70.08  
+ 1st Qu.:3722   1st Qu.: 77.77  
+ Median :4236   Median :102.93  
+ Mean   :4239   Mean   :119.61  
+ 3rd Qu.:4752   3rd Qu.:126.88  
+ Max.   :6880   Max.   :374.50  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 260
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.439094   0.113096 83.46087 < 2.2e-16 ***
+log(totalGrossArea) -0.234204   0.023973 -9.76947 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.146938   Adj. R2: 0.267208
+[1] "IDYLWYLDE"
+      ppsf      totalGrossArea  
+ Min.   :2464   Min.   : 68.43  
+ 1st Qu.:3587   1st Qu.: 84.05  
+ Median :4072   Median : 84.98  
+ Mean   :4000   Mean   : 99.44  
+ 3rd Qu.:4342   3rd Qu.:113.42  
+ Max.   :6869   Max.   :329.40  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 289
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.360344   0.127041  81.5515 < 2.2e-16 ***
+log(totalGrossArea) -0.455375   0.027786 -16.3886 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.115474   Adj. R2: 0.481628
+[1] "HAZELDEAN"
+      ppsf      totalGrossArea  
+ Min.   :2155   Min.   : 60.97  
+ 1st Qu.:3769   1st Qu.: 87.45  
+ Median :4102   Median : 92.28  
+ Mean   :4094   Mean   :100.79  
+ 3rd Qu.:4392   3rd Qu.:105.96  
+ Max.   :6364   Max.   :267.10  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 502
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)          9.913502   0.103264  96.0015 < 2.2e-16 ***
+log(totalGrossArea) -0.350214   0.022500 -15.5650 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.112519   Adj. R2: 0.325042
+[1] "AVONMORE"
+      ppsf      totalGrossArea  
+ Min.   :2340   Min.   : 60.04  
+ 1st Qu.:3571   1st Qu.: 87.00  
+ Median :3801   Median : 99.56  
+ Mean   :3827   Mean   :102.38  
+ 3rd Qu.:4133   3rd Qu.:103.72  
+ Max.   :5259   Max.   :271.00  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 410
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.09913   0.125283  80.6103 < 2.2e-16 ***
+log(totalGrossArea) -0.40302   0.027163 -14.8368 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.102661   Adj. R2: 0.348863
+[1] "ARGYLL"
+      ppsf      totalGrossArea  
+ Min.   :1956   Min.   : 82.50  
+ 1st Qu.:3827   1st Qu.: 91.50  
+ Median :4088   Median : 93.44  
+ Mean   :4079   Mean   : 98.90  
+ 3rd Qu.:4283   3rd Qu.: 97.58  
+ Max.   :5648   Max.   :233.60  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 258
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.138279   0.206959 48.98682 < 2.2e-16 ***
+log(totalGrossArea) -0.399439   0.045135 -8.84985 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.098389   Adj. R2: 0.231275
+[1] "TERRACE HEIGHTS"
+      ppsf      totalGrossArea  
+ Min.   :2000   Min.   : 55.39  
+ 1st Qu.:3469   1st Qu.: 98.99  
+ Median :3715   Median :110.45  
+ Mean   :3788   Mean   :112.35  
+ 3rd Qu.:4040   3rd Qu.:119.18  
+ Max.   :5830   Max.   :278.40  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 267
+Standard-errors: IID 
+                     Estimate Std. Error t value  Pr(>|t|)    
+(Intercept)         10.287454   0.159892  64.340 < 2.2e-16 ***
+log(totalGrossArea) -0.437274   0.033971 -12.872 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.102784   Adj. R2: 0.382384
+[1] "FULTON PLACE"
+      ppsf      totalGrossArea  
+ Min.   :2199   Min.   : 87.00  
+ 1st Qu.:3627   1st Qu.: 97.71  
+ Median :3823   Median :103.70  
+ Mean   :3862   Mean   :105.66  
+ 3rd Qu.:4074   3rd Qu.:106.45  
+ Max.   :6428   Max.   :287.20  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 319
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.980145   0.166733  65.8546 < 2.2e-16 ***
+log(totalGrossArea) -0.586661   0.035844 -16.3672 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.084867   Adj. R2: 0.456305
+[1] "CAPILANO"
+      ppsf      totalGrossArea  
+ Min.   :2532   Min.   : 86.18  
+ 1st Qu.:3960   1st Qu.: 98.60  
+ Median :4239   Median :104.28  
+ Mean   :4264   Mean   :113.07  
+ 3rd Qu.:4540   3rd Qu.:113.32  
+ Max.   :6235   Max.   :343.10  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 357
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.551242   0.134679  78.3436 < 2.2e-16 ***
+log(totalGrossArea) -0.467927   0.028590 -16.3666 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.102803   Adj. R2: 0.428449
+[1] "GOLD BAR"
+      ppsf      totalGrossArea  
+ Min.   :2378   Min.   : 52.93  
+ 1st Qu.:3659   1st Qu.: 95.16  
+ Median :3829   Median : 96.38  
+ Mean   :3827   Mean   :102.06  
+ 3rd Qu.:3992   3rd Qu.:104.09  
+ Max.   :5110   Max.   :256.10  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 491
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.340260   0.124414  83.1114 < 2.2e-16 ***
+log(totalGrossArea) -0.454231   0.026952 -16.8532 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.084589   Adj. R2: 0.366131
+[1] "OTTEWELL"
+      ppsf      totalGrossArea  
+ Min.   :2055   Min.   : 70.10  
+ 1st Qu.:3537   1st Qu.: 98.67  
+ Median :3811   Median :106.06  
+ Mean   :3833   Mean   :109.14  
+ 3rd Qu.:4074   3rd Qu.:114.51  
+ Max.   :5813   Max.   :232.67  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 1,106
+Standard-errors: IID 
+                     Estimate Std. Error t value  Pr(>|t|)    
+(Intercept)         10.821641   0.094850 114.092 < 2.2e-16 ***
+log(totalGrossArea) -0.550438   0.020248 -27.185 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.092856   Adj. R2: 0.400442
+[1] "RICHFIELD"
+      ppsf      totalGrossArea  
+ Min.   :2174   Min.   : 89.45  
+ 1st Qu.:3105   1st Qu.:101.24  
+ Median :3267   Median :112.46  
+ Mean   :3264   Mean   :114.67  
+ 3rd Qu.:3420   3rd Qu.:119.61  
+ Max.   :4195   Max.   :187.25  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 107
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.74413    0.24362  44.1021 < 2.2e-16 ***
+log(totalGrossArea) -0.56212    0.05147 -10.9213 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.076157   Adj. R2: 0.527365
+[1] "LEE RIDGE"
+      ppsf      totalGrossArea  
+ Min.   :2050   Min.   : 86.55  
+ 1st Qu.:2967   1st Qu.:106.82  
+ Median :3088   Median :114.14  
+ Mean   :3041   Mean   :122.12  
+ 3rd Qu.:3244   3rd Qu.:125.19  
+ Max.   :3678   Max.   :206.60  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 89
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.841240   0.192373  56.3553 < 2.2e-16 ***
+log(totalGrossArea) -0.591392   0.040172 -14.7216 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.071703   Adj. R2: 0.710265
+[1] "TWEDDLE PLACE"
+      ppsf      totalGrossArea  
+ Min.   :2058   Min.   : 68.39  
+ 1st Qu.:3078   1st Qu.:100.73  
+ Median :3247   Median :110.60  
+ Mean   :3250   Mean   :118.04  
+ 3rd Qu.:3529   3rd Qu.:121.89  
+ Max.   :4550   Max.   :230.60  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 167
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.11014   0.101158 109.8295 < 2.2e-16 ***
+log(totalGrossArea) -0.63916   0.021289 -30.0236 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.05774   Adj. R2: 0.844338
+[1] "MICHAELS PARK"
+      ppsf      totalGrossArea  
+ Min.   :1851   Min.   : 83.48  
+ 1st Qu.:3099   1st Qu.:101.58  
+ Median :3264   Median :109.40  
+ Mean   :3264   Mean   :112.77  
+ 3rd Qu.:3432   3rd Qu.:114.38  
+ Max.   :4324   Max.   :248.01  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 223
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.038859   0.120934  91.2797 < 2.2e-16 ***
+log(totalGrossArea) -0.626997   0.025652 -24.4426 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.059105   Adj. R2: 0.728752
+[1] "KAMEYOSEK"
+      ppsf      totalGrossArea  
+ Min.   :2086   Min.   : 77.18  
+ 1st Qu.:3074   1st Qu.:101.95  
+ Median :3267   Median :108.64  
+ Mean   :3223   Mean   :112.91  
+ 3rd Qu.:3423   3rd Qu.:114.58  
+ Max.   :4105   Max.   :257.90  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 100
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.749507   0.181062  59.3693 < 2.2e-16 ***
+log(totalGrossArea) -0.568167   0.038404 -14.7945 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.060863   Adj. R2: 0.687576
+[1] "MEYONOHK"
+      ppsf      totalGrossArea  
+ Min.   :2110   Min.   : 73.58  
+ 1st Qu.:2940   1st Qu.: 95.78  
+ Median :3241   Median :105.05  
+ Mean   :3215   Mean   :112.03  
+ 3rd Qu.:3462   3rd Qu.:121.58  
+ Max.   :4942   Max.   :230.96  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 180
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.128455   0.112090  99.2810 < 2.2e-16 ***
+log(totalGrossArea) -0.653062   0.023857 -27.3739 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.069085   Adj. R2: 0.806973
+[1] "EKOTA"
+      ppsf      totalGrossArea  
+ Min.   :1836   Min.   : 76.49  
+ 1st Qu.:2976   1st Qu.: 99.59  
+ Median :3184   Median :111.95  
+ Mean   :3148   Mean   :120.49  
+ 3rd Qu.:3418   3rd Qu.:125.30  
+ Max.   :4218   Max.   :254.88  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 199
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.021690   0.062274 176.9866 < 2.2e-16 ***
+log(totalGrossArea) -0.625205   0.013059 -47.8742 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.042118   Adj. R2: 0.920448
+[1] "POLLARD MEADOWS"
+      ppsf      totalGrossArea  
+ Min.   :1865   Min.   : 84.68  
+ 1st Qu.:3080   1st Qu.: 98.90  
+ Median :3271   Median :105.98  
+ Mean   :3240   Mean   :109.12  
+ 3rd Qu.:3432   3rd Qu.:110.30  
+ Max.   :4327   Max.   :248.30  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 481
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.877410   0.093725 116.0567 < 2.2e-16 ***
+log(totalGrossArea) -0.598307   0.020017 -29.8894 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.065439   Adj. R2: 0.650241
+[1] "HADDOW"
+      ppsf      totalGrossArea 
+ Min.   :2253   Min.   :118.9  
+ 1st Qu.:2631   1st Qu.:171.7  
+ Median :2821   Median :205.9  
+ Mean   :2982   Mean   :205.1  
+ 3rd Qu.:3193   3rd Qu.:232.1  
+ Max.   :4694   Max.   :334.0  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 272
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.758582   0.184396  58.3448 < 2.2e-16 ***
+log(totalGrossArea) -0.522672   0.034748 -15.0417 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.117547   Adj. R2: 0.453907
+[1] "EAUX CLAIRES"
+      ppsf        totalGrossArea 
+ Min.   : 769.9   Min.   :106.7  
+ 1st Qu.:2309.8   1st Qu.:163.9  
+ Median :2724.1   Median :188.8  
+ Mean   :2663.4   Mean   :197.2  
+ 3rd Qu.:2972.0   3rd Qu.:230.5  
+ Max.   :3607.3   Max.   :293.9  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 136
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.717611   0.237900  45.0509 < 2.2e-16 ***
+log(totalGrossArea) -0.541022   0.045208 -11.9673 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.122676   Adj. R2: 0.513016
+[1] "HUDSON"
+      ppsf      totalGrossArea 
+ Min.   :2038   Min.   : 66.9  
+ 1st Qu.:2455   1st Qu.:128.2  
+ Median :2836   Median :165.7  
+ Mean   :2932   Mean   :161.4  
+ 3rd Qu.:3332   3rd Qu.:183.6  
+ Max.   :4649   Max.   :256.1  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 59
+Standard-errors: IID 
+                    Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.23189   0.205589  54.6327 < 2.2e-16 ***
+log(totalGrossArea) -0.64673   0.040652 -15.9090 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.080397   Adj. R2: 0.812962
+[1] "MILLER"
+      ppsf      totalGrossArea 
+ Min.   :2111   Min.   : 98.9  
+ 1st Qu.:2676   1st Qu.:128.3  
+ Median :3077   Median :145.8  
+ Mean   :3011   Mean   :150.0  
+ 3rd Qu.:3295   3rd Qu.:168.0  
+ Max.   :3994   Max.   :238.0  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 56
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.453899   0.155272  73.7665 < 2.2e-16 ***
+log(totalGrossArea) -0.692627   0.031099 -22.2715 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.047529   Adj. R2: 0.900003
+[1] "DONSDALE"
+      ppsf      totalGrossArea 
+ Min.   :2217   Min.   :141.0  
+ 1st Qu.:2594   1st Qu.:176.8  
+ Median :2861   Median :215.3  
+ Mean   :3081   Mean   :214.3  
+ 3rd Qu.:3494   3rd Qu.:243.1  
+ Max.   :4913   Max.   :331.7  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 161
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.713229   0.284027  41.2399 < 2.2e-16 ***
+log(totalGrossArea) -0.691734   0.053072 -13.0338 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.132696   Adj. R2: 0.513499
+[1] "LEGER"
+      ppsf      totalGrossArea 
+ Min.   :2390   Min.   :105.5  
+ 1st Qu.:2741   1st Qu.:152.4  
+ Median :2912   Median :200.0  
+ Mean   :3268   Mean   :194.0  
+ 3rd Qu.:3828   3rd Qu.:238.0  
+ Max.   :5488   Max.   :298.5  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 141
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.616331   0.193608  59.9991 < 2.2e-16 ***
+log(totalGrossArea) -0.677016   0.036924 -18.3352 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.108964   Adj. R2: 0.705375
+[1] "CARLTON"
+      ppsf      totalGrossArea 
+ Min.   :2005   Min.   :126.9  
+ 1st Qu.:2429   1st Qu.:171.9  
+ Median :2517   Median :190.2  
+ Mean   :2646   Mean   :193.6  
+ 3rd Qu.:2866   3rd Qu.:217.7  
+ Max.   :3460   Max.   :281.6  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 59
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         10.590598   0.229370  46.1725 < 2.2e-16 ***
+log(totalGrossArea) -0.518217   0.043697 -11.8594 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.067796   Adj. R2: 0.706547
+[1] "TERWILLEGAR TOWNE"
+      ppsf      totalGrossArea 
+ Min.   :2654   Min.   :139.5  
+ 1st Qu.:3161   1st Qu.:141.0  
+ Median :3825   Median :150.7  
+ Mean   :3717   Mean   :180.9  
+ 3rd Qu.:4167   3rd Qu.:229.0  
+ Max.   :5046   Max.   :312.5  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 88
+Standard-errors: IID 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+(Intercept)         11.240917   0.165172  68.0560 < 2.2e-16 ***
+log(totalGrossArea) -0.587396   0.031946 -18.3873 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.074575   Adj. R2: 0.794856
+[1] "CHAMBERY"
+      ppsf      totalGrossArea 
+ Min.   :2273   Min.   :110.0  
+ 1st Qu.:2645   1st Qu.:187.1  
+ Median :2801   Median :250.4  
+ Mean   :2909   Mean   :233.5  
+ 3rd Qu.:3103   3rd Qu.:285.0  
+ Max.   :4018   Max.   :381.6  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 57
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.375397   0.224000 41.85444  < 2.2e-16 ***
+log(totalGrossArea) -0.260501   0.041364 -6.29777 5.2945e-08 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.098186   Adj. R2: 0.408421
+[1] "SILVER BERRY"
+[1] "HODGSON"
+      ppsf      totalGrossArea 
+ Min.   :2463   Min.   :143.0  
+ 1st Qu.:2791   1st Qu.:161.6  
+ Median :3686   Median :192.9  
+ Mean   :3616   Mean   :205.7  
+ 3rd Qu.:4290   3rd Qu.:256.4  
+ Max.   :5389   Max.   :295.4  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 23
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         13.442344   0.500015  26.8839  < 2.2e-16 ***
+log(totalGrossArea) -0.997084   0.094282 -10.5755 7.2082e-10 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.102561   Adj. R2: 0.83439
+[1] "SCHONSEE"
+      ppsf      totalGrossArea 
+ Min.   :2217   Min.   :126.8  
+ 1st Qu.:2441   1st Qu.:168.8  
+ Median :2825   Median :218.5  
+ Mean   :2838   Mean   :219.8  
+ 3rd Qu.:3087   3rd Qu.:268.1  
+ Max.   :4212   Max.   :361.7  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 138
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.691222   0.221836 43.68646  < 2.2e-16 ***
+log(totalGrossArea) -0.326867   0.041339 -7.90707 8.0976e-13 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.124353   Adj. R2: 0.309899
+[1] "MAGRATH HEIGHTS"
+      ppsf      totalGrossArea 
+ Min.   :4360   Min.   :130.7  
+ 1st Qu.:4442   1st Qu.:137.3  
+ Median :4620   Median :141.8  
+ Mean   :4745   Mean   :147.3  
+ 3rd Qu.:5063   3rd Qu.:161.8  
+ Max.   :5344   Max.   :163.6  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 14
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         11.153993   0.815872 13.67126 1.1171e-08 ***
+log(totalGrossArea) -0.539567   0.163526 -3.29958 6.3456e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.050428   Adj. R2: 0.431998
+[1] "SOUTH TERWILLEGAR"
+      ppsf      totalGrossArea 
+ Min.   :2822   Min.   :120.7  
+ 1st Qu.:3479   1st Qu.:138.6  
+ Median :4587   Median :139.9  
+ Mean   :4190   Mean   :139.6  
+ 3rd Qu.:4905   3rd Qu.:141.3  
+ Max.   :5051   Max.   :150.8  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 24
+Standard-errors: IID 
+                    Estimate Std. Error  t value Pr(>|t|)    
+(Intercept)         6.641933   3.464755 1.917000 0.068316 .  
+log(totalGrossArea) 0.339940   0.701782 0.484396 0.632892    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.206025   Adj. R2: -0.034422
+[1] "MACTAGGART"
+      ppsf      totalGrossArea 
+ Min.   :4513   Min.   :119.8  
+ 1st Qu.:4904   1st Qu.:148.7  
+ Median :5313   Median :151.8  
+ Mean   :5311   Mean   :150.2  
+ 3rd Qu.:5483   3rd Qu.:158.1  
+ Max.   :6423   Max.   :170.3  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 11
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         11.941668   1.168917 10.21601 2.9943e-06 ***
+log(totalGrossArea) -0.673313   0.233464 -2.88401 1.8060e-02 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.079288   Adj. R2: 0.42255
+[1] "TAMARACK"
+      ppsf      totalGrossArea 
+ Min.   :2315   Min.   :108.1  
+ 1st Qu.:2656   1st Qu.:109.4  
+ Median :2757   Median :128.5  
+ Mean   :2765   Mean   :125.8  
+ 3rd Qu.:2912   3rd Qu.:130.5  
+ Max.   :3026   Max.   :151.4  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 12
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.545223   0.597260 17.65600 7.2329e-09 ***
+log(totalGrossArea) -0.543262   0.123662 -4.39311 1.3495e-03 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.042438   Adj. R2: 0.624566
+[1] "LAUREL"
+      ppsf      totalGrossArea 
+ Min.   :2462   Min.   :117.9  
+ 1st Qu.:2647   1st Qu.:144.7  
+ Median :2761   Median :155.1  
+ Mean   :2761   Mean   :153.7  
+ 3rd Qu.:2854   3rd Qu.:164.1  
+ Max.   :2990   Max.   :178.2  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 12
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)          9.077736   0.671876 13.51104 9.5065e-08 ***
+log(totalGrossArea) -0.229855   0.133566 -1.72091 1.1600e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.047889   Adj. R2: 0.151335
+[1] "RAPPERSWIL"
+[1] "CAMERON HEIGHTS"
+      ppsf      totalGrossArea 
+ Min.   :2511   Min.   :179.5  
+ 1st Qu.:2712   1st Qu.:189.6  
+ Median :2829   Median :214.7  
+ Mean   :2837   Mean   :214.8  
+ 3rd Qu.:2932   3rd Qu.:233.0  
+ Max.   :3256   Max.   :257.7  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 21
+Standard-errors: IID 
+                     Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)          8.255822   0.706682 11.682514 4.0695e-10 ***
+log(totalGrossArea) -0.057288   0.131730 -0.434888 6.6854e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.063538   Adj. R2: -0.042257
+[1] "MCCONACHIE"
+[1] "MAPLE"
+      ppsf      totalGrossArea 
+ Min.   :2455   Min.   :135.1  
+ 1st Qu.:2525   1st Qu.:141.6  
+ Median :2560   Median :148.0  
+ Mean   :2631   Mean   :149.2  
+ 3rd Qu.:2689   3rd Qu.:156.8  
+ Max.   :3072   Max.   :169.2  
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 11
+Standard-errors: IID 
+                     Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)         10.546815   1.173150  8.99017 8.6147e-06 ***
+log(totalGrossArea) -0.534513   0.234475 -2.27962 4.8593e-02 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.052157   Adj. R2: 0.295609
+[1] "CY BECKER"
+[1] "EBBERS"
+[1] "WESTBROOK ESTATE"
+[1] "CRYSTALLINA NERA WEST"
+> regPSF <- feols(log(ppsf)~log(totalGrossArea) + i(neighbourhood) | yearBuilt,data=dtM[lotSize %between% c(500,600) & !is.na(ppsf) & !is.na(totalGrossArea)])
+NOTE: 2 fixed-effect singletons were removed (2 observations).
+> regElasticity <- feols(log(ppsf)~i(neighbourhood,log(totalGrossArea)) + log (totalGrossArea)|neighbourhood+yearBuilt ,data=dtM[lotSize %between% c(500,600) & !is.na(ppsf) & !is.na(totalGrossArea)])
+NOTE: 2/2 fixed-effect singletons were removed (4 observations).
+> print(summary(regElasticity))
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 50,157
+Fixed-effects: neighbourhood: 208,  yearBuilt: 112
+Standard-errors: IID 
+                                                         Estimate Std. Error
+neighbourhood::ALBERTA AVENUE:log(totalGrossArea)       -0.167124    18.2421
+neighbourhood::ALDERGROVE:log(totalGrossArea)           -0.222343    18.2421
+neighbourhood::ALLENDALE:log(totalGrossArea)            -0.127948    18.2421
+neighbourhood::ARGYLL:log(totalGrossArea)               -0.155014    18.2421
+neighbourhood::ASPEN GARDENS:log(totalGrossArea)        -0.070968    18.2421
+neighbourhood::ATHLONE:log(totalGrossArea)              -0.052695    18.2421
+neighbourhood::AVONMORE:log(totalGrossArea)              0.029040    18.2421
+neighbourhood::BALWIN:log(totalGrossArea)                0.037155    18.2421
+neighbourhood::BANNERMAN:log(totalGrossArea)            -0.106218    18.2421
+neighbourhood::BATURYN:log(totalGrossArea)              -0.087383    18.2421
+neighbourhood::BEACON HEIGHTS:log(totalGrossArea)        0.020351    18.2421
+neighbourhood::BEARSPAW:log(totalGrossArea)             -0.021979    18.2421
+neighbourhood::BEAUMARIS:log(totalGrossArea)            -0.082832    18.2421
+neighbourhood::BELGRAVIA:log(totalGrossArea)            -0.102935    18.2421
+neighbourhood::BELLE RIVE:log(totalGrossArea)            0.014236    18.2421
+neighbourhood::BELLEVUE:log(totalGrossArea)             -0.033533    18.2421
+neighbourhood::BELMEAD:log(totalGrossArea)              -0.152345    18.2421
+neighbourhood::BELMONT:log(totalGrossArea)              -0.052464    18.2421
+neighbourhood::BELVEDERE:log(totalGrossArea)             0.026265    18.2421
+neighbourhood::BERGMAN:log(totalGrossArea)              -0.087313    18.2421
+neighbourhood::BEVERLY HEIGHTS:log(totalGrossArea)       0.033336    18.2421
+neighbourhood::BISSET:log(totalGrossArea)               -0.087855    18.2421
+neighbourhood::BLUE QUILL:log(totalGrossArea)           -0.129743    18.2421
+neighbourhood::BONNIE DOON:log(totalGrossArea)          -0.029842    18.2421
+neighbourhood::BRANDER GARDENS:log(totalGrossArea)      -0.252655    18.2425
+neighbourhood::BRITANNIA YOUNGSTOWN:log(totalGrossArea) -0.170156    18.2421
+neighbourhood::BROOKSIDE:log(totalGrossArea)            -0.213699    18.2422
+neighbourhood::BULYEA HEIGHTS:log(totalGrossArea)       -0.003082    18.2421
+neighbourhood::CAERNARVON:log(totalGrossArea)           -0.064439    18.2421
+neighbourhood::CALDER:log(totalGrossArea)                0.024827    18.2421
+neighbourhood::CALLINGWOOD NORTH:log(totalGrossArea)    -0.154832    18.2422
+neighbourhood::CAMERON HEIGHTS:log(totalGrossArea)       0.568784    18.2427
+neighbourhood::CANON RIDGE:log(totalGrossArea)          -0.122978    18.2433
+neighbourhood::CANORA:log(totalGrossArea)               -0.057949    18.2423
+neighbourhood::CANOSSA:log(totalGrossArea)              -0.213821    18.2422
+neighbourhood::CAPILANO:log(totalGrossArea)             -0.066539    18.2421
+neighbourhood::CARLISLE:log(totalGrossArea)             -0.192185    18.2421
+neighbourhood::CARLTON:log(totalGrossArea)               0.054707    18.2421
+neighbourhood::CARTER CREST:log(totalGrossArea)         -0.126105    18.2421
+neighbourhood::CASSELMAN:log(totalGrossArea)            -0.137643    18.2421
+neighbourhood::CENTRAL MCDOUGALL:log(totalGrossArea)    -0.006840    18.2424
+neighbourhood::CHAMBERY:log(totalGrossArea)              0.094039    18.2421
+neighbourhood::CLOVERDALE:log(totalGrossArea)            0.002750    18.2421
+neighbourhood::CRAWFORD PLAINS:log(totalGrossArea)      -0.073674    18.2421
+neighbourhood::CRESTWOOD:log(totalGrossArea)             0.331606    18.2421
+neighbourhood::CROMDALE:log(totalGrossArea)             -0.148935    18.2428
+neighbourhood::CUMBERLAND:log(totalGrossArea)           -0.181717    18.2421
+neighbourhood::CY BECKER:log(totalGrossArea)            -0.572868    18.2833
+neighbourhood::DALY GROVE:log(totalGrossArea)           -0.057239    18.2421
+neighbourhood::DECHENE:log(totalGrossArea)              -0.153385    18.2421
+neighbourhood::DELTON:log(totalGrossArea)               -0.014036    18.2421
+neighbourhood::DELWOOD:log(totalGrossArea)              -0.104934    18.2421
+neighbourhood::DONSDALE:log(totalGrossArea)             -0.138355    18.2421
+neighbourhood::DOVERCOURT:log(totalGrossArea)           -0.135757    18.2421
+neighbourhood::DUGGAN:log(totalGrossArea)               -0.286144    18.2421
+neighbourhood::DUNLUCE:log(totalGrossArea)              -0.109260    18.2421
+neighbourhood::EASTWOOD:log(totalGrossArea)              0.018612    18.2422
+neighbourhood::EAUX CLAIRES:log(totalGrossArea)         -0.040510    18.2421
+neighbourhood::EBBERS:log(totalGrossArea)               -0.428462    18.3086
+neighbourhood::EKOTA:log(totalGrossArea)                -0.036704    18.2421
+neighbourhood::ELMWOOD:log(totalGrossArea)              -0.111752    18.2421
+neighbourhood::ELMWOOD PARK:log(totalGrossArea)         -0.022764    18.2421
+neighbourhood::ELSINORE:log(totalGrossArea)             -0.100980    18.2421
+neighbourhood::EMPIRE PARK:log(totalGrossArea)          -0.174042    18.2422
+neighbourhood::ERMINESKIN:log(totalGrossArea)           -0.077026    18.2421
+neighbourhood::EVANSDALE:log(totalGrossArea)            -0.065286    18.2421
+neighbourhood::FALCONER HEIGHTS:log(totalGrossArea)     -0.029558    18.2421
+neighbourhood::FOREST HEIGHTS:log(totalGrossArea)       -0.009682    18.2421
+neighbourhood::FRASER:log(totalGrossArea)                0.017256    18.2421
+neighbourhood::FULTON PLACE:log(totalGrossArea)         -0.082856    18.2421
+neighbourhood::GARIEPY:log(totalGrossArea)              -0.051263    18.2421
+neighbourhood::GARNEAU:log(totalGrossArea)               0.073726    18.2421
+neighbourhood::GLENGARRY:log(totalGrossArea)            -0.059164    18.2421
+neighbourhood::GLENORA:log(totalGrossArea)               0.334237    18.2421
+neighbourhood::GLENWOOD:log(totalGrossArea)             -0.040487    18.2421
+neighbourhood::GOLD BAR:log(totalGrossArea)              0.002462    18.2421
+neighbourhood::GRANDVIEW HEIGHTS:log(totalGrossArea)    -0.241689    18.2440
+neighbourhood::GREENFIELD:log(totalGrossArea)           -0.174965    18.2421
+neighbourhood::GREENVIEW:log(totalGrossArea)            -0.068851    18.2421
+neighbourhood::GROVENOR:log(totalGrossArea)              0.069137    18.2421
+neighbourhood::HADDOW:log(totalGrossArea)                0.022492    18.2421
+neighbourhood::HAIRSINE:log(totalGrossArea)             -0.119913    18.2421
+neighbourhood::HAZELDEAN:log(totalGrossArea)            -0.002719    18.2421
+neighbourhood::HENDERSON ESTATES:log(totalGrossArea)    -0.068932    18.2421
+neighbourhood::HIGH PARK:log(totalGrossArea)            -0.006072    18.2421
+neighbourhood::HIGHLANDS:log(totalGrossArea)             0.005586    18.2421
+neighbourhood::HILLVIEW:log(totalGrossArea)             -0.094643    18.2421
+neighbourhood::HODGSON:log(totalGrossArea)              -0.413586    18.2422
+neighbourhood::HOLLICK-KENYON:log(totalGrossArea)       -0.069611    18.2421
+neighbourhood::HOLYROOD:log(totalGrossArea)             -0.062084    18.2421
+neighbourhood::HOMESTEADER:log(totalGrossArea)          -0.075809    18.2422
+neighbourhood::HUDSON:log(totalGrossArea)               -0.037401    18.2421
+neighbourhood::IDYLWYLDE:log(totalGrossArea)            -0.070450    18.2421
+neighbourhood::INGLEWOOD:log(totalGrossArea)            -0.105409    18.2421
+neighbourhood::JACKSON HEIGHTS:log(totalGrossArea)      -0.101346    18.2421
+neighbourhood::JAMIESON PLACE:log(totalGrossArea)       -0.123108    18.2421
+neighbourhood::JASPER PARK:log(totalGrossArea)           0.044275    18.2424
+neighbourhood::KAMEYOSEK:log(totalGrossArea)            -0.021078    18.2421
+neighbourhood::KEHEEWIN:log(totalGrossArea)             -0.071385    18.2421
+neighbourhood::KENILWORTH:log(totalGrossArea)           -0.036073    18.2421
+neighbourhood::KENSINGTON:log(totalGrossArea)           -0.060456    18.2421
+neighbourhood::KERNOHAN:log(totalGrossArea)             -0.138489    18.2421
+neighbourhood::KILDARE:log(totalGrossArea)              -0.074113    18.2421
+neighbourhood::KILKENNY:log(totalGrossArea)             -0.167984    18.2421
+neighbourhood::KILLARNEY:log(totalGrossArea)             0.053407    18.2421
+neighbourhood::KING EDWARD PARK:log(totalGrossArea)     -0.067527    18.2421
+neighbourhood::KINISKI GARDENS:log(totalGrossArea)       0.015142    18.2421
+neighbourhood::KIRKNESS:log(totalGrossArea)             -0.095730    18.2421
+neighbourhood::KLARVATTEN:log(totalGrossArea)           -0.120589    18.2421
+neighbourhood::LA PERLE:log(totalGrossArea)             -0.105779    18.2421
+neighbourhood::LAGO LINDO:log(totalGrossArea)           -0.093193    18.2421
+neighbourhood::LANSDOWNE:log(totalGrossArea)             0.009718    18.2422
+neighbourhood::LARKSPUR:log(totalGrossArea)             -0.118007    18.2421
+neighbourhood::LAUDERDALE:log(totalGrossArea)            0.076967    18.2421
+neighbourhood::LAUREL:log(totalGrossArea)               -0.108958    18.2431
+neighbourhood::LAURIER HEIGHTS:log(totalGrossArea)       0.150199    18.2421
+neighbourhood::LEE RIDGE:log(totalGrossArea)            -0.003831    18.2421
+neighbourhood::LEGER:log(totalGrossArea)                -0.071810    18.2421
+neighbourhood::LENDRUM PLACE:log(totalGrossArea)        -0.063378    18.2421
+neighbourhood::LORELEI:log(totalGrossArea)              -0.060946    18.2421
+neighbourhood::LYMBURN:log(totalGrossArea)              -0.114243    18.2421
+neighbourhood::LYNNWOOD:log(totalGrossArea)             -0.014950    18.2421
+neighbourhood::MACTAGGART:log(totalGrossArea)           -0.015829    18.2435
+neighbourhood::MAGRATH HEIGHTS:log(totalGrossArea)       0.046664    18.2440
+neighbourhood::MALMO PLAINS:log(totalGrossArea)         -0.034147    18.2421
+neighbourhood::MAPLE:log(totalGrossArea)                -0.026978    18.2448
+neighbourhood::MATT BERRY:log(totalGrossArea)           -0.176568    18.2421
+neighbourhood::MAYFIELD:log(totalGrossArea)             -0.115774    18.2421
+neighbourhood::MAYLIEWAN:log(totalGrossArea)            -0.060983    18.2421
+neighbourhood::MCCONACHIE:log(totalGrossArea)            0.254044    18.2443
+neighbourhood::MCKERNAN:log(totalGrossArea)             -0.072663    18.2421
+neighbourhood::MCLEOD:log(totalGrossArea)               -0.098011    18.2421
+neighbourhood::MCQUEEN:log(totalGrossArea)              -0.107019    18.2421
+neighbourhood::MEADOWLARK PARK:log(totalGrossArea)      -0.130407    18.2421
+neighbourhood::MENISA:log(totalGrossArea)               -0.054107    18.2421
+neighbourhood::MEYOKUMIN:log(totalGrossArea)            -0.063779    18.2421
+neighbourhood::MEYONOHK:log(totalGrossArea)             -0.078206    18.2421
+neighbourhood::MICHAELS PARK:log(totalGrossArea)        -0.037783    18.2421
+neighbourhood::MILLER:log(totalGrossArea)               -0.144436    18.2422
+neighbourhood::MINCHAU:log(totalGrossArea)              -0.044538    18.2421
+neighbourhood::MONTROSE:log(totalGrossArea)             -0.021519    18.2421
+neighbourhood::NEWTON:log(totalGrossArea)               -0.019612    18.2421
+neighbourhood::NORTH GLENORA:log(totalGrossArea)        -0.168370    18.2421
+neighbourhood::NORTHMOUNT:log(totalGrossArea)           -0.061697    18.2421
+neighbourhood::OGILVIE RIDGE:log(totalGrossArea)         0.122718    18.2423
+neighbourhood::OLESKIW:log(totalGrossArea)              -0.079510    18.2422
+neighbourhood::ORMSBY PLACE:log(totalGrossArea)         -0.154032    18.2421
+neighbourhood::OTTEWELL:log(totalGrossArea)              0.004019    18.2421
+neighbourhood::OVERLANDERS:log(totalGrossArea)          -0.129924    18.2421
+neighbourhood::OXFORD:log(totalGrossArea)               -0.116091    18.2421
+neighbourhood::OZERNA:log(totalGrossArea)               -0.069628    18.2421
+neighbourhood::PARKALLEN:log(totalGrossArea)            -0.049025    18.2421
+neighbourhood::PARKDALE:log(totalGrossArea)             -0.102145    18.2421
+neighbourhood::PARKVIEW:log(totalGrossArea)              0.085482    18.2421
+neighbourhood::PATRICIA HEIGHTS:log(totalGrossArea)      0.097777    18.2423
+neighbourhood::PLEASANTVIEW:log(totalGrossArea)         -0.063331    18.2421
+neighbourhood::POLLARD MEADOWS:log(totalGrossArea)      -0.073045    18.2421
+neighbourhood::PRINCE CHARLES:log(totalGrossArea)       -0.156819    18.2421
+neighbourhood::PRINCE RUPERT:log(totalGrossArea)        -0.123107    18.2421
+neighbourhood::QUEEN ALEXANDRA:log(totalGrossArea)      -0.096165    18.2421
+neighbourhood::RAMSAY HEIGHTS:log(totalGrossArea)        0.310495    18.2422
+neighbourhood::RAPPERSWIL:log(totalGrossArea)           -0.509423    18.2566
+neighbourhood::RHATIGAN RIDGE:log(totalGrossArea)       -0.011416    18.2421
+neighbourhood::RICHFIELD:log(totalGrossArea)             0.025728    18.2421
+neighbourhood::RIDEAU PARK:log(totalGrossArea)          -0.164011    18.2421
+neighbourhood::RIO TERRACE:log(totalGrossArea)          -0.333615    18.2424
+neighbourhood::RITCHIE:log(totalGrossArea)              -0.037371    18.2421
+neighbourhood::RIVERDALE:log(totalGrossArea)            -0.124443    18.2422
+neighbourhood::ROSSDALE:log(totalGrossArea)             -0.250530    18.3388
+neighbourhood::ROSSLYN:log(totalGrossArea)              -0.144183    18.2421
+neighbourhood::ROYAL GARDENS:log(totalGrossArea)        -0.168653    18.2421
+neighbourhood::RUNDLE HEIGHTS:log(totalGrossArea)        0.040165    18.2421
+neighbourhood::SAKAW:log(totalGrossArea)                -0.016342    18.2421
+neighbourhood::SATOO:log(totalGrossArea)                -0.023652    18.2421
+neighbourhood::SCHONSEE:log(totalGrossArea)              0.191609    18.2421
+neighbourhood::SHERBROOKE:log(totalGrossArea)           -0.128037    18.2421
+neighbourhood::SHERWOOD:log(totalGrossArea)             -0.069368    18.2422
+neighbourhood::SIFTON PARK:log(totalGrossArea)          -0.079693    18.2422
+neighbourhood::SILVER BERRY:log(totalGrossArea)         -1.599301    18.7064
+neighbourhood::SKYRATTLER:log(totalGrossArea)           -0.078577    18.2421
+neighbourhood::SOUTH TERWILLEGAR:log(totalGrossArea)     0.898251    18.2441
+neighbourhood::SPRUCE AVENUE:log(totalGrossArea)        -0.055131    18.2421
+neighbourhood::STEINHAUER:log(totalGrossArea)           -0.184023    18.2421
+neighbourhood::STRATHCONA:log(totalGrossArea)            0.008141    18.2421
+neighbourhood::STRATHEARN:log(totalGrossArea)            0.077666    18.2421
+neighbourhood::SUMMERLEA:log(totalGrossArea)            -0.109838    18.2421
+neighbourhood::SWEET GRASS:log(totalGrossArea)          -0.228144    18.2421
+neighbourhood::TAMARACK:log(totalGrossArea)             -0.012384    18.2434
+neighbourhood::TERRACE HEIGHTS:log(totalGrossArea)      -0.039189    18.2421
+neighbourhood::TERWILLEGAR TOWNE:log(totalGrossArea)    -0.024830    18.2421
+neighbourhood::THORNCLIFF:log(totalGrossArea)           -0.092505    18.2421
+neighbourhood::TIPASKAN:log(totalGrossArea)             -0.012517    18.2421
+neighbourhood::TWEDDLE PLACE:log(totalGrossArea)        -0.055175    18.2421
+neighbourhood::TWIN BROOKS:log(totalGrossArea)          -0.024242    18.2421
+neighbourhood::VIRGINIA PARK:log(totalGrossArea)        -0.067933    18.2421
+neighbourhood::WEDGEWOOD HEIGHTS:log(totalGrossArea)    -0.024588    18.2422
+neighbourhood::WEINLOS:log(totalGrossArea)              -0.043474    18.2421
+neighbourhood::WELLINGTON:log(totalGrossArea)           -0.068093    18.2421
+neighbourhood::WEST JASPER PLACE:log(totalGrossArea)    -0.000191    18.2423
+neighbourhood::WEST MEADOWLARK PARK:log(totalGrossArea) -0.183007    18.2421
+neighbourhood::WESTBROOK ESTATE:log(totalGrossArea)     -0.828004    18.2437
+neighbourhood::WESTMOUNT:log(totalGrossArea)             0.043048    18.2421
+neighbourhood::WESTRIDGE:log(totalGrossArea)            -0.059920    18.2422
+neighbourhood::WESTWOOD:log(totalGrossArea)             -0.035796    18.2421
+neighbourhood::WILD ROSE:log(totalGrossArea)            -0.034968    18.2421
+neighbourhood::WINDSOR PARK:log(totalGrossArea)          1.450282    18.2432
+neighbourhood::WOODCROFT:log(totalGrossArea)            -0.207211    18.2421
+neighbourhood::YORK:log(totalGrossArea)                 -0.088334    18.2421
+log(totalGrossArea)                                     -0.590102    18.2421
+                                                          t value Pr(>|t|) 
+neighbourhood::ALBERTA AVENUE:log(totalGrossArea)       -0.009161  0.99269 
+neighbourhood::ALDERGROVE:log(totalGrossArea)           -0.012188  0.99028 
+neighbourhood::ALLENDALE:log(totalGrossArea)            -0.007014  0.99440 
+neighbourhood::ARGYLL:log(totalGrossArea)               -0.008498  0.99322 
+neighbourhood::ASPEN GARDENS:log(totalGrossArea)        -0.003890  0.99690 
+neighbourhood::ATHLONE:log(totalGrossArea)              -0.002889  0.99770 
+neighbourhood::AVONMORE:log(totalGrossArea)              0.001592  0.99873 
+neighbourhood::BALWIN:log(totalGrossArea)                0.002037  0.99837 
+neighbourhood::BANNERMAN:log(totalGrossArea)            -0.005823  0.99535 
+neighbourhood::BATURYN:log(totalGrossArea)              -0.004790  0.99618 
+neighbourhood::BEACON HEIGHTS:log(totalGrossArea)        0.001116  0.99911 
+neighbourhood::BEARSPAW:log(totalGrossArea)             -0.001205  0.99904 
+neighbourhood::BEAUMARIS:log(totalGrossArea)            -0.004541  0.99638 
+neighbourhood::BELGRAVIA:log(totalGrossArea)            -0.005643  0.99550 
+neighbourhood::BELLE RIVE:log(totalGrossArea)            0.000780  0.99938 
+neighbourhood::BELLEVUE:log(totalGrossArea)             -0.001838  0.99853 
+neighbourhood::BELMEAD:log(totalGrossArea)              -0.008351  0.99334 
+neighbourhood::BELMONT:log(totalGrossArea)              -0.002876  0.99771 
+neighbourhood::BELVEDERE:log(totalGrossArea)             0.001440  0.99885 
+neighbourhood::BERGMAN:log(totalGrossArea)              -0.004786  0.99618 
+neighbourhood::BEVERLY HEIGHTS:log(totalGrossArea)       0.001827  0.99854 
+neighbourhood::BISSET:log(totalGrossArea)               -0.004816  0.99616 
+neighbourhood::BLUE QUILL:log(totalGrossArea)           -0.007112  0.99433 
+neighbourhood::BONNIE DOON:log(totalGrossArea)          -0.001636  0.99869 
+neighbourhood::BRANDER GARDENS:log(totalGrossArea)      -0.013850  0.98895 
+neighbourhood::BRITANNIA YOUNGSTOWN:log(totalGrossArea) -0.009328  0.99256 
+neighbourhood::BROOKSIDE:log(totalGrossArea)            -0.011715  0.99065 
+neighbourhood::BULYEA HEIGHTS:log(totalGrossArea)       -0.000169  0.99987 
+neighbourhood::CAERNARVON:log(totalGrossArea)           -0.003532  0.99718 
+neighbourhood::CALDER:log(totalGrossArea)                0.001361  0.99891 
+neighbourhood::CALLINGWOOD NORTH:log(totalGrossArea)    -0.008488  0.99323 
+neighbourhood::CAMERON HEIGHTS:log(totalGrossArea)       0.031179  0.97513 
+neighbourhood::CANON RIDGE:log(totalGrossArea)          -0.006741  0.99462 
+neighbourhood::CANORA:log(totalGrossArea)               -0.003177  0.99747 
+neighbourhood::CANOSSA:log(totalGrossArea)              -0.011721  0.99065 
+neighbourhood::CAPILANO:log(totalGrossArea)             -0.003648  0.99709 
+neighbourhood::CARLISLE:log(totalGrossArea)             -0.010535  0.99159 
+neighbourhood::CARLTON:log(totalGrossArea)               0.002999  0.99761 
+neighbourhood::CARTER CREST:log(totalGrossArea)         -0.006913  0.99448 
+neighbourhood::CASSELMAN:log(totalGrossArea)            -0.007545  0.99398 
+neighbourhood::CENTRAL MCDOUGALL:log(totalGrossArea)    -0.000375  0.99970 
+neighbourhood::CHAMBERY:log(totalGrossArea)              0.005155  0.99589 
+neighbourhood::CLOVERDALE:log(totalGrossArea)            0.000151  0.99988 
+neighbourhood::CRAWFORD PLAINS:log(totalGrossArea)      -0.004039  0.99678 
+neighbourhood::CRESTWOOD:log(totalGrossArea)             0.018178  0.98550 
+neighbourhood::CROMDALE:log(totalGrossArea)             -0.008164  0.99349 
+neighbourhood::CUMBERLAND:log(totalGrossArea)           -0.009961  0.99205 
+neighbourhood::CY BECKER:log(totalGrossArea)            -0.031333  0.97500 
+neighbourhood::DALY GROVE:log(totalGrossArea)           -0.003138  0.99750 
+neighbourhood::DECHENE:log(totalGrossArea)              -0.008408  0.99329 
+neighbourhood::DELTON:log(totalGrossArea)               -0.000769  0.99939 
+neighbourhood::DELWOOD:log(totalGrossArea)              -0.005752  0.99541 
+neighbourhood::DONSDALE:log(totalGrossArea)             -0.007584  0.99395 
+neighbourhood::DOVERCOURT:log(totalGrossArea)           -0.007442  0.99406 
+neighbourhood::DUGGAN:log(totalGrossArea)               -0.015686  0.98749 
+neighbourhood::DUNLUCE:log(totalGrossArea)              -0.005989  0.99522 
+neighbourhood::EASTWOOD:log(totalGrossArea)              0.001020  0.99919 
+neighbourhood::EAUX CLAIRES:log(totalGrossArea)         -0.002221  0.99823 
+neighbourhood::EBBERS:log(totalGrossArea)               -0.023402  0.98133 
+neighbourhood::EKOTA:log(totalGrossArea)                -0.002012  0.99839 
+neighbourhood::ELMWOOD:log(totalGrossArea)              -0.006126  0.99511 
+neighbourhood::ELMWOOD PARK:log(totalGrossArea)         -0.001248  0.99900 
+neighbourhood::ELSINORE:log(totalGrossArea)             -0.005536  0.99558 
+neighbourhood::EMPIRE PARK:log(totalGrossArea)          -0.009541  0.99239 
+neighbourhood::ERMINESKIN:log(totalGrossArea)           -0.004222  0.99663 
+neighbourhood::EVANSDALE:log(totalGrossArea)            -0.003579  0.99714 
+neighbourhood::FALCONER HEIGHTS:log(totalGrossArea)     -0.001620  0.99871 
+neighbourhood::FOREST HEIGHTS:log(totalGrossArea)       -0.000531  0.99958 
+neighbourhood::FRASER:log(totalGrossArea)                0.000946  0.99925 
+neighbourhood::FULTON PLACE:log(totalGrossArea)         -0.004542  0.99638 
+neighbourhood::GARIEPY:log(totalGrossArea)              -0.002810  0.99776 
+neighbourhood::GARNEAU:log(totalGrossArea)               0.004042  0.99678 
+neighbourhood::GLENGARRY:log(totalGrossArea)            -0.003243  0.99741 
+neighbourhood::GLENORA:log(totalGrossArea)               0.018322  0.98538 
+neighbourhood::GLENWOOD:log(totalGrossArea)             -0.002219  0.99823 
+neighbourhood::GOLD BAR:log(totalGrossArea)              0.000135  0.99989 
+neighbourhood::GRANDVIEW HEIGHTS:log(totalGrossArea)    -0.013248  0.98943 
+neighbourhood::GREENFIELD:log(totalGrossArea)           -0.009591  0.99235 
+neighbourhood::GREENVIEW:log(totalGrossArea)            -0.003774  0.99699 
+neighbourhood::GROVENOR:log(totalGrossArea)              0.003790  0.99698 
+neighbourhood::HADDOW:log(totalGrossArea)                0.001233  0.99902 
+neighbourhood::HAIRSINE:log(totalGrossArea)             -0.006573  0.99476 
+neighbourhood::HAZELDEAN:log(totalGrossArea)            -0.000149  0.99988 
+neighbourhood::HENDERSON ESTATES:log(totalGrossArea)    -0.003779  0.99699 
+neighbourhood::HIGH PARK:log(totalGrossArea)            -0.000333  0.99973 
+neighbourhood::HIGHLANDS:log(totalGrossArea)             0.000306  0.99976 
+neighbourhood::HILLVIEW:log(totalGrossArea)             -0.005188  0.99586 
+neighbourhood::HODGSON:log(totalGrossArea)              -0.022672  0.98191 
+neighbourhood::HOLLICK-KENYON:log(totalGrossArea)       -0.003816  0.99696 
+neighbourhood::HOLYROOD:log(totalGrossArea)             -0.003403  0.99728 
+neighbourhood::HOMESTEADER:log(totalGrossArea)          -0.004156  0.99668 
+neighbourhood::HUDSON:log(totalGrossArea)               -0.002050  0.99836 
+neighbourhood::IDYLWYLDE:log(totalGrossArea)            -0.003862  0.99692 
+neighbourhood::INGLEWOOD:log(totalGrossArea)            -0.005778  0.99539 
+neighbourhood::JACKSON HEIGHTS:log(totalGrossArea)      -0.005556  0.99557 
+neighbourhood::JAMIESON PLACE:log(totalGrossArea)       -0.006749  0.99462 
+neighbourhood::JASPER PARK:log(totalGrossArea)           0.002427  0.99806 
+neighbourhood::KAMEYOSEK:log(totalGrossArea)            -0.001155  0.99908 
+neighbourhood::KEHEEWIN:log(totalGrossArea)             -0.003913  0.99688 
+neighbourhood::KENILWORTH:log(totalGrossArea)           -0.001977  0.99842 
+neighbourhood::KENSINGTON:log(totalGrossArea)           -0.003314  0.99736 
+neighbourhood::KERNOHAN:log(totalGrossArea)             -0.007592  0.99394 
+neighbourhood::KILDARE:log(totalGrossArea)              -0.004063  0.99676 
+neighbourhood::KILKENNY:log(totalGrossArea)             -0.009209  0.99265 
+neighbourhood::KILLARNEY:log(totalGrossArea)             0.002928  0.99766 
+neighbourhood::KING EDWARD PARK:log(totalGrossArea)     -0.003702  0.99705 
+neighbourhood::KINISKI GARDENS:log(totalGrossArea)       0.000830  0.99934 
+neighbourhood::KIRKNESS:log(totalGrossArea)             -0.005248  0.99581 
+neighbourhood::KLARVATTEN:log(totalGrossArea)           -0.006610  0.99473 
+neighbourhood::LA PERLE:log(totalGrossArea)             -0.005799  0.99537 
+neighbourhood::LAGO LINDO:log(totalGrossArea)           -0.005109  0.99592 
+neighbourhood::LANSDOWNE:log(totalGrossArea)             0.000533  0.99957 
+neighbourhood::LARKSPUR:log(totalGrossArea)             -0.006469  0.99484 
+neighbourhood::LAUDERDALE:log(totalGrossArea)            0.004219  0.99663 
+neighbourhood::LAUREL:log(totalGrossArea)               -0.005973  0.99523 
+neighbourhood::LAURIER HEIGHTS:log(totalGrossArea)       0.008234  0.99343 
+neighbourhood::LEE RIDGE:log(totalGrossArea)            -0.000210  0.99983 
+neighbourhood::LEGER:log(totalGrossArea)                -0.003936  0.99686 
+neighbourhood::LENDRUM PLACE:log(totalGrossArea)        -0.003474  0.99723 
+neighbourhood::LORELEI:log(totalGrossArea)              -0.003341  0.99733 
+neighbourhood::LYMBURN:log(totalGrossArea)              -0.006263  0.99500 
+neighbourhood::LYNNWOOD:log(totalGrossArea)             -0.000820  0.99935 
+neighbourhood::MACTAGGART:log(totalGrossArea)           -0.000868  0.99931 
+neighbourhood::MAGRATH HEIGHTS:log(totalGrossArea)       0.002558  0.99796 
+neighbourhood::MALMO PLAINS:log(totalGrossArea)         -0.001872  0.99851 
+neighbourhood::MAPLE:log(totalGrossArea)                -0.001479  0.99882 
+neighbourhood::MATT BERRY:log(totalGrossArea)           -0.009679  0.99228 
+neighbourhood::MAYFIELD:log(totalGrossArea)             -0.006347  0.99494 
+neighbourhood::MAYLIEWAN:log(totalGrossArea)            -0.003343  0.99733 
+neighbourhood::MCCONACHIE:log(totalGrossArea)            0.013925  0.98889 
+neighbourhood::MCKERNAN:log(totalGrossArea)             -0.003983  0.99682 
+neighbourhood::MCLEOD:log(totalGrossArea)               -0.005373  0.99571 
+neighbourhood::MCQUEEN:log(totalGrossArea)              -0.005867  0.99532 
+neighbourhood::MEADOWLARK PARK:log(totalGrossArea)      -0.007149  0.99430 
+neighbourhood::MENISA:log(totalGrossArea)               -0.002966  0.99763 
+neighbourhood::MEYOKUMIN:log(totalGrossArea)            -0.003496  0.99721 
+neighbourhood::MEYONOHK:log(totalGrossArea)             -0.004287  0.99658 
+neighbourhood::MICHAELS PARK:log(totalGrossArea)        -0.002071  0.99835 
+neighbourhood::MILLER:log(totalGrossArea)               -0.007918  0.99368 
+neighbourhood::MINCHAU:log(totalGrossArea)              -0.002442  0.99805 
+neighbourhood::MONTROSE:log(totalGrossArea)             -0.001180  0.99906 
+neighbourhood::NEWTON:log(totalGrossArea)               -0.001075  0.99914 
+neighbourhood::NORTH GLENORA:log(totalGrossArea)        -0.009230  0.99264 
+neighbourhood::NORTHMOUNT:log(totalGrossArea)           -0.003382  0.99730 
+neighbourhood::OGILVIE RIDGE:log(totalGrossArea)         0.006727  0.99463 
+neighbourhood::OLESKIW:log(totalGrossArea)              -0.004359  0.99652 
+neighbourhood::ORMSBY PLACE:log(totalGrossArea)         -0.008444  0.99326 
+neighbourhood::OTTEWELL:log(totalGrossArea)              0.000220  0.99982 
+neighbourhood::OVERLANDERS:log(totalGrossArea)          -0.007122  0.99432 
+neighbourhood::OXFORD:log(totalGrossArea)               -0.006364  0.99492 
+neighbourhood::OZERNA:log(totalGrossArea)               -0.003817  0.99695 
+neighbourhood::PARKALLEN:log(totalGrossArea)            -0.002687  0.99786 
+neighbourhood::PARKDALE:log(totalGrossArea)             -0.005599  0.99553 
+neighbourhood::PARKVIEW:log(totalGrossArea)              0.004686  0.99626 
+neighbourhood::PATRICIA HEIGHTS:log(totalGrossArea)      0.005360  0.99572 
+neighbourhood::PLEASANTVIEW:log(totalGrossArea)         -0.003472  0.99723 
+neighbourhood::POLLARD MEADOWS:log(totalGrossArea)      -0.004004  0.99681 
+neighbourhood::PRINCE CHARLES:log(totalGrossArea)       -0.008597  0.99314 
+neighbourhood::PRINCE RUPERT:log(totalGrossArea)        -0.006748  0.99462 
+neighbourhood::QUEEN ALEXANDRA:log(totalGrossArea)      -0.005272  0.99579 
+neighbourhood::RAMSAY HEIGHTS:log(totalGrossArea)        0.017021  0.98642 
+neighbourhood::RAPPERSWIL:log(totalGrossArea)           -0.027904  0.97774 
+neighbourhood::RHATIGAN RIDGE:log(totalGrossArea)       -0.000626  0.99950 
+neighbourhood::RICHFIELD:log(totalGrossArea)             0.001410  0.99887 
+neighbourhood::RIDEAU PARK:log(totalGrossArea)          -0.008991  0.99283 
+neighbourhood::RIO TERRACE:log(totalGrossArea)          -0.018288  0.98541 
+neighbourhood::RITCHIE:log(totalGrossArea)              -0.002049  0.99837 
+neighbourhood::RIVERDALE:log(totalGrossArea)            -0.006822  0.99456 
+neighbourhood::ROSSDALE:log(totalGrossArea)             -0.013661  0.98910 
+neighbourhood::ROSSLYN:log(totalGrossArea)              -0.007904  0.99369 
+neighbourhood::ROYAL GARDENS:log(totalGrossArea)        -0.009245  0.99262 
+neighbourhood::RUNDLE HEIGHTS:log(totalGrossArea)        0.002202  0.99824 
+neighbourhood::SAKAW:log(totalGrossArea)                -0.000896  0.99929 
+neighbourhood::SATOO:log(totalGrossArea)                -0.001297  0.99897 
+neighbourhood::SCHONSEE:log(totalGrossArea)              0.010504  0.99162 
+neighbourhood::SHERBROOKE:log(totalGrossArea)           -0.007019  0.99440 
+neighbourhood::SHERWOOD:log(totalGrossArea)             -0.003803  0.99697 
+neighbourhood::SIFTON PARK:log(totalGrossArea)          -0.004369  0.99651 
+neighbourhood::SILVER BERRY:log(totalGrossArea)         -0.085495  0.93187 
+neighbourhood::SKYRATTLER:log(totalGrossArea)           -0.004307  0.99656 
+neighbourhood::SOUTH TERWILLEGAR:log(totalGrossArea)     0.049235  0.96073 
+neighbourhood::SPRUCE AVENUE:log(totalGrossArea)        -0.003022  0.99759 
+neighbourhood::STEINHAUER:log(totalGrossArea)           -0.010088  0.99195 
+neighbourhood::STRATHCONA:log(totalGrossArea)            0.000446  0.99964 
+neighbourhood::STRATHEARN:log(totalGrossArea)            0.004258  0.99660 
+neighbourhood::SUMMERLEA:log(totalGrossArea)            -0.006021  0.99520 
+neighbourhood::SWEET GRASS:log(totalGrossArea)          -0.012506  0.99002 
+neighbourhood::TAMARACK:log(totalGrossArea)             -0.000679  0.99946 
+neighbourhood::TERRACE HEIGHTS:log(totalGrossArea)      -0.002148  0.99829 
+neighbourhood::TERWILLEGAR TOWNE:log(totalGrossArea)    -0.001361  0.99891 
+neighbourhood::THORNCLIFF:log(totalGrossArea)           -0.005071  0.99595 
+neighbourhood::TIPASKAN:log(totalGrossArea)             -0.000686  0.99945 
+neighbourhood::TWEDDLE PLACE:log(totalGrossArea)        -0.003025  0.99759 
+neighbourhood::TWIN BROOKS:log(totalGrossArea)          -0.001329  0.99894 
+neighbourhood::VIRGINIA PARK:log(totalGrossArea)        -0.003724  0.99703 
+neighbourhood::WEDGEWOOD HEIGHTS:log(totalGrossArea)    -0.001348  0.99892 
+neighbourhood::WEINLOS:log(totalGrossArea)              -0.002383  0.99810 
+neighbourhood::WELLINGTON:log(totalGrossArea)           -0.003733  0.99702 
+neighbourhood::WEST JASPER PLACE:log(totalGrossArea)    -0.000010  0.99999 
+neighbourhood::WEST MEADOWLARK PARK:log(totalGrossArea) -0.010032  0.99200 
+neighbourhood::WESTBROOK ESTATE:log(totalGrossArea)     -0.045386  0.96380 
+neighbourhood::WESTMOUNT:log(totalGrossArea)             0.002360  0.99812 
+neighbourhood::WESTRIDGE:log(totalGrossArea)            -0.003285  0.99738 
+neighbourhood::WESTWOOD:log(totalGrossArea)             -0.001962  0.99843 
+neighbourhood::WILD ROSE:log(totalGrossArea)            -0.001917  0.99847 
+neighbourhood::WINDSOR PARK:log(totalGrossArea)          0.079497  0.93664 
+neighbourhood::WOODCROFT:log(totalGrossArea)            -0.011359  0.99094 
+neighbourhood::YORK:log(totalGrossArea)                 -0.004842  0.99614 
+log(totalGrossArea)                                     -0.032348  0.97419 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.081186     Adj. R2: 0.834754
+                 Within R2: 0.681503
+> # get coefficients for each neighborhood from each regression
+> dtCoef <- data.table(neighbourhood=character(),coefPSF=numeric(),coefElasticity=numeric())
+> for (n in sort(unique(dtM[,neighbourhood]))) {
++ 	print(n)
++ 	coefPSF <- coef(regPSF)[paste0("neighbourhood::",n)]
++ 	coefElasticity <- coef(regElasticity)[paste0("neighbourhood::",n,":log(totalGrossArea)")]
++ 	dtCoef <- rbind(dtCoef,data.table(neighbourhood=n,coefPSF=coefPSF,coefElasticity=coefElasticity))
++ }
+[1] "ALBERTA AVENUE"
+[1] "ALDERGROVE"
+[1] "ALLENDALE"
+[1] "ARGYLL"
+[1] "ASPEN GARDENS"
+[1] "ATHLONE"
+[1] "AVONMORE"
+[1] "BALWIN"
+[1] "BANNERMAN"
+[1] "BATURYN"
+[1] "BEACON HEIGHTS"
+[1] "BEARSPAW"
+[1] "BEAUMARIS"
+[1] "BELGRAVIA"
+[1] "BELLE RIVE"
+[1] "BELLEVUE"
+[1] "BELMEAD"
+[1] "BELMONT"
+[1] "BELVEDERE"
+[1] "BERGMAN"
+[1] "BEVERLY HEIGHTS"
+[1] "BISSET"
+[1] "BLUE QUILL"
+[1] "BLUE QUILL ESTATES"
+[1] "BONNIE DOON"
+[1] "BRANDER GARDENS"
+[1] "BRITANNIA YOUNGSTOWN"
+[1] "BROOKSIDE"
+[1] "BULYEA HEIGHTS"
+[1] "CAERNARVON"
+[1] "CALDER"
+[1] "CALLINGWOOD NORTH"
+[1] "CAMERON HEIGHTS"
+[1] "CANON RIDGE"
+[1] "CANORA"
+[1] "CANOSSA"
+[1] "CAPILANO"
+[1] "CARLISLE"
+[1] "CARLTON"
+[1] "CARTER CREST"
+[1] "CASSELMAN"
+[1] "CENTRAL MCDOUGALL"
+[1] "CHAMBERY"
+[1] "CLOVERDALE"
+[1] "CRAWFORD PLAINS"
+[1] "CRESTWOOD"
+[1] "CROMDALE"
+[1] "CRYSTALLINA NERA WEST"
+[1] "CUMBERLAND"
+[1] "CY BECKER"
+[1] "DALY GROVE"
+[1] "DECHENE"
+[1] "DELTON"
+[1] "DELWOOD"
+[1] "DONSDALE"
+[1] "DOVERCOURT"
+[1] "DUGGAN"
+[1] "DUNLUCE"
+[1] "EASTWOOD"
+[1] "EAUX CLAIRES"
+[1] "EBBERS"
+[1] "EKOTA"
+[1] "ELMWOOD"
+[1] "ELMWOOD PARK"
+[1] "ELSINORE"
+[1] "EMPIRE PARK"
+[1] "ERMINESKIN"
+[1] "EVANSDALE"
+[1] "FALCONER HEIGHTS"
+[1] "FOREST HEIGHTS"
+[1] "FRASER"
+[1] "FULTON PLACE"
+[1] "GARIEPY"
+[1] "GARNEAU"
+[1] "GLENGARRY"
+[1] "GLENORA"
+[1] "GLENWOOD"
+[1] "GOLD BAR"
+[1] "GRANDVIEW HEIGHTS"
+[1] "GREENFIELD"
+[1] "GREENVIEW"
+[1] "GROVENOR"
+[1] "HADDOW"
+[1] "HAIRSINE"
+[1] "HAZELDEAN"
+[1] "HENDERSON ESTATES"
+[1] "HIGH PARK"
+[1] "HIGHLANDS"
+[1] "HILLVIEW"
+[1] "HODGSON"
+[1] "HOLLICK-KENYON"
+[1] "HOLYROOD"
+[1] "HOMESTEADER"
+[1] "HUDSON"
+[1] "IDYLWYLDE"
+[1] "INGLEWOOD"
+[1] "JACKSON HEIGHTS"
+[1] "JAMIESON PLACE"
+[1] "JASPER PARK"
+[1] "KAMEYOSEK"
+[1] "KEHEEWIN"
+[1] "KENILWORTH"
+[1] "KENSINGTON"
+[1] "KERNOHAN"
+[1] "KILDARE"
+[1] "KILKENNY"
+[1] "KILLARNEY"
+[1] "KING EDWARD PARK"
+[1] "KINISKI GARDENS"
+[1] "KIRKNESS"
+[1] "KLARVATTEN"
+[1] "LA PERLE"
+[1] "LAGO LINDO"
+[1] "LANSDOWNE"
+[1] "LARKSPUR"
+[1] "LAUDERDALE"
+[1] "LAUREL"
+[1] "LAURIER HEIGHTS"
+[1] "LEE RIDGE"
+[1] "LEGER"
+[1] "LENDRUM PLACE"
+[1] "LORELEI"
+[1] "LYMBURN"
+[1] "LYNNWOOD"
+[1] "MACTAGGART"
+[1] "MAGRATH HEIGHTS"
+[1] "MALMO PLAINS"
+[1] "MAPLE"
+[1] "MATT BERRY"
+[1] "MAYFIELD"
+[1] "MAYLIEWAN"
+[1] "MCCONACHIE"
+[1] "MCKERNAN"
+[1] "MCLEOD"
+[1] "MCQUEEN"
+[1] "MEADOWLARK PARK"
+[1] "MENISA"
+[1] "MEYOKUMIN"
+[1] "MEYONOHK"
+[1] "MICHAELS PARK"
+[1] "MILLER"
+[1] "MINCHAU"
+[1] "MONTROSE"
+[1] "NEWTON"
+[1] "NORTH GLENORA"
+[1] "NORTHMOUNT"
+[1] "OGILVIE RIDGE"
+[1] "OLESKIW"
+[1] "ORMSBY PLACE"
+[1] "OTTEWELL"
+[1] "OVERLANDERS"
+[1] "OXFORD"
+[1] "OZERNA"
+[1] "PARKALLEN"
+[1] "PARKDALE"
+[1] "PARKVIEW"
+[1] "PATRICIA HEIGHTS"
+[1] "PLEASANTVIEW"
+[1] "POLLARD MEADOWS"
+[1] "PRINCE CHARLES"
+[1] "PRINCE RUPERT"
+[1] "QUEEN ALEXANDRA"
+[1] "RAMSAY HEIGHTS"
+[1] "RAPPERSWIL"
+[1] "RHATIGAN RIDGE"
+[1] "RICHFIELD"
+[1] "RIDEAU PARK"
+[1] "RIO TERRACE"
+[1] "RITCHIE"
+[1] "RIVERDALE"
+[1] "ROSSDALE"
+[1] "ROSSLYN"
+[1] "ROYAL GARDENS"
+[1] "RUNDLE HEIGHTS"
+[1] "SAKAW"
+[1] "SATOO"
+[1] "SCHONSEE"
+[1] "SHERBROOKE"
+[1] "SHERWOOD"
+[1] "SIFTON PARK"
+[1] "SILVER BERRY"
+[1] "SKYRATTLER"
+[1] "SOUTH TERWILLEGAR"
+[1] "SPRUCE AVENUE"
+[1] "STEINHAUER"
+[1] "STRATHCONA"
+[1] "STRATHEARN"
+[1] "SUMMERLEA"
+[1] "SWEET GRASS"
+[1] "TAMARACK"
+[1] "TERRACE HEIGHTS"
+[1] "TERWILLEGAR TOWNE"
+[1] "THORNCLIFF"
+[1] "TIPASKAN"
+[1] "TWEDDLE PLACE"
+[1] "TWIN BROOKS"
+[1] "VIRGINIA PARK"
+[1] "WEDGEWOOD HEIGHTS"
+[1] "WEINLOS"
+[1] "WELLINGTON"
+[1] "WEST JASPER PLACE"
+[1] "WEST MEADOWLARK PARK"
+[1] "WESTBROOK ESTATE"
+[1] "WESTMOUNT"
+[1] "WESTRIDGE"
+[1] "WESTWOOD"
+[1] "WILD ROSE"
+[1] "WINDSOR PARK"
+[1] "WOODCROFT"
+[1] "YORK"
+> print(dtCoef)
+      neighbourhood     coefPSF coefElasticity
+             <char>       <num>          <num>
+  1: ALBERTA AVENUE          NA    -0.16712360
+  2:     ALDERGROVE  0.12232086    -0.22234315
+  3:      ALLENDALE  0.41163630    -0.12794837
+  4:         ARGYLL  0.35514255    -0.15501350
+  5:  ASPEN GARDENS  0.53435952    -0.07096811
+ ---                                          
+206:       WESTWOOD  0.04715138    -0.03579579
+207:      WILD ROSE  0.12331728    -0.03496773
+208:   WINDSOR PARK  0.73855973     1.45028193
+209:      WOODCROFT  0.20875925    -0.20721146
+210:           YORK -0.01250857    -0.08833425
+> print(cor(dtCoef[,coefPSF],dtCoef[,coefElasticity],use="complete.obs"))
+[1] 0.2359789
+> ggplot(dtCoef,aes(x=coefPSF,y=coefElasticity)) + geom_point() + geom_smooth(method="lm") + xlab("Coefficient of log(totalGrossArea) in log(ppsf) regression") + ylab("Coefficient of log(totalGrossArea) in elasticity regression") + ggtitle("Relationship between price per square foot and elasticity of price per square foot wrt total gross area")
+`geom_smooth()` using formula = 'y ~ x'
+Warning messages:
+1: Removed 3 rows containing non-finite outside the scale range (`stat_smooth()`). 
+2: Removed 3 rows containing missing values or values outside the scale range
+(`geom_point()`). 
+> ggsave("text/edmontonElasticityPPSF.png",width=8,height=6)
+`geom_smooth()` using formula = 'y ~ x'
+Warning messages:
+1: Removed 3 rows containing non-finite outside the scale range (`stat_smooth()`). 
+2: Removed 3 rows containing missing values or values outside the scale range
+(`geom_point()`). 
+> 
+> proc.time()
+   user  system elapsed 
+ 28.217   0.715  13.852 

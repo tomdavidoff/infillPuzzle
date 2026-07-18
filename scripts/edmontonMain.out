@@ -2407,15 +2407,15 @@ RMSE: 0.173343   Adj. R2: 0.649179
 > sfPermit <- st_transform(sfPermit, UTMCRS)
 > 
 > # ---- GWR: local elasticity + price level at each permit -------------
-> gwr <- gwrAtPoints(sfPermit, sfPrice, k=200)
-[1] "gwr over 1056 fit points, 122866 price points, k = 200"
-   elasticity         priceLevel          bw        
- Min.   :-0.06806   Min.   :12.64   Min.   : 223.8  
- 1st Qu.: 0.36649   1st Qu.:12.81   1st Qu.: 295.9  
- Median : 0.43482   Median :13.04   Median : 335.8  
- Mean   : 0.44346   Mean   :13.01   Mean   : 369.6  
- 3rd Qu.: 0.49919   3rd Qu.:13.17   3rd Qu.: 388.1  
- Max.   : 0.92822   Max.   :13.43   Max.   :1553.3  
+> gwr <- gwrAtPoints(sfPermit, sfPrice, k=30) # check 200 vs 400 200 is default
+[1] "gwr over 1056 fit points, 122866 price points, k = 30"
+   elasticity        priceLevel           bw        
+ Min.   :-1.5751   Min.   : 7.744   Min.   : 76.16  
+ 1st Qu.: 0.3109   1st Qu.:12.828   1st Qu.:106.40  
+ Median : 0.4018   Median :13.046   Median :118.24  
+ Mean   : 0.4149   Mean   :13.038   Mean   :132.42  
+ 3rd Qu.: 0.4998   3rd Qu.:13.192   3rd Qu.:136.92  
+ Max.   : 1.2976   Max.   :20.325   Max.   :600.32  
 > sfPermit$elasticity <- gwr$elasticity
 > sfPermit$priceLevel <- gwr$priceLevel
 > sfPermit$bw <- gwr$bw
@@ -2423,918 +2423,763 @@ RMSE: 0.173343   Adj. R2: 0.649179
 > 
 > dtLook <- as.data.table(st_drop_geometry(sfPermit))
 > print(cor(dtLook[,.(elasticity,priceLevel,VALUE,isRow)],use="complete.obs"))
-           elasticity priceLevel      VALUE      isRow
-elasticity  1.0000000  0.3469286  0.2708486 -0.1497853
-priceLevel  0.3469286  1.0000000  0.5315377 -0.3841421
-VALUE       0.2708486  0.5315377  1.0000000 -0.3584442
-isRow      -0.1497853 -0.3841421 -0.3584442  1.0000000
+            elasticity  priceLevel      VALUE      isRow
+elasticity  1.00000000 -0.03080122  0.1529796 -0.1559449
+priceLevel -0.03080122  1.00000000  0.2341823 -0.1620981
+VALUE       0.15297955  0.23418230  1.0000000 -0.3584442
+isRow      -0.15594493 -0.16209807 -0.3584442  1.0000000
 > print(summary(feols(isRow ~ elasticity + priceLevel + log(VALUE), data=dtLook)))
 OLS estimation, Dep. Var.: isRow
 Observations: 1,056
 Standard-errors: IID 
              Estimate Std. Error   t value   Pr(>|t|)    
-(Intercept) 13.596733   0.967396 14.054987  < 2.2e-16 ***
-elasticity  -0.032271   0.128984 -0.250193 8.0249e-01    
-priceLevel  -0.693987   0.085951 -8.074262 1.8453e-15 ***
-log(VALUE)  -0.349846   0.054461 -6.423839 2.0091e-10 ***
+(Intercept)  8.239858   0.645572  12.76365  < 2.2e-16 ***
+elasticity  -0.287166   0.070329  -4.08318 4.7791e-05 ***
+priceLevel  -0.119677   0.036567  -3.27280 1.0995e-03 ** 
+log(VALUE)  -0.526785   0.049289 -10.68771  < 2.2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.446133   Adj. R2: 0.177701
+RMSE: 0.455556   Adj. R2: 0.142596
 > print(summary(feols(isRow ~  priceLevel + log(VALUE), data=dtLook)))
 OLS estimation, Dep. Var.: isRow
 Observations: 1,056
 Standard-errors: IID 
-             Estimate Std. Error  t value   Pr(>|t|)    
-(Intercept) 13.668768   0.923145 14.80674  < 2.2e-16 ***
-priceLevel  -0.699922   0.082575 -8.47617  < 2.2e-16 ***
-log(VALUE)  -0.350651   0.054341 -6.45275 1.6721e-10 ***
+             Estimate Std. Error   t value  Pr(>|t|)    
+(Intercept)  8.322589   0.650038  12.80323 < 2.2e-16 ***
+priceLevel  -0.110450   0.036768  -3.00400 0.0027276 ** 
+log(VALUE)  -0.555188   0.049157 -11.29409 < 2.2e-16 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.446146   Adj. R2: 0.178433
+RMSE: 0.459152   Adj. R2: 0.129835
 > print(summary(feols(isRow ~  priceLevel + elasticity, data=dtLook)))
 OLS estimation, Dep. Var.: isRow
 Observations: 1,056
 Standard-errors: IID 
-             Estimate Std. Error    t value  Pr(>|t|)    
-(Intercept) 13.082882   0.982343  13.318043 < 2.2e-16 ***
-priceLevel  -0.957828   0.076932 -12.450304 < 2.2e-16 ***
-elasticity  -0.081213   0.131198  -0.619013   0.53604    
+             Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)  3.467670   0.490679  7.06708 2.8747e-12 ***
+priceLevel  -0.208571   0.037474 -5.56573 3.3113e-08 ***
+elasticity  -0.393246   0.073273 -5.36686 9.8522e-08 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.454798   Adj. R2: 0.146257
+RMSE: 0.479651   Adj. R2: 0.050401
 > 
 > # u-shape?
 > print(dtLook[order(priceLevel),mean(isRow),by=round(frank(priceLevel)/length(priceLevel),1)])
     round        V1
     <num>     <num>
- 1:   0.0 0.8461538
- 2:   0.1 0.8773585
- 3:   0.2 0.7169811
- 4:   0.3 0.6666667
- 5:   0.4 0.7547170
- 6:   0.5 0.6476190
- 7:   0.6 0.5849057
- 8:   0.7 0.4761905
- 9:   0.8 0.3113208
+ 1:   0.0 0.7115385
+ 2:   0.1 0.8962264
+ 3:   0.2 0.8207547
+ 4:   0.3 0.7428571
+ 5:   0.4 0.5754717
+ 6:   0.5 0.5333333
+ 7:   0.6 0.5566038
+ 8:   0.7 0.5333333
+ 9:   0.8 0.3867925
 10:   0.9 0.2358491
-11:   1.0 0.3207547
+11:   1.0 0.4339623
 > print(dtLook[YEAR>2024][ order(priceLevel),mean(isRow),by=round(frank(priceLevel)/length(priceLevel),1)])
     round        V1
     <num>     <num>
- 1:   0.0 0.8888889
+ 1:   0.0 0.7777778
  2:   0.1 0.9305556
- 3:   0.2 0.7500000
+ 3:   0.2 0.8472222
  4:   0.3 0.8888889
- 5:   0.4 0.7777778
- 6:   0.5 0.7808219
- 7:   0.6 0.7361111
- 8:   0.7 0.6111111
- 9:   0.8 0.4305556
-10:   0.9 0.2638889
+ 5:   0.4 0.7222222
+ 6:   0.5 0.7123288
+ 7:   0.6 0.6944444
+ 8:   0.7 0.5833333
+ 9:   0.8 0.5277778
+10:   0.9 0.3194444
 11:   1.0 0.5135135
 > print(dtLook[YEAR>2025][ order(priceLevel),mean(isRow),by=round(frank(priceLevel)/length(priceLevel),1)])
     round        V1
     <num>     <num>
- 1:   0.0 0.9166667
+ 1:   0.0 0.7500000
  2:   0.1 0.9583333
- 3:   0.2 0.9583333
- 4:   0.3 0.9583333
- 5:   0.4 0.9166667
+ 3:   0.2 0.9166667
+ 4:   0.3 1.0000000
+ 5:   0.4 0.9583333
  6:   0.5 0.8333333
- 7:   0.6 0.8750000
+ 7:   0.6 0.7916667
  8:   0.7 0.6666667
- 9:   0.8 0.7083333
-10:   0.9 0.1666667
-11:   1.0 0.5384615
+ 9:   0.8 0.6250000
+10:   0.9 0.3333333
+11:   1.0 0.6153846
 > print(dtLook[priceLevel>quantile(priceLevel,.9) & isSingle])
-         CTUID       Row ID PERMIT_DATE PERMIT_NUMBER REPORT_PERMIT_DATE  YEAR
-        <char>       <char>      <IDat>        <lgcl>             <IDat> <int>
- 1: 8350004.02  2-526862033  2024-12-31            NA         2024-12-31  2024
- 2: 8350009.00  2-500256845  2024-04-05            NA         2024-04-05  2024
- 3: 8350009.00  2-495320465  2024-07-16            NA         2024-07-16  2024
- 4: 8350009.00  2-515470680  2025-07-11            NA         2025-07-11  2025
- 5: 8350009.00  2-515404552  2024-09-26            NA         2024-09-26  2024
- 6: 8350009.00  2-624932375  2025-11-04            NA         2025-11-04  2025
- 7: 8350009.00  2-587911192  2025-07-22            NA         2025-07-22  2025
- 8: 8350009.00  2-573607245  2025-06-10            NA         2025-06-10  2025
- 9: 8350009.00  2-558846736  2025-05-29            NA         2025-05-29  2025
-10: 8350010.00  2-542715006  2025-01-30            NA         2025-01-30  2025
-11: 8350010.00  2-487714869  2024-05-21            NA         2024-05-21  2024
-12: 8350010.00  2-485288981  2024-06-04            NA         2024-06-04  2024
-13: 8350010.00  2-494843458  2024-04-23            NA         2024-04-23  2024
-14: 8350010.00  2-626368227  2025-11-04            NA         2025-11-04  2025
-15: 8350010.00  2-578784017  2025-11-03            NA         2025-11-03  2025
-16: 8350010.00  2-548804674  2025-10-15            NA         2025-10-15  2025
-17: 8350010.00  2-546493149  2025-01-29            NA         2025-01-29  2025
-18: 8350010.00  2-498982155  2024-05-14            NA         2024-05-14  2024
-19: 8350010.00  2-482628419  2024-03-15            NA         2024-03-15  2024
-20: 8350010.00  2-501998733  2024-06-13            NA         2024-06-13  2024
-21: 8350010.00  2-428688425  2024-01-24            NA         2024-01-24  2024
-22: 8350010.00  2-494509406  2024-05-25            NA         2024-05-25  2024
-23: 8350010.00  2-535693852  2026-03-30            NA         2026-03-30  2026
-24: 8350010.00  2-496862873  2024-12-18            NA         2024-12-18  2024
-25: 8350010.00  2-631173175  2026-01-19            NA         2026-01-19  2026
-26: 8350011.00  2-534664097  2025-01-02            NA         2025-01-02  2025
-27: 8350011.00  2-490314421  2024-02-06            NA         2024-02-06  2024
-28: 8350011.00  2-531755055  2024-12-02            NA         2024-12-02  2024
-29: 8350011.00  2-505782365  2024-05-31            NA         2024-05-31  2024
-30: 8350021.00  2-534845510  2025-04-24            NA         2025-04-24  2025
-31: 8350021.00  2-517796541  2024-09-24            NA         2024-09-24  2024
-32: 8350021.00  2-560697498  2025-07-18            NA         2025-07-18  2025
-33: 8350021.00  2-530888003  2024-11-07            NA         2024-11-07  2024
-34: 8350021.00  2-565455091  2025-06-09            NA         2025-06-09  2025
-35: 8350021.00  2-646801277  2026-03-31            NA         2026-03-31  2026
-36: 8350021.00  2-518643183  2024-11-29            NA         2024-11-29  2024
-37: 8350021.00  2-630058925  2026-01-07            NA         2026-01-07  2026
-38: 8350021.00  9-466220069  2024-01-19            NA         2024-01-19  2024
-39: 8350021.00  2-497608928  2024-05-30            NA         2024-05-30  2024
-40: 8350021.00  2-499942211  2024-09-12            NA         2024-09-12  2024
-41: 8350023.00  2-602763901  2025-11-28            NA         2025-11-28  2025
-42: 8350023.00  2-514296704  2024-11-21            NA         2024-11-21  2024
-43: 8350023.00  2-483454886  2024-02-01            NA         2024-02-01  2024
-44: 8350023.00  2-569259556  2025-06-05            NA         2025-06-05  2025
-45: 8350023.00  7-491109766  2024-05-07            NA         2024-05-07  2024
-46: 8350023.00  6-491162495  2024-05-07            NA         2024-05-07  2024
-47: 8350023.00  2-624983787  2025-11-25            NA         2025-11-25  2025
-48: 8350023.00  2-578725363  2025-05-15            NA         2025-05-15  2025
-49: 8350023.00  2-485435153  2024-02-27            NA         2024-02-27  2024
-50: 8350023.00  2-632414496  2026-02-05            NA         2026-02-05  2026
-51: 8350023.00  2-513740741  2024-08-14            NA         2024-08-14  2024
-52: 8350023.00  2-515710743  2024-11-14            NA         2024-11-14  2024
-53: 8350023.00  2-593316369  2025-09-26            NA         2025-09-26  2025
-54: 8350024.01  2-509557863  2024-08-22            NA         2024-08-22  2024
-55: 8350024.01  2-480974356  2024-02-26            NA         2024-02-26  2024
-56: 8350024.01  2-544782116  2025-01-23            NA         2025-01-23  2025
-57: 8350024.01  2-633190501  2026-03-05            NA         2026-03-05  2026
-58: 8350024.01  2-526406862  2024-10-23            NA         2024-10-23  2024
-59: 8350024.01  2-637784781  2026-03-26            NA         2026-03-26  2026
-60: 8350024.02  2-643052772  2026-06-04            NA         2026-06-04  2026
-61: 8350024.02  2-509345803  2024-10-11            NA         2024-10-11  2024
-62: 8350024.02  2-527462643  2024-11-05            NA         2024-11-05  2024
-63: 8350024.02  2-493204462  2024-02-29            NA         2024-02-29  2024
-64: 8350024.02  2-641239975  2026-05-14            NA         2026-05-14  2026
-65: 8350024.02  2-529727709  2025-01-15            NA         2025-01-15  2025
-66: 8350024.02  2-589314619  2025-07-24            NA         2025-07-24  2025
-67: 8350024.02  2-519491718  2025-02-10            NA         2025-02-10  2025
-68: 8350024.02  2-519283212  2024-08-28            NA         2024-08-28  2024
-69: 8350024.02  2-571016504  2025-04-28            NA         2025-04-28  2025
-70: 8350029.00  2-532739580  2024-11-22            NA         2024-11-22  2024
-71: 8350029.00  2-529670237  2025-01-13            NA         2025-01-13  2025
-72: 8350029.00  2-602107612  2025-08-19            NA         2025-08-19  2025
-73: 8350029.00  2-613476475  2026-02-27            NA         2026-02-27  2026
-74: 8350029.00  2-493649066  2024-03-01            NA         2024-03-01  2024
-75: 8350029.00 10-440687799  2024-04-04            NA         2024-04-04  2024
-76: 8350034.01  2-588289781  2025-11-06            NA         2025-11-06  2025
-77: 8350035.00  2-518765768  2024-12-20            NA         2024-12-20  2024
-78: 8350035.00  2-531602982  2024-11-14            NA         2024-11-14  2024
-79: 8350035.00  2-652801175  2026-06-08            NA         2026-06-08  2026
-         CTUID       Row ID PERMIT_DATE PERMIT_NUMBER REPORT_PERMIT_DATE  YEAR
-        <char>       <char>      <IDat>        <lgcl>             <IDat> <int>
+         CTUID      Row ID PERMIT_DATE PERMIT_NUMBER REPORT_PERMIT_DATE  YEAR
+        <char>      <char>      <IDat>        <lgcl>             <IDat> <int>
+ 1: 8350004.01 2-549064871  2025-06-09            NA         2025-06-09  2025
+ 2: 8350004.02 2-642163565  2026-04-17            NA         2026-04-17  2026
+ 3: 8350004.02 2-527517701  2024-10-31            NA         2024-10-31  2024
+ 4: 8350004.02 2-554546251  2025-06-18            NA         2025-06-18  2025
+ 5: 8350004.02 2-480872827  2024-10-24            NA         2024-10-24  2024
+ 6: 8350004.02 2-528672221  2025-04-17            NA         2025-04-17  2025
+ 7: 8350004.02 2-646611416  2026-05-13            NA         2026-05-13  2026
+ 8: 8350004.02 2-526862033  2024-12-31            NA         2024-12-31  2024
+ 9: 8350004.02 2-518276692  2024-09-24            NA         2024-09-24  2024
+10: 8350004.02 2-508055335  2024-09-05            NA         2024-09-05  2024
+11: 8350004.02 2-579929598  2025-06-11            NA         2025-06-11  2025
+12: 8350004.02 7-626968231  2026-03-24            NA         2026-03-24  2026
+13: 8350007.02 2-488475881  2024-02-29            NA         2024-02-29  2024
+14: 8350008.01 2-537293703  2025-06-13            NA         2025-06-13  2025
+15: 8350009.00 2-500256845  2024-04-05            NA         2024-04-05  2024
+16: 8350009.00 2-624932375  2025-11-04            NA         2025-11-04  2025
+17: 8350009.00 2-495867894  2024-06-17            NA         2024-06-17  2024
+18: 8350009.00 2-573607245  2025-06-10            NA         2025-06-10  2025
+19: 8350010.00 2-542715006  2025-01-30            NA         2025-01-30  2025
+20: 8350010.00 2-487714869  2024-05-21            NA         2024-05-21  2024
+21: 8350010.00 2-485288981  2024-06-04            NA         2024-06-04  2024
+22: 8350010.00 2-494843458  2024-04-23            NA         2024-04-23  2024
+23: 8350010.00 2-626368227  2025-11-04            NA         2025-11-04  2025
+24: 8350010.00 2-546493149  2025-01-29            NA         2025-01-29  2025
+25: 8350010.00 2-498982155  2024-05-14            NA         2024-05-14  2024
+26: 8350010.00 2-482628419  2024-03-15            NA         2024-03-15  2024
+27: 8350010.00 2-501998733  2024-06-13            NA         2024-06-13  2024
+28: 8350010.00 2-494509406  2024-05-25            NA         2024-05-25  2024
+29: 8350010.00 2-535693852  2026-03-30            NA         2026-03-30  2026
+30: 8350010.00 2-613174464  2025-10-21            NA         2025-10-21  2025
+31: 8350010.00 2-631173175  2026-01-19            NA         2026-01-19  2026
+32: 8350021.00 2-534845510  2025-04-24            NA         2025-04-24  2025
+33: 8350021.00 2-560697498  2025-07-18            NA         2025-07-18  2025
+34: 8350021.00 2-565455091  2025-06-09            NA         2025-06-09  2025
+35: 8350021.00 2-646801277  2026-03-31            NA         2026-03-31  2026
+36: 8350021.00 9-466220069  2024-01-19            NA         2024-01-19  2024
+37: 8350021.00 2-497608928  2024-05-30            NA         2024-05-30  2024
+38: 8350021.00 2-499942211  2024-09-12            NA         2024-09-12  2024
+39: 8350023.00 2-602763901  2025-11-28            NA         2025-11-28  2025
+40: 8350023.00 7-491109766  2024-05-07            NA         2024-05-07  2024
+41: 8350023.00 6-491162495  2024-05-07            NA         2024-05-07  2024
+42: 8350023.00 2-624983787  2025-11-25            NA         2025-11-25  2025
+43: 8350023.00 2-632414496  2026-02-05            NA         2026-02-05  2026
+44: 8350023.00 2-593316369  2025-09-26            NA         2025-09-26  2025
+45: 8350024.01 2-577063894  2025-08-12            NA         2025-08-12  2025
+46: 8350024.01 2-544782116  2025-01-23            NA         2025-01-23  2025
+47: 8350024.01 2-637784781  2026-03-26            NA         2026-03-26  2026
+48: 8350024.02 2-509345803  2024-10-11            NA         2024-10-11  2024
+49: 8350024.02 2-527462643  2024-11-05            NA         2024-11-05  2024
+50: 8350024.02 2-493204462  2024-02-29            NA         2024-02-29  2024
+51: 8350024.02 2-516980900  2024-09-23            NA         2024-09-23  2024
+52: 8350024.02 2-641239975  2026-05-14            NA         2026-05-14  2026
+53: 8350024.02 2-617396323  2025-11-04            NA         2025-11-04  2025
+54: 8350024.02 2-529727709  2025-01-15            NA         2025-01-15  2025
+55: 8350024.02 2-589314619  2025-07-24            NA         2025-07-24  2025
+56: 8350024.02 2-519491718  2025-02-10            NA         2025-02-10  2025
+57: 8350024.02 2-519283212  2024-08-28            NA         2024-08-28  2024
+58: 8350024.02 2-571016504  2025-04-28            NA         2025-04-28  2025
+59: 8350029.00 2-532739580  2024-11-22            NA         2024-11-22  2024
+60: 8350029.00 2-505909394  2025-02-28            NA         2025-02-28  2025
+61: 8350029.00 2-487773809  2024-02-28            NA         2024-02-28  2024
+62: 8350029.00 7-481979953  2025-08-18            NA         2025-08-18  2025
+63: 8350029.00 2-496035922  2024-02-27            NA         2024-02-27  2024
+64: 8350029.00 2-581011109  2025-10-27            NA         2025-10-27  2025
+65: 8350029.00 2-613476475  2026-02-27            NA         2026-02-27  2026
+66: 8350029.00 2-482779473  2024-01-09            NA         2024-01-09  2024
+67: 8350031.00 2-560934355  2025-04-22            NA         2025-04-22  2025
+68: 8350035.00 2-518765768  2024-12-20            NA         2024-12-20  2024
+69: 8350035.00 2-537089679  2026-05-15            NA         2026-05-15  2026
+70: 8350035.00 2-652801175  2026-06-08            NA         2026-06-08  2026
+71: 8350048.00 2-603447036  2025-08-21            NA         2025-08-21  2025
+         CTUID      Row ID PERMIT_DATE PERMIT_NUMBER REPORT_PERMIT_DATE  YEAR
+        <char>      <char>      <IDat>        <lgcl>             <IDat> <int>
     MONTH_NUMBER                       JOB_CATEGORY
            <int>                             <char>
- 1:           12 Single, Semi-detached & Rowhousing
+ 1:            6 Single, Semi-detached & Rowhousing
  2:            4 Single, Semi-detached & Rowhousing
- 3:            7 Single, Semi-detached & Rowhousing
- 4:            7 Single, Semi-detached & Rowhousing
- 5:            9 Single, Semi-detached & Rowhousing
- 6:           11 Single, Semi-detached & Rowhousing
- 7:            7 Single, Semi-detached & Rowhousing
- 8:            6 Single, Semi-detached & Rowhousing
- 9:            5 Single, Semi-detached & Rowhousing
-10:            1 Single, Semi-detached & Rowhousing
-11:            5 Single, Semi-detached & Rowhousing
-12:            6 Single, Semi-detached & Rowhousing
-13:            4 Single, Semi-detached & Rowhousing
-14:           11 Single, Semi-detached & Rowhousing
-15:           11 Single, Semi-detached & Rowhousing
-16:           10 Single, Semi-detached & Rowhousing
-17:            1 Single, Semi-detached & Rowhousing
-18:            5 Single, Semi-detached & Rowhousing
-19:            3 Single, Semi-detached & Rowhousing
-20:            6 Single, Semi-detached & Rowhousing
-21:            1 Single, Semi-detached & Rowhousing
-22:            5 Single, Semi-detached & Rowhousing
-23:            3 Single, Semi-detached & Rowhousing
-24:           12 Single, Semi-detached & Rowhousing
-25:            1 Single, Semi-detached & Rowhousing
-26:            1 Single, Semi-detached & Rowhousing
-27:            2 Single, Semi-detached & Rowhousing
-28:           12 Single, Semi-detached & Rowhousing
-29:            5 Single, Semi-detached & Rowhousing
-30:            4 Single, Semi-detached & Rowhousing
-31:            9 Single, Semi-detached & Rowhousing
-32:            7 Single, Semi-detached & Rowhousing
-33:           11 Single, Semi-detached & Rowhousing
+ 3:           10 Single, Semi-detached & Rowhousing
+ 4:            6 Single, Semi-detached & Rowhousing
+ 5:           10 Single, Semi-detached & Rowhousing
+ 6:            4 Single, Semi-detached & Rowhousing
+ 7:            5 Single, Semi-detached & Rowhousing
+ 8:           12 Single, Semi-detached & Rowhousing
+ 9:            9 Single, Semi-detached & Rowhousing
+10:            9 Single, Semi-detached & Rowhousing
+11:            6 Single, Semi-detached & Rowhousing
+12:            3 Single, Semi-detached & Rowhousing
+13:            2 Single, Semi-detached & Rowhousing
+14:            6 Single, Semi-detached & Rowhousing
+15:            4 Single, Semi-detached & Rowhousing
+16:           11 Single, Semi-detached & Rowhousing
+17:            6 Single, Semi-detached & Rowhousing
+18:            6 Single, Semi-detached & Rowhousing
+19:            1 Single, Semi-detached & Rowhousing
+20:            5 Single, Semi-detached & Rowhousing
+21:            6 Single, Semi-detached & Rowhousing
+22:            4 Single, Semi-detached & Rowhousing
+23:           11 Single, Semi-detached & Rowhousing
+24:            1 Single, Semi-detached & Rowhousing
+25:            5 Single, Semi-detached & Rowhousing
+26:            3 Single, Semi-detached & Rowhousing
+27:            6 Single, Semi-detached & Rowhousing
+28:            5 Single, Semi-detached & Rowhousing
+29:            3 Single, Semi-detached & Rowhousing
+30:           10 Single, Semi-detached & Rowhousing
+31:            1 Single, Semi-detached & Rowhousing
+32:            4 Single, Semi-detached & Rowhousing
+33:            7 Single, Semi-detached & Rowhousing
 34:            6 Single, Semi-detached & Rowhousing
 35:            3 Single, Semi-detached & Rowhousing
-36:           11 Single, Semi-detached & Rowhousing
-37:            1 Single, Semi-detached & Rowhousing
-38:            1 Single, Semi-detached & Rowhousing
-39:            5 Single, Semi-detached & Rowhousing
-40:            9 Single, Semi-detached & Rowhousing
-41:           11 Single, Semi-detached & Rowhousing
+36:            1 Single, Semi-detached & Rowhousing
+37:            5 Single, Semi-detached & Rowhousing
+38:            9 Single, Semi-detached & Rowhousing
+39:           11 Single, Semi-detached & Rowhousing
+40:            5 Single, Semi-detached & Rowhousing
+41:            5 Single, Semi-detached & Rowhousing
 42:           11 Single, Semi-detached & Rowhousing
 43:            2 Single, Semi-detached & Rowhousing
-44:            6 Single, Semi-detached & Rowhousing
-45:            5 Single, Semi-detached & Rowhousing
-46:            5 Single, Semi-detached & Rowhousing
-47:           11 Single, Semi-detached & Rowhousing
-48:            5 Single, Semi-detached & Rowhousing
-49:            2 Single, Semi-detached & Rowhousing
+44:            9 Single, Semi-detached & Rowhousing
+45:            8 Single, Semi-detached & Rowhousing
+46:            1 Single, Semi-detached & Rowhousing
+47:            3 Single, Semi-detached & Rowhousing
+48:           10 Single, Semi-detached & Rowhousing
+49:           11 Single, Semi-detached & Rowhousing
 50:            2 Single, Semi-detached & Rowhousing
-51:            8 Single, Semi-detached & Rowhousing
-52:           11 Single, Semi-detached & Rowhousing
-53:            9 Single, Semi-detached & Rowhousing
-54:            8 Single, Semi-detached & Rowhousing
-55:            2 Single, Semi-detached & Rowhousing
-56:            1 Single, Semi-detached & Rowhousing
-57:            3 Single, Semi-detached & Rowhousing
-58:           10 Single, Semi-detached & Rowhousing
-59:            3 Single, Semi-detached & Rowhousing
-60:            6 Single, Semi-detached & Rowhousing
-61:           10 Single, Semi-detached & Rowhousing
-62:           11 Single, Semi-detached & Rowhousing
+51:            9 Single, Semi-detached & Rowhousing
+52:            5 Single, Semi-detached & Rowhousing
+53:           11 Single, Semi-detached & Rowhousing
+54:            1 Single, Semi-detached & Rowhousing
+55:            7 Single, Semi-detached & Rowhousing
+56:            2 Single, Semi-detached & Rowhousing
+57:            8 Single, Semi-detached & Rowhousing
+58:            4 Single, Semi-detached & Rowhousing
+59:           11 Single, Semi-detached & Rowhousing
+60:            2 Single, Semi-detached & Rowhousing
+61:            2 Single, Semi-detached & Rowhousing
+62:            8 Single, Semi-detached & Rowhousing
 63:            2 Single, Semi-detached & Rowhousing
-64:            5 Single, Semi-detached & Rowhousing
-65:            1 Single, Semi-detached & Rowhousing
-66:            7 Single, Semi-detached & Rowhousing
-67:            2 Single, Semi-detached & Rowhousing
-68:            8 Single, Semi-detached & Rowhousing
-69:            4 Single, Semi-detached & Rowhousing
-70:           11 Single, Semi-detached & Rowhousing
-71:            1 Single, Semi-detached & Rowhousing
-72:            8 Single, Semi-detached & Rowhousing
-73:            2 Single, Semi-detached & Rowhousing
-74:            3 Single, Semi-detached & Rowhousing
-75:            4 Single, Semi-detached & Rowhousing
-76:           11 Single, Semi-detached & Rowhousing
-77:           12 Single, Semi-detached & Rowhousing
-78:           11 Single, Semi-detached & Rowhousing
-79:            6 Single, Semi-detached & Rowhousing
+64:           10 Single, Semi-detached & Rowhousing
+65:            2 Single, Semi-detached & Rowhousing
+66:            1 Single, Semi-detached & Rowhousing
+67:            4 Single, Semi-detached & Rowhousing
+68:           12 Single, Semi-detached & Rowhousing
+69:            5 Single, Semi-detached & Rowhousing
+70:            6 Single, Semi-detached & Rowhousing
+71:            8 Single, Semi-detached & Rowhousing
     MONTH_NUMBER                       JOB_CATEGORY
            <int>                             <char>
-                                                                                                                                                                                                                                                                                                                                                                                                                JOB_DESCRIPTION
-                                                                                                                                                                                                                                                                                                                                                                                                                         <char>
- 1:                                                                                To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear covered deck (4.27m x 5.18m), fireplace and Basement development with 1 Bedroom, Gym, Music room, games area, family room, bathroom & mechanical room. (NOT to be used as an additional Dwelling).
- 2:                                                                                                                                       To construct a Residential Use building in a form of a Single Detached House with Unenclosed Front Porch, rear uncovered deck (7.62m x 4.27m) and Basement development (NOT to be used as an additional Dwelling). Bedroom, Bathroom, Mechanical Room, Storage Room and Theatre Room.
- 3:                                                                                                                           To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear attached Garage, Sunroom, covered Deck (3.81m x 7.01m), rear uncovered Deck (7.16m x 3.05m), Front Balcony, and Basement development (NOT to be used as an additional Dwelling).
- 4:                                                               To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, fireplace, rear terrace and walkout Basement,  Basement development (NOT TO BE USED FOR ADDITIONAL DWELLING).  Basement development: three bedrooms, three bathrooms, Wet bar, Gym , Flex room, Laundry Room, Home theatre, extra room (Storage)
- 5:                                                                                                                                                                                           To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, fireplace, rear covered deck (4.88m x 3.20m), and Basement development (NOT to be used as an additional Dwelling).
- 6:                                                                                                                                                                                                                To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, fireplace, Basement development (NOT to be used as an additional Dwelling) and walkout Basement.
- 7:                                               To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, unenclosed front porch, rear covered deck (8.84m x 4.88m), balcony, fireplace, and Basement development (NOT to be used as an additional Dwelling), elevator pad 54 - VALLEYVIEW CRESCENT NW BD = bedroom, bathroom, gym, rec room, mechanical room, laundry room
- 8:                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck, covered deck, sunroom, fireplace and Basement development (NOT to be used as an additional Dwelling).
- 9:                                                                                                                                           To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear covered decks, sunroom, fireplace and basement development (bedroom, bathroom, mech room, wine room, flex room, golf room, gym, office)
-10:                                                                                                                                                                                                                                                    To construct a Residential Use building in the form of a Single Detached House with a balcony, fireplace, Secondary Suite(s), uncovered deck and unenclosed front porch.
-11:                                                                                                                                                                                 To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear covered landing (1.60m x 1.73m), rear balcony, fireplace, Basement development (NOT to be used as an additional Dwelling).
-12:                                                                                                                                                                           To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, front pergola (5.20m x 3.05m), rear covered deck (2.74m x 3.63m) and Basement development (NOT to be used as an additional Dwelling).
-13:                                                                                                                                                                                                                To construct a Single Detached House with rear attached Garage, Unenclosed Front Porch, rear covered deck (4.83m x 5.63m), fireplace and Basement development(s) (NOT to be used as an additional Dwelling).
-14:                                                                                                                                                                                                            To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear uncovered deck, balcony and Basement development (NOT to be used as an additional Dwelling).
-15:                                                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with Unenclosed Front Porch, balcony, Penthouse Floor with Wet Bar and Secondary Suite (3 bedroom, 2 bathroom, mech room, kitchen, living room).
-16:                                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, unenclosed front porch, balcony, rear uncovered deck (5.5m x 5.6m), Basement development (NOT to be used as an additional Dwelling)
-17:                                                                                                                                                                                                          To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear uncovered deck, covered deck and Basement development (NOT to be used as an additional Dwelling).
-18:                                                                                                                                           To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear uncovered deck (4.88m x2.44m), Renewable Energy Device (30 Solar-electric (PV) panels on the roof), fireplace, and to develop a Secondary Suite in the Basement.
-19:                                                                                                                                                                                                                                                                                                        To construct a Single Detached House with unenclosed Front Porch. (Related HIP exterior alteration DP 499765628-002)
-20:                                                                                                                                                                      To construct a Residential Use building in a form of a Single Detached House with unenclosed front porch, Basement development (NOT to be used as an additional Dwelling), fireplace, uncovered deck (6.71m x 3.66m) and covered deck (2.44m x 1.83m).
-21:                                                                                                                                                                                                                                                         To construct a Single Detached House with front attached Garage, Unenclosed Front Porch, Rear landing, fireplace, and to develop a Secondary Suite in the Basement.
-22:                                                                                                                                                                                                                                                               To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, and to develop a Secondary Suite in the Basement.
-23:                                                                                                                                                                                                                      To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, balcony, Basement development (NOT to be used as an additional Dwelling) and fireplace.
-24:                                                                                          To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear uncovered deck (6.10m x 3.66m), fireplace, and Basement development (NOT to be used as an additional dwelling). Basement Development: Two Bedrooms, Bathroom, Rec Area/WET BAR, Gym, Storage and Mechanical Room.
-25:                                                                                                                                                                                                                                                                                                 To construct a Residential Use building in the form of a Single Detached House with a fireplace and unenclosed front porch.
-26:                                                                                                                                                                     To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, front balcony, fireplace, Secondary Suite(2 bedroom, living room, kitchen, mech room, bathroom) and rear uncovered deck (2.95m x 3.05m).
-27:                                                                                                                                                                                                                       To construct a Single Detached House with Unenclosed Front Porch, rear uncovered deck (3.05m x 7.47m), fireplace and Basement development(s) (NOT to be used as an additional Dwelling) with wet bar.
-28:                                                                                                                                         To construct a Residential Use building in the form of a Single Detached House with a fireplace, Secondary Suite(s), uncovered deck (5.49m x 3.66m) and unenclosed front porch, side entrance SS = 2 bedrooms, bathroom, mechanical room, kitchen, living room 7725 - 111 Street NW
-29:                                                                                                                                                                                                                              To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear uncovered deck (6.60 m x 3.66 m), fireplace, Secondary Suite in the Basement.
-30:                                                                                                                                                                           To construct a Residential Use building in the form of a Single Detached House with an unenclosed porch, front attached Garage, Basement development (NOT to be used as an additional Dwelling) with wet bar, and partially covered rear balcony.
-31:                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear uncovered deck (4.4m x 3.1m), rear covered deck (3.4m x 3.1m),  fireplace and Basement development (NOT to be used as an additional Dwelling).
-32:                                                                                                                                                                    To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, and a basement development with Laundry room, mechanical & Storage room, family room, fitness room and rear uncovered deck (4.5m x 2.1m).
-33:                                                                                                                                                                                                                                                                           To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear Balcony, rear uncovered deck.
-34:                                                                                                                          To construct a Residential Use building in the form of a Single Detached House with an unclosed front porch, rear uncovered deck, and Basement development (NOT to be used as an additional Dwelling), fireplace 9615 - 99A STREET NW BD = den/flex, bedroom, rec area, mechanical room, bathroom,
-35:                                                                                                                                                                                                                                                                                          To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear composite deck
-36:                                                                                                                                                                                                       To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear uncovered deck (3.05m x 6.70m), fireplace, balcony and to develop a Secondary Suite in the Basement.
-37:                                                                                                                                                                                               To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear uncovered deck (6.1m x 3.1m), fireplace, and Basement development (NOT to be used as an additional Dwelling.
-38:                                                                                                                                                                                                                                     To construct a Single Detached House with Unenclosed Front Porch, rear attached Garage, rear balconies, fireplace, and Basement development (NOT to be used as an additional Dwelling).
-39:                                                                                                                                         To construct a Residential Use in a form of a Single Detached House with a front attached Garage, unenclosed front porch, rear partial covered deck (7.62m x 3.66m) with balcony above, fireplace and Basement development with wet bar (NOT to be used as an additional Dwelling).
-40:                                                                                                               To construct a Residential Use building in the form of a Single Detached House with front attached Garage, unenclosed front porch, covered balcony, exterior stairwell to the Basement, walkout Basement, fireplace, Basement development (NOT to be used as an additional Dwelling), and geoexchange system.
-41:                                                                                                To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, balcony, Basement development (NOT to be used as an additional Dwelling) and fireplace. 11833 - 87 AVENUE NW BD = bedroom, rec room, pedway to garage, mud room, elevator, mechanical room, bathroom, wet bar
-42:                                                                                                           To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear uncovered deck (6.46m x 4.27m),  balcony, fireplace and Basement development (NOT to be used as an additional Dwelling). (Basement bedroom, bathroom, mech room, storage room, exercise room)
-43:                                                                                                                                                                                                                                                                  To construct a Single Detached House with front attached Garage, Unenclosed Front Porch, rear uncovered deck (3.05m x 3.35m), fireplace and side entrance.
-44:                                                                                                                                                                         To construct a Residential Use building in the form of a Single Detached House with a side attached Garage, and unenclosed front porch, Basement development (NOT to be used as an additional Dwelling), fireplace, uncovered deck (4.42m x 4.47m).
-45:                                                                                                                                                                                            To move on a Single Detached House with Unenclosed Front Porch, rear uncovered deck (4.52m x 3.05m), to construct a new concrete basement foundation, and to develop a Secondary Suite in the Basement (DP under 491120180-009).
-46:                                                                                                                                                                                            To move on a Single Detached House with Unenclosed Front Porch, rear uncovered deck (4.52m x 3.05m), to construct a new concrete basement foundation, and to develop a Secondary Suite in the Basement (DP under 491172909-008).
-47:                                                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, fireplace, rear covered deck (11.2m x 4.3m), and a Basement development (NOT to be used as an additional Dwelling).
-48:                                                                                                                      To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, Basement development (NOT to be used as an additional Dwelling) and fireplace, rear uncovered deck 8318 - 120 STREET NW BD = bedroom, gym, wet bar, mechanical room, bathroom, rec room
-49:                                                                                                                                                                                                                                                    To construct a Single Detached House with Basement development (NOT to be used as an additional Dwelling), covered deck, fireplace and partially covered/uncovered deck.
-50:                                                                                                                         To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear deck (1.83m x 4.27m) with balcony above, and Basement development (NOT to be used as an additional Dwelling).  Basement: 1 Bedroom 1 Bathroom, Wet Bar, Family Room, Mech Room.
-51:                                                                                  To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear balcony, fireplace, and Basement development (NOT to be used as an additional Dwelling). bedroom, sitting room, wet bar, mechanical room, ensuite, half bath, rec room 8316 - 120 STREET NW = PRESCRIPTIVE PATH 3 Storeys
-52:                                                                                       To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear uncovered deck (6.71m x 3.66m), balcony, fireplace and Basement development (NOT to be used as an additional Dwelling).  Basement Development: Bedroom, Recreation Room/Exercise room, Bathroom and storage room.
-53:                                                                                                                                                                                                          To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, rear uncovered deck, sunroom, balcony, Basement development (NOT to be used as an additional Dwelling)
-54:                                                                                                                    To construct a Residential Use in the form of Single Detached House with an unenclosed front porch, front covered veranda, rear covered deck (7.01m x 4.82m), rear uncovered deck (3.05m x 5.69m), rear attached Garage, fireplace, and Basement development (NOT to be used as an additional Dwelling).
-55:                                                                                                                                                                              To construct a Residential Use in the form of a Single Detached House with unenclosed front porch, rear attached garage, rear uncovered deck (11.99m x 3.66m), fireplace, and Basement development (NOT to be used as an additional Dwelling).
-56:                                                                                                                                                                                                    To construct a Residential Use building in the form of a Single Detached House with Basement development (NOT to be used as an additional Dwelling - rec room, 2 bed, bath, mech), fireplace and unenclosed front porch.
-57:                                                                                                                                                                                                    To construct a Residential Use building in the form of a Single Detached House with Basement development (NOT to be used as an additional Dwelling), covered deck, fireplace, uncovered deck and unenclosed front porch.
-58:                                                                                                                                                                     To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, fireplace, rear uncovered deck (5.7m x 3.1m), rear attached garage, and Basement development (NOT to be used as an additional Dwelling).
-59:                                                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, fireplace, partial Basement development (NOT to be used as an additional Dwelling), uncovered deck. (7.32m x 2.44m)
-60:                                                                                                                                                                    To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, unenclosed front porch, rear covered deck, exterior hot tub, fireplace, and Basement development (NOT to be used as an additional Dwelling).
-61:                                                                                                         To construct a Residential Use Single Detached House with a front attached Garage, unenclosed front porch, fireplace, rear uncovered deck, Basement development (gym, yoga room, mech room, rec room, 3 bathroom, 2 bedroom, laundry/storage room)(NOT to be used as an additional Dwelling), and walkout Basement.
-62:                                                                                                                                                               To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear deck with pergola (6.3m x 3.7m), rear landing (3.1m x 1.5m), fireplace, and Basement development (NOT to be used as an additional Dwelling).
-63:                                                                                                                                                                                                   To construct a Single Detached House with an Unenclosed Front Porch and Basement development (NOT to be used as an additional Dwelling). Basement Development: Rec Room/Wet bar, Utility room, bathroom, Office, Bedroom.
-64:                                                                                To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear covered deck (8.4m x 3.7m) with balcony above (8.4m x 3.7m) and Basement development with 1 bedroom, Gym, family room, golf simulator, bathroom, mechanical room and wet bar (NOT to be used as an additional Dwelling).
-65:                                                                                                                                                                                                                To construct a Residential Use building in the form of a Single Detached House with a fireplace, unenclosed front porch, uncovered deck and basement Development (NOT to be used as an additional Dwelling).
-66:                                                                                                                                                                                                      To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear uncovered deck (6.3m x 3.7m), and Basement development (NOT to be used as an additional Dwelling).
-67:                                                                                                                                                                                                                              To construct a Residential Use Single Detached House with Basement development (NOT to be used as an additional Dwelling), covered deck, fireplace, uncovered deck and unenclosed front porch.
-68:                                                                                                                                                                                                                                                                       To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, and rear uncovered deck (2.5m x 4.9m).
-69:                                                                                                                                                 To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, unenclosed front porch, covered deck(1.83 x 3.66), uncovered deck, rooftop deck, fireplace and Basement development (NOT to be used as an additional Dwelling).
-70:                                                                                                                                                                                                                                  To construct a Residential Use building in the form of a Single Detached House with Basement development (NOT to be used as an additional Dwelling), fireplace and unenclosed front porch.
-71:                                                                                                                                                                                                         To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, Basement development (NOT to be used as an additional Dwelling), fireplace and unenclosed front porch.
-72: To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, unenclosed front porch, rear covered deck, Basement development (NOT to be used as an additional Dwelling), and fireplace. 10223 - 130 STREET NW BD = theatre room, bedroom, wet bar, storage room, exercise room, bathroom, mechanical room, sitting room See hip for revision 630030590-002 to mudroom length
-73:                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, unenclosed front porch, Basement development (NOT to be used as an additional Dwelling) and covered deck (5.49m x 2.59m), open deck (5.71m x 2.60m)
-74:                                                                                                                                                                                                                                                                                    To construct a Single Detached House with Basement development (NOT to be used as an additional Dwelling), fireplace and uncovered deck.
-75:                                                                                                                                                                                                                        To construct a Single Detached House with Unenclosed Front Porch, rear Balcony and rear covered deck (2.13m x 5.18m), fireplace and Basement development (NOT to be used as an additional Dwelling).
-76:                                                                                                                                                                                                                                                                             To construct a Residential Use building in the form of Single Detached House with unenclosed front porch and rear uncovered deck (4.0m x 7.6m).
-77:                                                                                                                                                                                           To construct a Residential Use Single Detached House with Basement development (bedroom, rec room, office, cold room, mech room, bathroom - NOT to be used as an additional Dwelling) unenclosed front porch, uncovered rear deck
-78:                                                    To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, front balcony, fireplace, Basement development (NOT to be used as an additional Dwelling) with wet bar and rear covered deck (6.40m x 3.66m). BD = gym, games room, games nook, rec room, bedroom, office, bathroom, mechanical room 9607 - 96A Street NW
-79:                                                                                                                                                                                                                                                                    To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, balcony, rear covered deck and fireplace.
-                                                                                                                                                                                                                                                                                                                                                                                                                JOB_DESCRIPTION
-                                                                                                                                                                                                                                                                                                                                                                                                                         <char>
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                      JOB_DESCRIPTION
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                               <char>
+ 1:                                                                                                            To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, fireplace, Basement development (NOT to be used as an additional Dwelling), rear uncovered deck, and exterior hot tub. 12419 - 51 AVENUE NW BD = bedroom, 3 storage room, bathroom, mechanical room, rec room, gym, laundry room,
+ 2:                                                                                                          To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear covered deck (13.41m x 3.66m), balcony, exterior hot tub, fireplace, and Basement development (NOT to be used as an additional Dwelling).  Basement: 2 bedroom 1 bathroom, Mech room, Exercise Room, Recreation Room, Wet Bar.
+ 3:                                                                                                                                                                                                                           To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (5.5m x 3.1m), fireplace, and Basement development (NOT to be used as an additional Dwelling).
+ 4:                                                                                                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, unenclosed front porch, rear covered deck, Basement development (NOT to be used as an additional Dwelling) and fireplace.
+ 5:                                                                                                     To construct a Single Detached House with front attached Garage, Unenclosed Front Porch, rear uncovered deck (6.40m x 4.57m), covered deck, Basement development (NOT to be used as an additional Dwelling),  fireplace, and walkout Basement. Basement Development: Bedroom, Bar/ Family Room, Yoga&Fitness room, Storage, Two Bathrooms, Two Mechanical Rooms and Rec Room.
+ 6:                                                                                                                                                                                                                     To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, front attached Garage, rear partially covered deck (7.4m x 5.5m), fireplace, and Basement development (NOT to be used as an additional Dwelling).
+ 7:                                                                                                                                                                                                                    To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, a fireplace, uncovered deck (5.79m x 3.05m), nanny suite (on the Main Floor), and Basement Development (Not to be used as an additional Dwelling).
+ 8:                                                                                                                                      To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear covered deck (4.27m x 5.18m), fireplace and Basement development with 1 Bedroom, Gym, Music room, games area, family room, bathroom & mechanical room. (NOT to be used as an additional Dwelling).
+ 9:                                                           To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, fireplace, rear uncovered deck (5.94m x 6.56m), and Basement development (NOT to be used as an additional Dwelling).2 bedrooms, bathroom, play space, mechanical room, flex space,  revision includes garage foundation only, garage building permit will be applied for in spring 12024 - 39A AVENUE NW
+10:                                                                            To construct a Residential Use building in the form of a Single Detached House with front attached Garages, unenclosed front porch, fireplace, rear covered deck (6.05m x 4.72m), rear uncovered deck (8.3m x 5.64m) and Basement development (NOT to be used as an additional Dwelling). Basement Development : Two Bedrooms, Two Bathrooms, Elevator, Golf Sim, Lounge/ Games Room, Gym and Storage.
+11:                                                                                                                                                              To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, Basement development (NOT to be used as an additional Dwelling - bedroom, storage, bonus room, bathroom, rec room, gym, mech room), covered deck, fireplace, uncovered deck and unenclosed front porch.
+12:                                                                                                                                                                                                 To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear balconies, rear partially covered deck (17.2m x 15.1m), fireplace, and Basement development (NOT to be used as an additional Dwelling).
+13:                                                                                                                                                                                                                                                   To construct a Single Detached House with front attached Garage, Unenclosed Front Porch, front balconies, rear uncovered deck (4.27m x 3.05m), fireplace, and Basement development (NOT to be used as  an additional Dwelling).
+14:                                                                                                                                                      To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, front attached Garage, balcony, rear covered deck (6.27m x 4.42m), fireplace and Basement development with Museum, Golf simulator/Bar, bathroom & 2 mechanical rooms.(NOT to be used as an additional Dwelling).
+15:                                                                                                                                                                                             To construct a Residential Use building in a form of a Single Detached House with Unenclosed Front Porch, rear uncovered deck (7.62m x 4.27m) and Basement development (NOT to be used as an additional Dwelling). Bedroom, Bathroom, Mechanical Room, Storage Room and Theatre Room.
+16:                                                                                                                                                                                                                                                                      To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, fireplace, Basement development (NOT to be used as an additional Dwelling) and walkout Basement.
+17:                                                                                                                                                                                                                               To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear attached Garage,  rear uncovered deck (6.25m x 3.66m), fireplace, Basement development (NOT to be used as an additional Dwelling).
+18:                                                                                                                                                                                                                   To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck, covered deck, sunroom, fireplace and Basement development (NOT to be used as an additional Dwelling).
+19:                                                                                                                                                                                                                                                                                                          To construct a Residential Use building in the form of a Single Detached House with a balcony, fireplace, Secondary Suite(s), uncovered deck and unenclosed front porch.
+20:                                                                                                                                                                                                                                       To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear covered landing (1.60m x 1.73m), rear balcony, fireplace, Basement development (NOT to be used as an additional Dwelling).
+21:                                                                                                                                                                                                                                 To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, front pergola (5.20m x 3.05m), rear covered deck (2.74m x 3.63m) and Basement development (NOT to be used as an additional Dwelling).
+22:                                                                                                                                                                                                                                                                      To construct a Single Detached House with rear attached Garage, Unenclosed Front Porch, rear covered deck (4.83m x 5.63m), fireplace and Basement development(s) (NOT to be used as an additional Dwelling).
+23:                                                                                                                                                                                                                                                                  To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear uncovered deck, balcony and Basement development (NOT to be used as an additional Dwelling).
+24:                                                                                                                                                                                                                                                                To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear uncovered deck, covered deck and Basement development (NOT to be used as an additional Dwelling).
+25:                                                                                                                                                                                                 To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear uncovered deck (4.88m x2.44m), Renewable Energy Device (30 Solar-electric (PV) panels on the roof), fireplace, and to develop a Secondary Suite in the Basement.
+26:                                                                                                                                                                                                                                                                                                                                                              To construct a Single Detached House with unenclosed Front Porch. (Related HIP exterior alteration DP 499765628-002)
+27:                                                                                                                                                                                                                            To construct a Residential Use building in a form of a Single Detached House with unenclosed front porch, Basement development (NOT to be used as an additional Dwelling), fireplace, uncovered deck (6.71m x 3.66m) and covered deck (2.44m x 1.83m).
+28:                                                                                                                                                                                                                                                                                                                     To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, and to develop a Secondary Suite in the Basement.
+29:                                                                                                                                                                                                                                                                            To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, balcony, Basement development (NOT to be used as an additional Dwelling) and fireplace.
+30:                                                                                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear covered deck (9.1m x 5.0m), fireplace, and Basement development (NOT to be used as an additional Dwelling).
+31:                                                                                                                                                                                                                                                                                                                                                       To construct a Residential Use building in the form of a Single Detached House with a fireplace and unenclosed front porch.
+32:                                                                                                                                                                                                                                 To construct a Residential Use building in the form of a Single Detached House with an unenclosed porch, front attached Garage, Basement development (NOT to be used as an additional Dwelling) with wet bar, and partially covered rear balcony.
+33:                                                                                                                                                                                                                          To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, and a basement development with Laundry room, mechanical & Storage room, family room, fitness room and rear uncovered deck (4.5m x 2.1m).
+34:                                                                                                                                                                                To construct a Residential Use building in the form of a Single Detached House with an unclosed front porch, rear uncovered deck, and Basement development (NOT to be used as an additional Dwelling), fireplace 9615 - 99A STREET NW BD = den/flex, bedroom, rec area, mechanical room, bathroom,
+35:                                                                                                                                                                                                                                                                                                                                                To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear composite deck
+36:                                                                                                                                                                                                                                                                                           To construct a Single Detached House with Unenclosed Front Porch, rear attached Garage, rear balconies, fireplace, and Basement development (NOT to be used as an additional Dwelling).
+37:                                                                                                                                                                                               To construct a Residential Use in a form of a Single Detached House with a front attached Garage, unenclosed front porch, rear partial covered deck (7.62m x 3.66m) with balcony above, fireplace and Basement development with wet bar (NOT to be used as an additional Dwelling).
+38:                                                                                                                                                                     To construct a Residential Use building in the form of a Single Detached House with front attached Garage, unenclosed front porch, covered balcony, exterior stairwell to the Basement, walkout Basement, fireplace, Basement development (NOT to be used as an additional Dwelling), and geoexchange system.
+39:                                                                                                                                                      To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, balcony, Basement development (NOT to be used as an additional Dwelling) and fireplace. 11833 - 87 AVENUE NW BD = bedroom, rec room, pedway to garage, mud room, elevator, mechanical room, bathroom, wet bar
+40:                                                                                                                                                                                                                                                  To move on a Single Detached House with Unenclosed Front Porch, rear uncovered deck (4.52m x 3.05m), to construct a new concrete basement foundation, and to develop a Secondary Suite in the Basement (DP under 491120180-009).
+41:                                                                                                                                                                                                                                                  To move on a Single Detached House with Unenclosed Front Porch, rear uncovered deck (4.52m x 3.05m), to construct a new concrete basement foundation, and to develop a Secondary Suite in the Basement (DP under 491172909-008).
+42:                                                                                                                                                                                                                                                   To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, fireplace, rear covered deck (11.2m x 4.3m), and a Basement development (NOT to be used as an additional Dwelling).
+43:                                                                                                                                                                               To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear deck (1.83m x 4.27m) with balcony above, and Basement development (NOT to be used as an additional Dwelling).  Basement: 1 Bedroom 1 Bathroom, Wet Bar, Family Room, Mech Room.
+44:                                                                                                                                                                                                                                                                To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, rear uncovered deck, sunroom, balcony, Basement development (NOT to be used as an additional Dwelling)
+45:                                                                                                                                                                                                                                                       To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear covered deck and Basement development (NOT to be used as an additional Dwelling).
+46:                                                                                                                                                                                                                                                          To construct a Residential Use building in the form of a Single Detached House with Basement development (NOT to be used as an additional Dwelling - rec room, 2 bed, bath, mech), fireplace and unenclosed front porch.
+47:                                                                                                                                                                                                                                                   To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, fireplace, partial Basement development (NOT to be used as an additional Dwelling), uncovered deck. (7.32m x 2.44m)
+48:                                                                                                                                                               To construct a Residential Use Single Detached House with a front attached Garage, unenclosed front porch, fireplace, rear uncovered deck, Basement development (gym, yoga room, mech room, rec room, 3 bathroom, 2 bedroom, laundry/storage room)(NOT to be used as an additional Dwelling), and walkout Basement.
+49:                                                                                                                                                                                                                     To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch, rear deck with pergola (6.3m x 3.7m), rear landing (3.1m x 1.5m), fireplace, and Basement development (NOT to be used as an additional Dwelling).
+50:                                                                                                                                                                                                                                                         To construct a Single Detached House with an Unenclosed Front Porch and Basement development (NOT to be used as an additional Dwelling). Basement Development: Rec Room/Wet bar, Utility room, bathroom, Office, Bedroom.
+51:                                                                                                                                                                                          To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, covered deck, Basement development (NOT to be used as an additional Dwelling - bedroom, rec room, mech room, fitness room, bathroom) and fireplace.
+52:                                                                                                                                      To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear covered deck (8.4m x 3.7m) with balcony above (8.4m x 3.7m) and Basement development with 1 bedroom, Gym, family room, golf simulator, bathroom, mechanical room and wet bar (NOT to be used as an additional Dwelling).
+53:                                                                                                                                       To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, unenclosed front porch, side covered deck (1.73m x 4.78m), rear balcony, fireplace, elevator, Basement development (NOT to be used as an additional Dwelling), and to develop a Secondary Suite above the rear attached garage.
+54:                                                                                                                                                                                                                                                                      To construct a Residential Use building in the form of a Single Detached House with a fireplace, unenclosed front porch, uncovered deck and basement Development (NOT to be used as an additional Dwelling).
+55:                                                                                                                                                                                                                                                            To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear uncovered deck (6.3m x 3.7m), and Basement development (NOT to be used as an additional Dwelling).
+56:                                                                                                                                                                                                                                                                                    To construct a Residential Use Single Detached House with Basement development (NOT to be used as an additional Dwelling), covered deck, fireplace, uncovered deck and unenclosed front porch.
+57:                                                                                                                                                                                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, and rear uncovered deck (2.5m x 4.9m).
+58:                                                                                                                                                                                                       To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, unenclosed front porch, covered deck(1.83 x 3.66), uncovered deck, rooftop deck, fireplace and Basement development (NOT to be used as an additional Dwelling).
+59:                                                                                                                                                                                                                                                                                        To construct a Residential Use building in the form of a Single Detached House with Basement development (NOT to be used as an additional Dwelling), fireplace and unenclosed front porch.
+60:                                                                                                                                                                                                                     To construct a Residential Use building in the form of a Single Detached House with unenclosed front porch with balcony above, rear uncovered deck (3.2 m x 11.0 m), rear balcony, fireplace, Basement development (NOT to be used as an additional Dwelling)
+61:                                                                                                                                                                                                                                                      To construct a Single Detached House with Unenclosed Front Porch, front uncovered deck (7.16m x 2.74m), rear covered deck (10.26m x 3.51m), fireplaces, and Basement development (NOT to be used as an additional Dwelling).
+62:                                                                                                                                                                                                                                                                                               To construct a Single Detached House with Unenclosed Front Porch, rear covered deck (5.99m x 5.18m), fireplace and Basement development (NOT to be used as an additional Dwelling).
+63:                                                                                                                                                                                                                                                                     To construct a Residential Use Single Detached House with Unenclosed Front Porch, Basement development with Wet Bar (NOT to be used as an additional Dwelling), Uncovered Deck (3.05m x 1.52m) and fireplace.
+64: To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, balcony, Basement development (NOT to be used as an additional Dwelling), covered deck and Secondary Suite on the 2nd floor. 14719 - 106A AVENUE NW 2nd floor SS = kitchen, living room, bedroom, office, pantry, dining room, bathroom, balcony, wc/laundry, pwdr room BD = cold room, bedroom, rec room, mechanical room, laundry room, unfinished area, wet bar
+65:                                                                                                                                                                                                                   To construct a Residential Use building in the form of a Single Detached House with a rear attached Garage, unenclosed front porch, Basement development (NOT to be used as an additional Dwelling) and covered deck (5.49m x 2.59m), open deck (5.71m x 2.60m)
+66:                                                                                                                                                                                                                                                                                To construct a Single Detached House with Unenclosed Front Porch, rear uncovered deck (9.60m x 4.57m), fireplace and Basement development with wet bar (NOT to be used as an additional Dwelling).
+67:                                                                                                                                                                             To construct a Residential Use building in the form of a Single Detached House with Basement development (NOT to be used as an additional Dwelling), fireplace and unenclosed front porch and  10414 - 126 STREET NW BD = bedroom, gym, lounge, bathroom, mechanical room, games area, storage closet
+68:                                                                                                                                                                                                                                                 To construct a Residential Use Single Detached House with Basement development (bedroom, rec room, office, cold room, mech room, bathroom - NOT to be used as an additional Dwelling) unenclosed front porch, uncovered rear deck
+69:                                                                           To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, rear attached Garage, balcony, roof top terrace with wet bar, Basement development with wetbar (NOT to be used as an additional Dwelling), fireplace and uncovered deck (6.78m x 4.98m). Basement (Gym, bedroom, rec room, mech room, storage/wine room, games room, bathroom, elevator)
+70:                                                                                                                                                                                                                                                                                                                          To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, balcony, rear covered deck and fireplace.
+71:                                                                                                                                                                                                                                                                       To construct a Residential Use building in the form of a Single Detached House with an unenclosed front porch, covered deck, Basement development (NOT to be used as an additional Dwelling) and fireplace.
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                      JOB_DESCRIPTION
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                               <char>
                   BUILDING_TYPE           WORK_TYPE CONSTRUCTION_VALUE
                          <char>              <char>              <int>
- 1: Single Detached House (110) (01) Building - New             447750
- 2: Single Detached House (110) (01) Building - New             281500
- 3: Single Detached House (110) (01) Building - New             724500
- 4: Single Detached House (110) (01) Building - New             447375
- 5: Single Detached House (110) (01) Building - New             258750
- 6: Single Detached House (110) (01) Building - New             270125
- 7: Single Detached House (110) (01) Building - New             595000
- 8: Single Detached House (110) (01) Building - New             427250
- 9: Single Detached House (110) (01) Building - New             480875
-10: Single Detached House (110) (01) Building - New             211375
-11: Single Detached House (110) (01) Building - New             436625
-12: Single Detached House (110) (01) Building - New             287125
-13: Single Detached House (110) (01) Building - New             427000
-14: Single Detached House (110) (01) Building - New             550625
-15: Single Detached House (110) (01) Building - New             503500
-16: Single Detached House (110) (01) Building - New             482375
-17: Single Detached House (110) (01) Building - New             370625
-18: Single Detached House (110) (01) Building - New             267375
-19: Single Detached House (110) (01) Building - New             251250
-20: Single Detached House (110) (01) Building - New             260375
-21: Single Detached House (110) (01) Building - New             204750
-22: Single Detached House (110) (01) Building - New             260500
-23: Single Detached House (110) (01) Building - New             372750
-24: Single Detached House (110) (01) Building - New             253125
-25: Single Detached House (110) (01) Building - New             295750
-26: Single Detached House (110) (01) Building - New             223875
-27: Single Detached House (110) (01) Building - New             312875
-28: Single Detached House (110) (01) Building - New             267250
-29: Single Detached House (110) (01) Building - New             307750
-30: Single Detached House (110) (01) Building - New             508250
-31: Single Detached House (110) (01) Building - New             259000
-32: Single Detached House (110) (01) Building - New             211875
-33: Single Detached House (110) (01) Building - New             320250
+ 1: Single Detached House (110) (01) Building - New             349000
+ 2: Single Detached House (110) (01) Building - New             533625
+ 3: Single Detached House (110) (01) Building - New             405875
+ 4: Single Detached House (110) (01) Building - New             290875
+ 5: Single Detached House (110) (01) Building - New             483250
+ 6: Single Detached House (110) (01) Building - New             295125
+ 7: Single Detached House (110) (01) Building - New             441250
+ 8: Single Detached House (110) (01) Building - New             447750
+ 9: Single Detached House (110) (01) Building - New             242625
+10: Single Detached House (110) (01) Building - New             674500
+11: Single Detached House (110) (01) Building - New             552625
+12: Single Detached House (110) (01) Building - New             753125
+13: Single Detached House (110) (01) Building - New             322250
+14: Single Detached House (110) (01) Building - New             811000
+15: Single Detached House (110) (01) Building - New             281500
+16: Single Detached House (110) (01) Building - New             270125
+17: Single Detached House (110) (01) Building - New             419500
+18: Single Detached House (110) (01) Building - New             427250
+19: Single Detached House (110) (01) Building - New             211375
+20: Single Detached House (110) (01) Building - New             436625
+21: Single Detached House (110) (01) Building - New             287125
+22: Single Detached House (110) (01) Building - New             427000
+23: Single Detached House (110) (01) Building - New             550625
+24: Single Detached House (110) (01) Building - New             370625
+25: Single Detached House (110) (01) Building - New             267375
+26: Single Detached House (110) (01) Building - New             251250
+27: Single Detached House (110) (01) Building - New             260375
+28: Single Detached House (110) (01) Building - New             260500
+29: Single Detached House (110) (01) Building - New             372750
+30: Single Detached House (110) (01) Building - New             528500
+31: Single Detached House (110) (01) Building - New             295750
+32: Single Detached House (110) (01) Building - New             508250
+33: Single Detached House (110) (01) Building - New             211875
 34: Single Detached House (110) (01) Building - New             334750
 35: Single Detached House (110) (01) Building - New             228750
-36: Single Detached House (110) (01) Building - New             260375
-37: Single Detached House (110) (01) Building - New             205000
-38: Single Detached House (110) (01) Building - New             561500
-39: Single Detached House (110) (01) Building - New             269000
-40: Single Detached House (110) (01) Building - New             426500
-41: Single Detached House (110) (01) Building - New             378000
-42: Single Detached House (110) (01) Building - New             550875
-43: Single Detached House (110) (01) Building - New             284000
-44: Single Detached House (110) (01) Building - New             364875
-45: Single Detached House (110) (01) Building - New             263375
-46: Single Detached House (110) (01) Building - New             263375
-47: Single Detached House (110) (01) Building - New             441750
-48: Single Detached House (110) (01) Building - New             359125
-49: Single Detached House (110) (01) Building - New             266125
-50: Single Detached House (110) (01) Building - New             310625
-51: Single Detached House (110) (01) Building - New             417500
-52: Single Detached House (110) (01) Building - New             458375
-53: Single Detached House (110) (01) Building - New             763500
-54: Single Detached House (110) (01) Building - New             436375
-55: Single Detached House (110) (01) Building - New             299375
-56: Single Detached House (110) (01) Building - New             402125
-57: Single Detached House (110) (01) Building - New             313500
-58: Single Detached House (110) (01) Building - New             432375
-59: Single Detached House (110) (01) Building - New             335125
-60: Single Detached House (110) (01) Building - New             671000
-61: Single Detached House (110) (01) Building - New             428125
-62: Single Detached House (110) (01) Building - New             414625
-63: Single Detached House (110) (01) Building - New             366000
-64: Single Detached House (110) (01) Building - New             452125
-65: Single Detached House (110) (01) Building - New             337250
-66: Single Detached House (110) (01) Building - New             410000
-67: Single Detached House (110) (01) Building - New             417500
-68: Single Detached House (110) (01) Building - New             268750
-69: Single Detached House (110) (01) Building - New             432750
-70: Single Detached House (110) (01) Building - New             431250
-71: Single Detached House (110) (01) Building - New             360250
-72: Single Detached House (110) (01) Building - New             442875
-73: Single Detached House (110) (01) Building - New             572875
-74: Single Detached House (110) (01) Building - New             382000
-75: Single Detached House (110) (01) Building - New             305000
-76: Single Detached House (110) (01) Building - New             212500
-77: Single Detached House (110) (01) Building - New             424375
-78: Single Detached House (110) (01) Building - New             520875
-79: Single Detached House (110) (01) Building - New             314125
+36: Single Detached House (110) (01) Building - New             561500
+37: Single Detached House (110) (01) Building - New             269000
+38: Single Detached House (110) (01) Building - New             426500
+39: Single Detached House (110) (01) Building - New             378000
+40: Single Detached House (110) (01) Building - New             263375
+41: Single Detached House (110) (01) Building - New             263375
+42: Single Detached House (110) (01) Building - New             441750
+43: Single Detached House (110) (01) Building - New             310625
+44: Single Detached House (110) (01) Building - New             763500
+45: Single Detached House (110) (01) Building - New             498500
+46: Single Detached House (110) (01) Building - New             402125
+47: Single Detached House (110) (01) Building - New             335125
+48: Single Detached House (110) (01) Building - New             428125
+49: Single Detached House (110) (01) Building - New             414625
+50: Single Detached House (110) (01) Building - New             366000
+51: Single Detached House (110) (01) Building - New             429500
+52: Single Detached House (110) (01) Building - New             452125
+53: Single Detached House (110) (01) Building - New             532750
+54: Single Detached House (110) (01) Building - New             337250
+55: Single Detached House (110) (01) Building - New             410000
+56: Single Detached House (110) (01) Building - New             417500
+57: Single Detached House (110) (01) Building - New             268750
+58: Single Detached House (110) (01) Building - New             432750
+59: Single Detached House (110) (01) Building - New             431250
+60: Single Detached House (110) (01) Building - New             497500
+61: Single Detached House (110) (01) Building - New             407375
+62: Single Detached House (110) (01) Building - New             387000
+63: Single Detached House (110) (01) Building - New             441875
+64: Single Detached House (110) (01) Building - New             320625
+65: Single Detached House (110) (01) Building - New             572875
+66: Single Detached House (110) (01) Building - New             241375
+67: Single Detached House (110) (01) Building - New             261250
+68: Single Detached House (110) (01) Building - New             424375
+69: Single Detached House (110) (01) Building - New             490875
+70: Single Detached House (110) (01) Building - New             314125
+71: Single Detached House (110) (01) Building - New             353125
                   BUILDING_TYPE           WORK_TYPE CONSTRUCTION_VALUE
                          <char>              <char>              <int>
     FLOOR_AREA UNITS_ADDED                      ADDRESS
          <num>       <num>                       <char>
- 1:       3582           1   4152 - ASPEN DRIVE EAST NW
- 2:       2252           1         8811 - 140 STREET NW
- 3:       5796           1  62 - VALLEYVIEW CRESCENT NW
- 4:       3579           1   5 - VALLEYVIEW CRESCENT NW
- 5:       2070           1        14619 - 89A AVENUE NW
- 6:       2161           1         8715 - 138 STREET NW
- 7:       4760           1  54 - VALLEYVIEW CRESCENT NW
- 8:       3418           1         8204 - 138 STREET NW
- 9:       3847           1     10 - VALLEYVIEW POINT NW
-10:       1691           2         11611 - 76 AVENUE NW
-11:       3493           1         11614 - 75 AVENUE NW
-12:       2297           1        7227 - 114A STREET NW
-13:       3416           1         11516 - 74 AVENUE NW
-14:       4405           1         12920 - 63 AVENUE NW
-15:       4028           2 8009 - SASKATCHEWAN DRIVE NW
-16:       3859           1 7615 - SASKATCHEWAN DRIVE NW
-17:       2965           1        7215 - 114A STREET NW
-18:       2139           2         7602 - 119 STREET NW
-19:       2010           1         7909 - 119 STREET NW
-20:       2083           1        7327 - 118A STREET NW
-21:       1638           2         12306 - 62 AVENUE NW
-22:       2084           2         11535 - 80 AVENUE NW
-23:       2982           1 7139 - SASKATCHEWAN DRIVE NW
-24:       2025           1         7810 - 116 STREET NW
-25:       2366           1        7329 - 118A STREET NW
-26:       1791           2         10919 - 79 AVENUE NW
-27:       2503           1         10952 - 80 AVENUE NW
-28:       2138           2         7725 - 111 STREET NW
-29:       2462           2         10929 - 79 AVENUE NW
-30:       4066           1          9023 - 98 STREET NW
-31:       2072           1          9819 - 85 AVENUE NW
-32:       1695           1          9704 - 89 AVENUE NW
-33:       2562           1          9807 - 90 AVENUE NW
+ 1:       2792           1         12419 - 51 AVENUE NW
+ 2:       4269           1      93 - WESTBROOK DRIVE NW
+ 3:       3247           1        6B - MARLBORO ROAD NW
+ 4:       2327           1         12316 - 42 AVENUE NW
+ 5:       3866           1     109 - WESTBROOK DRIVE NW
+ 6:       2361           1        20 - MARLBORO ROAD NW
+ 7:       3530           1         4212 - 122 STREET NW
+ 8:       3582           1   4152 - ASPEN DRIVE EAST NW
+ 9:       1941           1        12024 - 39A AVENUE NW
+10:       5396           1        54 - MARLBORO ROAD NW
+11:       4421           1         7 - MARLBORO ROAD NW
+12:       6025           1      87 - WESTBROOK DRIVE NW
+13:       2578           1    15946 - PATRICIA DRIVE NW
+14:       6488           1   171 - QUESNELL CRESCENT NW
+15:       2252           1         8811 - 140 STREET NW
+16:       2161           1         8715 - 138 STREET NW
+17:       3356           1        14004 - 89A AVENUE NW
+18:       3418           1         8204 - 138 STREET NW
+19:       1691           2         11611 - 76 AVENUE NW
+20:       3493           1         11614 - 75 AVENUE NW
+21:       2297           1        7227 - 114A STREET NW
+22:       3416           1         11516 - 74 AVENUE NW
+23:       4405           1         12920 - 63 AVENUE NW
+24:       2965           1        7215 - 114A STREET NW
+25:       2139           2         7602 - 119 STREET NW
+26:       2010           1         7909 - 119 STREET NW
+27:       2083           1        7327 - 118A STREET NW
+28:       2084           2         11535 - 80 AVENUE NW
+29:       2982           1 7139 - SASKATCHEWAN DRIVE NW
+30:       4228           1  12432 - GRAND VIEW DRIVE NW
+31:       2366           1        7329 - 118A STREET NW
+32:       4066           1          9023 - 98 STREET NW
+33:       1695           1          9704 - 89 AVENUE NW
 34:       2678           1         9615 - 99A STREET NW
 35:       1830           1          9937 - 88 AVENUE NW
-36:       2083           2          9725 - 89 AVENUE NW
-37:       1640           1         10027 - 88 AVENUE NW
-38:       4492           1         10070 - 90 AVENUE NW
-39:       2152           1         9624 - 99A STREET NW
-40:       3412           1         10040 - 90 AVENUE NW
-41:       3024           1         11833 - 87 AVENUE NW
-42:       4407           1         8719 - 120 STREET NW
-43:       2272           1         11713 - 83 AVENUE NW
-44:       2919           1         8710 - 119 STREET NW
-45:       2107           1         8420 - 117 STREET NW
-46:       2107           2         8422 - 117 STREET NW
-47:       3534           1         8480 - 118 STREET NW
-48:       2873           1         8318 - 120 STREET NW
-49:       2129           1         11737 - 91 AVENUE NW
-50:       2485           1         11831 - 87 AVENUE NW
-51:       3340           1         8316 - 120 STREET NW
-52:       3667           1         8721 - 120 STREET NW
-53:       6108           1 9007 - SASKATCHEWAN DRIVE NW
-54:       3491           1        14349 - PARK DRIVE NW
-55:       2395           1        9235 - 146A STREET NW
-56:       3217           1        9132 - 146A STREET NW
-57:       2508           1        14356 - 92A AVENUE NW
-58:       3459           1        14636 - 92A AVENUE NW
-59:       2681           1         9211 - 147 STREET NW
-60:       5368           1         9902 - 144 STREET NW
-61:       3425           1      13710 - SUMMIT POINT NW
-62:       3317           1         9767 - 146 STREET NW
-63:       2928           1         14315 - 98 AVENUE NW
-64:       3617           1         14327 - 99 AVENUE NW
-65:       2698           1         9918 - 146 STREET NW
-66:       3280           1         14404 - 97 AVENUE NW
-67:       3340           1         14311 - 99 AVENUE NW
-68:       2150           1         14317 - 98 AVENUE NW
-69:       3462           1   14320 - MACKENZIE DRIVE NW
-70:       3450           1        13520 - 101 AVENUE NW
-71:       2882           1 16 - ST GEORGE'S CRESCENT NW
-72:       3543           1        10223 - 130 STREET NW
-73:       4583           1        13607 - 101 AVENUE NW
-74:       3056           1        10501 - 134 STREET NW
-75:       2440           1        10208 - 130 STREET NW
-76:       1700           1         9513 - 101 STREET NW
-77:       3395           1          9643 - 96 STREET NW
-78:       4167           1         9607 - 96A STREET NW
-79:       2513           1          9710 - 95 STREET NW
+36:       4492           1         10070 - 90 AVENUE NW
+37:       2152           1         9624 - 99A STREET NW
+38:       3412           1         10040 - 90 AVENUE NW
+39:       3024           1         11833 - 87 AVENUE NW
+40:       2107           1         8420 - 117 STREET NW
+41:       2107           2         8422 - 117 STREET NW
+42:       3534           1         8480 - 118 STREET NW
+43:       2485           1         11831 - 87 AVENUE NW
+44:       6108           1 9007 - SASKATCHEWAN DRIVE NW
+45:       3988           1        14702 - PARK DRIVE NW
+46:       3217           1        9132 - 146A STREET NW
+47:       2681           1         9211 - 147 STREET NW
+48:       3425           1      13710 - SUMMIT POINT NW
+49:       3317           1         9767 - 146 STREET NW
+50:       2928           1         14315 - 98 AVENUE NW
+51:       3436           1         9704 - 146 STREET NW
+52:       3617           1         14327 - 99 AVENUE NW
+53:       4262           2    9 - RIVERSIDE CRESCENT NW
+54:       2698           1         9918 - 146 STREET NW
+55:       3280           1         14404 - 97 AVENUE NW
+56:       3340           1         14311 - 99 AVENUE NW
+57:       2150           1         14317 - 98 AVENUE NW
+58:       3462           1   14320 - MACKENZIE DRIVE NW
+59:       3450           1        13520 - 101 AVENUE NW
+60:       3980           1        10324 - 130 STREET NW
+61:       3259           1        10534 - 139 STREET NW
+62:       3096           1        10414 - 139 STREET NW
+63:       3535           1        10522 - 134 STREET NW
+64:       2565           2       14719 - 106A AVENUE NW
+65:       4583           1        13607 - 101 AVENUE NW
+66:       1931           1        14013 - 105 AVENUE NW
+67:       2090           1        10414 - 126 STREET NW
+68:       3395           1          9643 - 96 STREET NW
+69:       3927           1   9113 - STRATHEARN DRIVE NW
+70:       2513           1          9710 - 95 STREET NW
+71:       2825           1        10923 - 131 STREET NW
     FLOOR_AREA UNITS_ADDED                      ADDRESS
          <num>       <num>                       <char>
-                 LEGAL_DESCRIPTION ZONING NEIGHBOURHOOD_NUMBER
-                            <char> <char>               <char>
- 1:      Plan 6773MC Blk 17 Lot 19     RS                 5020
- 2:     Plan 1823537 Blk 11 Lot 9B     RS                 3330
- 3:      Plan 5069KS Blk 16 Lot 39     RS                 3330
- 4:      Plan 3792KS Blk 10 Lot 10     RS                 3330
- 5:       Plan 1125KS Blk 9 Lot 35     RS                 3330
- 6:       Plan 5069KS Blk 15 Lot 8     RS                 3330
- 7:       Plan 5069KS Blk 16 Lot 4     RS                 3330
- 8:      Plan 5647KS Blk 27 Lot 12     RS                 3270
- 9:       Plan 3792KS Blk 10 Lot 5     RS                 3330
-10:       Plan 1275HW Blk 1 Lot 31     RS                 5040
-11:        Plan 1275HW Blk 1 Lot 4     RS                 5040
-12:      Plan 2938HW Blk 13 Lot 27     RS                 5040
-13:        Plan 1275HW Blk 4 Lot 4     RS                 5040
-14:         Plan 600MC Blk 4 Lot 9     RS                 5210
-15:     Plan 2222336 Blk 1 Lot 29B     RS                 5040
-16:       Plan 3334HW Blk 5 Lot 18     RS                 5040
-17:      Plan 2938HW Blk 13 Lot 23     RS                 5040
-18:      Plan 1821873 Blk 5 Lot 1A     RS                 5040
-19:      Plan 2221216 Blk 2 Lot 50     RS                 5040
-20:     Plan 2220258 Blk 9 Lot 19A     RS                 5040
-21:     Plan 2221229 Blk 11 Lot 4A     RS                 5210
-22:     Plan 2220928 Blk 2 Lot 35B     RS                 5290
-23:    Plan 2320681 Blk 16 Lot 33A     RS                 5040
-24:      Plan 1622782 Blk 3 Lot 32     RS                 5040
-25:     Plan 2220258 Blk 9 Lot 19B     RS                 5040
-26:   Plan 1822519 Blk 139 Lot 26A     RS                 5200
-27:        Plan I23 Blk 141 Lot 16     RS                 5200
-28:              Plan 4507EO Lot 3     RS                 5290
-29:        Plan I23 Blk 139 Lot 22     RS                 5200
-30:     Plan 5519AP Blk 126 Lot 11     RS                 5480
-31:         Plan I17 Blk 90 Lot 26     RS                 5480
-32:      Plan 733AR Blk 120 Lot 20     RS                 5480
-33:        Plan I17 Blk 121 Lot 23     RS                 5480
-34:        Plan 6086CL Blk 5 Lot 5     RS                 5480
-35:      Plan 272AR Blk 112 Lot 28     RS                 5480
-36:          Plan I Blk 119 Lot 30     RS                 5480
-37:         Plan I9 Blk 113 Lot 25     RS                 5480
-38:        Plan 8057R Blk 2 Lot 17     RS                 5480
-39:        Plan 4798EO Blk 2 Lot 3     RS                 5480
-40:         Plan 8057R Blk 2 Lot 7     RS                 5480
-41:     Plan 2020576 Blk 13 Lot 4A     RS                 5580
-42:      Plan 2322333 Blk 8 Lot 4B     RS                 5580
-43:    Plan 2420082 Blk 12 Lot 30A     RS                 5580
-44:       Plan 2424HW Blk 8 Lot 14     RS                 5580
-45:    Plan 2321981 Blk 14 Lot 16B     RS                 5580
-46:    Plan 2321981 Blk 14 Lot 16A     RS                 5580
-47:      Plan 4116HW Blk 13 Lot 13     RS                 5580
-48:    Plan 2322789 Blk 12 Lot 16A     RS                 5580
-49:     Plan 2020961 Blk 5 Lot 24B     RS                 5580
-50:     Plan 2020576 Blk 13 Lot 4B     RS                 5580
-51:    Plan 2322789 Blk 12 Lot 16B     RS                 5580
-52:      Plan 2322333 Blk 8 Lot 4A     RS                 5580
-53:       Plan 2212HW Blk 2 Lot 10     RS                 5580
-54:       Plan 6054HW Blk 6 Lot 29     RS                 3330
-55:    Plan 2322076 Blk 10 Lot 44C     RS                 3330
-56:       Plan 6054HW Blk 9 Lot 52     RS                 3330
-57:        Plan 6054HW Blk 6 Lot 8     RS                 3330
-58:      Plan 6054HW Blk 10 Lot 55     RS                 3330
-59:       Plan 6054HW Blk 9 Lot 12     RS                 3330
-60: Plan 5109HW Blk 118 Lots 46-47     RS                 3140
-61:        Plan 2744HW Blk A Lot 7     RS                 3140
-62:      Plan 5109HW Blk 87 Lot 17     RS                 3140
-63:    Plan 2222548 Blk 96 Lot 23B     RS                 3140
-64:     Plan 5109HW Blk 118 Lot 43     RS                 3140
-65:        Plan 4590W Blk 98 Lot 6     RS                 3140
-66:      Plan 5109HW Blk 88 Lot 32     RS                 3140
-67:     Plan 5109HW Blk 118 Lot 39     RS                 3140
-68:    Plan 2222548 Blk 96 Lot 23A     RS                 3140
-69:      Plan 3205KS Blk 105 Lot 1     RS                 3140
-70:     Plan 2804AF Blk 126 Lot 12     RS                 3200
-71:   Plan 2804AF Blk 133 Lots 8-9     RS                 3200
-72:     Plan 2803AF Blk 119 Lot 11     RS                 3200
-73:      Plan 1401HW Blk 1A Lot 15     RS                 3200
-74:       Plan 3875P Blk 61 Lot 20     RS                 3200
-75:    Plan 1923362 Blk 118 Lot 12     RS                 3200
-76:             Plan Q Blk 3 Lot 4     RS                 1220
-77:       Plan 1226AQ Blk 6 Lot 14     RS                 6070
-78:     Plan 1226AQ Blk 5 Lots 2-3     RS                 6070
-79:       Plan 1226AQ Blk 3 Lot 33     RS                 6070
-                 LEGAL_DESCRIPTION ZONING NEIGHBOURHOOD_NUMBER
-                            <char> <char>               <char>
-        NEIGHBOURHOOD    BIA COUNT LATITUDE LONGITUDE
-               <char> <char> <int>    <num>     <num>
- 1:     ASPEN GARDENS            1 53.48018 -113.5436
- 2:          PARKVIEW            1 53.52085 -113.5622
- 3:          PARKVIEW            1 53.52047 -113.5557
- 4:          PARKVIEW            1 53.52216 -113.5573
- 5:          PARKVIEW            1 53.52192 -113.5730
- 6:          PARKVIEW            1 53.52025 -113.5590
- 7:          PARKVIEW            1 53.52083 -113.5574
- 8:   LAURIER HEIGHTS            1 53.51571 -113.5599
- 9:          PARKVIEW            1 53.52183 -113.5562
-10:         BELGRAVIA            1 53.51197 -113.5320
-11:         BELGRAVIA            1 53.51157 -113.5322
-12:         BELGRAVIA            1 53.50956 -113.5268
-13:         BELGRAVIA            1 53.51063 -113.5299
-14: GRANDVIEW HEIGHTS            1 53.49885 -113.5522
-15:         BELGRAVIA            1 53.51751 -113.5362
-16:         BELGRAVIA            1 53.51342 -113.5378
-17:         BELGRAVIA            1 53.50901 -113.5266
-18:         BELGRAVIA            1 53.51254 -113.5375
-19:         BELGRAVIA            1 53.51622 -113.5345
-20:         BELGRAVIA            1 53.50981 -113.5362
-21: GRANDVIEW HEIGHTS            1 53.49798 -113.5426
-22:          MCKERNAN            1 53.51599 -113.5310
-23:         BELGRAVIA            1 53.50812 -113.5395
-24:         BELGRAVIA            1 53.51483 -113.5323
-25:         BELGRAVIA            1 53.50989 -113.5362
-26:           GARNEAU            1 53.51494 -113.5130
-27:           GARNEAU            1 53.51643 -113.5145
-28:          MCKERNAN            1 53.51403 -113.5162
-29:           GARNEAU            1 53.51494 -113.5136
-30:        STRATHCONA            1 53.52622 -113.4823
-31:        STRATHCONA            1 53.52067 -113.4838
-32:        STRATHCONA            1 53.52472 -113.4797
-33:        STRATHCONA            1 53.52514 -113.4833
-34:        STRATHCONA            1 53.53491 -113.4850
-35:        STRATHCONA            1 53.52327 -113.4880
-36:        STRATHCONA            1 53.52418 -113.4807
-37:        STRATHCONA            1 53.52328 -113.4903
-38:        STRATHCONA            1 53.52556 -113.4921
-39:        STRATHCONA            1 53.53513 -113.4858
-40:        STRATHCONA            1 53.52556 -113.4906
-41:      WINDSOR PARK            1 53.52261 -113.5370
-42:      WINDSOR PARK            1 53.52394 -113.5383
-43:      WINDSOR PARK            1 53.51860 -113.5335
-44:      WINDSOR PARK            1 53.52356 -113.5368
-45:      WINDSOR PARK            1 53.52069 -113.5330
-46:      WINDSOR PARK            1 53.52077 -113.5330
-47:      WINDSOR PARK            1 53.52222 -113.5346
-48:      WINDSOR PARK            1 53.52007 -113.5370
-49:      WINDSOR PARK            1 53.52593 -113.5340
-50:      WINDSOR PARK            1 53.52261 -113.5368
-51:      WINDSOR PARK            1 53.51997 -113.5370
-52:      WINDSOR PARK            1 53.52403 -113.5383
-53:      WINDSOR PARK            1 53.52734 -113.5386
-54:          PARKVIEW            1 53.52815 -113.5715
-55:          PARKVIEW            1 53.52780 -113.5747
-56:          PARKVIEW            1 53.52616 -113.5732
-57:          PARKVIEW            1 53.52770 -113.5714
-58:          PARKVIEW            1 53.52681 -113.5742
-59:          PARKVIEW            1 53.52611 -113.5744
-60:         CRESTWOOD            1 53.53753 -113.5698
-61:         CRESTWOOD            1 53.53739 -113.5579
-62:         CRESTWOOD            1 53.53691 -113.5728
-63:         CRESTWOOD            1 53.53587 -113.5688
-64:         CRESTWOOD            1 53.53716 -113.5692
-65:         CRESTWOOD            1 53.53842 -113.5733
-66:         CRESTWOOD            1 53.53477 -113.5715
-67:         CRESTWOOD            1 53.53683 -113.5682
-68:         CRESTWOOD            1 53.53591 -113.5689
-69:         CRESTWOOD            1 53.53026 -113.5688
-70:           GLENORA            1 53.54154 -113.5558
-71:           GLENORA            1 53.54166 -113.5538
-72:           GLENORA            1 53.54384 -113.5452
-73:           GLENORA            1 53.54106 -113.5569
-74:           GLENORA            1 53.54796 -113.5525
-75:           GLENORA            1 53.54328 -113.5463
-76:          ROSSDALE            1 53.53131 -113.4933
-77:        CLOVERDALE            1 53.53592 -113.4743
-78:        CLOVERDALE            1 53.53490 -113.4759
-79:        CLOVERDALE            1 53.53647 -113.4736
-        NEIGHBOURHOOD    BIA COUNT LATITUDE LONGITUDE
-               <char> <char> <int>    <num>     <num>
-                                     LOCATION
-                                       <char>
- 1:  (53.48018017638508, -113.54356916763783)
- 2:  (53.52084844077778, -113.56215773483895)
- 3:  (53.52046982007773, -113.55568833769495)
- 4: (53.522162644549084, -113.55731872860929)
- 5:  (53.52191913436762, -113.57302423246844)
- 6:  (53.52024957626095, -113.55904387914143)
- 7:  (53.52082774335116, -113.55743732498188)
- 8:  (53.51570928184143, -113.55993141168504)
- 9:  (53.521830278412295, -113.5561830105361)
-10:  (53.51196779790283, -113.53201069438745)
-11:  (53.51157197291539, -113.53224498963671)
-12:  (53.50956097449378, -113.52684122851558)
-13:  (53.51062767358454, -113.52986063541543)
-14:  (53.49884908122534, -113.55218151963955)
-15:  (53.51751337627458, -113.53621261312767)
-16:   (53.51342347747039, -113.5377838504147)
-17: (53.509006881914885, -113.52655171425248)
-18:  (53.51254435371001, -113.53751261164453)
-19:  (53.51621905287513, -113.53454689630827)
-20: (53.509808147121774, -113.53622391387815)
-21:   (53.4979755824118, -113.54257617702876)
-22:   (53.51598849976873, -113.5309683444206)
-23:  (53.50812170581421, -113.53953776593455)
-24:  (53.51482975608544, -113.53233957481574)
-25:  (53.50988979181137, -113.53623855987925)
-26:  (53.51493757424056, -113.51304698572437)
-27: (53.516429335456586, -113.51446956795918)
-28: (53.514026296449046, -113.51616516077641)
-29:  (53.51493817671297, -113.51356196180038)
-30:  (53.52621618577471, -113.48226507847599)
-31:   (53.52066677893478, -113.4837650266587)
-32:  (53.52471993993484, -113.47965404272956)
-33: (53.525138688686084, -113.48328204423989)
-34:  (53.53491289990777, -113.48499146254971)
-35:  (53.52327485481493, -113.48799194901595)
-36:  (53.52418125034261, -113.48071273732742)
-37:  (53.52327999718543, -113.49026688774815)
-38: (53.525564653528676, -113.49207346938445)
-39:  (53.53512529362975, -113.48580731446438)
-40:  (53.52556475862464, -113.49055939548713)
-41: (53.522609381713295, -113.53700279562203)
-42:  (53.52393873523088, -113.53826812819956)
-43: (53.518600212596446, -113.53349545945807)
-44:  (53.52356106097006, -113.53676220801373)
-45:  (53.52069141051214, -113.53296270388437)
-46:  (53.52076945144882, -113.53296329086254)
-47: (53.522218505461886, -113.53463164334481)
-48: (53.520066596195505, -113.53703175866147)
-49:   (53.5259348748669, -113.53401606198098)
-50: (53.522608999100754, -113.53684659848216)
-51: (53.519974588342706, -113.53699600747768)
-52:  (53.52403352451529, -113.53834381086541)
-53:  (53.52733979009916, -113.53858033004944)
-54:  (53.528151541301526, -113.5714771408424)
-55:  (53.52780441972209, -113.57471540909178)
-56:  (53.52615849135337, -113.57316762240175)
-57:  (53.52769514661653, -113.57138133848787)
-58:  (53.52680770067681, -113.57421591030777)
-59: (53.526111253395534, -113.57443836388819)
-60:  (53.53753325855402, -113.56982637128293)
-61:  (53.53739091385032, -113.55789501837467)
-62:   (53.5369119236054, -113.57282610559228)
-63:  (53.53587065389152, -113.56880072258176)
-64:  (53.53716040487884, -113.56915828011074)
-65:  (53.53841837895144, -113.57328815946518)
-66:  (53.534772814856524, -113.5715491425726)
-67:   (53.53682856141264, -113.5682496702601)
-68: (53.535914209241724, -113.56890665662328)
-69:  (53.53025839032036, -113.56879579023489)
-70:   (53.54154422254812, -113.5558231592375)
-71:  (53.54166362174758, -113.55381387465262)
-72:    (53.543836433332, -113.54524845898776)
-73:  (53.54105792992981, -113.55693021759258)
-74: (53.547956539516576, -113.55248416736626)
-75:  (53.54328194135146, -113.54626043063345)
-76:   (53.53131090388506, -113.4933091398264)
-77:  (53.53592346747354, -113.47431811778965)
-78:  (53.53490357376083, -113.47590340100679)
-79:  (53.53646769069628, -113.47363255935025)
-                                     LOCATION
-                                       <char>
+              LEGAL_DESCRIPTION ZONING NEIGHBOURHOOD_NUMBER     NEIGHBOURHOOD
+                         <char> <char>               <char>            <char>
+ 1:   Plan 1800NY Blk 27 Lot 16     RS                 5260         LANSDOWNE
+ 2:    Plan 624NY Blk 1 Lot 46A     RS                 5540 WESTBROOK ESTATES
+ 3:  Plan 2222316 Blk 4 Lot 34A     RS                 5540 WESTBROOK ESTATES
+ 4:   Plan 6773MC Blk 12 Lot 23     RS                 5020     ASPEN GARDENS
+ 5:    Plan 4160MC Blk 1 Lot 54     RS                 5540 WESTBROOK ESTATES
+ 6:    Plan 5508MC Blk 4 Lot 27     RS                 5540 WESTBROOK ESTATES
+ 7:    Plan 6773MC Blk 16 Lot 9     RS                 5020     ASPEN GARDENS
+ 8:   Plan 6773MC Blk 17 Lot 19     RS                 5020     ASPEN GARDENS
+ 9:     Plan 6773MC Blk 9 Lot 6     RS                 5020     ASPEN GARDENS
+10:    Plan 5508MC Blk 4 Lot 11     RS                 5540 WESTBROOK ESTATES
+11:    Plan 5508MC Blk 5 Lot 27     RS                 5540 WESTBROOK ESTATES
+12:    Plan 4160MC Blk 1 Lot 43     RS                 5540 WESTBROOK ESTATES
+13:  Plan 2220621 Blk 7 Lot 26B     RS                 4390  PATRICIA HEIGHTS
+14:    Plan 4820KS Blk 1 Lot 44     RS                 4420  QUESNELL HEIGHTS
+15:  Plan 1823537 Blk 11 Lot 9B     RS                 3330          PARKVIEW
+16:    Plan 5069KS Blk 15 Lot 8     RS                 3330          PARKVIEW
+17:    Plan 3792KS Blk 7 Lot 28     RS                 3330          PARKVIEW
+18:   Plan 5647KS Blk 27 Lot 12     RS                 3270   LAURIER HEIGHTS
+19:    Plan 1275HW Blk 1 Lot 31     RS                 5040         BELGRAVIA
+20:     Plan 1275HW Blk 1 Lot 4     RS                 5040         BELGRAVIA
+21:   Plan 2938HW Blk 13 Lot 27     RS                 5040         BELGRAVIA
+22:     Plan 1275HW Blk 4 Lot 4     RS                 5040         BELGRAVIA
+23:      Plan 600MC Blk 4 Lot 9     RS                 5210 GRANDVIEW HEIGHTS
+24:   Plan 2938HW Blk 13 Lot 23     RS                 5040         BELGRAVIA
+25:   Plan 1821873 Blk 5 Lot 1A     RS                 5040         BELGRAVIA
+26:   Plan 2221216 Blk 2 Lot 50     RS                 5040         BELGRAVIA
+27:  Plan 2220258 Blk 9 Lot 19A     RS                 5040         BELGRAVIA
+28:  Plan 2220928 Blk 2 Lot 35B     RS                 5290          MCKERNAN
+29: Plan 2320681 Blk 16 Lot 33A     RS                 5040         BELGRAVIA
+30:    Plan 600MC Blk 14 Lot 31     RS                 5210 GRANDVIEW HEIGHTS
+31:  Plan 2220258 Blk 9 Lot 19B     RS                 5040         BELGRAVIA
+32:  Plan 5519AP Blk 126 Lot 11     RS                 5480        STRATHCONA
+33:   Plan 733AR Blk 120 Lot 20     RS                 5480        STRATHCONA
+34:     Plan 6086CL Blk 5 Lot 5     RS                 5480        STRATHCONA
+35:   Plan 272AR Blk 112 Lot 28     RS                 5480        STRATHCONA
+36:     Plan 8057R Blk 2 Lot 17     RS                 5480        STRATHCONA
+37:     Plan 4798EO Blk 2 Lot 3     RS                 5480        STRATHCONA
+38:      Plan 8057R Blk 2 Lot 7     RS                 5480        STRATHCONA
+39:  Plan 2020576 Blk 13 Lot 4A     RS                 5580      WINDSOR PARK
+40: Plan 2321981 Blk 14 Lot 16B     RS                 5580      WINDSOR PARK
+41: Plan 2321981 Blk 14 Lot 16A     RS                 5580      WINDSOR PARK
+42:   Plan 4116HW Blk 13 Lot 13     RS                 5580      WINDSOR PARK
+43:  Plan 2020576 Blk 13 Lot 4B     RS                 5580      WINDSOR PARK
+44:    Plan 2212HW Blk 2 Lot 10     RS                 5580      WINDSOR PARK
+45:      Plan 452KS Blk 3 Lot 7     RS                 3330          PARKVIEW
+46:    Plan 6054HW Blk 9 Lot 52     RS                 3330          PARKVIEW
+47:    Plan 6054HW Blk 9 Lot 12     RS                 3330          PARKVIEW
+48:     Plan 2744HW Blk A Lot 7     RS                 3140         CRESTWOOD
+49:   Plan 5109HW Blk 87 Lot 17     RS                 3140         CRESTWOOD
+50: Plan 2222548 Blk 96 Lot 23B     RS                 3140         CRESTWOOD
+51:   Plan 5109HW Blk 84 Lot 45     RS                 3140         CRESTWOOD
+52:  Plan 5109HW Blk 118 Lot 43     RS                 3140         CRESTWOOD
+53:     Plan 104KS Blk A Lot 32     RS                 3140         CRESTWOOD
+54:     Plan 4590W Blk 98 Lot 6     RS                 3140         CRESTWOOD
+55:   Plan 5109HW Blk 88 Lot 32     RS                 3140         CRESTWOOD
+56:  Plan 5109HW Blk 118 Lot 39     RS                 3140         CRESTWOOD
+57: Plan 2222548 Blk 96 Lot 23A     RS                 3140         CRESTWOOD
+58:   Plan 3205KS Blk 105 Lot 1     RS                 3140         CRESTWOOD
+59:  Plan 2804AF Blk 126 Lot 12     RS                 3200           GLENORA
+60:    Plan 2803AF Blk 86 Lot 2     RS                 3200           GLENORA
+61:     Plan 3875P Blk 67 Lot 9     RS                 3200           GLENORA
+62:     Plan 3875P Blk 72 Lot 4     RS                 3200           GLENORA
+63:     Plan 3875P Blk 62 Lot 6     RS                 3200           GLENORA
+64:    Plan 5887HW Blk 6 Lot 12     RS                 3210          GROVENOR
+65:   Plan 1401HW Blk 1A Lot 15     RS                 3200           GLENORA
+66:     Plan 839HW Blk 70 Lot 4     RS                 3200           GLENORA
+67:    Plan 5393AH Blk 51 Lot D     RS                 3440         WESTMOUNT
+68:    Plan 1226AQ Blk 6 Lot 14     RS                 6070        CLOVERDALE
+69:    Plan 8296ET Blk 4 Lot 19     RS                 6710        STRATHEARN
+70:    Plan 1226AQ Blk 3 Lot 33     RS                 6070        CLOVERDALE
+71:    Plan 6303ET Blk 1 Lot 16     RS                 3440         WESTMOUNT
+              LEGAL_DESCRIPTION ZONING NEIGHBOURHOOD_NUMBER     NEIGHBOURHOOD
+                         <char> <char>               <char>            <char>
+       BIA COUNT LATITUDE LONGITUDE                                  LOCATION
+    <char> <int>    <num>     <num>                                    <char>
+ 1:            1 53.48783 -113.5477 (53.487834787193556, -113.54771710766799)
+ 2:            1 53.46881 -113.5541  (53.46881290592009, -113.55411520503263)
+ 3:            1 53.47316 -113.5525 (53.473156215235086, -113.55250795608278)
+ 4:            1 53.47733 -113.5477 (53.477328273061715, -113.54774940290932)
+ 5:            1 53.46911 -113.5575  (53.46911167492942, -113.55745733023514)
+ 6:            1 53.47243 -113.5550  (53.47243372770177, -113.55503428591388)
+ 7:            1 53.47901 -113.5481  (53.47901342969631, -113.54806043622094)
+ 8:            1 53.48018 -113.5436  (53.48018017638508, -113.54356916763783)
+ 9:            1 53.47555 -113.5428  (53.47555391993528, -113.54281537179526)
+10:            1 53.46972 -113.5527  (53.46971529571675, -113.55272689869739)
+11:            1 53.47251 -113.5534   (53.47250870489525, -113.5533682619003)
+12:            1 53.46825 -113.5532  (53.468252851043836, -113.5531558270896)
+13:            1 53.50906 -113.5979 (53.509064212934966, -113.59791345347753)
+14:            1 53.50786 -113.5745 (53.507860795752485, -113.57446555673658)
+15:            1 53.52085 -113.5622  (53.52084844077778, -113.56215773483895)
+16:            1 53.52025 -113.5590  (53.52024957626095, -113.55904387914143)
+17:            1 53.52249 -113.5629  (53.52249020464368, -113.56290226076098)
+18:            1 53.51571 -113.5599  (53.51570928184143, -113.55993141168504)
+19:            1 53.51197 -113.5320  (53.51196779790283, -113.53201069438745)
+20:            1 53.51157 -113.5322  (53.51157197291539, -113.53224498963671)
+21:            1 53.50956 -113.5268  (53.50956097449378, -113.52684122851558)
+22:            1 53.51063 -113.5299  (53.51062767358454, -113.52986063541543)
+23:            1 53.49885 -113.5522  (53.49884908122534, -113.55218151963955)
+24:            1 53.50901 -113.5266 (53.509006881914885, -113.52655171425248)
+25:            1 53.51254 -113.5375  (53.51254435371001, -113.53751261164453)
+26:            1 53.51622 -113.5345  (53.51621905287513, -113.53454689630827)
+27:            1 53.50981 -113.5362 (53.509808147121774, -113.53622391387815)
+28:            1 53.51599 -113.5310   (53.51598849976873, -113.5309683444206)
+29:            1 53.50812 -113.5395  (53.50812170581421, -113.53953776593455)
+30:            1 53.50300 -113.5461  (53.50300354074354, -113.54612237451943)
+31:            1 53.50989 -113.5362  (53.50988979181137, -113.53623855987925)
+32:            1 53.52622 -113.4823  (53.52621618577471, -113.48226507847599)
+33:            1 53.52472 -113.4797  (53.52471993993484, -113.47965404272956)
+34:            1 53.53491 -113.4850  (53.53491289990777, -113.48499146254971)
+35:            1 53.52327 -113.4880  (53.52327485481493, -113.48799194901595)
+36:            1 53.52556 -113.4921 (53.525564653528676, -113.49207346938445)
+37:            1 53.53513 -113.4858  (53.53512529362975, -113.48580731446438)
+38:            1 53.52556 -113.4906  (53.52556475862464, -113.49055939548713)
+39:            1 53.52261 -113.5370 (53.522609381713295, -113.53700279562203)
+40:            1 53.52069 -113.5330  (53.52069141051214, -113.53296270388437)
+41:            1 53.52077 -113.5330  (53.52076945144882, -113.53296329086254)
+42:            1 53.52222 -113.5346 (53.522218505461886, -113.53463164334481)
+43:            1 53.52261 -113.5368 (53.522608999100754, -113.53684659848216)
+44:            1 53.52734 -113.5386  (53.52733979009916, -113.53858033004944)
+45:            1 53.53024 -113.5745 (53.530235125328275, -113.57450868234238)
+46:            1 53.52616 -113.5732  (53.52615849135337, -113.57316762240175)
+47:            1 53.52611 -113.5744 (53.526111253395534, -113.57443836388819)
+48:            1 53.53739 -113.5579  (53.53739091385032, -113.55789501837467)
+49:            1 53.53691 -113.5728   (53.5369119236054, -113.57282610559228)
+50:            1 53.53587 -113.5688  (53.53587065389152, -113.56880072258176)
+51:            1 53.53478 -113.5750  (53.53477571437434, -113.57503021456556)
+52:            1 53.53716 -113.5692  (53.53716040487884, -113.56915828011074)
+53:            1 53.53118 -113.5626  (53.53117786199819, -113.56258769385055)
+54:            1 53.53842 -113.5733  (53.53841837895144, -113.57328815946518)
+55:            1 53.53477 -113.5715  (53.534772814856524, -113.5715491425726)
+56:            1 53.53683 -113.5682   (53.53682856141264, -113.5682496702601)
+57:            1 53.53591 -113.5689 (53.535914209241724, -113.56890665662328)
+58:            1 53.53026 -113.5688  (53.53025839032036, -113.56879579023489)
+59:            1 53.54154 -113.5558   (53.54154422254812, -113.5558231592375)
+60:            1 53.54535 -113.5463  (53.545348657641085, -113.5463222658348)
+61:            1 53.54905 -113.5618  (53.54905038353403, -113.56184833985729)
+62:            1 53.54678 -113.5618  (53.54677735244578, -113.56184519382693)
+63:            1 53.54864 -113.5534 (53.548641192896596, -113.55343151228516)
+64:            1 53.55018 -113.5756  (53.55018337554004, -113.57555342452696)
+65:            1 53.54106 -113.5569  (53.54105792992981, -113.55693021759258)
+66:            1 53.54747 -113.5640  (53.54747441358214, -113.56401272467255)
+67:            1 53.54667 -113.5399  (53.54666871267022, -113.53994395247301)
+68:            1 53.53592 -113.4743  (53.53592346747354, -113.47431811778965)
+69:            1 53.53409 -113.4677  (53.53408977564352, -113.46774004537788)
+70:            1 53.53647 -113.4736  (53.53646769069628, -113.47363255935025)
+71:            1 53.55478 -113.5474  (53.55478242738562, -113.54743816237662)
+       BIA COUNT LATITUDE LONGITUDE                                  LOCATION
+    <char> <int>    <num>     <num>                                    <char>
                                     Geometry Point Occupancy Date  isNew
                                             <char>         <IDat> <lgcl>
- 1:  POINT (-113.54356916763783 53.48018017638508)     2025-12-01   TRUE
- 2:  POINT (-113.56215773483895 53.52084844077778)     2025-03-10   TRUE
- 3:  POINT (-113.55568833769495 53.52046982007773)           <NA>   TRUE
- 4: POINT (-113.55731872860929 53.522162644549084)           <NA>   TRUE
- 5:  POINT (-113.57302423246844 53.52191913436762)     2025-10-30   TRUE
- 6:  POINT (-113.55904387914143 53.52024957626095)           <NA>   TRUE
- 7:  POINT (-113.55743732498188 53.52082774335116)     2026-03-30   TRUE
- 8:  POINT (-113.55993141168504 53.51570928184143)           <NA>   TRUE
- 9:  POINT (-113.5561830105361 53.521830278412295)           <NA>   TRUE
-10:  POINT (-113.53201069438745 53.51196779790283)           <NA>   TRUE
-11:  POINT (-113.53224498963671 53.51157197291539)     2026-04-14   TRUE
-12:  POINT (-113.52684122851558 53.50956097449378)     2025-12-02   TRUE
-13:  POINT (-113.52986063541543 53.51062767358454)     2025-07-31   TRUE
-14:  POINT (-113.55218151963955 53.49884908122534)           <NA>   TRUE
-15:  POINT (-113.53621261312767 53.51751337627458)           <NA>   TRUE
-16:   POINT (-113.5377838504147 53.51342347747039)           <NA>   TRUE
-17: POINT (-113.52655171425248 53.509006881914885)     2025-12-18   TRUE
-18:  POINT (-113.53751261164453 53.51254435371001)     2025-08-25   TRUE
-19:  POINT (-113.53454689630827 53.51621905287513)     2025-10-11   TRUE
-20: POINT (-113.53622391387815 53.509808147121774)     2025-11-07   TRUE
-21:   POINT (-113.54257617702876 53.4979755824118)     2025-11-27   TRUE
-22:   POINT (-113.5309683444206 53.51598849976873)     2024-12-03   TRUE
-23:  POINT (-113.53953776593455 53.50812170581421)           <NA>   TRUE
-24:  POINT (-113.53233957481574 53.51482975608544)     2025-12-03   TRUE
-25:  POINT (-113.53623855987925 53.50988979181137)           <NA>   TRUE
-26:  POINT (-113.51304698572437 53.51493757424056)     2026-06-01   TRUE
-27: POINT (-113.51446956795918 53.516429335456586)     2024-10-25   TRUE
-28: POINT (-113.51616516077641 53.514026296449046)     2025-10-30   TRUE
-29:  POINT (-113.51356196180038 53.51493817671297)     2025-05-16   TRUE
-30:  POINT (-113.48226507847599 53.52621618577471)           <NA>   TRUE
-31:   POINT (-113.4837650266587 53.52066677893478)     2025-05-09   TRUE
-32:  POINT (-113.47965404272956 53.52471993993484)           <NA>   TRUE
-33: POINT (-113.48328204423989 53.525138688686084)           <NA>   TRUE
+ 1: POINT (-113.54771710766799 53.487834787193556)           <NA>   TRUE
+ 2:  POINT (-113.55411520503263 53.46881290592009)           <NA>   TRUE
+ 3: POINT (-113.55250795608278 53.473156215235086)     2026-02-13   TRUE
+ 4: POINT (-113.54774940290932 53.477328273061715)           <NA>   TRUE
+ 5:  POINT (-113.55745733023514 53.46911167492942)     2025-12-05   TRUE
+ 6:  POINT (-113.55503428591388 53.47243372770177)           <NA>   TRUE
+ 7:  POINT (-113.54806043622094 53.47901342969631)           <NA>   TRUE
+ 8:  POINT (-113.54356916763783 53.48018017638508)     2025-12-01   TRUE
+ 9:  POINT (-113.54281537179526 53.47555391993528)           <NA>   TRUE
+10:  POINT (-113.55272689869739 53.46971529571675)     2025-10-09   TRUE
+11:   POINT (-113.5533682619003 53.47250870489525)           <NA>   TRUE
+12:  POINT (-113.5531558270896 53.468252851043836)           <NA>   TRUE
+13: POINT (-113.59791345347753 53.509064212934966)           <NA>   TRUE
+14: POINT (-113.57446555673658 53.507860795752485)           <NA>   TRUE
+15:  POINT (-113.56215773483895 53.52084844077778)     2025-03-10   TRUE
+16:  POINT (-113.55904387914143 53.52024957626095)           <NA>   TRUE
+17:  POINT (-113.56290226076098 53.52249020464368)     2026-04-09   TRUE
+18:  POINT (-113.55993141168504 53.51570928184143)           <NA>   TRUE
+19:  POINT (-113.53201069438745 53.51196779790283)           <NA>   TRUE
+20:  POINT (-113.53224498963671 53.51157197291539)     2026-04-14   TRUE
+21:  POINT (-113.52684122851558 53.50956097449378)     2025-12-02   TRUE
+22:  POINT (-113.52986063541543 53.51062767358454)     2025-07-31   TRUE
+23:  POINT (-113.55218151963955 53.49884908122534)           <NA>   TRUE
+24: POINT (-113.52655171425248 53.509006881914885)     2025-12-18   TRUE
+25:  POINT (-113.53751261164453 53.51254435371001)     2025-08-25   TRUE
+26:  POINT (-113.53454689630827 53.51621905287513)     2025-10-11   TRUE
+27: POINT (-113.53622391387815 53.509808147121774)     2025-11-07   TRUE
+28:   POINT (-113.5309683444206 53.51598849976873)     2024-12-03   TRUE
+29:  POINT (-113.53953776593455 53.50812170581421)           <NA>   TRUE
+30:  POINT (-113.54612237451943 53.50300354074354)           <NA>   TRUE
+31:  POINT (-113.53623855987925 53.50988979181137)           <NA>   TRUE
+32:  POINT (-113.48226507847599 53.52621618577471)           <NA>   TRUE
+33:  POINT (-113.47965404272956 53.52471993993484)           <NA>   TRUE
 34:  POINT (-113.48499146254971 53.53491289990777)           <NA>   TRUE
 35:  POINT (-113.48799194901595 53.52327485481493)           <NA>   TRUE
-36:  POINT (-113.48071273732742 53.52418125034261)           <NA>   TRUE
-37:  POINT (-113.49026688774815 53.52327999718543)           <NA>   TRUE
-38: POINT (-113.49207346938445 53.525564653528676)     2026-02-26   TRUE
-39:  POINT (-113.48580731446438 53.53512529362975)     2025-01-22   TRUE
-40:  POINT (-113.49055939548713 53.52556475862464)     2026-02-26   TRUE
-41: POINT (-113.53700279562203 53.522609381713295)           <NA>   TRUE
-42:  POINT (-113.53826812819956 53.52393873523088)     2025-12-18   TRUE
-43: POINT (-113.53349545945807 53.518600212596446)     2025-04-14   TRUE
-44:  POINT (-113.53676220801373 53.52356106097006)     2026-04-17   TRUE
-45:  POINT (-113.53296270388437 53.52069141051214)     2024-11-13   TRUE
-46:  POINT (-113.53296329086254 53.52076945144882)     2024-11-13   TRUE
-47: POINT (-113.53463164334481 53.522218505461886)           <NA>   TRUE
-48: POINT (-113.53703175866147 53.520066596195505)           <NA>   TRUE
-49:   POINT (-113.53401606198098 53.5259348748669)     2025-09-11   TRUE
-50: POINT (-113.53684659848216 53.522608999100754)           <NA>   TRUE
-51: POINT (-113.53699600747768 53.519974588342706)     2025-06-19   TRUE
-52:  POINT (-113.53834381086541 53.52403352451529)     2026-02-12   TRUE
-53:  POINT (-113.53858033004944 53.52733979009916)           <NA>   TRUE
-54:  POINT (-113.5714771408424 53.528151541301526)     2026-04-02   TRUE
-55:  POINT (-113.57471540909178 53.52780441972209)     2024-12-06   TRUE
-56:  POINT (-113.57316762240175 53.52615849135337)     2026-02-03   TRUE
-57:  POINT (-113.57138133848787 53.52769514661653)           <NA>   TRUE
-58:  POINT (-113.57421591030777 53.52680770067681)     2025-09-09   TRUE
-59: POINT (-113.57443836388819 53.526111253395534)           <NA>   TRUE
-60:  POINT (-113.56982637128293 53.53753325855402)           <NA>   TRUE
-61:  POINT (-113.55789501837467 53.53739091385032)           <NA>   TRUE
-62:   POINT (-113.57282610559228 53.5369119236054)     2026-04-29   TRUE
-63:  POINT (-113.56880072258176 53.53587065389152)     2025-08-21   TRUE
-64:  POINT (-113.56915828011074 53.53716040487884)           <NA>   TRUE
-65:  POINT (-113.57328815946518 53.53841837895144)           <NA>   TRUE
-66:  POINT (-113.5715491425726 53.534772814856524)           <NA>   TRUE
-67:   POINT (-113.5682496702601 53.53682856141264)           <NA>   TRUE
-68: POINT (-113.56890665662328 53.535914209241724)     2025-08-27   TRUE
-69:  POINT (-113.56879579023489 53.53025839032036)     2026-02-20   TRUE
-70:   POINT (-113.5558231592375 53.54154422254812)     2025-08-15   TRUE
-71:  POINT (-113.55381387465262 53.54166362174758)           <NA>   TRUE
-72:    POINT (-113.54524845898776 53.543836433332)           <NA>   TRUE
-73:  POINT (-113.55693021759258 53.54105792992981)           <NA>   TRUE
-74: POINT (-113.55248416736626 53.547956539516576)     2024-11-18   TRUE
-75:  POINT (-113.54626043063345 53.54328194135146)     2024-03-05   TRUE
-76:   POINT (-113.4933091398264 53.53131090388506)           <NA>   TRUE
-77:  POINT (-113.47431811778965 53.53592346747354)           <NA>   TRUE
-78:  POINT (-113.47590340100679 53.53490357376083)     2026-03-04   TRUE
-79:  POINT (-113.47363255935025 53.53646769069628)           <NA>   TRUE
+36: POINT (-113.49207346938445 53.525564653528676)     2026-02-26   TRUE
+37:  POINT (-113.48580731446438 53.53512529362975)     2025-01-22   TRUE
+38:  POINT (-113.49055939548713 53.52556475862464)     2026-02-26   TRUE
+39: POINT (-113.53700279562203 53.522609381713295)           <NA>   TRUE
+40:  POINT (-113.53296270388437 53.52069141051214)     2024-11-13   TRUE
+41:  POINT (-113.53296329086254 53.52076945144882)     2024-11-13   TRUE
+42: POINT (-113.53463164334481 53.522218505461886)           <NA>   TRUE
+43: POINT (-113.53684659848216 53.522608999100754)           <NA>   TRUE
+44:  POINT (-113.53858033004944 53.52733979009916)           <NA>   TRUE
+45: POINT (-113.57450868234238 53.530235125328275)           <NA>   TRUE
+46:  POINT (-113.57316762240175 53.52615849135337)     2026-02-03   TRUE
+47: POINT (-113.57443836388819 53.526111253395534)           <NA>   TRUE
+48:  POINT (-113.55789501837467 53.53739091385032)           <NA>   TRUE
+49:   POINT (-113.57282610559228 53.5369119236054)     2026-04-29   TRUE
+50:  POINT (-113.56880072258176 53.53587065389152)     2025-08-21   TRUE
+51:  POINT (-113.57503021456556 53.53477571437434)     2025-06-03   TRUE
+52:  POINT (-113.56915828011074 53.53716040487884)           <NA>   TRUE
+53:  POINT (-113.56258769385055 53.53117786199819)           <NA>   TRUE
+54:  POINT (-113.57328815946518 53.53841837895144)           <NA>   TRUE
+55:  POINT (-113.5715491425726 53.534772814856524)           <NA>   TRUE
+56:   POINT (-113.5682496702601 53.53682856141264)           <NA>   TRUE
+57: POINT (-113.56890665662328 53.535914209241724)     2025-08-27   TRUE
+58:  POINT (-113.56879579023489 53.53025839032036)     2026-02-20   TRUE
+59:   POINT (-113.5558231592375 53.54154422254812)     2025-08-15   TRUE
+60:  POINT (-113.5463222658348 53.545348657641085)           <NA>   TRUE
+61:  POINT (-113.56184833985729 53.54905038353403)     2025-02-21   TRUE
+62:  POINT (-113.56184519382693 53.54677735244578)           <NA>   TRUE
+63: POINT (-113.55343151228516 53.548641192896596)     2024-12-10   TRUE
+64:  POINT (-113.57555342452696 53.55018337554004)           <NA>   TRUE
+65:  POINT (-113.55693021759258 53.54105792992981)           <NA>   TRUE
+66:  POINT (-113.56401272467255 53.54747441358214)     2024-09-17   TRUE
+67:  POINT (-113.53994395247301 53.54666871267022)     2026-04-17   TRUE
+68:  POINT (-113.47431811778965 53.53592346747354)           <NA>   TRUE
+69:  POINT (-113.46774004537788 53.53408977564352)           <NA>   TRUE
+70:  POINT (-113.47363255935025 53.53646769069628)           <NA>   TRUE
+71:  POINT (-113.54743816237662 53.55478242738562)           <NA>   TRUE
                                     Geometry Point Occupancy Date  isNew
                                             <char>         <IDat> <lgcl>
     costPSF  CTNAME  VALUE isRow isSingle elasticity priceLevel        bw
       <num>  <char>  <int> <int>    <int>      <num>      <num>     <num>
- 1:     125 0004.02 115000     0        1  0.3478635   13.28527  367.7108
- 2:     125 0009.00 144000     0        1  0.5668646   13.28601  332.1668
- 3:     125 0009.00 144000     0        1  0.6292332   13.26977  548.4112
- 4:     125 0009.00 144000     0        1  0.6179252   13.29690  498.3011
- 5:     125 0009.00 144000     0        1  0.4469034   13.27760  265.4651
- 6:     125 0009.00 144000     0        1  0.5773110   13.29976  416.0205
- 7:     125 0009.00 144000     0        1  0.6015090   13.29802  476.4139
- 8:     125 0009.00 144000     0        1  0.5007504   13.28896  420.1674
- 9:     125 0009.00 144000     0        1  0.6214959   13.28754  544.8050
-10:     125 0010.00 147000     0        1  0.4130081   13.37204  351.8511
-11:     125 0010.00 147000     0        1  0.4081280   13.39199  347.0658
-12:     125 0010.00 147000     0        1  0.4541628   13.31039  376.8918
-13:     125 0010.00 147000     0        1  0.3752138   13.38991  354.7635
-14:     125 0010.00 147000     0        1  0.4165371   13.30621  878.0705
-15:     125 0010.00 147000     0        1  0.4956375   13.31323  618.0331
-16:     125 0010.00 147000     0        1  0.4701920   13.33475  517.6157
-17:     125 0010.00 147000     0        1  0.5087259   13.30086  376.2954
-18:     125 0010.00 147000     0        1  0.4365829   13.35807  504.3399
-19:     125 0010.00 147000     0        1  0.4836241   13.31577  498.7971
-20:     125 0010.00 147000     0        1  0.3602246   13.42535  398.2103
-21:     125 0010.00 147000     0        1  0.4164024   13.27209  914.6113
-22:     125 0010.00 147000     0        1  0.3619185   13.34266  440.7391
-23:     125 0010.00 147000     0        1  0.4785226   13.28515  627.2541
-24:     125 0010.00 147000     0        1  0.4513455   13.31518  374.0871
-25:     125 0010.00 147000     0        1  0.3610989   13.42413  401.8605
-26:     125 0011.00  85000     0        1  0.4143954   13.28305  397.9033
-27:     125 0011.00  85000     0        1  0.4520560   13.31528  438.3006
-28:     125 0011.00  85000     0        1  0.3943964   13.27022  290.2017
-29:     125 0011.00  85000     0        1  0.4135893   13.28646  379.2893
-30:     125 0021.00  67000     0        1  0.4630640   13.32803  361.1068
-31:     125 0021.00  67000     0        1  0.4614636   13.27567  248.7728
-32:     125 0021.00  67000     0        1  0.3553659   13.34252  362.3420
-33:     125 0021.00  67000     0        1  0.4475532   13.32041  300.4538
-34:     125 0021.00  67000     0        1  0.4687471   13.31059  752.2669
-35:     125 0021.00  67000     0        1  0.4468202   13.31566  326.6451
-36:     125 0021.00  67000     0        1  0.3626488   13.33177  302.4984
-37:     125 0021.00  67000     0        1  0.4730663   13.28895  418.8367
-38:     125 0021.00  67000     0        1  0.5103124   13.34758  545.7164
-39:     125 0021.00  67000     0        1  0.4363584   13.33015  787.2700
-40:     125 0021.00  67000     0        1  0.5200950   13.35595  476.1624
-41:     125 0023.00  52000     0        1  0.6814599   13.29015  936.2329
-42:     125 0023.00  52000     0        1  0.6694323   13.30459 1092.0527
-43:     125 0023.00  52000     0        1  0.4947601   13.31687  637.4819
-44:     125 0023.00  52000     0        1  0.6653876   13.30042 1028.3218
-45:     125 0023.00  52000     0        1  0.5908280   13.29686  762.0533
-46:     125 0023.00  52000     0        1  0.5948755   13.29621  769.2940
-47:     125 0023.00  52000     0        1  0.6597874   13.28628  863.6919
-48:     125 0023.00  52000     0        1  0.6196875   13.29459  797.4050
-49:     125 0023.00  52000     0        1  0.6226597   13.32254 1231.9996
-50:     125 0023.00  52000     0        1  0.6805078   13.28987  931.2566
-51:     125 0023.00  52000     0        1  0.6144652   13.29518  789.9962
-52:     125 0023.00  52000     0        1  0.6681846   13.30557 1103.6126
-53:     125 0023.00  52000     0        1  0.6300042   13.33006 1416.8346
-54:     125 0024.01 156000     0        1  0.5537221   13.31508  350.2992
-55:     125 0024.01 156000     0        1  0.4935130   13.27366  297.1664
-56:     125 0024.01 156000     0        1  0.5109720   13.29527  283.8640
-57:     125 0024.01 156000     0        1  0.5452098   13.31264  348.6123
-58:     125 0024.01 156000     0        1  0.4972714   13.29845  278.3031
-59:     125 0024.01 156000     0        1  0.5084623   13.27266  282.3631
-60:     125 0024.02 143000     0        1  0.6194969   13.36834  381.9433
-61:     125 0024.02 143000     0        1  0.7579070   13.30139  604.4715
-62:     125 0024.02 143000     0        1  0.5708646   13.36933  342.6874
-63:     125 0024.02 143000     0        1  0.6629394   13.38368  390.3472
-64:     125 0024.02 143000     0        1  0.6386816   13.37278  389.5747
-65:     125 0024.02 143000     0        1  0.6122397   13.31082  381.7842
-66:     125 0024.02 143000     0        1  0.6025549   13.36275  347.9370
-67:     125 0024.02 143000     0        1  0.6691075   13.37283  411.7624
-68:     125 0024.02 143000     0        1  0.6614074   13.38408  388.8938
-69:     125 0024.02 143000     0        1  0.6006435   13.32126  394.8327
-70:     125 0029.00 118000     0        1  0.7665326   13.27281  436.2512
-71:     125 0029.00 118000     0        1  0.7752122   13.28886  434.1423
-72:     125 0029.00 118000     0        1  0.6784970   13.28294  492.3655
-73:     125 0029.00 118000     0        1  0.7525885   13.27337  455.4574
-74:     125 0029.00 118000     0        1  0.4543491   13.27199  349.1551
-75:     125 0029.00 118000     0        1  0.6999227   13.30403  515.1865
-76:     125 0034.01  55600     0        1  0.2912763   13.41447  871.0272
-77:     125 0035.00  71000     0        1  0.3750627   13.34063  539.3694
-78:     125 0035.00  71000     0        1  0.4359456   13.30616  520.3981
-79:     125 0035.00  71000     0        1  0.3763529   13.34563  568.1090
+ 1:     125 0004.01 109000     0        1  0.1618995   13.33188 127.69823
+ 2:     125 0004.02 115000     0        1  0.5049432   13.65041 555.93456
+ 3:     125 0004.02 115000     0        1  0.5873848   13.92285 289.32647
+ 4:     125 0004.02 115000     0        1  0.1780941   13.92857 108.26163
+ 5:     125 0004.02 115000     0        1  0.5617708   13.41788 519.41782
+ 6:     125 0004.02 115000     0        1  0.4743496   13.50927 446.83163
+ 7:     125 0004.02 115000     0        1  0.1120121   13.73869 102.79724
+ 8:     125 0004.02 115000     0        1  0.4298067   13.69155 110.14059
+ 9:     125 0004.02 115000     0        1  0.2885581   13.46401 128.50731
+10:     125 0004.02 115000     0        1  0.5045462   13.71933 480.64787
+11:     125 0004.02 115000     0        1  0.4969808   13.57918 364.49714
+12:     125 0004.02 115000     0        1  0.5909060   13.70108 566.33766
+13:     125 0007.02 146000     0        1  0.2771972   13.35120 117.46751
+14:     125 0008.01 153000     0        1  0.4363892   13.51486 309.50950
+15:     125 0009.00 144000     0        1  0.1301313   13.34756 124.61716
+16:     125 0009.00 144000     0        1  0.5482296   13.34736 142.10014
+17:     125 0009.00 144000     0        1  0.3284975   13.36073 123.50672
+18:     125 0009.00 144000     0        1  0.3578523   13.53774 137.25002
+19:     125 0010.00 147000     0        1  0.4498613   13.41315 122.39543
+20:     125 0010.00 147000     0        1  0.4666188   13.40832 115.40652
+21:     125 0010.00 147000     0        1  0.4073248   13.38821 128.51011
+22:     125 0010.00 147000     0        1  0.3962229   13.42368 145.48592
+23:     125 0010.00 147000     0        1  0.1611978   13.51824 144.28962
+24:     125 0010.00 147000     0        1  0.3191389   13.39687 140.48621
+25:     125 0010.00 147000     0        1  0.5726820   13.43453 166.62390
+26:     125 0010.00 147000     0        1  0.4577771   13.38341 168.40137
+27:     125 0010.00 147000     0        1  0.1946680   13.44481 139.87781
+28:     125 0010.00 147000     0        1  0.1511333   13.36821 140.71084
+29:     125 0010.00 147000     0        1  0.4435036   13.43182 188.65221
+30:     125 0010.00 147000     0        1  0.3914035   13.41434 258.19455
+31:     125 0010.00 147000     0        1  0.1737885   13.43341 136.59456
+32:     125 0021.00  67000     0        1  0.3442408   13.41462 128.36726
+33:     125 0021.00  67000     0        1  0.2636503   13.37754 132.96137
+34:     125 0021.00  67000     0        1  0.4181660   13.40821 503.60324
+35:     125 0021.00  67000     0        1  0.6350473   13.42777  99.74503
+36:     125 0021.00  67000     0        1  0.6286635   13.42198 294.45317
+37:     125 0021.00  67000     0        1  0.4227946   13.40872 487.67744
+38:     125 0021.00  67000     0        1  0.7675413   13.41115 256.37218
+39:     125 0023.00  52000     0        1  0.9813680   13.35590 300.18099
+40:     125 0023.00  52000     0        1  0.4641991   13.42582 281.74749
+41:     125 0023.00  52000     0        1  0.4771766   13.40466 285.40782
+42:     125 0023.00  52000     0        1  0.9411370   13.41454 248.41568
+43:     125 0023.00  52000     0        1  0.9888485   13.35863 292.77107
+44:     125 0023.00  52000     0        1  0.6801408   13.52257 340.83239
+45:     125 0024.01 156000     0        1  0.7113814   13.33090 135.07191
+46:     125 0024.01 156000     0        1  0.6767618   13.38368  99.87737
+47:     125 0024.01 156000     0        1  0.4418261   13.33492  97.38799
+48:     125 0024.02 143000     0        1  0.8855238   13.37699 366.85071
+49:     125 0024.02 143000     0        1  0.5652476   13.55047 126.01753
+50:     125 0024.02 143000     0        1  0.6960295   13.33947 126.17538
+51:     125 0024.02 143000     0        1  0.4768937   13.36230 117.57196
+52:     125 0024.02 143000     0        1  0.4404763   13.34964 126.59340
+53:     125 0024.02 143000     0        1  0.6427513   13.34960 250.46416
+54:     125 0024.02 143000     0        1  0.5366260   13.47797 136.72341
+55:     125 0024.02 143000     0        1  0.5984288   13.47983 166.91382
+56:     125 0024.02 143000     0        1  0.4093025   13.38845 133.04837
+57:     125 0024.02 143000     0        1  0.6460138   13.32985 130.36041
+58:     125 0024.02 143000     0        1  0.2041185   13.45205 171.39797
+59:     125 0029.00 118000     0        1  0.7407580   13.34083 124.90772
+60:     125 0029.00 118000     0        1  0.6033973   13.47010 162.45855
+61:     125 0029.00 118000     0        1  0.4343085   13.36647 124.34240
+62:     125 0029.00 118000     0        1  0.4540502   13.58875 110.93711
+63:     125 0029.00 118000     0        1  0.4266757   13.76433 119.21399
+64:     125 0029.00 118000     0        1  0.3568037   13.36886 117.83996
+65:     125 0029.00 118000     0        1  0.4454781   13.41563 119.44610
+66:     125 0029.00 118000     0        1  0.3967600   13.34758 123.93972
+67:     125 0031.00  60400     0        1  0.3052842   13.33721 185.68059
+68:     125 0035.00  71000     0        1  0.1183945   13.47553 107.49614
+69:     125 0035.00  71000     0        1  0.3765613   13.34877 115.67544
+70:     125 0035.00  71000     0        1  0.2144920   13.36668 105.24354
+71:     125 0048.00  85000     0        1  0.6602055   13.40502 115.27098
     costPSF  CTNAME  VALUE isRow isSingle elasticity priceLevel        bw
       <num>  <char>  <int> <int>    <int>      <num>      <num>     <num>
 > 
@@ -3409,4 +3254,4 @@ Loading required namespace: raster
 > 
 > proc.time()
    user  system elapsed 
- 54.808   7.846  49.276 
+ 54.026   7.588  48.567 
