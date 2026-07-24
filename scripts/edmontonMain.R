@@ -163,8 +163,8 @@ print(dtLook[priceLevel>quantile(priceLevel,.9) & isSingle])
 
 sfPermit$logCV <- log(sfPermit$CONSTRUCTION_VALUE)
 plotPPSF(st_as_sf(sfPermit), "logCV",
-         "Edmonton RS Permits: Row House (1) vs Single Family (0), Post-2023",
-         "Row house", paste0(OUTDIR,"edmontonMapConstructionValue.png"))
+         "Edmonton RS Permits: ",
+         "Construction value", paste0(OUTDIR,"edmontonMapConstructionValue.png"))
 
 
 plotPPSF(st_as_sf(sfPermit), "isRow",

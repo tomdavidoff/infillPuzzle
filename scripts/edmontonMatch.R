@@ -44,7 +44,31 @@ print(summary(dtA[!is.na(lotSize),lotSize%between%c(500,600)]))
 dtA[,legal:=gsub("Block:","Blk",legalDescription)]
 dtA[,legal:=gsub(":","",legal)]
 dtA[,legal:=gsub("  "," ",legal)] # double spaces
+dtA <- dtA[legal!=""]
 dtP[,legal:=legalDescription] 
+dtP <- dtP[legal!=""]
+dtA <- dtA[assessmentYear<2024] # drop 2024 and 2025 assessment data
+dtA[,maxYear:=max(assessmentYear),by=legal] # risk -- different years
+dtA <- dtA[assessmentYear==2023]
+print(dtP[!legal %in% dtA$legal, .N])
+norm <- function(x) toupper(gsub("\\s+", " ", trimws(x)))
+dtP[, legalN := norm(legal)]
+dtA[, legalN := norm(legal)]
+print(dtP[!legalN %in% dtA$legalN, .N])
+dtP[, planNum := sub("^Plan ([^ ]+).*", "\\1", legal)]
+dtP[, matched := legal %in% dtA$legal]
+dtP[, .(N = .N,
+        numericPlan = mean(grepl("^[0-9]+$", planNum)),
+        medPlan = median(suppressWarnings(as.numeric(planNum)), na.rm = TRUE)),
+    by = matched]
+dtP[, matched := legal %in% dtA$legal]
+dtP <- merge(dtP, meanP, by.x = "neighbourhood", by.y = "neighbourhood", all.x = TRUE)
+summary(feols(matched ~ log(meanVal) + i(buildingType), data = dtP, cluster = ~neighbourhood))
+summary(feols(matched ~ log(meanVal)*i(buildingType), data = dtP, cluster = ~neighbourhood))
+m <- feols(matched ~ log(meanVal)*i(buildingType),
+           data = dtP[buildingType != "Duplex (210)"], cluster = ~neighbourhood)
+wald(m, "log\\(meanVal\\):")
+q("no")
 dtM <- merge(dtP,dtA,by="legal",all.x=FALSE) # drop non-matched for now
 print(head(dtP))
 print(head(dtA))
@@ -63,13 +87,18 @@ print(table(dtM[,neighbourhood.x==neighbourhood.y]))
 dtM[,neighbourhood:=neighbourhood.y]
 dtM <- merge(dtM,meanP,by="neighbourhood")
 print(dtM[,summary(meanVal),by=buildingType])
-regData <- unique(dtM[,.(houseNumber,streetName,neighbourhood,meanVal,lotSize,buildingType,year)])
+regData <- unique(dtM[,.(houseNumber,streetName,neighbourhood,meanVal,lotSize,buildingType,year,constructionValue)])
 print(summary(regData))
-print(summary(feols(meanVal ~ i(buildingType), data=regData)))
-print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData)))
-print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026])))
-print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(500,600)])))
-print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)])))
+print(summary(feols(meanVal ~ i(buildingType), data=regData,cluster=~neighbourhood)))
+print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData,cluster=~neighbourhood)))
+print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026],cluster=~neighbourhood)))
+print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(500,600)],cluster=~neighbourhood)))
+print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)],cluster=~neighbourhood)))
+print(summary(feols(constructionValue ~ meanVal+ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)],cluster=~neighbourhood))) # expect pos
+print(summary(feols(constructionValue ~ meanVal+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)],cluster=~neighbourhood))) # maybe negative
+print(summary(feols(log(constructionValue) ~ log(meanVal)+ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)],cluster=~neighbourhood))) # expect pos
+print(summary(feols(log(constructionValue) ~ log(meanVal)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)],cluster=~neighbourhood))) # maybe negative
+print(summary(dtM))
 
 fwrite(dtM[assessmentClass1=="RESIDENTIAL",.(houseNumber,streetName)],file="~/Downloads/addressesFun.csv")
 q('no')

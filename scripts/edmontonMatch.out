@@ -147,780 +147,99 @@ logical 1431989  723541
 > dtA[,legal:=gsub("Block:","Blk",legalDescription)]
 > dtA[,legal:=gsub(":","",legal)]
 > dtA[,legal:=gsub("  "," ",legal)] # double spaces
+> dtA <- dtA[legal!=""]
 > dtP[,legal:=legalDescription] 
-> dtM <- merge(dtP,dtA,by="legal",all.x=FALSE) # drop non-matched for now
-> print(head(dtP))
-         rowId permitDate permitNumber reportPermitDate  year monthNumber
-        <char>     <IDat>       <lgcl>           <IDat> <int>       <int>
-1: 2-391165004 2024-03-11           NA       2024-03-11  2024           3
-2: 2-488711873 2024-03-12           NA       2024-03-12  2024           3
-3: 2-498286076 2024-04-16           NA       2024-04-16  2024           4
-4: 2-575226599 2025-06-23           NA       2025-06-23  2025           6
-5: 2-528411259 2025-06-25           NA       2025-06-25  2025           6
-6: 2-560733300 2025-10-01           NA       2025-10-01  2025          10
-                          jobCategory
-                               <char>
-1: Single, Semi-detached & Rowhousing
-2: Single, Semi-detached & Rowhousing
-3: Single, Semi-detached & Rowhousing
-4: Single, Semi-detached & Rowhousing
-5: Single, Semi-detached & Rowhousing
-6: Single, Semi-detached & Rowhousing
-                                                                                                                                                        jobDescription
-                                                                                                                                                                <char>
-1:                                                                                   To construct a 4 Dwelling unit Row House and 4 Secondary Suites in the Basements.
-2:                                                                                                   To construct a Single Detached House with Unenclosed Front Porch.
-3:                                                                     To construct a Residential Use building in the form of a 2 Dwelling Backyard House with Garage.
-4: To construct a Residential Use building in the form of a 4 Dwelling Row House with unenclosed front porches and 4 secondary suites in the basements.(Policy B23-01)
-5:                                                                                 To construct a Residential Use building in the form of a 1 Dwelling Backyard House.
-6:                                                                   To construct a Residential Use building in the form of a Backyard House (1 Dwelling with Garage).
-                  buildingType            workType constructionValue floorArea
-                        <char>              <char>             <int>     <num>
-1:             Row House (330) (01) Building - New            568080      4734
-2: Single Detached House (110) (01) Building - New            208250      1666
-3:        Backyard House (110) (01) Building - New            134500      1076
-4:             Row House (330) (01) Building - New            639500      5116
-5:        Backyard House (110) (01) Building - New             64375       515
-6:        Backyard House (110) (01) Building - New             77750       622
-   unitsAdded                address           legalDescription zoning
-        <num>                 <char>                     <char> <char>
-1:          8   15411 - 90 AVENUE NW   Plan 5191HW Blk 7 Lot 12     RS
-2:          1    8541 - 89 STREET NW Plan 2322633 Blk 3 Lot 20A     RS
-3:          2 11537G - 125 STREET NW    Plan RN46 Blk 28 Lot 13     RS
-4:          8   15812 - 98 AVENUE NW   Plan 1909HW Blk 16 Lot 1     RS
-5:          1   9007G - 92 STREET NW    Plan 426HW Blk 7A Lot J     RS
-6:          1   8311G - 81 AVENUE NW  Plan 1738HW Blk 20 Lot 21     RS
-   neighbourhoodNumber    neighbourhood    bia count latitude longitude
-                <char>           <char> <char> <int>    <num>     <num>
-1:                4230      JASPER PARK            1 53.52294 -113.5881
-2:                6040      BONNIE DOON            1 53.52228 -113.4634
-3:                3240        INGLEWOOD            1 53.56639 -113.5372
-4:                4180         GLENWOOD            1 53.53636 -113.5951
-5:                6040      BONNIE DOON            1 53.52559 -113.4679
-6:                6360 KING EDWARD PARK            1 53.51677 -113.4558
-                                    location
-                                      <char>
-1:  (53.52294035550594, -113.58808310371799)
-2: (53.522277222917744, -113.46339852198925)
-3:  (53.56638937899561, -113.53720984906495)
-4:  (53.53635586572856, -113.59509070892393)
-5:  (53.52559012890181, -113.46788961908776)
-6:  (53.51676923327373, -113.45576940967753)
-                                    geometryPoint occupancyDate
-                                           <char>        <IDat>
-1:  POINT (-113.58808310371799 53.52294035550594)    2025-10-15
-2: POINT (-113.46339852198925 53.522277222917744)    2024-07-17
-3:  POINT (-113.53720984906495 53.56638937899561)    2025-02-25
-4:  POINT (-113.59509070892393 53.53635586572856)          <NA>
-5:  POINT (-113.46788961908776 53.52559012890181)          <NA>
-6:  POINT (-113.45576940967753 53.51676923327373)          <NA>
-                        legal
-                       <char>
-1:   Plan 5191HW Blk 7 Lot 12
-2: Plan 2322633 Blk 3 Lot 20A
-3:    Plan RN46 Blk 28 Lot 13
-4:   Plan 1909HW Blk 16 Lot 1
-5:    Plan 426HW Blk 7A Lot J
-6:  Plan 1738HW Blk 20 Lot 21
-> print(head(dtA))
-   accountNumber assessmentYear  suite houseNumber     streetName
-           <int>          <int> <char>       <num>         <char>
-1:       1477850           2013              10821  150 STREET NW
-2:       1437631           2017              16101 107A AVENUE NW
-3:       1457910           2018              10603  153 STREET NW
-4:       1491398           2018              11036  151 STREET NW
-5:       1491216           2019              11045  152 STREET NW
-6:       1434216           2014              16176 107A AVENUE NW
-                   legalDescription latitude longitude
-                             <char>    <num>     <num>
-1:   Plan: 704KS  Block: 68  Lot: 5 53.55330 -113.5794
-2: Plan: 3711KS  Block: 29  Lot: 12 53.55166 -113.5987
-3:  Plan: 4592AD  Block: 34  Lot: 1 53.54966 -113.5846
-4: Plan: 6046KS  Block: 12  Lot: 41 53.55723 -113.5816
-5: Plan: 6572KS  Block: 12  Lot: 34 53.55737 -113.5822
-6: Plan: 3711KS  Block: 25  Lot: 21 53.55215 -113.6021
-                 pointLocation neighbourhood actualYearBuilt garage zoning
-                        <char>        <char>           <int> <char> <char>
-1:  POINT (-113.57936 53.5533)     HIGH PARK            1955      Y    RF1
-2: POINT (-113.59871 53.55166)      MAYFIELD            1958      Y    RF1
-3:  POINT (-113.5846 53.54966)        CANORA            1953      Y    RF2
-4: POINT (-113.58159 53.55723)     HIGH PARK            1950      N    RF1
-5: POINT (-113.58224 53.55737)     HIGH PARK            1959      Y    RF1
-6: POINT (-113.60209 53.55215)      MAYFIELD            1958      Y    RF1
-   lotSize assessedValue assessmentClass1 assessmentClass%1 assessmentClass2
-     <num>         <num>           <char>             <int>           <char>
-1: 681.124        269500      RESIDENTIAL               100                 
-2: 510.767        324000      RESIDENTIAL               100                 
-3: 688.416        326500      RESIDENTIAL               100                 
-4: 568.848        247500      RESIDENTIAL               100                 
-5: 574.205        321500      RESIDENTIAL               100                 
-6: 510.766        291500      RESIDENTIAL               100                 
-   assessmentClass%2 assessmentClass3 assessmentClass%3
-               <num>           <char>             <num>
-1:                NA                                 NA
-2:                NA                                 NA
-3:                NA                                 NA
-4:                NA                                 NA
-5:                NA                                 NA
-6:                NA                                 NA
-                       legal
-                      <char>
-1:   Plan 704KS Blk 68 Lot 5
-2: Plan 3711KS Blk 29 Lot 12
-3:  Plan 4592AD Blk 34 Lot 1
-4: Plan 6046KS Blk 12 Lot 41
-5: Plan 6572KS Blk 12 Lot 34
-6: Plan 3711KS Blk 25 Lot 21
-> print(head(dtM))
-Key: <legal>
-    legal       rowId permitDate permitNumber reportPermitDate  year
-   <char>      <char>     <IDat>       <lgcl>           <IDat> <int>
-1:        2-584300478 2025-09-23           NA       2025-09-23  2025
-2:        2-584300478 2025-09-23           NA       2025-09-23  2025
-3:        2-584300478 2025-09-23           NA       2025-09-23  2025
-4:        2-584300478 2025-09-23           NA       2025-09-23  2025
-5:        2-584300478 2025-09-23           NA       2025-09-23  2025
-6:        2-584300478 2025-09-23           NA       2025-09-23  2025
-   monthNumber                        jobCategory
-         <int>                             <char>
-1:           9 Single, Semi-detached & Rowhousing
-2:           9 Single, Semi-detached & Rowhousing
-3:           9 Single, Semi-detached & Rowhousing
-4:           9 Single, Semi-detached & Rowhousing
-5:           9 Single, Semi-detached & Rowhousing
-6:           9 Single, Semi-detached & Rowhousing
-                                                                                                                                                                                                                                                                           jobDescription
-                                                                                                                                                                                                                                                                                   <char>
-1: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-2: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-3: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-4: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-5: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-6: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-                  buildingType            workType constructionValue floorArea
-                        <char>              <char>             <int>     <num>
-1: Single Detached House (110) (01) Building - New            317625      2541
-2: Single Detached House (110) (01) Building - New            317625      2541
-3: Single Detached House (110) (01) Building - New            317625      2541
-4: Single Detached House (110) (01) Building - New            317625      2541
-5: Single Detached House (110) (01) Building - New            317625      2541
-6: Single Detached House (110) (01) Building - New            317625      2541
-   unitsAdded                address legalDescription.x zoning.x
-        <num>                 <char>             <char>   <char>
-1:          1 16B - MARLBORO ROAD NW                          RS
-2:          1 16B - MARLBORO ROAD NW                          RS
-3:          1 16B - MARLBORO ROAD NW                          RS
-4:          1 16B - MARLBORO ROAD NW                          RS
-5:          1 16B - MARLBORO ROAD NW                          RS
-6:          1 16B - MARLBORO ROAD NW                          RS
-   neighbourhoodNumber   neighbourhood.x    bia count latitude.x longitude.x
-                <char>            <char> <char> <int>      <num>       <num>
-1:                5540 WESTBROOK ESTATES            1         NA          NA
-2:                5540 WESTBROOK ESTATES            1         NA          NA
-3:                5540 WESTBROOK ESTATES            1         NA          NA
-4:                5540 WESTBROOK ESTATES            1         NA          NA
-5:                5540 WESTBROOK ESTATES            1         NA          NA
-6:                5540 WESTBROOK ESTATES            1         NA          NA
-   location geometryPoint occupancyDate accountNumber assessmentYear  suite
-     <char>        <char>        <IDat>         <int>          <int> <char>
-1:                                 <NA>      11053140           2023       
-2:                                 <NA>      11051917           2022       
-3:                                 <NA>      11148084           2023       
-4:                                 <NA>      11052859           2023       
-5:                                 <NA>       6388722           2012       
-6:                                 <NA>       6388722           2018       
-   houseNumber    streetName legalDescription.y latitude.y longitude.y
-         <num>        <char>             <char>      <num>       <num>
-1:        8402 143 AVENUE NW                      53.60618   -113.4694
-2:        6913 137 AVENUE NW                      53.59924   -113.4483
-3:        7144  83 STREET NW                      53.50827   -113.4557
-4:       14101  95 STREET NW                      53.60387   -113.4870
-5:       12901  88 STREET NW                      53.58766   -113.4757
-6:       12901  88 STREET NW                      53.58766   -113.4757
-                 pointLocation neighbourhood.y actualYearBuilt garage zoning.y
-                        <char>          <char>           <int> <char>   <char>
-1: POINT (-113.46937 53.60618)      NORTHMOUNT              NA      N      RF1
-2: POINT (-113.44828 53.59924)         DELWOOD              NA      N      RF1
-3: POINT (-113.45568 53.50827)        AVONMORE              NA      N      RF1
-4: POINT (-113.48704 53.60387)      NORTHMOUNT              NA      N      RF1
-5:  POINT (-113.4757 53.58766)       KILLARNEY              NA      N      RF1
-6:  POINT (-113.4757 53.58766)       KILLARNEY              NA      N      RF4
-   lotSize assessedValue assessmentClass1 assessmentClass%1 assessmentClass2
-     <num>         <num>           <char>             <int>           <char>
-1: 222.875          8000      RESIDENTIAL               100                 
-2: 111.569          4000      RESIDENTIAL               100                 
-3: 241.418          9000      RESIDENTIAL               100                 
-4:  10.000           500      RESIDENTIAL               100                 
-5: 278.833          1000      RESIDENTIAL               100                 
-6: 278.833          1000      RESIDENTIAL               100                 
-   assessmentClass%2 assessmentClass3 assessmentClass%3
-               <num>           <char>             <num>
-1:                NA                                 NA
-2:                NA                                 NA
-3:                NA                                 NA
-4:                NA                                 NA
-5:                NA                                 NA
-6:                NA                                 NA
-> print(dtM[!is.na(lotSize)])
-Key: <legal>
-                         legal       rowId permitDate permitNumber
-                        <char>      <char>     <IDat>       <lgcl>
-    1:                         2-584300478 2025-09-23           NA
-    2:                         2-584300478 2025-09-23           NA
-    3:                         2-584300478 2025-09-23           NA
-    4:                         2-584300478 2025-09-23           NA
-    5:                         2-584300478 2025-09-23           NA
-   ---                                                            
-28954: Plan RN94 Blk 34 Lot 11 2-516530389 2025-01-31           NA
-28955: Plan RN94 Blk 34 Lot 11 2-516530389 2025-01-31           NA
-28956: Plan RN94 Blk 34 Lot 11 2-516530389 2025-01-31           NA
-28957: Plan RN94 Blk 34 Lot 11 2-516530389 2025-01-31           NA
-28958: Plan RN94 Blk 34 Lot 11 2-516530389 2025-01-31           NA
-       reportPermitDate  year monthNumber                        jobCategory
-                 <IDat> <int>       <int>                             <char>
-    1:       2025-09-23  2025           9 Single, Semi-detached & Rowhousing
-    2:       2025-09-23  2025           9 Single, Semi-detached & Rowhousing
-    3:       2025-09-23  2025           9 Single, Semi-detached & Rowhousing
-    4:       2025-09-23  2025           9 Single, Semi-detached & Rowhousing
-    5:       2025-09-23  2025           9 Single, Semi-detached & Rowhousing
-   ---                                                                      
-28954:       2025-01-31  2025           1 Single, Semi-detached & Rowhousing
-28955:       2025-01-31  2025           1 Single, Semi-detached & Rowhousing
-28956:       2025-01-31  2025           1 Single, Semi-detached & Rowhousing
-28957:       2025-01-31  2025           1 Single, Semi-detached & Rowhousing
-28958:       2025-01-31  2025           1 Single, Semi-detached & Rowhousing
-                                                                                                                                                                                                                                                                               jobDescription
-                                                                                                                                                                                                                                                                                       <char>
-    1: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-    2: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-    3: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-    4: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-    5: To construct a Residential Use building in the form of a Single Detached House with a front attached Garage, unenclosed front porch, rear uncovered deck (4.8m x 7.0m), and basement Development (NOT to be used as an additional Dwelling - rec space, bathroom, bedroom, mech room).
-   ---                                                                                                                                                                                                                                                                                       
-28954:                                                                                                                                                                 To construct a Residential Use building in the form of a 4 Dwelling Row House with 4 Secondary Suites. (Policy B23-01)
-28955:                                                                                                                                                                 To construct a Residential Use building in the form of a 4 Dwelling Row House with 4 Secondary Suites. (Policy B23-01)
-28956:                                                                                                                                                                 To construct a Residential Use building in the form of a 4 Dwelling Row House with 4 Secondary Suites. (Policy B23-01)
-28957:                                                                                                                                                                 To construct a Residential Use building in the form of a 4 Dwelling Row House with 4 Secondary Suites. (Policy B23-01)
-28958:                                                                                                                                                                 To construct a Residential Use building in the form of a 4 Dwelling Row House with 4 Secondary Suites. (Policy B23-01)
-                      buildingType            workType constructionValue
-                            <char>              <char>             <int>
-    1: Single Detached House (110) (01) Building - New            317625
-    2: Single Detached House (110) (01) Building - New            317625
-    3: Single Detached House (110) (01) Building - New            317625
-    4: Single Detached House (110) (01) Building - New            317625
-    5: Single Detached House (110) (01) Building - New            317625
-   ---                                                                  
-28954:             Row House (330) (01) Building - New            577250
-28955:             Row House (330) (01) Building - New            577250
-28956:             Row House (330) (01) Building - New            577250
-28957:             Row House (330) (01) Building - New            577250
-28958:             Row House (330) (01) Building - New            577250
-       floorArea unitsAdded                address      legalDescription.x
-           <num>      <num>                 <char>                  <char>
-    1:      2541          1 16B - MARLBORO ROAD NW                        
-    2:      2541          1 16B - MARLBORO ROAD NW                        
-    3:      2541          1 16B - MARLBORO ROAD NW                        
-    4:      2541          1 16B - MARLBORO ROAD NW                        
-    5:      2541          1 16B - MARLBORO ROAD NW                        
-   ---                                                                    
-28954:      4618          8   8903 - 123 AVENUE NW Plan RN94 Blk 34 Lot 11
-28955:      4618          8   8903 - 123 AVENUE NW Plan RN94 Blk 34 Lot 11
-28956:      4618          8   8903 - 123 AVENUE NW Plan RN94 Blk 34 Lot 11
-28957:      4618          8   8903 - 123 AVENUE NW Plan RN94 Blk 34 Lot 11
-28958:      4618          8   8903 - 123 AVENUE NW Plan RN94 Blk 34 Lot 11
-       zoning.x neighbourhoodNumber   neighbourhood.x    bia count latitude.x
-         <char>              <char>            <char> <char> <int>      <num>
-    1:       RS                5540 WESTBROOK ESTATES            1         NA
-    2:       RS                5540 WESTBROOK ESTATES            1         NA
-    3:       RS                5540 WESTBROOK ESTATES            1         NA
-    4:       RS                5540 WESTBROOK ESTATES            1         NA
-    5:       RS                5540 WESTBROOK ESTATES            1         NA
-   ---                                                                       
-28954:       RS                1080            DELTON            1   53.57813
-28955:       RS                1080            DELTON            1   53.57813
-28956:       RS                1080            DELTON            1   53.57813
-28957:       RS                1080            DELTON            1   53.57813
-28958:       RS                1080            DELTON            1   53.57813
-       longitude.x                                  location
-             <num>                                    <char>
-    1:          NA                                          
-    2:          NA                                          
-    3:          NA                                          
-    4:          NA                                          
-    5:          NA                                          
-   ---                                                      
-28954:   -113.4784 (53.578132979539106, -113.47844304829546)
-28955:   -113.4784 (53.578132979539106, -113.47844304829546)
-28956:   -113.4784 (53.578132979539106, -113.47844304829546)
-28957:   -113.4784 (53.578132979539106, -113.47844304829546)
-28958:   -113.4784 (53.578132979539106, -113.47844304829546)
-                                        geometryPoint occupancyDate
-                                               <char>        <IDat>
-    1:                                                         <NA>
-    2:                                                         <NA>
-    3:                                                         <NA>
-    4:                                                         <NA>
-    5:                                                         <NA>
-   ---                                                             
-28954: POINT (-113.47844304829546 53.578132979539106)    2025-09-17
-28955: POINT (-113.47844304829546 53.578132979539106)    2025-09-17
-28956: POINT (-113.47844304829546 53.578132979539106)    2025-09-17
-28957: POINT (-113.47844304829546 53.578132979539106)    2025-09-17
-28958: POINT (-113.47844304829546 53.578132979539106)    2025-09-17
-       accountNumber assessmentYear  suite houseNumber    streetName
-               <int>          <int> <char>       <num>        <char>
-    1:      11053140           2023               8402 143 AVENUE NW
-    2:      11051917           2022               6913 137 AVENUE NW
-    3:      11148084           2023               7144  83 STREET NW
-    4:      11052859           2023              14101  95 STREET NW
-    5:       6388722           2012              12901  88 STREET NW
-   ---                                                              
-28954:       4959300           2014              12240  89 STREET NW
-28955:       4959300           2021              12240  89 STREET NW
-28956:       4959300           2018              12240  89 STREET NW
-28957:       4959300           2024              12240  89 STREET NW
-28958:       4959300           2025               8903 123 AVENUE NW
-                   legalDescription.y latitude.y longitude.y
-                               <char>      <num>       <num>
-    1:                                  53.60618   -113.4694
-    2:                                  53.59924   -113.4483
-    3:                                  53.50827   -113.4557
-    4:                                  53.60387   -113.4870
-    5:                                  53.58766   -113.4757
-   ---                                                      
-28954: Plan: RN94  Block: 34  Lot: 11   53.57813   -113.4784
-28955: Plan: RN94  Block: 34  Lot: 11   53.57813   -113.4784
-28956: Plan: RN94  Block: 34  Lot: 11   53.57813   -113.4784
-28957: Plan: RN94  Block: 34  Lot: 11   53.57813   -113.4784
-28958: Plan: RN94  Block: 34  Lot: 11   53.57813   -113.4784
-                                       pointLocation neighbourhood.y
-                                              <char>          <char>
-    1:                   POINT (-113.46937 53.60618)      NORTHMOUNT
-    2:                   POINT (-113.44828 53.59924)         DELWOOD
-    3:                   POINT (-113.45568 53.50827)        AVONMORE
-    4:                   POINT (-113.48704 53.60387)      NORTHMOUNT
-    5:                    POINT (-113.4757 53.58766)       KILLARNEY
-   ---                                                              
-28954:                   POINT (-113.47844 53.57813)          DELTON
-28955:                   POINT (-113.47844 53.57813)          DELTON
-28956:                   POINT (-113.47844 53.57813)          DELTON
-28957: POINT (-113.47844269760529 53.57813291545661)          DELTON
-28958: POINT (-113.47844309704391 53.57813307361777)          DELTON
-       actualYearBuilt garage zoning.y lotSize assessedValue assessmentClass1
-                 <int> <char>   <char>   <num>         <num>           <char>
-    1:              NA      N      RF1 222.875          8000      RESIDENTIAL
-    2:              NA      N      RF1 111.569          4000      RESIDENTIAL
-    3:              NA      N      RF1 241.418          9000      RESIDENTIAL
-    4:              NA      N      RF1  10.000           500      RESIDENTIAL
-    5:              NA      N      RF1 278.833          1000      RESIDENTIAL
-   ---                                                                       
-28954:            1950      Y      RF3 650.970        240500      RESIDENTIAL
-28955:            1950      Y      RF3 650.970        250500      RESIDENTIAL
-28956:            1950      Y      RF3 650.970        285000      RESIDENTIAL
-28957:            1950      Y       RS 651.000        267000      RESIDENTIAL
-28958:              NA      N       RS 650.970        244000      RESIDENTIAL
-       assessmentClass%1 assessmentClass2 assessmentClass%2 assessmentClass3
-                   <int>           <char>             <num>           <char>
-    1:               100                                 NA                 
-    2:               100                                 NA                 
-    3:               100                                 NA                 
-    4:               100                                 NA                 
-    5:               100                                 NA                 
-   ---                                                                      
-28954:               100                                 NA                 
-28955:               100                                 NA                 
-28956:               100                                 NA                 
-28957:               100                                 NA                 
-28958:               100                                 NA                 
-       assessmentClass%3
-                   <num>
-    1:                NA
-    2:                NA
-    3:                NA
-    4:                NA
-    5:                NA
-   ---                  
-28954:                NA
-28955:                NA
-28956:                NA
-28957:                NA
-28958:                NA
-> print(dtM[,summary(lotSize),by=buildingType])
-                   buildingType               V1
-                         <char> <summaryDefault>
- 1: Single Detached House (110)             0.00
- 2: Single Detached House (110)           167.18
- 3: Single Detached House (110)           223.04
- 4: Single Detached House (110)           344.20
- 5: Single Detached House (110)           415.41
- 6: Single Detached House (110)         74985.49
- 7: Single Detached House (110)          1058.00
- 8:             Row House (330)            10.12
- 9:             Row House (330)           602.92
-10:             Row House (330)           674.96
-11:             Row House (330)           652.17
-12:             Row House (330)           696.48
-13:             Row House (330)          1161.40
-14:        Backyard House (110)            10.12
-15:        Backyard House (110)           485.29
-16:        Backyard House (110)           571.28
-17:        Backyard House (110)           584.52
-18:        Backyard House (110)           687.54
-19:        Backyard House (110)          1233.25
-20:   Semi-Detached House (210)           245.01
-21:   Semi-Detached House (210)           394.69
-22:   Semi-Detached House (210)           521.10
-23:   Semi-Detached House (210)           508.84
-24:   Semi-Detached House (210)           574.23
-25:   Semi-Detached House (210)          1031.21
-26:                Duplex (210)           383.00
-27:                Duplex (210)           383.02
-28:                Duplex (210)           383.02
-29:                Duplex (210)           383.02
-30:                Duplex (210)           383.02
-31:                Duplex (210)           383.02
-                   buildingType               V1
-                         <char> <summaryDefault>
-> print(dtM[year==2026,summary(lotSize),by=buildingType])
-                   buildingType               V1
-                         <char> <summaryDefault>
- 1: Single Detached House (110)            232.4
- 2: Single Detached House (110)            487.2
- 3: Single Detached House (110)            598.0
- 4: Single Detached House (110)            690.9
- 5: Single Detached House (110)            718.4
- 6: Single Detached House (110)           2117.3
- 7:   Semi-Detached House (210)            334.0
- 8:   Semi-Detached House (210)            377.4
- 9:   Semi-Detached House (210)            508.0
-10:   Semi-Detached House (210)            483.6
-11:   Semi-Detached House (210)            557.2
-12:   Semi-Detached House (210)            696.0
-13:             Row House (330)            404.9
-14:             Row House (330)            577.0
-15:             Row House (330)            662.7
-16:             Row House (330)            642.7
-17:             Row House (330)            696.4
-18:             Row House (330)            891.2
-19:        Backyard House (110)            255.5
-20:        Backyard House (110)            510.8
-21:        Backyard House (110)            557.2
-22:        Backyard House (110)            560.8
-23:        Backyard House (110)            664.1
-24:        Backyard House (110)            780.0
-                   buildingType               V1
-                         <char> <summaryDefault>
-> print(dtM[lotSize %between% c(500,700),summary(floorArea),by=buildingType])
-                   buildingType               V1
-                         <char> <summaryDefault>
- 1: Single Detached House (110)            922.0
- 2: Single Detached House (110)           2398.0
- 3: Single Detached House (110)           2694.0
- 4: Single Detached House (110)           2805.9
- 5: Single Detached House (110)           3338.0
- 6: Single Detached House (110)           4620.0
- 7:             Row House (330)           2142.0
- 8:             Row House (330)           4552.0
- 9:             Row House (330)           4919.0
-10:             Row House (330)           5152.7
-11:             Row House (330)           5392.0
-12:             Row House (330)          10104.0
-13:        Backyard House (110)            220.0
-14:        Backyard House (110)            642.0
-15:        Backyard House (110)            792.0
-16:        Backyard House (110)            944.4
-17:        Backyard House (110)           1126.0
-18:        Backyard House (110)           4880.0
-19:   Semi-Detached House (210)           1344.0
-20:   Semi-Detached House (210)           2986.0
-21:   Semi-Detached House (210)           3300.0
-22:   Semi-Detached House (210)           3291.1
-23:   Semi-Detached House (210)           3508.0
-24:   Semi-Detached House (210)           5556.0
-                   buildingType               V1
-                         <char> <summaryDefault>
-> print(dtM[lotSize %between% c(500,600) & year==2026,summary(floorArea),by=buildingType])
-                   buildingType               V1
-                         <char> <summaryDefault>
- 1:             Row House (330)           3352.0
- 2:             Row House (330)           4020.0
- 3:             Row House (330)           4459.0
- 4:             Row House (330)           4650.1
- 5:             Row House (330)           5186.0
- 6:             Row House (330)           6837.0
- 7:   Semi-Detached House (210)           2165.0
- 8:   Semi-Detached House (210)           2906.0
- 9:   Semi-Detached House (210)           3318.0
-10:   Semi-Detached House (210)           3165.1
-11:   Semi-Detached House (210)           3485.0
-12:   Semi-Detached House (210)           4030.0
-13:        Backyard House (110)            460.0
-14:        Backyard House (110)            615.0
-15:        Backyard House (110)            686.0
-16:        Backyard House (110)            842.4
-17:        Backyard House (110)            916.0
-18:        Backyard House (110)           2368.0
-19: Single Detached House (110)           1984.0
-20: Single Detached House (110)           2351.0
-21: Single Detached House (110)           2591.0
-22: Single Detached House (110)           2863.3
-23: Single Detached House (110)           3530.0
-24: Single Detached House (110)           4583.0
-                   buildingType               V1
-                         <char> <summaryDefault>
-> print(dtM[lotSize %between% c(600,700) & year==2026,summary(floorArea),by=buildingType])
-                   buildingType               V1
-                         <char> <summaryDefault>
- 1:             Row House (330)             2142
- 2:             Row House (330)             4785
- 3:             Row House (330)             5016
- 4:             Row House (330)             5291
- 5:             Row House (330)             5616
- 6:             Row House (330)             9628
- 7:        Backyard House (110)              530
- 8:        Backyard House (110)              641
- 9:        Backyard House (110)              936
-10:        Backyard House (110)             1007
-11:        Backyard House (110)             1177
-12:        Backyard House (110)             2404
-13: Single Detached House (110)             2681
-14: Single Detached House (110)             2982
-15: Single Detached House (110)             3333
-16: Single Detached House (110)             3291
-17: Single Detached House (110)             3482
-18: Single Detached House (110)             3927
-19:   Semi-Detached House (210)             3040
-20:   Semi-Detached House (210)             3040
-21:   Semi-Detached House (210)             3200
-22:   Semi-Detached House (210)             3200
-23:   Semi-Detached House (210)             3360
-24:   Semi-Detached House (210)             3360
-                   buildingType               V1
-                         <char> <summaryDefault>
-> print(dtM[lotSize %between% c(500,600) & year==2026,summary(constructionValue),by=buildingType])
-                   buildingType               V1
-                         <char> <summaryDefault>
- 1:             Row House (330)           419000
- 2:             Row House (330)           502500
- 3:             Row House (330)           557375
- 4:             Row House (330)           581268
- 5:             Row House (330)           648250
- 6:             Row House (330)           854625
- 7:   Semi-Detached House (210)           270625
- 8:   Semi-Detached House (210)           363250
- 9:   Semi-Detached House (210)           414750
-10:   Semi-Detached House (210)           395632
-11:   Semi-Detached House (210)           435625
-12:   Semi-Detached House (210)           503750
-13:        Backyard House (110)            57500
-14:        Backyard House (110)            76875
-15:        Backyard House (110)            85750
-16:        Backyard House (110)           105295
-17:        Backyard House (110)           114500
-18:        Backyard House (110)           296000
-19: Single Detached House (110)           248000
-20: Single Detached House (110)           293875
-21: Single Detached House (110)           323875
-22: Single Detached House (110)           357913
-23: Single Detached House (110)           441250
-24: Single Detached House (110)           572875
-                   buildingType               V1
-                         <char> <summaryDefault>
-> print(dtM[lotSize %between% c(600,700) & year==2026,summary(constructionValue),by=buildingType])
-                   buildingType               V1
-                         <char> <summaryDefault>
- 1:             Row House (330)           267750
- 2:             Row House (330)           598125
- 3:             Row House (330)           627000
- 4:             Row House (330)           661378
- 5:             Row House (330)           702000
- 6:             Row House (330)          1203500
- 7:        Backyard House (110)            66250
- 8:        Backyard House (110)            80125
- 9:        Backyard House (110)           117000
-10:        Backyard House (110)           125857
-11:        Backyard House (110)           147125
-12:        Backyard House (110)           300500
-13: Single Detached House (110)           335125
-14: Single Detached House (110)           372750
-15: Single Detached House (110)           416625
-16: Single Detached House (110)           411373
-17: Single Detached House (110)           435250
-18: Single Detached House (110)           490875
-19:   Semi-Detached House (210)           380000
-20:   Semi-Detached House (210)           380000
-21:   Semi-Detached House (210)           400000
-22:   Semi-Detached House (210)           400000
-23:   Semi-Detached House (210)           420000
-24:   Semi-Detached House (210)           420000
-                   buildingType               V1
-                         <char> <summaryDefault>
-> print(summary(dtP[,year]))
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   2024    2024    2025    2025    2025    2026 
-> print(summary(dtM[,year]))
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   2024    2025    2025    2025    2025    2026 
-> print(table(dtM[,neighbourhood.x==neighbourhood.y]))
-
-FALSE  TRUE 
-12042 17974 
-> dtM[,neighbourhood:=neighbourhood.y]
-> dtM <- merge(dtM,meanP,by="neighbourhood")
-> print(dtM[,summary(meanVal),by=buildingType])
-                   buildingType               V1
-                         <char> <summaryDefault>
- 1: Single Detached House (110)            26000
- 2: Single Detached House (110)           339424
- 3: Single Detached House (110)           442314
- 4: Single Detached House (110)           498101
- 5: Single Detached House (110)           602428
- 6: Single Detached House (110)          1403970
- 7:        Backyard House (110)           248381
- 8:        Backyard House (110)           320317
- 9:        Backyard House (110)           409074
-10:        Backyard House (110)           439365
-11:        Backyard House (110)           508538
-12:        Backyard House (110)          1403970
-13:   Semi-Detached House (210)           248381
-14:   Semi-Detached House (210)           273435
-15:   Semi-Detached House (210)           409074
-16:   Semi-Detached House (210)           397980
-17:   Semi-Detached House (210)           459379
-18:   Semi-Detached House (210)           939869
-19:             Row House (330)           248381
-20:             Row House (330)           320317
-21:             Row House (330)           385687
-22:             Row House (330)           426734
-23:             Row House (330)           459379
-24:             Row House (330)          1176479
-25:                Duplex (210)           248381
-26:                Duplex (210)           248381
-27:                Duplex (210)           248381
-28:                Duplex (210)           248381
-29:                Duplex (210)           248381
-30:                Duplex (210)           248381
-                   buildingType               V1
-                         <char> <summaryDefault>
-> regData <- unique(dtM[,.(houseNumber,streetName,neighbourhood,meanVal,lotSize,buildingType,year)])
-> print(summary(regData))
-  houseNumber     streetName        neighbourhood         meanVal       
- Min.   :    3   Length:4995        Length:4995        Min.   :  26000  
- 1st Qu.: 8727   Class :character   Class :character   1st Qu.: 321929  
- Median :10554   Mode  :character   Mode  :character   Median : 409074  
- Mean   :10108                                         Mean   : 464865  
- 3rd Qu.:12144                                         3rd Qu.: 552223  
- Max.   :19015                                         Max.   :1403970  
- NA's   :450                                                            
-    lotSize        buildingType            year     
- Min.   :    0.0   Length:4995        Min.   :2024  
- 1st Qu.:  288.0   Class :character   1st Qu.:2025  
- Median :  532.2   Mode  :character   Median :2025  
- Mean   :  513.1                      Mean   :2025  
- 3rd Qu.:  679.0                      3rd Qu.:2025  
- Max.   :74985.5                      Max.   :2026  
- NA's   :609                                        
-> print(summary(feols(meanVal ~ i(buildingType), data=regData)))
-OLS estimation, Dep. Var.: meanVal
-Observations: 4,995
-Standard-errors: IID 
-                                            Estimate Std. Error  t value
-(Intercept)                                438786.33    7078.42 61.98927
-buildingType::Duplex (210)                -190405.48  135233.09 -1.40798
-buildingType::Row House (330)               -9813.51    8819.25 -1.11274
-buildingType::Semi-Detached House (210)    -32788.36   12557.95 -2.61096
-buildingType::Single Detached House (110)   59314.49    8005.63  7.40909
+> dtP <- dtP[legal!=""]
+> dtA <- dtA[assessmentYear<2024] # drop 2024 and 2025 assessment data
+> dtA[,maxYear:=max(assessmentYear),by=legal] # risk -- different years
+> dtA <- dtA[assessmentYear==2023]
+> print(dtP[!legal %in% dtA$legal, .N])
+[1] 555
+> norm <- function(x) toupper(gsub("\\s+", " ", trimws(x)))
+> dtP[, legalN := norm(legal)]
+> dtA[, legalN := norm(legal)]
+> print(dtP[!legalN %in% dtA$legalN, .N])
+[1] 555
+> dtP[, planNum := sub("^Plan ([^ ]+).*", "\\1", legal)]
+> dtP[, matched := legal %in% dtA$legal]
+> dtP[, .(N = .N,
++         numericPlan = mean(grepl("^[0-9]+$", planNum)),
++         medPlan = median(suppressWarnings(as.numeric(planNum)), na.rm = TRUE)),
++     by = matched]
+   matched     N numericPlan medPlan
+    <lgcl> <int>       <num>   <num>
+1:    TRUE  1349   0.1186064 2171548
+2:   FALSE   555   0.8054054 2421874
+> dtP[, matched := legal %in% dtA$legal]
+> dtP <- merge(dtP, meanP, by.x = "neighbourhood", by.y = "neighbourhood", all.x = TRUE)
+> summary(feols(matched ~ log(meanVal) + i(buildingType), data = dtP, cluster = ~neighbourhood))
+NOTE: 15 observations removed because of NA values (RHS: 15).
+OLS estimation, Dep. Var.: matched
+Observations: 1,889
+Standard-errors: Clustered (neighbourhood) 
+                                           Estimate Std. Error   t value
+(Intercept)                                0.634080   0.746374  0.849548
+log(meanVal)                               0.010415   0.057272  0.181844
+buildingType::Duplex (210)                 0.236541   0.043991  5.376992
+buildingType::Row House (330)              0.118830   0.028046  4.236984
+buildingType::Semi-Detached House (210)   -0.225985   0.049347 -4.579491
+buildingType::Single Detached House (110) -0.227070   0.047018 -4.829459
                                             Pr(>|t|)    
-(Intercept)                                < 2.2e-16 ***
-buildingType::Duplex (210)                1.5920e-01    
-buildingType::Row House (330)             2.6587e-01    
-buildingType::Semi-Detached House (210)   9.0558e-03 ** 
-buildingType::Single Detached House (110) 1.4853e-13 ***
+(Intercept)                               3.9715e-01    
+log(meanVal)                              8.5599e-01    
+buildingType::Duplex (210)                3.4356e-07 ***
+buildingType::Row House (330)             4.2787e-05 ***
+buildingType::Semi-Detached House (210)   1.0839e-05 ***
+buildingType::Single Detached House (110) 3.8114e-06 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 190,890.7   Adj. R2: 0.032897
-> print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData)))
-NOTE: 609 observations removed because of NA values (RHS: 609).
-OLS estimation, Dep. Var.: meanVal
-Observations: 4,386
-Standard-errors: IID 
-                                               Estimate   Std. Error  t value
-(Intercept)                                434647.25908   7226.26617 60.14825
-buildingType::Duplex (210)                -189083.30082 135376.88248 -1.39672
-buildingType::Row House (330)              -10459.37626   8831.34764 -1.18435
-buildingType::Semi-Detached House (210)    -32258.43197  12572.54642 -2.56578
-buildingType::Single Detached House (110)   83432.27477   8285.36167 10.06984
-lotSize                                         7.35464      2.51841  2.92035
-                                           Pr(>|t|)    
-(Intercept)                               < 2.2e-16 ***
-buildingType::Duplex (210)                0.1625692    
-buildingType::Row House (330)             0.2363402    
-buildingType::Semi-Detached House (210)   0.0103273 *  
-buildingType::Single Detached House (110) < 2.2e-16 ***
-lotSize                                   0.0035142 ** 
+RMSE: 0.427923   Adj. R2: 0.112281
+Warning message:
+The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+> summary(feols(matched ~ log(meanVal)*i(buildingType), data = dtP, cluster = ~neighbourhood))
+NOTE: 15 observations removed because of NA values (RHS: 15).
+The variables 'log(meanVal):buildingType::Duplex (210)' and
+'log(meanVal):buildingType::Single Detached House (110)' have been removed
+because of collinearity (see $collin.var).
+OLS estimation, Dep. Var.: matched
+Observations: 1,889
+Standard-errors: Clustered (neighbourhood) 
+                                                      Estimate Std. Error
+(Intercept)                                           1.249463   0.991653
+log(meanVal)                                          0.165815   0.112124
+buildingType::Duplex (210)                           -2.309331   1.524701
+buildingType::Row House (330)                         0.865446   1.142826
+buildingType::Semi-Detached House (210)               0.020073   2.129067
+buildingType::Single Detached House (110)            -2.894276   1.592749
+log(meanVal):buildingType::Backyard House (110)      -0.202953   0.121487
+log(meanVal):buildingType::Row House (330)           -0.260808   0.117962
+log(meanVal):buildingType::Semi-Detached House (210) -0.222408   0.193030
+                                                       t value Pr(>|t|)    
+(Intercept)                                           1.259980 0.209951    
+log(meanVal)                                          1.478850 0.141618    
+buildingType::Duplex (210)                           -1.514613 0.132317    
+buildingType::Row House (330)                         0.757285 0.450260    
+buildingType::Semi-Detached House (210)               0.009428 0.992492    
+buildingType::Single Detached House (110)            -1.817158 0.071514 .  
+log(meanVal):buildingType::Backyard House (110)      -1.670578 0.097230 .  
+log(meanVal):buildingType::Row House (330)           -2.210960 0.028801 *  
+log(meanVal):buildingType::Semi-Detached House (210) -1.152194 0.251372    
+... 2 variables were removed because of collinearity
+(log(meanVal):buildingType::Duplex (210) and
+log(meanVal):buildingType::Single Detached House (110))
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 191,057.5   Adj. R2: 0.057383
-> print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026])))
-OLS estimation, Dep. Var.: meanVal
-Observations: 665
-Standard-errors: IID 
-                                            Estimate Std. Error  t value
-(Intercept)                               284746.038 25662.9121 11.09562
-buildingType::Row House (330)             -42416.637 17345.3907 -2.44541
-buildingType::Semi-Detached House (210)   -52167.013 25798.2151 -2.02212
-buildingType::Single Detached House (110) 153199.340 22243.5165  6.88737
-lotSize                                      279.571    38.6987  7.22429
-                                            Pr(>|t|)    
-(Intercept)                                < 2.2e-16 ***
-buildingType::Row House (330)             1.4729e-02 *  
-buildingType::Semi-Detached House (210)   4.3567e-02 *  
-buildingType::Single Detached House (110) 1.3270e-11 ***
-lotSize                                   1.3943e-12 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 164,276.7   Adj. R2: 0.213406
-> print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(500,600)])))
-OLS estimation, Dep. Var.: meanVal
-Observations: 204
-Standard-errors: IID 
-                                             Estimate Std. Error   t value
-(Intercept)                               384826.4286 188331.239  2.043349
-buildingType::Row House (330)             -16815.9105  21793.546 -0.771600
-buildingType::Semi-Detached House (210)   -21397.6007  27235.930 -0.785639
-buildingType::Single Detached House (110) 134412.2339  30850.356  4.356910
-lotSize                                       96.0308    345.012  0.278341
-                                            Pr(>|t|)    
-(Intercept)                               4.2336e-02 *  
-buildingType::Row House (330)             4.4127e-01    
-buildingType::Semi-Detached House (210)   4.3301e-01    
-buildingType::Single Detached House (110) 2.1116e-05 ***
-lotSize                                   7.8104e-01    
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 120,729.7   Adj. R2: 0.121463
-> print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)])))
-OLS estimation, Dep. Var.: meanVal
-Observations: 263
-Standard-errors: IID 
-                                             Estimate Std. Error   t value
-(Intercept)                                501673.626 261802.557  1.916229
-buildingType::Row House (330)              -19540.302  37312.969 -0.523687
-buildingType::Semi-Detached House (210)   -154468.450 105636.928 -1.462258
-buildingType::Single Detached House (110)  256291.243  57290.257  4.473557
-lotSize                                       -82.011    387.034 -0.211896
-                                            Pr(>|t|)    
-(Intercept)                               5.6441e-02 .  
-buildingType::Row House (330)             6.0095e-01    
-buildingType::Semi-Detached House (210)   1.4489e-01    
-buildingType::Single Detached House (110) 1.1543e-05 ***
-lotSize                                   8.3236e-01    
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 197,054.7   Adj. R2: 0.11509
-> 
-> fwrite(dtM[assessmentClass1=="RESIDENTIAL",.(houseNumber,streetName)],file="~/Downloads/addressesFun.csv")
-> q('no')
+RMSE: 0.426227   Adj. R2: 0.117898
+Warning message:
+The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+> m <- feols(matched ~ log(meanVal)*i(buildingType),
++            data = dtP[buildingType != "Duplex (210)"], cluster = ~neighbourhood)
+NOTE: 15 observations removed because of NA values (RHS: 15).
+The variable 'log(meanVal):buildingType::Single Detached House (110)' has been
+removed because of collinearity (see $collin.var).
+> wald(m, "log\\(meanVal\\):")
+Wald test, H0: joint nullity of log(meanVal):buildingType::Backyard House (110), log(meanVal):buildingType::Row House (330) and log(meanVal):buildingType::Semi-Detached House (210)
+ stat = 1.64033, p-value = 0.178063, on 3 and 1,880 DoF, VCOV: Clustered (neighbourhood).> q("no")
 > proc.time()
    user  system elapsed 
- 29.067   0.460  13.257 
+ 31.910   0.677  14.840 

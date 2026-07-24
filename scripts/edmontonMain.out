@@ -3188,8 +3188,8 @@ RMSE: 0.479651   Adj. R2: 0.050401
 > 
 > sfPermit$logCV <- log(sfPermit$CONSTRUCTION_VALUE)
 > plotPPSF(st_as_sf(sfPermit), "logCV",
-+          "Edmonton RS Permits: Row House (1) vs Single Family (0), Post-2023",
-+          "Row house", paste0(OUTDIR,"edmontonMapConstructionValue.png"))
++          "Edmonton RS Permits: ",
++          "Construction value", paste0(OUTDIR,"edmontonMapConstructionValue.png"))
 Loading required namespace: raster
 [1] "wrote text/edmontonMapConstructionValue.png"
 > 
@@ -3254,4 +3254,4 @@ Loading required namespace: raster
 > 
 > proc.time()
    user  system elapsed 
- 54.026   7.588  48.567 
+ 53.605  10.945  53.990 
