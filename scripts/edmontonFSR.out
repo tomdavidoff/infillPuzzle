@@ -1,0 +1,291 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # edmontonFSR
+> # was Edmonton FSR limited?
+> # Tom Davidoff
+> # 07/24/26
+> 
+> library(data.table)
+> library(ggplot2)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(ggspatial)
+> 
+> df <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv",select=c("zoning","lot_size","Total Gross Area","Account Number","year_built","Latitude","Longitude"))
+> print(names(df))
+[1] "zoning"           "lot_size"         "Total Gross Area" "Account Number"  
+[5] "year_built"       "Latitude"         "Longitude"       
+> print(head(df))
+   zoning   lot_size Total Gross Area Account Number year_built Latitude
+   <char>     <char>            <num>          <int>      <int>    <num>
+1:    RSF    335.364          183.400       11219634       2024 53.43008
+2:         1,843.578         1925.787       11143030       2023 53.39971
+3:           849.898            0.000       10945021         NA 53.54234
+4:        29,220.296            0.000       10191816         NA 53.46493
+5:            15,210            0.000       10191803         NA 53.46167
+6:           204.261            0.000        9990838         NA 53.47912
+   Longitude
+       <num>
+1: -113.3859
+2: -113.5398
+3: -113.6525
+4: -113.6275
+5: -113.6215
+6: -113.5415
+> 
+> 
+> # list zones by numeric count
+> df[,.(count=.N),by=zoning][order(-count)]
+    zoning  count
+    <char>  <int>
+ 1:        156905
+ 2:     RS 146599
+ 3:    RSF  98617
+ 4:    RSM   6083
+ 5:    DC1   4913
+ 6:     RM   4762
+ 7:     IM   2721
+ 8:    DC2   2035
+ 9:     MU   2020
+10:     BE   1800
+11:   GLDF   1192
+12:      A   1038
+13:     AG   1028
+14:    PSN   1007
+15:    PLD    948
+16:     PU    885
+17:     PS    760
+18:     DC    620
+19:     RR    556
+20:    SLD    543
+21:     CN    433
+22:     CG    409
+23:    BRH    385
+24:     IH    361
+25:    AES    312
+26:     FD    279
+27:     UF    239
+28:    GLD    235
+29:    SRH    221
+30:     RL    208
+31:    SRA    194
+32:     CB    189
+33:   RVRH    152
+34:    CCA    119
+35:    GRH    108
+36:     AJ    103
+37:     UW     96
+38:   ILES     71
+39:    CMU     70
+40:     NA     60
+41:   CCSD     60
+42:    EIB     45
+43:    HDR     43
+44:    RMU     41
+45:    MUN     40
+46:  JAMSC     35
+47:     HA     24
+48:   CMUV     21
+49:   RAES     21
+50:    PRH     21
+51:     UI     16
+52: NSRVES     14
+53:   EETC     13
+54:  UC3ES      9
+55:     BP      8
+56:   BLMR      7
+57:   RCES      6
+58:    EIM      6
+59:   GLRA      6
+60:   EETR      5
+61:   EETM      5
+62:  EETIM      5
+63:   CCHD      4
+64:    ECB      4
+65:    GVC      4
+66:    ASC      3
+67:     A1      3
+68:   GMRA      3
+69:   TC-C      3
+70:    MRC      3
+71:   CCMD      2
+72:    AED      2
+73:   EETL      2
+74:     A5      2
+75:  RTCMR      2
+76:    ALA      1
+77:     US      1
+78:   CCNC      1
+79:    CSC      1
+80:    RSL      1
+    zoning  count
+    <char>  <int>
+> df <- df[zoning=="RS"]
+> df[,lot_size:=as.numeric(gsub(",","",lot_size))]
+> 
+> print(df[year_built %between% c(2010,2026),median(lot_size),by=year_built][order(year_built)])
+    year_built       V1
+         <int>    <num>
+ 1:       2010 466.1420
+ 2:       2011 428.9510
+ 3:       2012 343.7080
+ 4:       2013 304.4665
+ 5:       2014 334.7580
+ 6:       2015 316.7510
+ 7:       2016 314.8900
+ 8:       2017 326.8805
+ 9:       2018 324.9995
+10:       2019 347.5060
+11:       2020 348.8645
+12:       2021 354.7330
+13:       2022 376.8715
+14:       2023 355.6180
+15:       2024 408.5750
+16:       2025 583.2505
+17:       2026 707.2690
+> 
+> df <- df[year_built %between% c(2010,2023)]
+> df[,FSR:=`Total Gross Area`/lot_size]
+> 
+> 
+> 
+> dA <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv",select=c("Assessment Year","Account Number","Assessed Value"))
+> print(head(dA))
+   Assessment Year Account Number Assessed Value
+             <int>          <int>         <char>
+1:            2013        1477850    $269,500.00
+2:            2017        1437631    $324,000.00
+3:            2018        1457910    $326,500.00
+4:            2019        1433606     $50,500.00
+5:            2012        1476985      $3,000.00
+6:            2018        1491398    $247,500.00
+> dA <- dA[`Assessment Year`==max(`Assessment Year`)]
+> dA[,value:=as.numeric(gsub("\\$","",gsub(",","",`Assessed Value`)))]
+> setkey(dA,"Account Number")
+> setkey(df,"Account Number")
+> 
+> dM <- merge(df,dA,by="Account Number")
+> print(head(dM))
+Key: <Account Number>
+   Account Number zoning lot_size Total Gross Area year_built Latitude
+            <int> <char>    <num>            <num>      <int>    <num>
+1:        1003904     RS  905.488            201.7       2017 53.48523
+2:        1039379     RS  412.457            182.1       2015 53.56170
+3:        1083179     RS  776.205            342.9       2023 53.50679
+4:        1092022     RS  717.952            260.9       2022 53.51029
+5:        1093723     RS  558.744            230.0       2010 53.46665
+6:        1101203     RS  663.856            308.1       2022 53.51094
+   Longitude       FSR Assessment Year Assessed Value   value
+       <num>     <num>           <int>         <char>   <num>
+1: -113.6312 0.2227528            2025  $1,301,500.00 1301500
+2: -113.4009 0.4415006            2025    $587,500.00  587500
+3: -113.5921 0.4417647            2025  $1,439,000.00 1439000
+4: -113.6090 0.3633948            2025  $1,825,000.00 1825000
+5: -113.5955 0.4116375            2025    $772,000.00  772000
+6: -113.5830 0.4641067            2025  $1,527,000.00 1527000
+> dM <- dM[`Total Gross Area`>0]
+> dM <- dM[!is.na(FSR) & !is.na(value)]
+> dM[,ppsf:=value/`Total Gross Area`]
+> dM[,pparea:=value/lot_size]
+> print(summary(dM))
+ Account Number        zoning             lot_size      Total Gross Area
+ Min.   : 1003904   Length:9691        Min.   : 168.6   Min.   :  66.2  
+ 1st Qu.: 9361683   Class :character   1st Qu.: 280.7   1st Qu.: 141.2  
+ Median :10481855   Mode  :character   Median : 343.6   Median : 161.8  
+ Mean   : 9366687                      Mean   : 420.4   Mean   : 190.4  
+ 3rd Qu.:10851702                      3rd Qu.: 490.2   3rd Qu.: 211.1  
+ Max.   :11306282                      Max.   :5374.4   Max.   :7945.1  
+   year_built      Latitude       Longitude           FSR         
+ Min.   :2010   Min.   :53.43   Min.   :-113.7   Min.   :0.08644  
+ 1st Qu.:2013   1st Qu.:53.51   1st Qu.:-113.5   1st Qu.:0.42232  
+ Median :2016   Median :53.54   Median :-113.5   Median :0.49485  
+ Mean   :2016   Mean   :53.54   Mean   :-113.5   Mean   :0.47867  
+ 3rd Qu.:2019   3rd Qu.:53.58   3rd Qu.:-113.4   3rd Qu.:0.54093  
+ Max.   :2023   Max.   :53.64   Max.   :-113.4   Max.   :1.99395  
+ Assessment Year Assessed Value         value               ppsf        
+ Min.   :2025    Length:9691        Min.   :  109000   Min.   :  502.2  
+ 1st Qu.:2025    Class :character   1st Qu.:  425500   1st Qu.: 2966.5  
+ Median :2025    Mode  :character   Median :  602000   Median : 3505.5  
+ Mean   :2025                       Mean   :  757284   Mean   : 3830.6  
+ 3rd Qu.:2025                       3rd Qu.:  861000   3rd Qu.: 4414.4  
+ Max.   :2025                       Max.   :25628000   Max.   :16706.3  
+     pparea      
+ Min.   : 313.6  
+ 1st Qu.:1398.4  
+ Median :1622.7  
+ Mean   :1794.9  
+ 3rd Qu.:2161.0  
+ Max.   :6864.1  
+> 
+> print(cor(dM[lot_size %between% c(300,400),.(FSR,ppsf,pparea)],use="complete.obs"))
+             FSR      ppsf    pparea
+FSR    1.0000000 0.3155840 0.7832084
+ppsf   0.3155840 1.0000000 0.8229491
+pparea 0.7832084 0.8229491 1.0000000
+> print(summary(dM))
+ Account Number        zoning             lot_size      Total Gross Area
+ Min.   : 1003904   Length:9691        Min.   : 168.6   Min.   :  66.2  
+ 1st Qu.: 9361683   Class :character   1st Qu.: 280.7   1st Qu.: 141.2  
+ Median :10481855   Mode  :character   Median : 343.6   Median : 161.8  
+ Mean   : 9366687                      Mean   : 420.4   Mean   : 190.4  
+ 3rd Qu.:10851702                      3rd Qu.: 490.2   3rd Qu.: 211.1  
+ Max.   :11306282                      Max.   :5374.4   Max.   :7945.1  
+   year_built      Latitude       Longitude           FSR         
+ Min.   :2010   Min.   :53.43   Min.   :-113.7   Min.   :0.08644  
+ 1st Qu.:2013   1st Qu.:53.51   1st Qu.:-113.5   1st Qu.:0.42232  
+ Median :2016   Median :53.54   Median :-113.5   Median :0.49485  
+ Mean   :2016   Mean   :53.54   Mean   :-113.5   Mean   :0.47867  
+ 3rd Qu.:2019   3rd Qu.:53.58   3rd Qu.:-113.4   3rd Qu.:0.54093  
+ Max.   :2023   Max.   :53.64   Max.   :-113.4   Max.   :1.99395  
+ Assessment Year Assessed Value         value               ppsf        
+ Min.   :2025    Length:9691        Min.   :  109000   Min.   :  502.2  
+ 1st Qu.:2025    Class :character   1st Qu.:  425500   1st Qu.: 2966.5  
+ Median :2025    Mode  :character   Median :  602000   Median : 3505.5  
+ Mean   :2025                       Mean   :  757284   Mean   : 3830.6  
+ 3rd Qu.:2025                       3rd Qu.:  861000   3rd Qu.: 4414.4  
+ Max.   :2025                       Max.   :25628000   Max.   :16706.3  
+     pparea      
+ Min.   : 313.6  
+ 1st Qu.:1398.4  
+ Median :1622.7  
+ Mean   :1794.9  
+ 3rd Qu.:2161.0  
+ Max.   :6864.1  
+> 
+> # annotation_map_tile colors with FSR by lat/lon
+> 
+> 
+> dM <- st_as_sf(dM[FSR %between% c(.25,.75) & lot_size %between% c(300,400)],coords=c("Longitude","Latitude"),crs=4326)
+> p <- ggplot() +
++     annotation_map_tile(type = "cartolight", zoom = 12, progress = "none") +
++     geom_sf(data = dM, aes(color = FSR), size = 1.5, alpha = 0.8) +
++     coord_sf(xlim = st_bbox(dM)[c(1, 3)],
++ 	     ylim = st_bbox(dM)[c(2, 4)],
++ 	     crs = 4326) +
++     scale_color_viridis_c(labels = scales::comma) +
++     theme_minimal() +
++     labs(title="Edmonton FSR", color="FSR")
+> 
+> ggsave(p,filename="text/edmontonFSR.png",width=8,height=6)
+Loading required namespace: raster
+> 
+> proc.time()
+   user  system elapsed 
+  8.472   0.623   7.210 

@@ -1,0 +1,221 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # edmontonCountUnits.R
+> # do fancy neighbourhoods (maybe by assembly) just build more units?
+> # Tom Davidoff
+> # 07/24/26
+> 
+> library(data.table)
+> library(ggplot2)
+> library(ggspatial)
+> 
+> df <- fread("~/DropboxExternal/dataRaw/edmonton/edmontonBuildingPermits.csv")
+> print(head(df))
+        Row ID PERMIT_DATE PERMIT_NUMBER REPORT_PERMIT_DATE  YEAR MONTH_NUMBER
+        <char>      <IDat>        <lgcl>             <IDat> <int>        <int>
+1: 1-253374239  2019-07-04            NA         2019-07-04  2019            7
+2: 1-423612680  2022-04-26            NA         2022-04-26  2022            4
+3: 1-516037952  2024-07-26            NA         2024-07-26  2024            7
+4: 1-120627840  2012-03-07            NA         2012-03-07  2012            3
+5: 5-582841478  2025-09-04            NA         2025-09-04  2025            9
+6:  0-84670591  2009-03-04            NA         2009-03-04  2009            3
+                   JOB_CATEGORY
+                         <char>
+1:             Commercial Final
+2:             Commercial Final
+3:             Commercial Final
+4: Other Miscellaneous Building
+5:             Home Improvement
+6:             Commercial Final
+                                                                                                     JOB_DESCRIPTION
+                                                                                                              <char>
+1:                                            To construct an LRT Station (Davies Station) on City Road Right-of-Way
+2:                               To construct Interior Alterations to an Existing LRT station.   Central LRT Station
+3: To construct Interior Alterations (lab renovations) in an existing secondary school.--JH Picard Catholic School--
+4:                                                                              To demolish a Single Detached House.
+5:                                      To construct an Accessory building (Mutual detached Garage, 6.10m x 13.82m).
+6:                                To Construct interior alterations to CRU 105 - Hakim Optical @ West Edmonton Mall.
+                    BUILDING_TYPE                 WORK_TYPE CONSTRUCTION_VALUE
+                           <char>                    <char>              <int>
+1: Transportation Terminals (440)                  (01) New           20150000
+2: Transportation Terminals (440) (03) Interior Alterations            3000000
+3:        Secondary Schools (622) (03) Interior Alterations              56000
+4:    Single Detached House (110)           (99) Demolition              10000
+5:                                                                          NA
+6:     Malls, Office/Retail (512) (03) Interior Alterations              45000
+   FLOOR_AREA UNITS_ADDED                      ADDRESS
+        <num>       <num>                       <char>
+1:   39815.00           0  100 - DAVIES LRT STATION NW
+2:     592.01           0 100 - CENTRAL LRT STATION NW
+3:    2368.06           0          7055 - 99 STREET NW
+4:    1450.00          -1        11728 - 127 AVENUE NW
+5:         NA          NA      2, 12036 - 95 STREET NW
+6:    2345.00           0         8882 - 170 STREET NW
+             LEGAL_DESCRIPTION  ZONING NEIGHBOURHOOD_NUMBER
+                        <char>  <char>               <char>
+1:                                                     6170
+2:                                                     1090
+3:                                                     6290
+4: Plan 3229Z Blk 7 Lots 15-16                         3070
+5:   Plan 2521391 Blk 5 Lot 5B  RS, RS                 1010
+6:   Plan 8421891 Blk 28 Lot 6 DC2, DC                 4520
+            NEIGHBOURHOOD    BIA COUNT LATITUDE LONGITUDE
+                   <char> <char> <int>    <num>     <num>
+1: DAVIES INDUSTRIAL WEST            1       NA        NA
+2:               DOWNTOWN            1       NA        NA
+3:              HAZELDEAN            1       NA        NA
+4:                 CALDER            1       NA        NA
+5:         ALBERTA AVENUE            1       NA        NA
+6:              SUMMERLEA            1 53.52271 -113.6249
+                                    LOCATION
+                                      <char>
+1:                                          
+2:                                          
+3:                                          
+4:                                          
+5:                                          
+6: (53.522713555201165, -113.62494764625916)
+                                   Geometry Point Occupancy Date
+                                           <char>         <IDat>
+1:                                                          <NA>
+2:                                                          <NA>
+3:                                                          <NA>
+4:                                                          <NA>
+5:                                                          <NA>
+6: POINT (-113.62494764625916 53.522713555201165)           <NA>
+> df[,zone2:=substring(ZONING,1,2)]
+> df <- df[grepl("New", WORK_TYPE)==TRUE]
+> df <- df[zone2 %in% c("RF","RS")]
+> print(df[order(YEAR),.N,by="YEAR"])
+     YEAR     N
+    <int> <int>
+ 1:  2009   428
+ 2:  2010   498
+ 3:  2011   594
+ 4:  2012  4083
+ 5:  2013  4777
+ 6:  2014  5539
+ 7:  2015  4483
+ 8:  2016  3627
+ 9:  2017  3793
+10:  2018  3968
+11:  2019  3368
+12:  2020  3383
+13:  2021  4178
+14:  2022  4442
+15:  2023  3061
+16:  2024  4853
+17:  2025  4632
+18:  2026  1828
+> print(df[order(YEAR),sum(UNITS_ADDED,na.rm=TRUE),by="YEAR"])
+     YEAR    V1
+    <int> <num>
+ 1:  2009   946
+ 2:  2010  1274
+ 3:  2011  1302
+ 4:  2012  4500
+ 5:  2013  5053
+ 6:  2014  6130
+ 7:  2015  5191
+ 8:  2016  3876
+ 9:  2017  4193
+10:  2018  4555
+11:  2019  4405
+12:  2020  4486
+13:  2021  5456
+14:  2022  5673
+15:  2023  4309
+16:  2024  7673
+17:  2025  8828
+18:  2026  3722
+> dsf <- df[YEAR %between% c(2020,2022),.(sfPre=median(FLOOR_AREA,na.rm=TRUE)),by=NEIGHBOURHOOD]
+> df[,unitsPre:=sum(UNITS_ADDED*(YEAR %between% c(2020,2023)),na.rm=TRUE),by=NEIGHBOURHOOD]
+> df[,unitsPost:=sum(UNITS_ADDED*(YEAR %between% c(2024,2026)),na.rm=TRUE),by=NEIGHBOURHOOD]
+> df[,growth:=unitsPost/unitsPre]
+> df <- df[unitsPre>0 & unitsPost>0]
+> dN <- df[,.(lat=median(LATITUDE,na.rm=TRUE),lon=mean(LONGITUDE,na.rm=TRUE),growth=mean(growth)),by=NEIGHBOURHOOD]
+> dN <- merge(dN,dsf,by="NEIGHBOURHOOD")
+> print(dN)
+Key: <NEIGHBOURHOOD>
+      NEIGHBOURHOOD      lat       lon     growth  sfPre
+             <char>    <num>     <num>      <num>  <num>
+  1: ALBERTA AVENUE 53.56821 -113.4849 1.14666667 2199.0
+  2:         ALLARD 53.39990 -113.5265 0.04255319 2991.0
+  3:      ALLENDALE 53.50302 -113.5060 1.28571429 2719.0
+  4:      AMBLESIDE 53.43023 -113.6029 0.16000000 2449.0
+  5:         ARGYLL 53.50253 -113.4620 0.33333333 1569.0
+ ---                                                    
+153:       WESTWOOD 53.57656 -113.4984 2.57142857 2094.0
+154:      WILD ROSE 53.46673 -113.3741 0.57142857 2355.5
+155:     WINDERMERE 53.43481 -113.6211 0.93269231 3658.5
+156:   WINDSOR PARK 53.52398 -113.5349 2.03773585 2417.0
+157:      WOODCROFT 53.56854 -113.5573 5.33333333  600.0
+> print(summary(dN))
+ NEIGHBOURHOOD           lat             lon             growth        
+ Length:157         Min.   :53.40   Min.   :-113.7   Min.   : 0.02174  
+ Class :character   1st Qu.:53.47   1st Qu.:-113.6   1st Qu.: 0.75676  
+ Mode  :character   Median :53.53   Median :-113.5   Median : 1.58065  
+                    Mean   :53.52   Mean   :-113.5   Mean   : 2.64251  
+                    3rd Qu.:53.57   3rd Qu.:-113.5   3rd Qu.: 2.87500  
+                    Max.   :53.64   Max.   :-113.3   Max.   :20.00000  
+     sfPre     
+ Min.   : 538  
+ 1st Qu.:1797  
+ Median :2097  
+ Mean   :2167  
+ 3rd Qu.:2465  
+ Max.   :4353  
+> 
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> # turn into street map
+> dN <- st_as_sf(dN,coords=c("lon","lat"),crs=4326)
+> p <- ggplot() +
++     annotation_map_tile(type = "cartolight", zoom = 12, progress = "none") +
++     geom_sf(data = dN, aes(color = pmin(growth,4)), size = 1.5, alpha = 0.8) +
++     coord_sf(xlim = st_bbox(dN)[c(1, 3)],
++ 	     ylim = st_bbox(dN)[c(2, 4)],
++ 	     crs = 4326) +
++     scale_color_viridis_c(labels = scales::comma) +
++     theme_minimal() +
++     labs(title="Edmonton Neighbourhood Growth (2024-2026 vs 2020-2023)",
++ 	 color="Growth (capped at 4x)")
+> 
+> ggsave("text/edmontonNeighbourhoodGrowth.png",p,width=8,height=6)
+Loading required namespace: raster
+> 
+> p <- ggplot() +
++     annotation_map_tile(type = "cartolight", zoom = 12, progress = "none") +
++     geom_sf(data = dN, aes(color = sfPre), size = 1.5, alpha = 0.8) +
++     coord_sf(xlim = st_bbox(dN)[c(1, 3)],
++ 	     ylim = st_bbox(dN)[c(2, 4)],
++ 	     crs = 4326) +
++     scale_color_viridis_c(labels = scales::comma) +
++     theme_minimal() +
++     labs(title="Edmonton SF PRE (2020-2023)",
++ 	 color="SF PRE")
+> 
+> ggsave("text/edmontonNeighbourhoodSFPre.png",p,width=8,height=6)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+ 13.563   1.105  12.270 
