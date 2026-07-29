@@ -1,0 +1,83 @@
+
+=== Row House (330) (RS, 2024) @ 5m, new construction ===
+  permits:                       180
+  permits w/ a new parcel:       130
+  new parcels matched:           106
+  with a Suite value:              0  (0.0%)
+
+=== Single Detached House (110) (RS, 2024) @ 5m, new construction ===
+  permits:                      3139
+  permits w/ a new parcel:       528
+  new parcels matched:           426
+  with a Suite value:              2  (0.5%)
+Table A — matched parcels near 2024 RS rowhouse permits, by year_built:
+shape: (14, 3)
+┌──────┬─────────┬────────┐
+│ yb   ┆ parcels ┆ suited │
+│ ---  ┆ ---     ┆ ---    │
+│ i64  ┆ u32     ┆ u32    │
+╞══════╪═════════╪════════╡
+│ null ┆ 17      ┆ 0      │
+│ 2025 ┆ 45      ┆ 0      │
+│ 2024 ┆ 62      ┆ 0      │
+│ 2022 ┆ 2       ┆ 0      │
+│ 2020 ┆ 4       ┆ 4      │
+│ …    ┆ …       ┆ …      │
+│ 2014 ┆ 1       ┆ 0      │
+│ 2013 ┆ 2       ┆ 0      │
+│ 2010 ┆ 3       ┆ 0      │
+│ 1980 ┆ 3       ┆ 0      │
+│ 1912 ┆ 1       ┆ 0      │
+└──────┴─────────┴────────┘
+
+Table B — ALL RS roll parcels by year_built (recent years):
+shape: (15, 3)
+┌──────┬─────────┬────────┐
+│ yb   ┆ parcels ┆ suited │
+│ ---  ┆ ---     ┆ ---    │
+│ i64  ┆ u32     ┆ u32    │
+╞══════╪═════════╪════════╡
+│ null ┆ 3631    ┆ 2      │
+│ 2026 ┆ 3       ┆ 0      │
+│ 2025 ┆ 566     ┆ 0      │
+│ 2024 ┆ 444     ┆ 4      │
+│ 2023 ┆ 479     ┆ 2      │
+│ …    ┆ …       ┆ …      │
+│ 2017 ┆ 842     ┆ 2      │
+│ 2016 ┆ 765     ┆ 7      │
+│ 2015 ┆ 890     ┆ 6      │
+│ 2014 ┆ 912     ┆ 2      │
+│ 2013 ┆ 930     ┆ 2      │
+└──────┴─────────┴────────┘
+
+Row House (2024 RS): UNITS_ADDED
+  non-null: 120/180
+  distribution:
+shape: (7, 2)
+┌─────────────┬─────────┐
+│ UNITS_ADDED ┆ permits │
+│ ---         ┆ ---     │
+│ i64         ┆ u32     │
+╞═════════════╪═════════╡
+│ null        ┆ 60      │
+│ 4           ┆ 1       │
+│ 5           ┆ 2       │
+│ 6           ┆ 24      │
+│ 7           ┆ 7       │
+│ 8           ┆ 85      │
+│ 10          ┆ 1       │
+└─────────────┴─────────┘
+
+Single Detached (2024 RS): UNITS_ADDED
+  non-null: 212/3139
+  distribution:
+shape: (3, 2)
+┌─────────────┬─────────┐
+│ UNITS_ADDED ┆ permits │
+│ ---         ┆ ---     │
+│ i64         ┆ u32     │
+╞═════════════╪═════════╡
+│ null        ┆ 2927    │
+│ 1           ┆ 135     │
+│ 2           ┆ 77      │
+└─────────────┴─────────┘

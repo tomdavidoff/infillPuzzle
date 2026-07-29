@@ -16,7 +16,9 @@ print(head(df))
 # list zones by numeric count
 df[,.(count=.N),by=zoning][order(-count)]
 df <- df[zoning=="RS"]
+print(summary(df[,lot_size]))
 df[,lot_size:=as.numeric(gsub(",","",lot_size))]
+
 
 print(df[year_built %between% c(2010,2026),median(lot_size),by=year_built][order(year_built)])
 

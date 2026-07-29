@@ -138,7 +138,11 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
     zoning  count
     <char>  <int>
 > df <- df[zoning=="RS"]
+> print(summary(df[,lot_size]))
+   Length     Class      Mode 
+   146599 character character 
 > df[,lot_size:=as.numeric(gsub(",","",lot_size))]
+> 
 > 
 > print(df[year_built %between% c(2010,2026),median(lot_size),by=year_built][order(year_built)])
     year_built       V1
@@ -286,6 +290,7 @@ pparea 0.7832084 0.8229491 1.0000000
 > ggsave(p,filename="text/edmontonFSR.png",width=8,height=6)
 Loading required namespace: raster
 > 
+> 
 > proc.time()
    user  system elapsed 
-  8.472   0.623   7.210 
+  8.534   2.414  10.392 
