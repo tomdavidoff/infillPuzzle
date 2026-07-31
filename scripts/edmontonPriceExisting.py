@@ -14,6 +14,7 @@
 # ==============================================================================
 import os
 import polars as pl
+import matplotlib.pyplot as plt
 
 DATA = os.path.expanduser("~/DropboxExternal/dataRaw/edmonton")
 CURR = f"{DATA}/Property_Information_(Current_Calendar_Year)_20260612.csv"
@@ -34,9 +35,65 @@ def nb_key(col):                       # normalise neighbourhood names for joins
     return pl.col(col).str.strip_chars().str.to_uppercase()
 
 print("Loading (all text; casting only what we use)...")
-hist = pl.read_csv(HIST, infer_schema_length=0)
-curr = pl.read_csv(CURR, infer_schema_length=0)
 perm = pl.read_csv(PERM, infer_schema_length=0)
+hist = pl.read_csv(HIST, infer_schema_length=0).filter(pl.col("Suite").is_null()) # drop suites (we'll use current roll to identify them)
+#print(hist["Suite"].value_counts(sort=True).head())
+curr = pl.read_csv(CURR, infer_schema_length=0).filter(pl.col("zoning")=="RS").filter("House Number"!="null")  # drop non-RS, nominal, and suite parcels
+# create year built and filter
+curr = curr.with_columns(year_built = num("year_built", pl.Int64)).filter(pl.col("year_built") <= PRICE_YEAR)
+def acct_key(col="Account Number"):
+    return (pl.col(col).str.strip_chars()
+            .str.replace(r"\.0$", ""))          # drop trailing .0 if present
+
+print("hist keys:", hist["Account Number"].head(8).to_list())
+print("curr keys:", curr["Account Number"].head(8).to_list())
+print("hist n unique acct:", hist["Account Number"].n_unique())
+print("curr n unique acct:", curr["Account Number"].n_unique())
+# raw overlap, no normalization
+hset = set(hist["Account Number"].to_list())
+cset = set(curr["Account Number"].to_list())
+print("overlap:", len(hset & cset))
+hist = hist.with_columns(acct = acct_key())
+curr = curr.with_columns(acct = acct_key())
+print(hist["acct"].head())
+print(curr["acct"].head())
+print([hist.height,curr.height])
+hist = hist.join(curr.select("acct","Total Gross Area"), on="acct", how="inner")
+print([hist.height,curr.height])
+
+# merge hist with current roll to get floor area for 2023 parcels (no floor area in hist)
+hist = hist.with_columns(gross = num("Total Gross Area"), lot = num("Lot Size"))
+# drop if null gross
+
+print(hist.head)
+print(hist.columns)
+
+# summary statistics on lot size and floor area
+print("\n" + "="*70 + "\nSUMMARY STATISTICS\n" + "="*70)
+print(hist.select("lot", "gross").describe())
+
+# get the 5 neighbourhoods with highest median price in 2023
+hist = hist.filter(pl.col("Assessment Year") == str(PRICE_YEAR))
+hist = hist.with_columns(lot = num("Lot Size"), assessed = num("Assessed Value"))
+nbhdPrice = hist.filter((pl.col("Assessment Class 1") == "RESIDENTIAL") & (pl.col("lot") > 150) & (pl.col("assessed") > 100_000) & pl.col("assessed").is_not_null()).group_by("Neighbourhood").agg(price = pl.col("assessed").median(), n = pl.len()).filter(pl.col("n") >= 25).sort("price", descending=True)
+print("\nTop 5 neighbourhoods by median assessed value (2023):")
+print(nbhdPrice)
+
+#matplotlib price vertical against gross scatter plot for the top 5 nbhds only
+# subset nbhdPrice to top 5 only
+nbhdPriceTop5 = nbhdPrice.head(5)
+hist = hist.filter(pl.col("Neighbourhood").is_null().not_())
+histTop5 = hist.join(nbhdPriceTop5, on="Neighbourhood", how="inner")
+print(histTop5.select("Neighbourhood", "assessed", "gross").describe())
+print("gross non-null:", histTop5["gross"].is_not_null().sum(), "/", histTop5.height)
+print("assessed non-null:", histTop5["assessed"].is_not_null().sum())
+print(histTop5.select("gross","assessed").describe())
+fig, ax = plt.subplots(figsize=(10, 6))
+print(histTop5.head())
+plt.scatter(histTop5["gross"], histTop5["assessed"])
+plt.title("Assessed Value vs Total Gross Area (Top 5 Neighbourhoods, 2023)")
+plt.savefig("text/assessed_vs_gross_top5.png")
+
 
 
 # ==============================================================================
@@ -180,3 +237,94 @@ os.makedirs(os.path.dirname(OUT_BETAS), exist_ok=True)
  .join(merged.select("nb","div_rate","permits","median_lot"), on="nb", how="left")
  .write_csv(OUT_BETAS))
 print(f"\nwrote per-neighbourhood betas -> {OUT_BETAS}")
+
+
+# ==============================================================================
+# plotElasticity.py  -- price vs sqft, pooled 5 priciest nbhds, small lots
+# points only, coloured by neighbourhood, log-log. One PNG.
+# Assumes edmontonPriceDivision.py objects OR reloads standalone.
+# ==============================================================================
+import os
+import polars as pl
+
+DATA = os.path.expanduser("~/DropboxExternal/dataRaw/edmonton")
+HIST = f"{DATA}/Property_Assessment_Data_(Historical)_20260611.csv"
+CURR = f"{DATA}/Property_Information_(Current_Calendar_Year)_20260612.csv"
+OUT  = os.path.expanduser("~/projects/infillPuzzle/figures/price_sqft_top5.png")
+
+PRICE_YEAR = 2023
+LOT_LO, LOT_HI = 300, 400          # lot-size band (m^2)
+
+def num(col, dtype=pl.Float64):
+    return (pl.col(col).str.strip_chars().str.replace_all(r"[$,]", "")
+            .cast(dtype, strict=False))
+
+hist = pl.read_csv(HIST, infer_schema_length=0)
+curr = pl.read_csv(CURR, infer_schema_length=0)
+
+# floor area from current roll, un-redeveloped only (sqft stable since 2023)
+area = curr.select("Account Number",
+                   gross=num("Total Gross Area"),
+                   curr_yb=num("year_built", pl.Int64))
+
+h = hist.with_columns(
+    ayear=num("Assessment Year", pl.Int64),
+    assessed=num("Assessed Value"),
+    lot=num("Lot Size"),
+    hist_yb=num("Actual Year Built", pl.Int64),
+)
+
+# 5 priciest neighbourhoods by 2023 median house price (clean houses)
+top5 = (h.filter((pl.col("ayear")==PRICE_YEAR)
+                 & (pl.col("Assessment Class 1")=="RESIDENTIAL")
+                 & (pl.col("lot")>150) & (pl.col("assessed")>100_000))
+        .group_by("Neighbourhood").agg(mp=pl.col("assessed").median(), n=pl.len())
+        .filter(pl.col("n")>=25).sort("mp", descending=True)
+        .head(5)["Neighbourhood"].to_list())
+print("Top 5:", top5)
+
+# pooled parcels: 2023 value x stable sqft, small-lot band, in the 5 nbhds
+d = (h.filter((pl.col("ayear")==PRICE_YEAR)
+              & (pl.col("Assessment Class 1")=="RESIDENTIAL")
+              & (pl.col("assessed")>0)
+              & pl.col("lot").is_between(LOT_LO, LOT_HI)
+              & pl.col("Neighbourhood").is_in(top5))
+     .join(area, on="Account Number", how="inner")
+     .filter((pl.col("gross")>0) & (pl.col("hist_yb")<=PRICE_YEAR)
+             & (pl.col("curr_yb")<=PRICE_YEAR)))
+print(f"pooled parcels ({LOT_LO}-{LOT_HI} m2 lots): {d.height}")
+print(d.group_by("Neighbourhood").agg(n=pl.len()).sort("n", descending=True))
+
+# get housing stats (sqft) by nbhd
+print(
+    h.filter((pl.col("ayear")==PRICE_YEAR)
+             & (pl.col("Assessment Class 1")=="RESIDENTIAL")
+             & (pl.col("assessed")>100_000))
+             #& pl.col("Neighbourhood").is_in(top5))
+    .group_by("Neighbourhood")
+    .agg(n=pl.len(),
+         p10=pl.col("lot").quantile(.10),
+         median=pl.col("lot").median(),
+         p90=pl.col("lot").quantile(.90),
+         mean=pl.col("lot").mean())
+    .sort("median", descending=True)
+)
+
+# ---- plot: log-log scatter, coloured by neighbourhood ----
+fig, ax = plt.subplots(figsize=(9, 7))
+colors = plt.cm.tab10.colors
+for i, nb in enumerate(top5):
+    sub = d.filter(pl.col("Neighbourhood")==nb)
+    ax.scatter(sub["gross"].to_numpy(), sub["assessed"].to_numpy(),
+               s=22, alpha=0.6, color=colors[i], label=f"{nb} (n={sub.height})")
+
+#ax.set_xscale("log"); ax.set_yscale("log")
+ax.set_xlabel("Building floor area  (m$^2$, log)")
+ax.set_ylabel("Assessed value 2023  ($, log)")
+ax.set_title(f"Price vs floor area — 5 priciest neighbourhoods, {LOT_LO}-{LOT_HI} m$^2$ lots")
+ax.legend(fontsize=8, framealpha=0.9)
+ax.grid(True, which="both", alpha=0.2)
+fig.tight_layout()
+os.makedirs(os.path.dirname(OUT), exist_ok=True)
+fig.savefig(OUT, dpi=140)
+print(f"wrote {OUT}")

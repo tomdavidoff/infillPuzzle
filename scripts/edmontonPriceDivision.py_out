@@ -1,0 +1,105 @@
+======================================================================
+0. CONDO / SUITE vs LOT SIZE
+======================================================================
+Lot-size status overall (current roll):
+shape: (1, 4)
+┌────────┬──────────┬──────────┬─────────┐
+│ total  ┆ lot_zero ┆ lot_null ┆ lot_pos │
+│ ---    ┆ ---      ┆ ---      ┆ ---     │
+│ u32    ┆ u32      ┆ u32      ┆ u32     │
+╞════════╪══════════╪══════════╪═════════╡
+│ 439769 ┆ 1606     ┆ 2728     ┆ 435435  │
+└────────┴──────────┴──────────┴─────────┘
+
+Lot-size status among parcels WITH a suite value:
+shape: (1, 4)
+┌──────────────┬──────────┬──────────┬─────────┐
+│ suited_total ┆ lot_zero ┆ lot_null ┆ lot_pos │
+│ ---          ┆ ---      ┆ ---      ┆ ---     │
+│ u32          ┆ u32      ┆ u32      ┆ u32     │
+╞══════════════╪══════════╪══════════╪═════════╡
+│ 84542        ┆ 649      ┆ 131      ┆ 83762   │
+└──────────────┴──────────┴──────────┴─────────┘
+
+Zoning of ZERO/NULL-lot parcels (top 15) -- expect condo/RA/multi codes:
+shape: (1, 2)
+┌────────┬──────┐
+│ zoning ┆ n    │
+│ ---    ┆ ---  │
+│ str    ┆ u32  │
+╞════════╪══════╡
+│ null   ┆ 4334 │
+└────────┴──────┘
+
+======================================================================
+1. NEIGHBOURHOOD PRICE
+======================================================================
+Neighbourhoods with >=25 residential parcels in 2023: 291
+shape: (5, 5)
+┌───────────────────┬───────────────┬──────────────┬───────────────┬───────────┐
+│ Neighbourhood     ┆ mean_price    ┆ median_price ┆ mean_lot      ┆ n_parcels │
+│ ---               ┆ ---           ┆ ---          ┆ ---           ┆ ---       │
+│ str               ┆ f64           ┆ f64          ┆ f64           ┆ u32       │
+╞═══════════════════╪═══════════════╪══════════════╪═══════════════╪═══════════╡
+│ WESTBROOK ESTATE  ┆ 1.3285e6      ┆ 1.0925e6     ┆ 1234.293907   ┆ 334       │
+│ MELTWATER         ┆ 1.1814e6      ┆ 844000.0     ┆ 88945.956176  ┆ 25        │
+│ WINDSOR PARK      ┆ 1.0456e6      ┆ 935000.0     ┆ 738.500775    ┆ 605       │
+│ DECOTEAU          ┆ 929435.483871 ┆ 912250.0     ┆ 103510.140613 ┆ 62        │
+│ GRANDVIEW HEIGHTS ┆ 910809.585492 ┆ 852500.0     ┆ 800.140804    ┆ 386       │
+└───────────────────┴───────────────┴──────────────┴───────────────┴───────────┘
+shape: (5, 5)
+┌─────────────────────────────────┬───────────────┬──────────────┬────────────┬───────────┐
+│ Neighbourhood                   ┆ mean_price    ┆ median_price ┆ mean_lot   ┆ n_parcels │
+│ ---                             ┆ ---           ┆ ---          ┆ ---        ┆ ---       │
+│ str                             ┆ f64           ┆ f64          ┆ f64        ┆ u32       │
+╞═════════════════════════════════╪═══════════════╪══════════════╪════════════╪═══════════╡
+│ MILL WOODS TOWN CENTRE          ┆ 94870.223979  ┆ 114500.0     ┆ 55.47644   ┆ 759       │
+│ BARANOW                         ┆ 97361.223118  ┆ 10000.0      ┆ 63.209684  ┆ 1488      │
+│ PEMBINA                         ┆ 104740.340909 ┆ 57500.0      ┆ 477.760867 ┆ 880       │
+│ BOYLE STREET                    ┆ 112581.901489 ┆ 68500.0      ┆ 60.764757  ┆ 1746      │
+│ HERITAGE VALLEY TOWN CENTRE AR… ┆ 117448.905109 ┆ 111500.0     ┆ 757.38745  ┆ 685       │
+└─────────────────────────────────┴───────────────┴──────────────┴────────────┴───────────┘
+
+======================================================================
+2. DIVISION RATE vs PRICE
+======================================================================
+Neighbourhoods with both price and >=5 RS permits: 195
+
+Neighbourhood-level correlations:
+shape: (1, 3)
+┌────────────────────┬───────────────────┬──────────────┐
+│ corr_meanprice_div ┆ corr_medprice_div ┆ corr_lot_div │
+│ ---                ┆ ---               ┆ ---          │
+│ f64                ┆ f64               ┆ f64          │
+╞════════════════════╪═══════════════════╪══════════════╡
+│ -0.159804          ┆ -0.188829         ┆ -0.096244    │
+└────────────────────┴───────────────────┴──────────────┘
+
+Division rate by neighbourhood price tercile:
+shape: (3, 5)
+┌────────────┬────────┬──────────┬────────────┬─────────┐
+│ price_tier ┆ n_nbhd ┆ div_rate ┆ mean_lot   ┆ permits │
+│ ---        ┆ ---    ┆ ---      ┆ ---        ┆ ---     │
+│ cat        ┆ u32    ┆ f64      ┆ f64        ┆ u32     │
+╞════════════╪════════╪══════════╪════════════╪═════════╡
+│ high       ┆ 65     ┆ 0.039788 ┆ 580.038069 ┆ 3475    │
+│ low        ┆ 65     ┆ 0.103726 ┆ 396.77937  ┆ 2100    │
+│ mid        ┆ 65     ┆ 0.057245 ┆ 481.404118 ┆ 2796    │
+└────────────┴────────┴──────────┴────────────┴─────────┘
+Traceback (most recent call last):
+  File "/Users/davidoff/projects/infillPuzzle/scripts/edmontonPriceDivision.py", line 146, in <module>
+    he = hist.with_columns(
+         ^^^^^^^^^^^^^^^^^^
+  File "/Users/davidoff/my-venv/lib/python3.12/site-packages/polars/dataframe/frame.py", line 10702, in with_columns
+    .collect(optimizations=QueryOptFlags._eager())
+     ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/davidoff/my-venv/lib/python3.12/site-packages/polars/_utils/deprecation.py", line 97, in wrapper
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/davidoff/my-venv/lib/python3.12/site-packages/polars/lazyframe/opt_flags.py", line 361, in wrapper
+    return function(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/davidoff/my-venv/lib/python3.12/site-packages/polars/lazyframe/frame.py", line 2624, in collect
+    return wrap_df(ldf.collect(engine, callback))
+                   ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+polars.exceptions.ColumnNotFoundError: unable to find column "Total Gross Area"; valid columns: ["Account Number", "Assessment Year", "Suite", "House Number", "Street Name", "Legal Description", "Latitude", "Longitude", "Point Location", "Neighbourhood", "Actual Year Built", "Garage", "Zoning", "Lot Size", "Assessed Value", "Assessment Class 1", "Assessment Class % 1", "Assessment Class 2", "Assessment Class % 2", "Assessment Class 3", "Assessment Class % 3"]
