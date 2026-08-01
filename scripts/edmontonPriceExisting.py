@@ -15,6 +15,8 @@
 import os
 import polars as pl
 import matplotlib.pyplot as plt
+import numpy as np
+import sys
 
 DATA = os.path.expanduser("~/DropboxExternal/dataRaw/edmonton")
 CURR = f"{DATA}/Property_Information_(Current_Calendar_Year)_20260612.csv"
@@ -24,6 +26,7 @@ OUT_BETAS = os.path.expanduser("~/projects/infillPuzzle/data/nbhd_elasticities.c
 
 PRICE_YEAR = 2023          # pre-reform assessment vintage
 NEW_YEAR   = 2024          # reform / permit cohort
+MIN_CONSTRUCTION = 2005 # want newish builds
 MIN_N      = 30            # min parcels for a neighbourhood elasticity
 MIN_PERM   = 5             # min RS permits for a neighbourhood division rate
 
@@ -40,7 +43,7 @@ hist = pl.read_csv(HIST, infer_schema_length=0).filter(pl.col("Suite").is_null()
 #print(hist["Suite"].value_counts(sort=True).head())
 curr = pl.read_csv(CURR, infer_schema_length=0).filter(pl.col("zoning")=="RS").filter("House Number"!="null")  # drop non-RS, nominal, and suite parcels
 # create year built and filter
-curr = curr.with_columns(year_built = num("year_built", pl.Int64)).filter(pl.col("year_built") <= PRICE_YEAR)
+curr = curr.with_columns(year_built = num("year_built", pl.Int64)).filter(pl.col("year_built").is_between(MIN_CONSTRUCTION, PRICE_YEAR))
 def acct_key(col="Account Number"):
     return (pl.col(col).str.strip_chars()
             .str.replace(r"\.0$", ""))          # drop trailing .0 if present
@@ -80,21 +83,54 @@ print("\nTop 5 neighbourhoods by median assessed value (2023):")
 print(nbhdPrice)
 
 #matplotlib price vertical against gross scatter plot for the top 5 nbhds only
-# subset nbhdPrice to top 5 only
-nbhdPriceTop5 = nbhdPrice.head(5)
-hist = hist.filter(pl.col("Neighbourhood").is_null().not_())
-histTop5 = hist.join(nbhdPriceTop5, on="Neighbourhood", how="inner")
-print(histTop5.select("Neighbourhood", "assessed", "gross").describe())
-print("gross non-null:", histTop5["gross"].is_not_null().sum(), "/", histTop5.height)
-print("assessed non-null:", histTop5["assessed"].is_not_null().sum())
-print(histTop5.select("gross","assessed").describe())
-fig, ax = plt.subplots(figsize=(10, 6))
-print(histTop5.head())
-plt.scatter(histTop5["gross"], histTop5["assessed"])
-plt.title("Assessed Value vs Total Gross Area (Top 5 Neighbourhoods, 2023)")
-plt.savefig("text/assessed_vs_gross_top5.png")
+# --- prep (once) ---
+hist = hist.filter(pl.col("Assessment Year") == str(PRICE_YEAR))
+hist = hist.with_columns(lot=num("Lot Size"), assessed=num("Assessed Value"))
+
+nbhdPrice = (
+    hist
+    .filter(
+        (pl.col("Assessment Class 1") == "RESIDENTIAL")
+        & (pl.col("lot") > 150)
+        & (pl.col("assessed") > 100_000)
+        & pl.col("assessed").is_not_null()
+    )
+    .group_by("Neighbourhood")
+    .agg(price=pl.col("assessed").median(), n=pl.len())
+    .filter(pl.col("n") >= 25)
+    .sort("price", descending=True)
+)
+
+hist = hist.filter(pl.col("Neighbourhood").is_not_null())
 
 
+def scatter_reg(nbhds, label, fname):
+    sub = hist.join(nbhds, on="Neighbourhood", how="inner")
+    q25, q75 = sub["lot"].quantile(0.25), sub["lot"].quantile(0.75)
+    sub = sub.filter(pl.col("lot").is_between(q25, q75))
+
+    x, y = sub["gross"], sub["assessed"]
+    slope, intercept = np.polyfit(x, y, 1)
+
+    fig, ax = plt.subplots(figsize=(10, 6))
+    ax.scatter(x, y)
+    ax.axline((0, intercept), slope=slope, color="red", linestyle="--",
+              label=f"y = {slope:.2f}x + {intercept:.2f}")
+    ax.set_title(f"Assessed Value vs Total Gross Area ({label}, 2023)")
+    ax.set_xlim(left=0)
+    ax.legend()
+    fig.savefig(fname)
+    plt.close(fig)
+
+
+scatter_reg(nbhdPrice.head(10), "Top 10 Neighbourhoods", "text/assessed_vs_gross_top10.png")
+scatter_reg(nbhdPrice.tail(10), "Bottom 10 Neighbourhoods", "text/assessed_vs_gross_bottom10.png")
+# get the middle 20 neighbourhoods
+sorted_nbhds = nbhdPrice.sort("price")
+nNbhd = sorted_nbhds.height
+midNbhd = nNbhd//2
+scatter_reg(nbhdPrice.slice(midNbhd-10,midNbhd+10 ), "Middle 20 Neighbourhoods", "text/assessed_vs_gross_middle20.png")
+sys.exit(0)  # stop here for now
 
 # ==============================================================================
 # 0. VERIFY - condo vs lot size; suite vs lot size; condo floor area present

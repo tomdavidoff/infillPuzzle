@@ -9,96 +9,86 @@ library(fixest)
 library(sf)
 
 dtA <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv")
+dtC <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv")
 dtP  <- fread("~/DropboxExternal/dataRaw/edmonton/edmontonBuildingPermits.csv")
 
-# ------------------------------------------------------------------------------
-# 2. Process Assessment Data
-# ------------------------------------------------------------------------------
-modWord <- function(word) {
-	# anything after a Space is capitalized -- already true 
-	# first set all to lower
-	x <- tolower(word)
-	x <- gsub("_", " ", x)
-	x <- gsub("\\s+([a-z])", "\\U\\1",x, perl = TRUE)
-	x <- gsub(" ", "", x)
-	x <- gsub("^([A-Za-z])", "\\L\\1", x, perl = TRUE)
-	return(x)
+
+# first question: Suites in RS 2025+ completions
+print(head(dtC))
+dtCs <- dtC[zoning=="RS" & year_built>=2025 ]
+print(dtCs[,.(N=.N,hasSuite=sum(Suite!=""))])
+# Answer: no suites, that's not how rowhouse for sale would be identified
+
+# edmontonMatch_skeleton.R
+# Structure for the three-file linkage. NOT runnable — stubs mark where
+# real logic (canon(), knn match, demo chain, area-conservation) plugs in.
+# Division of labour:
+#   dtP (permits)      = CLASSIFIER  -> built form, units, suites
+#   dtA (historical)   = PARENT      -> pre-redev lot_size (2023 vintage)
+#   dtC (current year) = CHILD       -> new post-redev parcels (for assemblies)
+#
+# Column provenance (what each join produces):
+#   builtForm, unitsAdded, suiteFlag   <- dtP        (never from roll)
+#   parentLotSize, parentValue         <- dtA        via permit->parent join
+#   n_parents, parent_area (assembly)  <- dtC<->dtA  child->parent join
+#   builtForm MUST ride onto both the parent-lot number AND the assembly number
+
+library(data.table); library(sf); library(nabor)
+
+# ---------------------------------------------------------------------------
+# 0. canonical legal + shared helpers  (apply IDENTICALLY to every file)
+# ---------------------------------------------------------------------------
+canon <- function(x) {
+  x <- toupper(x)
+  x <- gsub("BLOCK:?","BLK",x); x <- gsub("LOT:?","LOT",x)
+  x <- gsub(":","",x); gsub("\\s+"," ",trimws(x))
 }
+proj <- function(dt) st_coordinates(                      # lon/lat -> UTM12N m
+  st_transform(st_as_sf(dt, coords=c("lon","lat"), crs=4326), 26912))
 
+# ---------------------------------------------------------------------------
+# 1. CLASSIFY  — everything that decides "what was built" lives on the permit
+# ---------------------------------------------------------------------------
+# dtP[, builtForm  := classify(building_type, JOB_DESCRIPTION)]   # row/SF/semi/...
+# dtP[, unitsAdded := UNITS_ADDED]
+# dtP[, suiteFlag  := unitsAdded>=2 & grepl("SUITE|SECONDARY", toupper(JOB_DESCRIPTION))]
+# dtP[, legalC := canon(legalDescription)]
+# -> builtForm is the label that must survive to the final table on BOTH paths below.
 
-setnames(dtA,names(dtA),modWord(names(dtA)))
-setnames(dtP,names(dtP),modWord(names(dtP)))
-dtP <- dtP[year>=2024 & zoning=="RS"] # probably decent N
-dtA <- dtA[assessmentClass1=="RESIDENTIAL" & zoning %in% c("RF1","RF2","RF3","RF4","RS")]
-dtA[,assessedValue:=gsub(",","",assessedValue)]
-dtA[,assessedValue:=as.numeric(gsub("\\$","",assessedValue))]
-meanP <- dtA[assessmentYear==2023,.(meanVal=mean(assessedValue,na.rm=TRUE)),by=neighbourhood]
-print(meanP)
-print(head(dtP))
-dtP <- dtP[grepl("Building - New",workType,ignore.case=TRUE)]
-dtA[,lotSize:=as.numeric(gsub(",","",lotSize))]
-print(summary(dtA[,lotSize]))
-print(quantile(dtA[!is.na(lotSize),lotSize],seq(.2,.8,by=.1)))
-print(summary(dtA[!is.na(lotSize),lotSize%between%c(500,600)]))
+# ---------------------------------------------------------------------------
+# 2. PARENT side — historical roll, restricted to pre-redevelopment vintage
+# ---------------------------------------------------------------------------
+# dtA <- dtA[assessmentYear < 2024]
+# dtA[, maxYear := max(assessmentYear), by=legalC]
+# dtA <- dtA[assessmentYear == maxYear]        # DECISION: latest pre-2024, not hard ==2023
+# dtA[, legalC := canon(legalDescription)]
+#   carries: legalC, lot_size, assessedValue, lon/lat
 
-dtA[,legal:=gsub("Block:","Blk",legalDescription)]
-dtA[,legal:=gsub(":","",legal)]
-dtA[,legal:=gsub("  "," ",legal)] # double spaces
-dtA <- dtA[legal!=""]
-dtP[,legal:=legalDescription] 
-dtP <- dtP[legal!=""]
-dtA <- dtA[assessmentYear<2024] # drop 2024 and 2025 assessment data
-dtA[,maxYear:=max(assessmentYear),by=legal] # risk -- different years
-dtA <- dtA[assessmentYear==2023]
-print(dtP[!legal %in% dtA$legal, .N])
-norm <- function(x) toupper(gsub("\\s+", " ", trimws(x)))
-dtP[, legalN := norm(legal)]
-dtA[, legalN := norm(legal)]
-print(dtP[!legalN %in% dtA$legalN, .N])
-dtP[, planNum := sub("^Plan ([^ ]+).*", "\\1", legal)]
-dtP[, matched := legal %in% dtA$legal]
-dtP[, .(N = .N,
-        numericPlan = mean(grepl("^[0-9]+$", planNum)),
-        medPlan = median(suppressWarnings(as.numeric(planNum)), na.rm = TRUE)),
-    by = matched]
-dtP[, matched := legal %in% dtA$legal]
-dtP <- merge(dtP, meanP, by.x = "neighbourhood", by.y = "neighbourhood", all.x = TRUE)
-summary(feols(matched ~ log(meanVal) + i(buildingType), data = dtP, cluster = ~neighbourhood))
-summary(feols(matched ~ log(meanVal)*i(buildingType), data = dtP, cluster = ~neighbourhood))
-m <- feols(matched ~ log(meanVal)*i(buildingType),
-           data = dtP[buildingType != "Duplex (210)"], cluster = ~neighbourhood)
-wald(m, "log\\(meanVal\\):")
-q("no")
-dtM <- merge(dtP,dtA,by="legal",all.x=FALSE) # drop non-matched for now
-print(head(dtP))
-print(head(dtA))
-print(head(dtM))
-print(dtM[!is.na(lotSize)])
-print(dtM[,summary(lotSize),by=buildingType])
-print(dtM[year==2026,summary(lotSize),by=buildingType])
-print(dtM[lotSize %between% c(500,700),summary(floorArea),by=buildingType])
-print(dtM[lotSize %between% c(500,600) & year==2026,summary(floorArea),by=buildingType])
-print(dtM[lotSize %between% c(600,700) & year==2026,summary(floorArea),by=buildingType])
-print(dtM[lotSize %between% c(500,600) & year==2026,summary(constructionValue),by=buildingType])
-print(dtM[lotSize %between% c(600,700) & year==2026,summary(constructionValue),by=buildingType])
-print(summary(dtP[,year]))
-print(summary(dtM[,year]))
-print(table(dtM[,neighbourhood.x==neighbourhood.y]))
-dtM[,neighbourhood:=neighbourhood.y]
-dtM <- merge(dtM,meanP,by="neighbourhood")
-print(dtM[,summary(meanVal),by=buildingType])
-regData <- unique(dtM[,.(houseNumber,streetName,neighbourhood,meanVal,lotSize,buildingType,year,constructionValue)])
-print(summary(regData))
-print(summary(feols(meanVal ~ i(buildingType), data=regData,cluster=~neighbourhood)))
-print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData,cluster=~neighbourhood)))
-print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026],cluster=~neighbourhood)))
-print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(500,600)],cluster=~neighbourhood)))
-print(summary(feols(meanVal ~ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)],cluster=~neighbourhood)))
-print(summary(feols(constructionValue ~ meanVal+ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)],cluster=~neighbourhood))) # expect pos
-print(summary(feols(constructionValue ~ meanVal+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)],cluster=~neighbourhood))) # maybe negative
-print(summary(feols(log(constructionValue) ~ log(meanVal)+ i(buildingType)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)],cluster=~neighbourhood))) # expect pos
-print(summary(feols(log(constructionValue) ~ log(meanVal)+lotSize, data=regData[year==2026 & lotSize %between% c(600,700)],cluster=~neighbourhood))) # maybe negative
-print(summary(dtM))
+# ---------------------------------------------------------------------------
+# 3a. JOIN A  permit -> parent   (gets lot_size for the classified project)
+#     Three tiers, because new legals often don't exist in the 2023 roll:
+# ---------------------------------------------------------------------------
+#   tier 1: legal match      dtP$legalC %in% dtA$legalC        (unsubdivided cases)
+#   tier 2: demo chain       permit -> demo permit -> parent legal   (subdivided)
+#   tier 3: spatial fallback knn(proj(dtA), proj(dtP), k=5) + 20m cap + sequencing
+#   result: dtP gains parentLotSize, parentValue  — builtForm already on dtP. GOOD.
 
-fwrite(dtM[assessmentClass1=="RESIDENTIAL",.(houseNumber,streetName)],file="~/Downloads/addressesFun.csv")
-q('no')
+# ---------------------------------------------------------------------------
+# 3b. JOIN B  child -> parent(s)   (assemblies: new dtC account -> dying dtA accts)
+# ---------------------------------------------------------------------------
+#   childNew <- dtC[account NOT in 2023 vintage]         # post-redev parcels
+#   parents  <- dtA[account dies 2023->2025]
+#   link via buffer spatial join + area-conservation (childArea / sum(parentArea)
+#            within 0.90–1.10); n_parents, parent_area per child.
+#   >>> CRITICAL: childNew has NO builtForm yet — it's a roll record. Attach the
+#       permit's builtForm to the child BEFORE attributing an assembly, else the
+#       assembly gets classified off roll fields (the bug you're fixing).
+#   childNew <- merge(childNew, dtP[,.(builtForm, ...key...)], by=<addr/spatial>)
+
+# ---------------------------------------------------------------------------
+# 4. ASSEMBLE final table — builtForm from permit governs on both branches
+# ---------------------------------------------------------------------------
+# out <- rbind(
+#   projectsFromJoinA[, .(projectId, builtForm, lotSize=parentLotSize, n_parents=1L)],
+#   projectsFromJoinB[, .(projectId, builtForm, lotSize=parent_area,   n_parents)]
+# )  # then dedup where a project appears on both paths, preferring assembly-aware area

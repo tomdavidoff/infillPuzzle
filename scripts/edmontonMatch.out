@@ -29,217 +29,58 @@ Type 'q()' to quit R.
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > 
 > dtA <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv")
+> dtC <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv")
 > dtP  <- fread("~/DropboxExternal/dataRaw/edmonton/edmontonBuildingPermits.csv")
 > 
-> # ------------------------------------------------------------------------------
-> # 2. Process Assessment Data
-> # ------------------------------------------------------------------------------
-> modWord <- function(word) {
-+ 	# anything after a Space is capitalized -- already true 
-+ 	# first set all to lower
-+ 	x <- tolower(word)
-+ 	x <- gsub("_", " ", x)
-+ 	x <- gsub("\\s+([a-z])", "\\U\\1",x, perl = TRUE)
-+ 	x <- gsub(" ", "", x)
-+ 	x <- gsub("^([A-Za-z])", "\\L\\1", x, perl = TRUE)
-+ 	return(x)
-+ }
 > 
-> 
-> setnames(dtA,names(dtA),modWord(names(dtA)))
-> setnames(dtP,names(dtP),modWord(names(dtP)))
-> dtP <- dtP[year>=2024 & zoning=="RS"] # probably decent N
-> dtA <- dtA[assessmentClass1=="RESIDENTIAL" & zoning %in% c("RF1","RF2","RF3","RF4","RS")]
-> dtA[,assessedValue:=gsub(",","",assessedValue)]
-> dtA[,assessedValue:=as.numeric(gsub("\\$","",assessedValue))]
-> meanP <- dtA[assessmentYear==2023,.(meanVal=mean(assessedValue,na.rm=TRUE)),by=neighbourhood]
-> print(meanP)
-               neighbourhood   meanVal
-                      <char>     <num>
-  1:                MAYFIELD  304118.4
-  2:                  CANORA  320312.0
-  3:               HIGH PARK  321928.6
-  4:               HIGHLANDS  457309.9
-  5:               SUMMERLEA  399634.1
- ---                                  
-259:          STEWART GREENS  363343.8
-260:   CRYSTALLINA NERA WEST  368957.1
-261:                CAVANAGH  461955.6
-262:      GLENRIDDING RAVINE  446892.9
-263: MILL CREEK RAVINE SOUTH 1834000.0
-> print(head(dtP))
-         rowId permitDate permitNumber reportPermitDate  year monthNumber
-        <char>     <IDat>       <lgcl>           <IDat> <int>       <int>
-1: 2-391165004 2024-03-11           NA       2024-03-11  2024           3
-2: 2-488711873 2024-03-12           NA       2024-03-12  2024           3
-3: 2-498286076 2024-04-16           NA       2024-04-16  2024           4
-4: 2-575226599 2025-06-23           NA       2025-06-23  2025           6
-5: 2-528411259 2025-06-25           NA       2025-06-25  2025           6
-6: 2-560733300 2025-10-01           NA       2025-10-01  2025          10
-                          jobCategory
-                               <char>
-1: Single, Semi-detached & Rowhousing
-2: Single, Semi-detached & Rowhousing
-3: Single, Semi-detached & Rowhousing
-4: Single, Semi-detached & Rowhousing
-5: Single, Semi-detached & Rowhousing
-6: Single, Semi-detached & Rowhousing
-                                                                                                                                                        jobDescription
-                                                                                                                                                                <char>
-1:                                                                                   To construct a 4 Dwelling unit Row House and 4 Secondary Suites in the Basements.
-2:                                                                                                   To construct a Single Detached House with Unenclosed Front Porch.
-3:                                                                     To construct a Residential Use building in the form of a 2 Dwelling Backyard House with Garage.
-4: To construct a Residential Use building in the form of a 4 Dwelling Row House with unenclosed front porches and 4 secondary suites in the basements.(Policy B23-01)
-5:                                                                                 To construct a Residential Use building in the form of a 1 Dwelling Backyard House.
-6:                                                                   To construct a Residential Use building in the form of a Backyard House (1 Dwelling with Garage).
-                  buildingType            workType constructionValue floorArea
-                        <char>              <char>             <int>     <num>
-1:             Row House (330) (01) Building - New            568080      4734
-2: Single Detached House (110) (01) Building - New            208250      1666
-3:        Backyard House (110) (01) Building - New            134500      1076
-4:             Row House (330) (01) Building - New            639500      5116
-5:        Backyard House (110) (01) Building - New             64375       515
-6:        Backyard House (110) (01) Building - New             77750       622
-   unitsAdded                address           legalDescription zoning
-        <num>                 <char>                     <char> <char>
-1:          8   15411 - 90 AVENUE NW   Plan 5191HW Blk 7 Lot 12     RS
-2:          1    8541 - 89 STREET NW Plan 2322633 Blk 3 Lot 20A     RS
-3:          2 11537G - 125 STREET NW    Plan RN46 Blk 28 Lot 13     RS
-4:          8   15812 - 98 AVENUE NW   Plan 1909HW Blk 16 Lot 1     RS
-5:          1   9007G - 92 STREET NW    Plan 426HW Blk 7A Lot J     RS
-6:          1   8311G - 81 AVENUE NW  Plan 1738HW Blk 20 Lot 21     RS
-   neighbourhoodNumber    neighbourhood    bia count latitude longitude
-                <char>           <char> <char> <int>    <num>     <num>
-1:                4230      JASPER PARK            1 53.52294 -113.5881
-2:                6040      BONNIE DOON            1 53.52228 -113.4634
-3:                3240        INGLEWOOD            1 53.56639 -113.5372
-4:                4180         GLENWOOD            1 53.53636 -113.5951
-5:                6040      BONNIE DOON            1 53.52559 -113.4679
-6:                6360 KING EDWARD PARK            1 53.51677 -113.4558
-                                    location
-                                      <char>
-1:  (53.52294035550594, -113.58808310371799)
-2: (53.522277222917744, -113.46339852198925)
-3:  (53.56638937899561, -113.53720984906495)
-4:  (53.53635586572856, -113.59509070892393)
-5:  (53.52559012890181, -113.46788961908776)
-6:  (53.51676923327373, -113.45576940967753)
-                                    geometryPoint occupancyDate
-                                           <char>        <IDat>
-1:  POINT (-113.58808310371799 53.52294035550594)    2025-10-15
-2: POINT (-113.46339852198925 53.522277222917744)    2024-07-17
-3:  POINT (-113.53720984906495 53.56638937899561)    2025-02-25
-4:  POINT (-113.59509070892393 53.53635586572856)          <NA>
-5:  POINT (-113.46788961908776 53.52559012890181)          <NA>
-6:  POINT (-113.45576940967753 53.51676923327373)          <NA>
-> dtP <- dtP[grepl("Building - New",workType,ignore.case=TRUE)]
-> dtA[,lotSize:=as.numeric(gsub(",","",lotSize))]
-> print(summary(dtA[,lotSize]))
-    Min.  1st Qu.   Median     Mean  3rd Qu.     Max.     NA's 
-     0.0    482.6    566.1    578.8    652.3 503138.9     3632 
-> print(quantile(dtA[!is.na(lotSize),lotSize],seq(.2,.8,by=.1)))
-    20%     30%     40%     50%     60%     70%     80% 
-440.367 508.420 544.000 566.113 594.393 630.281 682.294 
-> print(summary(dtA[!is.na(lotSize),lotSize%between%c(500,600)]))
-   Mode   FALSE    TRUE 
-logical 1431989  723541 
-> 
-> dtA[,legal:=gsub("Block:","Blk",legalDescription)]
-> dtA[,legal:=gsub(":","",legal)]
-> dtA[,legal:=gsub("  "," ",legal)] # double spaces
-> dtA <- dtA[legal!=""]
-> dtP[,legal:=legalDescription] 
-> dtP <- dtP[legal!=""]
-> dtA <- dtA[assessmentYear<2024] # drop 2024 and 2025 assessment data
-> dtA[,maxYear:=max(assessmentYear),by=legal] # risk -- different years
-> dtA <- dtA[assessmentYear==2023]
-> print(dtP[!legal %in% dtA$legal, .N])
-[1] 555
-> norm <- function(x) toupper(gsub("\\s+", " ", trimws(x)))
-> dtP[, legalN := norm(legal)]
-> dtA[, legalN := norm(legal)]
-> print(dtP[!legalN %in% dtA$legalN, .N])
-[1] 555
-> dtP[, planNum := sub("^Plan ([^ ]+).*", "\\1", legal)]
-> dtP[, matched := legal %in% dtA$legal]
-> dtP[, .(N = .N,
-+         numericPlan = mean(grepl("^[0-9]+$", planNum)),
-+         medPlan = median(suppressWarnings(as.numeric(planNum)), na.rm = TRUE)),
-+     by = matched]
-   matched     N numericPlan medPlan
-    <lgcl> <int>       <num>   <num>
-1:    TRUE  1349   0.1186064 2171548
-2:   FALSE   555   0.8054054 2421874
-> dtP[, matched := legal %in% dtA$legal]
-> dtP <- merge(dtP, meanP, by.x = "neighbourhood", by.y = "neighbourhood", all.x = TRUE)
-> summary(feols(matched ~ log(meanVal) + i(buildingType), data = dtP, cluster = ~neighbourhood))
-NOTE: 15 observations removed because of NA values (RHS: 15).
-OLS estimation, Dep. Var.: matched
-Observations: 1,889
-Standard-errors: Clustered (neighbourhood) 
-                                           Estimate Std. Error   t value
-(Intercept)                                0.634080   0.746374  0.849548
-log(meanVal)                               0.010415   0.057272  0.181844
-buildingType::Duplex (210)                 0.236541   0.043991  5.376992
-buildingType::Row House (330)              0.118830   0.028046  4.236984
-buildingType::Semi-Detached House (210)   -0.225985   0.049347 -4.579491
-buildingType::Single Detached House (110) -0.227070   0.047018 -4.829459
-                                            Pr(>|t|)    
-(Intercept)                               3.9715e-01    
-log(meanVal)                              8.5599e-01    
-buildingType::Duplex (210)                3.4356e-07 ***
-buildingType::Row House (330)             4.2787e-05 ***
-buildingType::Semi-Detached House (210)   1.0839e-05 ***
-buildingType::Single Detached House (110) 3.8114e-06 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.427923   Adj. R2: 0.112281
-Warning message:
-The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
-> summary(feols(matched ~ log(meanVal)*i(buildingType), data = dtP, cluster = ~neighbourhood))
-NOTE: 15 observations removed because of NA values (RHS: 15).
-The variables 'log(meanVal):buildingType::Duplex (210)' and
-'log(meanVal):buildingType::Single Detached House (110)' have been removed
-because of collinearity (see $collin.var).
-OLS estimation, Dep. Var.: matched
-Observations: 1,889
-Standard-errors: Clustered (neighbourhood) 
-                                                      Estimate Std. Error
-(Intercept)                                           1.249463   0.991653
-log(meanVal)                                          0.165815   0.112124
-buildingType::Duplex (210)                           -2.309331   1.524701
-buildingType::Row House (330)                         0.865446   1.142826
-buildingType::Semi-Detached House (210)               0.020073   2.129067
-buildingType::Single Detached House (110)            -2.894276   1.592749
-log(meanVal):buildingType::Backyard House (110)      -0.202953   0.121487
-log(meanVal):buildingType::Row House (330)           -0.260808   0.117962
-log(meanVal):buildingType::Semi-Detached House (210) -0.222408   0.193030
-                                                       t value Pr(>|t|)    
-(Intercept)                                           1.259980 0.209951    
-log(meanVal)                                          1.478850 0.141618    
-buildingType::Duplex (210)                           -1.514613 0.132317    
-buildingType::Row House (330)                         0.757285 0.450260    
-buildingType::Semi-Detached House (210)               0.009428 0.992492    
-buildingType::Single Detached House (110)            -1.817158 0.071514 .  
-log(meanVal):buildingType::Backyard House (110)      -1.670578 0.097230 .  
-log(meanVal):buildingType::Row House (330)           -2.210960 0.028801 *  
-log(meanVal):buildingType::Semi-Detached House (210) -1.152194 0.251372    
-... 2 variables were removed because of collinearity
-(log(meanVal):buildingType::Duplex (210) and
-log(meanVal):buildingType::Single Detached House (110))
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.426227   Adj. R2: 0.117898
-Warning message:
-The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
-> m <- feols(matched ~ log(meanVal)*i(buildingType),
-+            data = dtP[buildingType != "Duplex (210)"], cluster = ~neighbourhood)
-NOTE: 15 observations removed because of NA values (RHS: 15).
-The variable 'log(meanVal):buildingType::Single Detached House (110)' has been
-removed because of collinearity (see $collin.var).
-> wald(m, "log\\(meanVal\\):")
-Wald test, H0: joint nullity of log(meanVal):buildingType::Backyard House (110), log(meanVal):buildingType::Row House (330) and log(meanVal):buildingType::Semi-Detached House (210)
- stat = 1.64033, p-value = 0.178063, on 3 and 1,880 DoF, VCOV: Clustered (neighbourhood).> q("no")
+> # first question: Suites in RS 2025+ completions
+> print(head(dtC))
+   Account Number  Suite House Number   Street Name
+            <int> <char>        <int>        <char>
+1:       11219634                 303  29 STREET SW
+2:       11143030                  NA              
+3:       10945021                  NA              
+4:       10191816                3327 184 STREET NW
+5:       10191803                  NA              
+6:        9990838                  NA              
+                   legal_description zoning   lot_size Total Gross Area
+                              <char> <char>     <char>            <num>
+1: Plan: 2322574  Block: 11  Lot: 42    RSF    335.364          183.400
+2:            Plan: 1820547  Unit: G         1,843.578         1925.787
+3:                                             849.898            0.000
+4:                                          29,220.296            0.000
+5:                                              15,210            0.000
+6:                                             204.261            0.000
+   year_built garage Neighbourhood ID             Neighbourhood
+        <int> <lgcl>            <int>                    <char>
+1:       2024   TRUE             6669                     ALCES
+2:       2023  FALSE             5458                    ALLARD
+3:         NA  FALSE             4011            ANTHONY HENDAY
+4:         NA  FALSE             4012 ANTHONY HENDAY SOUTH WEST
+5:         NA  FALSE             4012 ANTHONY HENDAY SOUTH WEST
+6:         NA  FALSE             5020             ASPEN GARDENS
+                    Ward Latitude Longitude
+                  <char>    <num>     <num>
+1:            Sspomitapi 53.43008 -113.3859
+2: Ipiihkoohkanipiaohtsi 53.39971 -113.5398
+3:           Nakota Isga 53.54234 -113.6525
+4:         sipiwiyiniwak 53.46493 -113.6275
+5:         sipiwiyiniwak 53.46167 -113.6215
+6:              papastew 53.47912 -113.5415
+                                   Point Location
+                                           <char>
+1:  POINT (-113.38586836927416 53.43007553480231)
+2:  POINT (-113.53980916769041 53.39971248175877)
+3: POINT (-113.65249892113263 53.542342638025914)
+4:  POINT (-113.62752901286129 53.46493004655662)
+5:   POINT (-113.62147184037028 53.4616716042854)
+6:  POINT (-113.54153138860967 53.47912453730056)
+> dtCs <- dtC[zoning=="RS" & year_built>=2025 ]
+> print(dtCs[,.(N=.N,hasSuite=sum(Suite!=""))])
+       N hasSuite
+   <int>    <int>
+1:   569        0
+> q("no")
 > proc.time()
    user  system elapsed 
- 31.910   0.677  14.840 
+ 24.004   0.337   6.557 
