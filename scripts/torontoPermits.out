@@ -1,0 +1,1429 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # torontoPermits.R
+> # look at location, etc of appropriate permits
+> # Tom Davidoff
+> # 08/10/26
+> 
+> library(duckdb)
+Loading required package: DBI
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> # read in the file
+> con <- dbConnect(duckdb())
+> permitPath <- path.expand("~/DropboxExternal/dataRaw/torontoBuildingPermits.csv")
+> dfP <- dbGetQuery(con, sprintf("
++   SELECT *
++   FROM read_csv_auto('%s')
++   WHERE PERMIT_TYPE LIKE '%%esidentia%%' 
++ ", permitPath))
+> dtP <- as.data.table(dfP)
+> print(summary(dtP))
+      _id          PERMIT_NUM        REVISION_NUM       PERMIT_TYPE       
+ Min.   :    17   Length:89270       Length:89270       Length:89270      
+ 1st Qu.:265657   Class :character   Class :character   Class :character  
+ Median :287974   Mode  :character   Mode  :character   Mode  :character  
+ Mean   :281923                                                           
+ 3rd Qu.:310292                                                           
+ Max.   :333507                                                           
+                                                                          
+ STRUCTURE_TYPE         WORK            STREET_NUM        STREET_NAME       
+ Length:89270       Length:89270       Length:89270       Length:89270      
+ Class :character   Class :character   Class :character   Class :character  
+ Mode  :character   Mode  :character   Mode  :character   Mode  :character  
+                                                                            
+                                                                            
+                                                                            
+                                                                            
+ STREET_TYPE        STREET_DIRECTION      POSTAL              GEO_ID        
+ Length:89270       Length:89270       Length:89270       Min.   :       1  
+ Class :character   Class :character   Class :character   1st Qu.:  552334  
+ Mode  :character   Mode  :character   Mode  :character   Median :  875228  
+                                                          Mean   : 3995029  
+                                                          3rd Qu.: 7993296  
+                                                          Max.   :30153571  
+                                                          NA's   :458       
+  WARD_GRID         APPLICATION_DATE      ISSUED_DATE        
+ Length:89270       Min.   :1981-10-08   Min.   :1981-10-08  
+ Class :character   1st Qu.:2015-11-09   1st Qu.:2015-06-19  
+ Mode  :character   Median :2019-04-02   Median :2018-10-31  
+                    Mean   :2017-10-18   Mean   :2017-05-20  
+                    3rd Qu.:2022-05-19   3rd Qu.:2022-01-18  
+                    Max.   :2026-08-05   Max.   :2026-07-29  
+                    NA's   :2            NA's   :9914        
+ COMPLETED_DATE          STATUS          DESCRIPTION        CURRENT_USE       
+ Min.   :2017-01-01   Length:89270       Length:89270       Length:89270      
+ 1st Qu.:2020-03-10   Class :character   Class :character   Class :character  
+ Median :2023-02-24   Mode  :character   Mode  :character   Mode  :character  
+ Mean   :2022-09-06                                                           
+ 3rd Qu.:2025-07-03                                                           
+ Max.   :2026-08-07                                                           
+                                                                              
+ PROPOSED_USE       DWELLING_UNITS_CREATED DWELLING_UNITS_LOST
+ Length:89270       Length:89270           Length:89270       
+ Class :character   Class :character       Class :character   
+ Mode  :character   Mode  :character       Mode  :character   
+                                                              
+                                                              
+                                                              
+                                                              
+ EST_CONST_COST        ASSEMBLY        INSTITUTIONAL        RESIDENTIAL     
+ Length:89270       Min.   :  0.0000   Min.   :0.000e+00   Min.   : -148.6  
+ Class :character   1st Qu.:  0.0000   1st Qu.:0.000e+00   1st Qu.:    0.0  
+ Mode  :character   Median :  0.0000   Median :0.000e+00   Median :    0.0  
+                    Mean   :  0.0071   Mean   :2.765e+00   Mean   :   21.0  
+                    3rd Qu.:  0.0000   3rd Qu.:0.000e+00   3rd Qu.:    0.0  
+                    Max.   :634.0000   Max.   :2.350e+05   Max.   :70000.0  
+                                                                            
+ BUSINESS_AND_PERSONAL_SERVICES   MERCANTILE          INDUSTRIAL       
+ Min.   :0.00e+00               Min.   :   0.0000   Min.   :    0.000  
+ 1st Qu.:0.00e+00               1st Qu.:   0.0000   1st Qu.:    0.000  
+ Median :0.00e+00               Median :   0.0000   Median :    0.000  
+ Mean   :5.73e+01               Mean   :   0.4322   Mean   :    0.932  
+ 3rd Qu.:0.00e+00               3rd Qu.:   0.0000   3rd Qu.:    0.000  
+ Max.   :5.00e+06               Max.   :8461.0000   Max.   :33710.000  
+                                                                       
+ INTERIOR_ALTERATIONS   DEMOLITION        BUILDER_NAME      
+ Min.   :   0.00      Min.   : 0.000000   Length:89270      
+ 1st Qu.:   0.00      1st Qu.: 0.000000   Class :character  
+ Median :   0.00      Median : 0.000000   Mode  :character  
+ Mean   :  27.78      Mean   : 0.000753                     
+ 3rd Qu.:  25.43      3rd Qu.: 0.000000                     
+ Max.   :1367.70      Max.   :67.230000                     
+                                                            
+> dtP[,nunits:=as.numeric(DWELLING_UNITS_CREATED)]
+> print(summary(dtP[,nunits]))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  0.000   0.000   0.000   0.167   0.000 457.000   15634 
+> dtP <- dtP[nunits<10 | is.na(nunits)]
+> 
+> # merge with address csv to get lat lon by GEO_ID
+> dtA <- fread("~/DropboxExternal/dataRaw/torontoAddressPoints.csv",select=c("ADDRESS_POINT_ID","geometry"))
+> setindex(dtP, GEO_ID)
+> setindex(dtA, ADDRESS_POINT_ID)
+> dtM <- dtP[dtA, on=c(GEO_ID="ADDRESS_POINT_ID"),nomatch=0]
+> print(dtM[is.na(geometry)])
+Empty data.table (0 rows and 34 cols): _id,PERMIT_NUM,REVISION_NUM,PERMIT_TYPE,STRUCTURE_TYPE,WORK...
+> print(nrow(dtP))
+[1] 89241
+> print(nrow(dtM))
+[1] 88291
+> # Note small loss
+> # print rows in dtP that don't exist in dtM
+> noMatch <- setdiff(dtP[,GEO_ID], dtM[,GEO_ID])
+> notHas <- dtP[GEO_ID %in% noMatch,.N,by=STRUCTURE_TYPE][order(-N)]
+> hasAddress <- dtM[,.N,by=STRUCTURE_TYPE][order(-N)]
+> setnames(hasAddress, "N", "nHasAddress")
+> hasAddress <- merge(hasAddress, notHas, by="STRUCTURE_TYPE")
+> hasAddress[,hasShare:=nHasAddress/(nHasAddress+N)]
+> print(hasAddress[order(-N)])
+                        STRUCTURE_TYPE nHasAddress     N  hasShare
+                                <char>       <int> <int>     <num>
+ 1:                    SFD - Townhouse        4186   336 0.9256966
+ 2:                     SFD - Detached       50765   225 0.9955874
+ 3:                SFD - Semi-Detached       18598    93 0.9950243
+ 4:                  2 Unit - Detached        5962    35 0.9941637
+ 5:             2 Unit - Semi-detached        2411    30 0.9877100
+ 6:            3+ Unit - Semi-detached         522    26 0.9525547
+ 7:                 Stacked Townhouses          13    26 0.3333333
+ 8:                 Apartment Building          61    22 0.7349398
+ 9:          Laneway / Rear Yard Suite        1288    22 0.9832061
+10:                 2 Unit - Townhouse         455    14 0.9701493
+11:                              Other         207    13 0.9409091
+12:                 3+ Unit - Detached        1114    12 0.9893428
+13:                             Office          94    12 0.8867925
+14:                    Converted House         716    10 0.9862259
+15:                       Retail Store          46     7 0.8679245
+16:       Restaurant 30 Seats or Less           10     6 0.6250000
+17:   Restaurant Greater Than 30 Seats          12     6 0.6666667
+18:                            Unknown         861     6 0.9930796
+19:             Multiple Unit Building          38     5 0.8837209
+20:                3+ Unit - Townhouse         100     4 0.9615385
+21:               Duplex/Semi-Detached          53     4 0.9298246
+22:                         Group Home          49     4 0.9245283
+23:     Industrial Manufacturing Plant          13     4 0.7647059
+24:               Mixed Industrial Use           7     3 0.7000000
+25:             Boarding/Lodging House          77     2 0.9746835
+26:          Commercial/Industrial Use           9     2 0.8181818
+27:                        Fire Alarms          20     2 0.9090909
+28:        Industrial Processing Plant           1     2 0.3333333
+29:                        SFD Garages          61     2 0.9682540
+30:                               <NA>           5     1 0.8333333
+31: Child Care Facility/DayCare Centre           1     1 0.5000000
+32:                               Club           8     1 0.8888889
+33:                            Duplex           94     1 0.9894737
+34:              Exterior Storage Tank           1     1 0.5000000
+35:                        Group A & B           6     1 0.8571429
+36:                        Group D & E           2     1 0.6666667
+37:                 Group F (< 230 m2)           2     1 0.6666667
+38:                     Live/Work Unit          10     1 0.9090909
+39:                  SFD/Semi-Detached          24     1 0.9600000
+40:                Temporary Buildings           3     1 0.7500000
+                        STRUCTURE_TYPE nHasAddress     N  hasShare
+                                <char>       <int> <int>     <num>
+> 
+> dtM[,saysPlex:=grepl("plex", PROPOSED_USE, ignore.case=TRUE)]
+> print(table(dtM[saysPlex==1,STRUCTURE_TYPE]))
+
+        2 Unit - Detached    2 Unit - Semi-detached        2 Unit - Townhouse 
+                       59                        34                         2 
+       3+ Unit - Detached   3+ Unit - Semi-detached       3+ Unit - Townhouse 
+                      171                        45                         4 
+   Boarding/Lodging House           Converted House                   Duplex  
+                        1                        15                        46 
+     Duplex/Semi-Detached Laneway / Rear Yard Suite                     Other 
+                       15                        57                         8 
+           SFD - Detached       SFD - Semi-Detached           SFD - Townhouse 
+                        7                         3                         2 
+                  Triplex     Triplex/Semi-Detached 
+                       26                         4 
+> print(table(dtM[saysPlex==1,PROPOSED_USE]))
+
+                    2 Unit Detached , As Duplex 
+                                              1 
+                       2 Unit Detached (Duplex) 
+                                              4 
+                                  2 Unit Duplex 
+                                              2 
+                       2 Unit Dwelling - Duplex 
+                                              1 
+                  2 Unit Semi Detached - Duplex 
+                                              1 
+                 2-Unit Semi-Detached Houseplex 
+                                              2 
+3 Storey Fourplex With A 2 Storey Laneway Suite 
+                                              3 
+                    3 Unit - Detached (Triplex) 
+                                              2 
+                               3 Unit (Triplex) 
+                                              1 
+                                 3 Unit Triplex 
+                                              2 
+                                3 Unit Triplex  
+                                              1 
+                       3 Unit Triplex- Detached 
+                                              1 
+                              3 Units (Triplex) 
+                                              1 
+                     3 Units Detached (Triplex) 
+                                              1 
+                                3 Units Triplex 
+                                              1 
+                        3-Unit Dwelling/Triplex 
+                                              1 
+                                       4 - Plex 
+                                              2 
+                           4 - Plex -  Detached 
+                                              3 
+                                         4 Plex 
+                                              1 
+                         4 Plex + Laneway Suite 
+                                              1 
+                    4 Units Detached (Fourplex) 
+                                              1 
+                                         4-Plex 
+                                              2 
+                     4-Unit Dwelling (Fourplex) 
+                                              1 
+                                          4plex 
+                                              1 
+                                       5 - Plex 
+                                              1 
+                              Apartment Complex 
+                                              1 
+                                  Double Duplex 
+                                              2 
+                                        Du-Plex 
+                                              1 
+                                         Duplex 
+                                            116 
+                        Duplex -  Semi-Detached 
+                                              1 
+                      Duplex - 2 Dwelling Units 
+                                              2 
+                              Duplex - Detached 
+                                              3 
+                         Duplex - Semi Detached 
+                                              1 
+                         Duplex - Semi-Detached 
+                                              1 
+                         Duplex + Garden Suite  
+                                              1 
+                         Duplex + Laneway Suite 
+                                              1 
+                          Duplex +Laneway Suite 
+                                              1 
+                               Duplex Apartment 
+                                              2 
+                                Duplex Detached 
+                                              1 
+                                Duplex Dwelling 
+                                              2 
+               Duplex Plus One Residential Unit 
+                                              2 
+                                Duplex- 2 Units 
+                                              1 
+                                Duplex-Detached 
+                                              2 
+                               Duplex, Detached 
+                                              1 
+                           Duplex/Laneway Suite 
+                                              1 
+                                    Duplex/Semi 
+                                              2 
+                                       Fiveplex 
+                                              1 
+                                      Four Plex 
+                                              1 
+                                       Fourplex 
+                                             60 
+                                      Fourplex  
+                                              1 
+                            Fourplex - Detached 
+                                              4 
+                       Fourplex - Semi Detached 
+                                              2 
+                      Fourplex /  Laneway Suite 
+                                              1 
+                 Fourplex + Ancillary Structure 
+                                              1 
+                        Fourplex + Garden Suite 
+                                              6 
+                       Fourplex + Garden Suite  
+                                              2 
+                       Fourplex + Laneway House 
+                                              1 
+                       Fourplex + Laneway Suite 
+                                              4 
+                             Fourplex Building  
+                                              1 
+                              Fourplex Detached 
+                                              2 
+                             Fourplex Detached  
+                                              2 
+                       Fourplex W/ Garden Suite 
+                                              1 
+                     Fourplex With Garden Suite 
+                                              3 
+                              Fourplex-Detached 
+                                              6 
+                             Fourplex, Detached 
+                                              4 
+                        Fourplex, Semi Detached 
+                                              1 
+                          Fourplex/Garden Suite 
+                                              8 
+                         Fourplex/Laneway Suite 
+                                              4 
+                         Fourplex+ Garden Suite 
+                                              2 
+          Fourplex+ Rear Detached Garden Suite. 
+                                              1 
+           Garden Suite (In Rear Of New Duplex) 
+                                              3 
+                         Garden Suite + Sixplex 
+                                              1 
+                     Garden Suite With Fourplex 
+                                              1 
+          Laneway Suite + (Main House Fourplex) 
+                                              2 
+                                      Multiplex 
+                                              5 
+                            Multiplex - 5 Units 
+                                              1 
+                           Multiplex - Detached 
+                                              1 
+                              Multiplex 3 Units 
+                                              1 
+                             Multiplex 3+ Units 
+                                              1 
+                             Multiplex 4 - Unit 
+                                              3 
+                             Multiplex Dwelling 
+                                              2 
+                       Multiplex Dwelling House 
+                                              2 
+                     Multiplex Unit Residential 
+                                              1 
+                              Multiplex(3units) 
+                                              1 
+                    Multiplexdwelling (3 Units) 
+                                              1 
+               Proposed Fourplex + Garden Suite 
+                                              1 
+                           Residential - 4 Plex 
+                                              1 
+                           Residential - Duplex 
+                                              2 
+                             Residential Duplex 
+                                              1 
+                           Residential Fourplex 
+                                              1 
+                                  Semi - Duplex 
+                                              1 
+                Semi Detached 3 Unit Multi-Plex 
+                                              1 
+                           Semi Detached Duplex 
+                                              5 
+                          Semi Detached, Duplex 
+                                              1 
+                               Semi-Det. Duplex 
+                                              2 
+                        Semi-Detached - Fouplex 
+                                              2 
+                        Semi-Detached - Triplex 
+                                              1 
+                           Semi-Detached Duplex 
+                                              4 
+                         Semi-Detached Fourplex 
+                                              1 
+                          Semi-Detached Triplex 
+                                              2 
+                                   Semi-Triplex 
+                                              2 
+                                 Sfd - Fourplex 
+                                              1 
+            Sfd To Existing Triplex Legaliztion 
+                                              1 
+                        Sfd-Detached - Fourplex 
+                                              1 
+ Sfd-Detached - Fourplex With Rear Garden Suite 
+                                              1 
+                       Sfd-Semi-Detached/Duplex 
+                                              1 
+                          Sfd-Townhouse Complex 
+                                              1 
+                                        Triplex 
+                                            105 
+                                       Triplex  
+                                              1 
+                      Triplex - 3 Unit Detached 
+                                              1 
+                             Triplex - Detached 
+                                              2 
+                        Triplex - Semi-Detached 
+                                              2 
+                         Triplex -Semi Detached 
+                                              1 
+                     Triplex (3 Dwelling Units) 
+                                              1 
+          Triplex (Under Review) + Garden Suite 
+                                              1 
+                         Triplex + Garden Suite 
+                                              1 
+                               Triplex Building 
+                                              1 
+                  Triplex Detached/Garden Suite 
+                                              1 
+                               Triplex Dwelling 
+                                              2 
+                          Triplex Semi Detached 
+                                              2 
+                          Triplex Semi-Detached 
+                                              1 
+                        Triplex W/ Garden Suite 
+                                              1 
+                        Triplex W/Laneway Suite 
+                                              1 
+         Triplex With Additional Unit (4 Total) 
+                                              2 
+                     Triplex With Laneway Suite 
+                                              2 
+                 Triplex With Rear Garden Suite 
+                                              1 
+                               Triplex-Detached 
+                                              3 
+                                   Triplex-Semi 
+                                              1 
+                              Triplex, Detached 
+                                              2 
+                         Triplex, Semi-Detached 
+                                              1 
+                          Triplex/Laneway Suite 
+                                              1 
+> 
+> # get top 10 and share of total for each of the above
+> print(dtP[, .N, by=PERMIT_TYPE][order(-N)][1:20])
+                        PERMIT_TYPE     N
+                             <char> <int>
+ 1:      Small Residential Projects 87051
+ 2:     Residential Building Permit  1708
+ 3: Non-Residential Building Permit   482
+ 4:                            <NA>    NA
+ 5:                            <NA>    NA
+ 6:                            <NA>    NA
+ 7:                            <NA>    NA
+ 8:                            <NA>    NA
+ 9:                            <NA>    NA
+10:                            <NA>    NA
+11:                            <NA>    NA
+12:                            <NA>    NA
+13:                            <NA>    NA
+14:                            <NA>    NA
+15:                            <NA>    NA
+16:                            <NA>    NA
+17:                            <NA>    NA
+18:                            <NA>    NA
+19:                            <NA>    NA
+20:                            <NA>    NA
+                        PERMIT_TYPE     N
+                             <char> <int>
+> print(dtP[, .N, by=STRUCTURE_TYPE][order(-N)][1:20])
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached 50990
+ 2:       SFD - Semi-Detached 18691
+ 3:         2 Unit - Detached  5997
+ 4:           SFD - Townhouse  4522
+ 5:    2 Unit - Semi-detached  2441
+ 6: Laneway / Rear Yard Suite  1310
+ 7:        3+ Unit - Detached  1126
+ 8:                   Unknown   867
+ 9:           Converted House   726
+10:   3+ Unit - Semi-detached   548
+11:        2 Unit - Townhouse   469
+12:                     Other   220
+13:                    Office   106
+14:       3+ Unit - Townhouse   104
+15:                   Duplex     95
+16:        Apartment Building    83
+17:    Boarding/Lodging House    79
+18:               SFD Garages    63
+19:      Duplex/Semi-Detached    57
+20:                Group Home    53
+               STRUCTURE_TYPE     N
+                       <char> <int>
+> print(dtP[, .N, by=PROPOSED_USE][order(-N)][1:20])
+              PROPOSED_USE     N
+                    <char> <int>
+ 1:                    Sfd 30048
+ 2:                   <NA>  7111
+ 3:                   Same  6407
+ 4:           Sfd-Detached  6054
+ 5:         Sfd - Detached  3716
+ 6:           Sfd Detached  3584
+ 7: Single Family Dwelling  3171
+ 8:               Sfd-Semi  1568
+ 9:        2 Unit Dwelling  1169
+10:        2 Unit Detached  1109
+11:      Sfd Semi Detached  1078
+12:                   Semi   932
+13:    Sfd - Semi Detached   901
+14:      Sfd-Semi Detached   806
+15:          Single Family   742
+16:    Sfd - Semi-Detached   631
+17:          Sfd-Townhouse   604
+18:                  House   547
+19:      Sfd Semi-Detached   519
+20:      2 Unit - Detached   480
+              PROPOSED_USE     N
+                    <char> <int>
+> print(names(dtP))
+ [1] "_id"                            "PERMIT_NUM"                    
+ [3] "REVISION_NUM"                   "PERMIT_TYPE"                   
+ [5] "STRUCTURE_TYPE"                 "WORK"                          
+ [7] "STREET_NUM"                     "STREET_NAME"                   
+ [9] "STREET_TYPE"                    "STREET_DIRECTION"              
+[11] "POSTAL"                         "GEO_ID"                        
+[13] "WARD_GRID"                      "APPLICATION_DATE"              
+[15] "ISSUED_DATE"                    "COMPLETED_DATE"                
+[17] "STATUS"                         "DESCRIPTION"                   
+[19] "CURRENT_USE"                    "PROPOSED_USE"                  
+[21] "DWELLING_UNITS_CREATED"         "DWELLING_UNITS_LOST"           
+[23] "EST_CONST_COST"                 "ASSEMBLY"                      
+[25] "INSTITUTIONAL"                  "RESIDENTIAL"                   
+[27] "BUSINESS_AND_PERSONAL_SERVICES" "MERCANTILE"                    
+[29] "INDUSTRIAL"                     "INTERIOR_ALTERATIONS"          
+[31] "DEMOLITION"                     "BUILDER_NAME"                  
+[33] "nunits"                        
+> print(dtP[,summary(APPLICATION_DATE)])
+        Min.      1st Qu.       Median         Mean      3rd Qu.         Max. 
+"1981-10-08" "2015-11-10" "2019-04-02" "2017-10-20" "2022-05-19" "2026-08-05" 
+        NA's 
+         "2" 
+> dtP[,appYear:=substring(APPLICATION_DATE,1,4)]
+> dtP <- dtP[appYear>2016]
+> for (y in 2016:2026) {
++ 	print(y)
++ 	print(dtP[appYear==y, .N, by=PERMIT_TYPE][order(-N)][1:20])
++ 	print(dtP[appYear==y, .N, by=STRUCTURE_TYPE][order(-N)][1:20])
++ 	print(dtP[appYear==y, .N, by=PROPOSED_USE][order(-N)][1:20])
++ }
+[1] 2016
+    PERMIT_TYPE     N
+         <char> <int>
+ 1:        <NA>    NA
+ 2:        <NA>    NA
+ 3:        <NA>    NA
+ 4:        <NA>    NA
+ 5:        <NA>    NA
+ 6:        <NA>    NA
+ 7:        <NA>    NA
+ 8:        <NA>    NA
+ 9:        <NA>    NA
+10:        <NA>    NA
+11:        <NA>    NA
+12:        <NA>    NA
+13:        <NA>    NA
+14:        <NA>    NA
+15:        <NA>    NA
+16:        <NA>    NA
+17:        <NA>    NA
+18:        <NA>    NA
+19:        <NA>    NA
+20:        <NA>    NA
+    PERMIT_TYPE     N
+         <char> <int>
+    STRUCTURE_TYPE     N
+            <char> <int>
+ 1:           <NA>    NA
+ 2:           <NA>    NA
+ 3:           <NA>    NA
+ 4:           <NA>    NA
+ 5:           <NA>    NA
+ 6:           <NA>    NA
+ 7:           <NA>    NA
+ 8:           <NA>    NA
+ 9:           <NA>    NA
+10:           <NA>    NA
+11:           <NA>    NA
+12:           <NA>    NA
+13:           <NA>    NA
+14:           <NA>    NA
+15:           <NA>    NA
+16:           <NA>    NA
+17:           <NA>    NA
+18:           <NA>    NA
+19:           <NA>    NA
+20:           <NA>    NA
+    STRUCTURE_TYPE     N
+            <char> <int>
+    PROPOSED_USE     N
+          <char> <int>
+ 1:         <NA>    NA
+ 2:         <NA>    NA
+ 3:         <NA>    NA
+ 4:         <NA>    NA
+ 5:         <NA>    NA
+ 6:         <NA>    NA
+ 7:         <NA>    NA
+ 8:         <NA>    NA
+ 9:         <NA>    NA
+10:         <NA>    NA
+11:         <NA>    NA
+12:         <NA>    NA
+13:         <NA>    NA
+14:         <NA>    NA
+15:         <NA>    NA
+16:         <NA>    NA
+17:         <NA>    NA
+18:         <NA>    NA
+19:         <NA>    NA
+20:         <NA>    NA
+    PROPOSED_USE     N
+          <char> <int>
+[1] 2017
+                    PERMIT_TYPE     N
+                         <char> <int>
+ 1:  Small Residential Projects  7674
+ 2: Residential Building Permit     1
+ 3:                        <NA>    NA
+ 4:                        <NA>    NA
+ 5:                        <NA>    NA
+ 6:                        <NA>    NA
+ 7:                        <NA>    NA
+ 8:                        <NA>    NA
+ 9:                        <NA>    NA
+10:                        <NA>    NA
+11:                        <NA>    NA
+12:                        <NA>    NA
+13:                        <NA>    NA
+14:                        <NA>    NA
+15:                        <NA>    NA
+16:                        <NA>    NA
+17:                        <NA>    NA
+18:                        <NA>    NA
+19:                        <NA>    NA
+20:                        <NA>    NA
+                    PERMIT_TYPE     N
+                         <char> <int>
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached  4743
+ 2:       SFD - Semi-Detached  1706
+ 3:         2 Unit - Detached   426
+ 4:           SFD - Townhouse   358
+ 5:    2 Unit - Semi-detached   218
+ 6:        3+ Unit - Detached    70
+ 7:        2 Unit - Townhouse    55
+ 8:   3+ Unit - Semi-detached    49
+ 9:                     Other    19
+10:    Boarding/Lodging House     7
+11:       3+ Unit - Townhouse     7
+12:           Converted House     6
+13:      Duplex/Semi-Detached     3
+14:                Group Home     3
+15:                   Duplex      2
+16:        Stacked Townhouses     2
+17: Laneway / Rear Yard Suite     1
+18:                      <NA>    NA
+19:                      <NA>    NA
+20:                      <NA>    NA
+               STRUCTURE_TYPE     N
+                       <char> <int>
+              PROPOSED_USE     N
+                    <char> <int>
+ 1:                    Sfd  3232
+ 2:                   Same  1053
+ 3:         Sfd - Detached   499
+ 4:           Sfd-Detached   472
+ 5: Single Family Dwelling   467
+ 6:           Sfd Detached   173
+ 7:    Sfd - Semi Detached   134
+ 8:        2 Unit Dwelling   122
+ 9:                   Semi   115
+10:               Sfd-Semi    92
+11:          Semi-Detached    67
+12:               Sfd Semi    65
+13:      Sfd-Semi Detached    57
+14:        2 Unit Detached    42
+15:      Sfd Semi Detached    41
+16:        Sfd - Townhouse    40
+17:            2 Unit Semi    39
+18:                 2 Unit    32
+19:          Sfd-Townhouse    30
+20:      2 Unit - Detached    27
+              PROPOSED_USE     N
+                    <char> <int>
+[1] 2018
+                   PERMIT_TYPE     N
+                        <char> <int>
+ 1: Small Residential Projects  6950
+ 2:                       <NA>    NA
+ 3:                       <NA>    NA
+ 4:                       <NA>    NA
+ 5:                       <NA>    NA
+ 6:                       <NA>    NA
+ 7:                       <NA>    NA
+ 8:                       <NA>    NA
+ 9:                       <NA>    NA
+10:                       <NA>    NA
+11:                       <NA>    NA
+12:                       <NA>    NA
+13:                       <NA>    NA
+14:                       <NA>    NA
+15:                       <NA>    NA
+16:                       <NA>    NA
+17:                       <NA>    NA
+18:                       <NA>    NA
+19:                       <NA>    NA
+20:                       <NA>    NA
+                   PERMIT_TYPE     N
+                        <char> <int>
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached  4151
+ 2:       SFD - Semi-Detached  1530
+ 3:         2 Unit - Detached   436
+ 4:           SFD - Townhouse   342
+ 5:    2 Unit - Semi-detached   249
+ 6:        3+ Unit - Detached    75
+ 7:   3+ Unit - Semi-detached    61
+ 8:        2 Unit - Townhouse    47
+ 9:                     Other    13
+10: Laneway / Rear Yard Suite    12
+11:       3+ Unit - Townhouse    12
+12:                Group Home     6
+13:    Boarding/Lodging House     4
+14:            Live/Work Unit     3
+15:           Converted House     3
+16:                   Duplex      2
+17:                   Unknown     1
+18:        Stacked Townhouses     1
+19:      Duplex/Semi-Detached     1
+20:                   Triplex     1
+               STRUCTURE_TYPE     N
+                       <char> <int>
+              PROPOSED_USE     N
+                    <char> <int>
+ 1:                    Sfd  2833
+ 2:                   Same   655
+ 3: Single Family Dwelling   639
+ 4:           Sfd Detached   385
+ 5:           Sfd-Detached   220
+ 6:         Sfd - Detached   163
+ 7:               Sfd-Semi   141
+ 8:      Sfd Semi Detached   108
+ 9:                   Semi   104
+10:                  Sfd-D   100
+11:        2 Unit Dwelling    88
+12:               Sfd Semi    85
+13:                 2 Unit    72
+14:        2 Unit Detached    57
+15:        2-Unit Dwelling    51
+16:          Semi-Detached    49
+17:      Sfd-Semi Detached    44
+18:          Sfd-Townhouse    40
+19:            2 Unit Semi    38
+20:    Sfd - Semi Detached    33
+              PROPOSED_USE     N
+                    <char> <int>
+[1] 2019
+                   PERMIT_TYPE     N
+                        <char> <int>
+ 1: Small Residential Projects  7115
+ 2:                       <NA>    NA
+ 3:                       <NA>    NA
+ 4:                       <NA>    NA
+ 5:                       <NA>    NA
+ 6:                       <NA>    NA
+ 7:                       <NA>    NA
+ 8:                       <NA>    NA
+ 9:                       <NA>    NA
+10:                       <NA>    NA
+11:                       <NA>    NA
+12:                       <NA>    NA
+13:                       <NA>    NA
+14:                       <NA>    NA
+15:                       <NA>    NA
+16:                       <NA>    NA
+17:                       <NA>    NA
+18:                       <NA>    NA
+19:                       <NA>    NA
+20:                       <NA>    NA
+                   PERMIT_TYPE     N
+                        <char> <int>
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached  4057
+ 2:       SFD - Semi-Detached  1534
+ 3:         2 Unit - Detached   529
+ 4:           SFD - Townhouse   345
+ 5:    2 Unit - Semi-detached   342
+ 6:        3+ Unit - Detached    89
+ 7: Laneway / Rear Yard Suite    75
+ 8:   3+ Unit - Semi-detached    50
+ 9:        2 Unit - Townhouse    49
+10:       3+ Unit - Townhouse    20
+11:                Group Home     7
+12:                     Other     6
+13:           Converted House     4
+14:    Boarding/Lodging House     3
+15:                   Duplex      3
+16:       Other (New Housing)     1
+17:                   Unknown     1
+18:                      <NA>    NA
+19:                      <NA>    NA
+20:                      <NA>    NA
+               STRUCTURE_TYPE     N
+                       <char> <int>
+              PROPOSED_USE     N
+                    <char> <int>
+ 1:                    Sfd  3031
+ 2: Single Family Dwelling   588
+ 3:                   Same   572
+ 4:           Sfd Detached   401
+ 5:               Sfd-Semi   216
+ 6:           Sfd-Detached   198
+ 7:      Sfd Semi Detached   150
+ 8:        2 Unit Dwelling   129
+ 9:                   Semi   116
+10:         Sfd - Detached   105
+11:        2 Unit Detached    92
+12:                 2 Unit    72
+13:          Sfd-Townhouse    61
+14:            2 Unit Semi    56
+15:                  Sfd-D    49
+16:               Sfd Semi    43
+17:          Sfd Townhouse    40
+18:      Sfd-Semi Detached    36
+19:        2-Unit Dwelling    36
+20:              Sfd-2unit    33
+              PROPOSED_USE     N
+                    <char> <int>
+[1] 2020
+                   PERMIT_TYPE     N
+                        <char> <int>
+ 1: Small Residential Projects  6751
+ 2:                       <NA>    NA
+ 3:                       <NA>    NA
+ 4:                       <NA>    NA
+ 5:                       <NA>    NA
+ 6:                       <NA>    NA
+ 7:                       <NA>    NA
+ 8:                       <NA>    NA
+ 9:                       <NA>    NA
+10:                       <NA>    NA
+11:                       <NA>    NA
+12:                       <NA>    NA
+13:                       <NA>    NA
+14:                       <NA>    NA
+15:                       <NA>    NA
+16:                       <NA>    NA
+17:                       <NA>    NA
+18:                       <NA>    NA
+19:                       <NA>    NA
+20:                       <NA>    NA
+                   PERMIT_TYPE     N
+                        <char> <int>
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached  4018
+ 2:       SFD - Semi-Detached  1338
+ 3:         2 Unit - Detached   530
+ 4:           SFD - Townhouse   291
+ 5:    2 Unit - Semi-detached   278
+ 6: Laneway / Rear Yard Suite    80
+ 7:        3+ Unit - Detached    80
+ 8:        2 Unit - Townhouse    52
+ 9:   3+ Unit - Semi-detached    45
+10:                     Other    13
+11:       3+ Unit - Townhouse    10
+12:    Boarding/Lodging House     6
+13:            Live/Work Unit     4
+14:                   Triplex     2
+15:           Converted House     2
+16:        Stacked Townhouses     1
+17:                Group Home     1
+18:                      <NA>    NA
+19:                      <NA>    NA
+20:                      <NA>    NA
+               STRUCTURE_TYPE     N
+                       <char> <int>
+                       PROPOSED_USE     N
+                             <char> <int>
+ 1:                             Sfd  3000
+ 2:                    Sfd Detached   467
+ 3:                    Sfd-Detached   447
+ 4:          Single Family Dwelling   263
+ 5:                        Sfd-Semi   166
+ 6:                            Same   141
+ 7:               Sfd Semi Detached   132
+ 8:                  Sfd - Detached   132
+ 9:                 2 Unit Dwelling   132
+10:                            Semi   120
+11:                 2 Unit Detached   118
+12:                   Single Family   109
+13:               Sfd-Semi Detached    64
+14:                   Sfd-Townhouse    59
+15:                          2 Unit    59
+16:             Sfd - Semi-Detached    44
+17:                   Laneway Suite    43
+18:            2 Unit Semi Detached    35
+19: Detached Single Family Dwelling    31
+20:                   Semi-Detached    30
+                       PROPOSED_USE     N
+                             <char> <int>
+[1] 2021
+                   PERMIT_TYPE     N
+                        <char> <int>
+ 1: Small Residential Projects  7386
+ 2:                       <NA>    NA
+ 3:                       <NA>    NA
+ 4:                       <NA>    NA
+ 5:                       <NA>    NA
+ 6:                       <NA>    NA
+ 7:                       <NA>    NA
+ 8:                       <NA>    NA
+ 9:                       <NA>    NA
+10:                       <NA>    NA
+11:                       <NA>    NA
+12:                       <NA>    NA
+13:                       <NA>    NA
+14:                       <NA>    NA
+15:                       <NA>    NA
+16:                       <NA>    NA
+17:                       <NA>    NA
+18:                       <NA>    NA
+19:                       <NA>    NA
+20:                       <NA>    NA
+                   PERMIT_TYPE     N
+                        <char> <int>
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached  4162
+ 2:       SFD - Semi-Detached  1676
+ 3:         2 Unit - Detached   607
+ 4:           SFD - Townhouse   354
+ 5:    2 Unit - Semi-detached   263
+ 6: Laneway / Rear Yard Suite   108
+ 7:        3+ Unit - Detached    86
+ 8:        2 Unit - Townhouse    52
+ 9:   3+ Unit - Semi-detached    36
+10:       3+ Unit - Townhouse    15
+11:    Boarding/Lodging House     9
+12:                     Other     8
+13:                   Triplex     3
+14:                   Duplex      2
+15:                Group Home     2
+16:        Stacked Townhouses     1
+17:     Triplex/Semi-Detached     1
+18:            Live/Work Unit     1
+19:                      <NA>    NA
+20:                      <NA>    NA
+               STRUCTURE_TYPE     N
+                       <char> <int>
+               PROPOSED_USE     N
+                     <char> <int>
+ 1:                     Sfd  3092
+ 2:            Sfd-Detached   552
+ 3:            Sfd Detached   412
+ 4:                Sfd-Semi   236
+ 5:  Single Family Dwelling   213
+ 6:           Single Family   189
+ 7:       Sfd Semi Detached   175
+ 8:                    Semi   156
+ 9:                    Same   138
+10:         2 Unit Dwelling   120
+11:       Sfd-Semi Detached   108
+12:          Sfd - Detached   107
+13:         2 Unit Detached    88
+14:           Sfd-Townhouse    81
+15:     Sfd - Semi-Detached    67
+16:           Semi-Detached    66
+17:            Detached Sfd    63
+18:       Semi-Detached Sfd    54
+19:           Sfd Townhouse    50
+20: Detached Sfd W Addition    36
+               PROPOSED_USE     N
+                     <char> <int>
+[1] 2022
+                   PERMIT_TYPE     N
+                        <char> <int>
+ 1: Small Residential Projects  6559
+ 2:                       <NA>    NA
+ 3:                       <NA>    NA
+ 4:                       <NA>    NA
+ 5:                       <NA>    NA
+ 6:                       <NA>    NA
+ 7:                       <NA>    NA
+ 8:                       <NA>    NA
+ 9:                       <NA>    NA
+10:                       <NA>    NA
+11:                       <NA>    NA
+12:                       <NA>    NA
+13:                       <NA>    NA
+14:                       <NA>    NA
+15:                       <NA>    NA
+16:                       <NA>    NA
+17:                       <NA>    NA
+18:                       <NA>    NA
+19:                       <NA>    NA
+20:                       <NA>    NA
+                   PERMIT_TYPE     N
+                        <char> <int>
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached  3442
+ 2:       SFD - Semi-Detached  1599
+ 3:         2 Unit - Detached   593
+ 4:           SFD - Townhouse   296
+ 5:    2 Unit - Semi-detached   225
+ 6: Laneway / Rear Yard Suite   150
+ 7:        3+ Unit - Detached   101
+ 8:   3+ Unit - Semi-detached    58
+ 9:        2 Unit - Townhouse    41
+10:                     Other    17
+11:       3+ Unit - Townhouse    10
+12:        Stacked Townhouses     8
+13:    Boarding/Lodging House     6
+14:                   Triplex     5
+15:                Group Home     4
+16:           Converted House     3
+17:            Live/Work Unit     1
+18:                      <NA>    NA
+19:                      <NA>    NA
+20:                      <NA>    NA
+               STRUCTURE_TYPE     N
+                       <char> <int>
+              PROPOSED_USE     N
+                    <char> <int>
+ 1:                    Sfd  2602
+ 2:           Sfd Detached   454
+ 3:           Sfd-Detached   439
+ 4:           Detached Sfd   159
+ 5:          Single Family   146
+ 6:      Sfd Semi Detached   142
+ 7:        2 Unit Dwelling   123
+ 8: Single Family Dwelling   122
+ 9:         Sfd - Detached   111
+10:      Sfd Semi-Detached   100
+11:      Sfd-Semi Detached    96
+12:               Sfd-Semi    92
+13:        2 Unit Detached    91
+14:                   Semi    84
+15:      Semi Detached Sfd    80
+16:     Sfd- Semi Detached    67
+17:      Sfd-Semi-Detached    62
+18:          Sfd-Townhouse    60
+19:    Sfd - Semi-Detached    60
+20:                   Same    54
+              PROPOSED_USE     N
+                    <char> <int>
+[1] 2023
+                   PERMIT_TYPE     N
+                        <char> <int>
+ 1: Small Residential Projects  5938
+ 2:                       <NA>    NA
+ 3:                       <NA>    NA
+ 4:                       <NA>    NA
+ 5:                       <NA>    NA
+ 6:                       <NA>    NA
+ 7:                       <NA>    NA
+ 8:                       <NA>    NA
+ 9:                       <NA>    NA
+10:                       <NA>    NA
+11:                       <NA>    NA
+12:                       <NA>    NA
+13:                       <NA>    NA
+14:                       <NA>    NA
+15:                       <NA>    NA
+16:                       <NA>    NA
+17:                       <NA>    NA
+18:                       <NA>    NA
+19:                       <NA>    NA
+20:                       <NA>    NA
+                   PERMIT_TYPE     N
+                        <char> <int>
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached  3042
+ 2:       SFD - Semi-Detached  1147
+ 3:         2 Unit - Detached   708
+ 4: Laneway / Rear Yard Suite   276
+ 5:           SFD - Townhouse   252
+ 6:    2 Unit - Semi-detached   218
+ 7:        3+ Unit - Detached   161
+ 8:   3+ Unit - Semi-detached    71
+ 9:        2 Unit - Townhouse    27
+10:                     Other    11
+11:        Stacked Townhouses     5
+12:       3+ Unit - Townhouse     4
+13:                   Triplex     4
+14:                Group Home     3
+15:                   Duplex      3
+16:    Boarding/Lodging House     2
+17:      Duplex/Semi-Detached     2
+18:     Triplex/Semi-Detached     1
+19:            Live/Work Unit     1
+20:                      <NA>    NA
+               STRUCTURE_TYPE     N
+                       <char> <int>
+           PROPOSED_USE     N
+                 <char> <int>
+ 1:                 Sfd  1802
+ 2:        Sfd-Detached   469
+ 3:        Sfd Detached   441
+ 4:      Sfd - Detached   290
+ 5:     2 Unit Detached   144
+ 6:   Sfd Semi-Detached   125
+ 7:       Single Family   107
+ 8:   Sfd Semi Detached    99
+ 9:   Sfd-Semi-Detached    95
+10:     2 Unit Dwelling    88
+11: Sfd - Semi-Detached    86
+12:        Detached Sfd    80
+13:            Sfd-Semi    71
+14: Sfd - Semi Detached    70
+15:     Sfd - Townhouse    59
+16:   2 Unit - Detached    52
+17:     2-Unit Dwelling    46
+18:   Sfd-Semi Detached    45
+19:       Sfd Townhouse    43
+20:       Semi-Detached    41
+           PROPOSED_USE     N
+                 <char> <int>
+[1] 2024
+                   PERMIT_TYPE     N
+                        <char> <int>
+ 1: Small Residential Projects  6390
+ 2:                       <NA>    NA
+ 3:                       <NA>    NA
+ 4:                       <NA>    NA
+ 5:                       <NA>    NA
+ 6:                       <NA>    NA
+ 7:                       <NA>    NA
+ 8:                       <NA>    NA
+ 9:                       <NA>    NA
+10:                       <NA>    NA
+11:                       <NA>    NA
+12:                       <NA>    NA
+13:                       <NA>    NA
+14:                       <NA>    NA
+15:                       <NA>    NA
+16:                       <NA>    NA
+17:                       <NA>    NA
+18:                       <NA>    NA
+19:                       <NA>    NA
+20:                       <NA>    NA
+                   PERMIT_TYPE     N
+                        <char> <int>
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached  3100
+ 2:       SFD - Semi-Detached  1109
+ 3:         2 Unit - Detached   980
+ 4: Laneway / Rear Yard Suite   329
+ 5:           SFD - Townhouse   249
+ 6:    2 Unit - Semi-detached   224
+ 7:        3+ Unit - Detached   219
+ 8:   3+ Unit - Semi-detached    83
+ 9:        2 Unit - Townhouse    42
+10:                     Other    13
+11:        Stacked Townhouses     9
+12:       3+ Unit - Townhouse     9
+13:    Boarding/Lodging House     8
+14:                   Duplex      8
+15:                   Triplex     6
+16:     Triplex/Semi-Detached     2
+17:                      <NA>    NA
+18:                      <NA>    NA
+19:                      <NA>    NA
+20:                      <NA>    NA
+               STRUCTURE_TYPE     N
+                       <char> <int>
+           PROPOSED_USE     N
+                 <char> <int>
+ 1:                 Sfd  1534
+ 2:      Sfd - Detached   609
+ 3:        Sfd-Detached   536
+ 4:        Sfd Detached   361
+ 5:     2 Unit Detached   214
+ 6: Sfd - Semi Detached   183
+ 7:   2 Unit - Detached   159
+ 8:       Single Family   138
+ 9:     2 Unit Dwelling   125
+10: Sfd - Semi-Detached   112
+11:            Sfd-Semi    96
+12:   Sfd Semi-Detached    86
+13:   Sfd-Semi-Detached    86
+14:   Sfd Semi Detached    71
+15:       Semi-Detached    59
+16:       Sfd-Townhouse    59
+17:     Sfd - Townhouse    49
+18:     2-Unit Dwelling    46
+19:        Garden Suite    38
+20:    2 Units Detached    28
+           PROPOSED_USE     N
+                 <char> <int>
+[1] 2025
+                   PERMIT_TYPE     N
+                        <char> <int>
+ 1: Small Residential Projects  4783
+ 2:                       <NA>    NA
+ 3:                       <NA>    NA
+ 4:                       <NA>    NA
+ 5:                       <NA>    NA
+ 6:                       <NA>    NA
+ 7:                       <NA>    NA
+ 8:                       <NA>    NA
+ 9:                       <NA>    NA
+10:                       <NA>    NA
+11:                       <NA>    NA
+12:                       <NA>    NA
+13:                       <NA>    NA
+14:                       <NA>    NA
+15:                       <NA>    NA
+16:                       <NA>    NA
+17:                       <NA>    NA
+18:                       <NA>    NA
+19:                       <NA>    NA
+20:                       <NA>    NA
+                   PERMIT_TYPE     N
+                        <char> <int>
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached  2265
+ 2:       SFD - Semi-Detached   853
+ 3:         2 Unit - Detached   747
+ 4: Laneway / Rear Yard Suite   253
+ 5:    2 Unit - Semi-detached   199
+ 6:           SFD - Townhouse   169
+ 7:        3+ Unit - Detached   159
+ 8:   3+ Unit - Semi-detached    52
+ 9:        2 Unit - Townhouse    51
+10:                     Other    14
+11:    Boarding/Lodging House     6
+12:       3+ Unit - Townhouse     6
+13:        Stacked Townhouses     2
+14:                   Duplex      2
+15:                      <NA>     2
+16:       Other (New Housing)     1
+17:                   Unknown     1
+18:                Group Home     1
+19:                      <NA>    NA
+20:                      <NA>    NA
+               STRUCTURE_TYPE     N
+                       <char> <int>
+           PROPOSED_USE     N
+                 <char> <int>
+ 1:                 Sfd   750
+ 2:      Sfd - Detached   682
+ 3:        Sfd-Detached   432
+ 4:        Sfd Detached   288
+ 5: Sfd - Semi Detached   215
+ 6:     2 Unit Detached   196
+ 7:   2 Unit - Detached   131
+ 8:   Sfd Semi Detached   118
+ 9:     2 Unit Dwelling    73
+10:   Sfd-Semi-Detached    73
+11:   Sfd Semi-Detached    56
+12: Sfd - Semi-Detached    45
+13:     Sfd - Townhouse    44
+14:        Garden Suite    44
+15:   Sfd-Semi Detached    42
+16:       Single Family    40
+17:       Sfd Townhouse    37
+18:          2 Unit Sfd    35
+19:            Sfd-Semi    34
+20:       Sfd-Townhouse    32
+           PROPOSED_USE     N
+                 <char> <int>
+[1] 2026
+                   PERMIT_TYPE     N
+                        <char> <int>
+ 1: Small Residential Projects  1251
+ 2:                       <NA>    NA
+ 3:                       <NA>    NA
+ 4:                       <NA>    NA
+ 5:                       <NA>    NA
+ 6:                       <NA>    NA
+ 7:                       <NA>    NA
+ 8:                       <NA>    NA
+ 9:                       <NA>    NA
+10:                       <NA>    NA
+11:                       <NA>    NA
+12:                       <NA>    NA
+13:                       <NA>    NA
+14:                       <NA>    NA
+15:                       <NA>    NA
+16:                       <NA>    NA
+17:                       <NA>    NA
+18:                       <NA>    NA
+19:                       <NA>    NA
+20:                       <NA>    NA
+                   PERMIT_TYPE     N
+                        <char> <int>
+               STRUCTURE_TYPE     N
+                       <char> <int>
+ 1:            SFD - Detached   606
+ 2:       SFD - Semi-Detached   233
+ 3:         2 Unit - Detached   200
+ 4:           SFD - Townhouse    81
+ 5:    2 Unit - Semi-detached    46
+ 6:        3+ Unit - Detached    29
+ 7: Laneway / Rear Yard Suite    26
+ 8:        2 Unit - Townhouse     7
+ 9:   3+ Unit - Semi-detached     6
+10:        Stacked Townhouses     5
+11:                      <NA>     4
+12:    Boarding/Lodging House     4
+13:                     Other     3
+14:                Group Home     1
+15:                      <NA>    NA
+16:                      <NA>    NA
+17:                      <NA>    NA
+18:                      <NA>    NA
+19:                      <NA>    NA
+20:                      <NA>    NA
+               STRUCTURE_TYPE     N
+                       <char> <int>
+           PROPOSED_USE     N
+                 <char> <int>
+ 1:                 Sfd   259
+ 2:      Sfd - Detached   127
+ 3:        Sfd-Detached   122
+ 4:        Sfd Detached   103
+ 5:     2 Unit Detached    58
+ 6: Sfd - Semi Detached    40
+ 7:   Sfd Semi Detached    40
+ 8:     2 Unit Dwelling    30
+ 9:     Sfd - Townhouse    28
+10:   2 Unit - Detached    28
+11:   Sfd Semi-Detached    21
+12:          Sfd - Semi    14
+13:            Sfd-Semi    13
+14: Sfd - Semi-Detached    12
+15:     2 Unit-Detached    12
+16:          2 Unit Sfd    12
+17:   Sfd-Semi Detached    12
+18:       Sfd-Townhouse    12
+19:    2 Units-Detached    10
+20:                Semi     9
+           PROPOSED_USE     N
+                 <char> <int>
+> # close connection
+> 
+> dbDisconnect(con)
+> 
+> # zoning
+> zoningPath <- path.expand("~/DropboxExternal/dataRaw/torontoZoningArea.zip")
+> dfZ <- st_read(paste0("/vsizip/", zoningPath, "/Zoning Area - 4326.shp"))
+Reading layer `Zoning Area - 4326' from data source 
+  `/vsizip//Users/davidoff/DropboxExternal/dataRaw/torontoZoningArea.zip/Zoning Area - 4326.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 11719 features and 24 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: -79.63926 ymin: 43.5806 xmax: -79.11543 ymax: 43.85543
+Geodetic CRS:  WGS 84
+> print(head(dfZ))
+Simple feature collection with 6 features and 24 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: -79.57127 ymin: 43.68031 xmax: -79.20947 ymax: 43.81769
+Geodetic CRS:  WGS 84
+  X_id GEN_ZONE ZN_ZONE ZN_HOLDING HOLDING_ID FRONTAGE ZN_AREA UNITS DENSITY
+1    1        2      UT          N         NA       -1      -1    -1    -1.0
+2    2        1      ON          N         NA       -1      -1    -1    -1.0
+3    3        0      RD          N         NA       14     510    NA      NA
+4    4        1       O          N         NA       -1      -1    -1    -1.0
+5    5        0      RD          N         NA       NA      NA    NA      NA
+6    6        0      RM          N         NA       12      NA     4     0.8
+  COVERAGE FSI_TOTAL PRCNT_COMM PRCNT_RES PRCNT_EMMP PRCNT_OFFC ZN_EXCPTN
+1       NA        -1         -1        -1         -1         -1         N
+2       NA        -1         -1        -1         -1         -1         N
+3       NA        -1         -1        -1         -1         -1         Y
+4       NA        -1         -1        -1         -1         -1         N
+5       NA        -1         -1        -1         -1         -1         Y
+6       NA        -1         -1        -1         -1         -1         Y
+  EXCPTN_NO STAND_SET ZN_STATUS                   ZN_STRING AREA_UNITS
+1        NA        -1         2                          UT         -1
+2        NA        -1         0                          ON         -1
+3      1058        -1         2    RD (f14.0; a510) (x1058)         NA
+4        NA        -1         3                           O         -1
+5      1040        -1         2                  RD (x1040)         NA
+6       143        -1         2 RM (f12.0; u4; d0.8) (x143)         NA
+  ZBL_CHAPT ZBL_SECTN     ZBL_EXCPTN                       geometry
+1       100    100.10           <NA> MULTIPOLYGON (((-79.2097 43...
+2        90     90.20           <NA> MULTIPOLYGON (((-79.50273 4...
+3        10     10.20 900.3.10(1058) MULTIPOLYGON (((-79.27433 4...
+4        90     90.10           <NA> MULTIPOLYGON (((-79.5704 43...
+5        10     10.20 900.3.10(1040) MULTIPOLYGON (((-79.26202 4...
+6        10     10.80  900.6.10(143) MULTIPOLYGON (((-79.47684 4...
+> 
+> 
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  4.149   0.192   2.144 
