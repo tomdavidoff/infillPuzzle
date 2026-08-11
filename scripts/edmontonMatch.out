@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -27,60 +27,171 @@ Type 'q()' to quit R.
 > library(fixest)
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(polars)
+Warning message:
+package ‘polars’ was built under R version 4.5.3 
+> library(duckdb)
+Loading required package: DBI
+Warning message:
+package ‘duckdb’ was built under R version 4.5.2 
+> assessorPath <- "~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv"
+> con <- dbConnect(duckdb())
+> q <- sprintf("SELECT \"Account Number\", \"Assessed Value\", \"Zoning\", \"Legal Description\",\"Latitude\", \"Longitude\", \"Lot Size\", \"Neighbourhood\"
++   FROM read_csv_auto('%s')
++   QUALIFY bool_or(Zoning = 'RS') OVER (PARTITION BY \"Account Number\")", assessorPath)
+> dfA <- dbGetQuery(con,q)
+> dtA <- as.data.table(dfA)
+>  
+> # convert below to duckdb query
+> permitPath <- "~/DropboxExternal/dataRaw/edmonton/edmontonBuildingPermits.csv"
+> q <- sprintf(R"(
++   SELECT
++     "PERMIT_DATE", "PERMIT_NUMBER", "YEAR", "BUILDING_TYPE", "WORK_TYPE",
++     "CONSTRUCTION_VALUE", "FLOOR_AREA", "UNITS_ADDED", "ADDRESS",
++     "LEGAL_DESCRIPTION", "ZONING", "NEIGHBOURHOOD", "LATITUDE", "LONGITUDE"
++   FROM read_csv_auto('%s')
++   WHERE ZONING = 'RS'
++ )", permitPath)
+> dfP <- dbGetQuery(con,q)
+> dtP <- as.data.table(dfP)
+> dbDisconnect(con, shutdown = TRUE)
+> print(head(dtP))
+   PERMIT_DATE PERMIT_NUMBER  YEAR                       BUILDING_TYPE
+        <Date>        <char> <num>                              <char>
+1:  2018-10-29          <NA>  2018             Utility Buildings (480)
+2:  2023-04-27          <NA>  2023           Other Accommodation (534)
+3:  2023-10-13          <NA>  2023 Storage Buildings, Warehouses (460)
+4:  2011-11-30          <NA>  2011           Semi-Detached House (210)
+5:  2013-04-24          <NA>  2013           Semi-Detached House (210)
+6:  2013-05-15          <NA>  2013           Semi-Detached House (210)
+                             WORK_TYPE CONSTRUCTION_VALUE FLOOR_AREA
+                                <char>              <num>      <num>
+1:                     (99) Demolition               5000     290.57
+2: (10) Convert Residential to Non-Res               5000       0.00
+3:                     (99) Demolition              10000         NA
+4:                 (01) Building - New             245000    2824.00
+5:                 (01) Building - New             282803    1435.00
+6:                 (01) Building - New             280000    2636.00
+   UNITS_ADDED               ADDRESS             LEGAL_DESCRIPTION ZONING
+         <num>                <char>                        <char> <char>
+1:           0  905 - 110A STREET NW Plan 8820694 Blk 25 Lot 63PUL     RS
+2:          -1  11910 - 50 STREET NW      Plan 3814HW Blk 49 Lot 3     RS
+3:           0 11380 - 111 AVENUE NW    Plan 5252HW Blk 14B Lot 41     RS
+4:           2 12923 - 123 STREET NW      Plan 8661T Blk 13 Lot 16     RS
+5:           2  17224 - 73 STREET NW     Plan 1225106 Blk 8 Lot 27     RS
+6:           2    4021 - 6 STREET NW     Plan 1224110 Blk 6 Lot 63     RS
+   NEIGHBOURHOOD LATITUDE LONGITUDE
+          <char>    <num>     <num>
+1:   TWIN BROOKS 53.43980 -113.5145
+2:        NEWTON 53.57233 -113.4189
+3: PRINCE RUPERT 53.55919 -113.5208
+4:        CALDER 53.58831 -113.5331
+5:      SCHONSEE 53.63367 -113.4549
+6:         MAPLE 53.47829 -113.3518
+> print(head(dtA))
+   Account Number Assessed Value Zoning                  Legal Description
+            <num>         <char> <char>                             <char>
+1:        9964773    $478,000.00    RF1 Plan: 9826312  Block: 150  Lot: 20
+2:        9964870    $446,000.00    RF3 Plan: 9826335  Block: 43  Lot: 10A
+3:        9964870    $395,500.00    RF3 Plan: 9826335  Block: 43  Lot: 10A
+4:        9964870    $409,000.00    RF3 Plan: 9826335  Block: 43  Lot: 10A
+5:        9964870    $372,000.00    RF3 Plan: 9826335  Block: 43  Lot: 10A
+6:        9964870    $413,500.00    RF3 Plan: 9826335  Block: 43  Lot: 10A
+   Latitude Longitude Lot Size Neighbourhood
+      <num>     <num>   <char>        <char>
+1: 53.46067 -113.5703 441.7410         LEGER
+2: 53.54800 -113.5389 331.0990     WESTMOUNT
+3: 53.54800 -113.5389 331.0990     WESTMOUNT
+4: 53.54800 -113.5389 331.0990     WESTMOUNT
+5: 53.54800 -113.5389 331.0990     WESTMOUNT
+6: 53.54800 -113.5389 331.0990     WESTMOUNT
+> dtA[,LEGAL_DESCRIPTION := gsub("\\s+", " ", `Legal Description`)]
+> dtA[,LEGAL_DESCRIPTION := gsub("Plan:", "Plan", LEGAL_DESCRIPTION)]
+> dtA[,LEGAL_DESCRIPTION := gsub("Block:", "Blk", LEGAL_DESCRIPTION)]
+> dtA[,LEGAL_DESCRIPTION := gsub("Lot:", "Lot", LEGAL_DESCRIPTION)]
+> dtM <- merge(dtP, dtA, by="LEGAL_DESCRIPTION",all.x=TRUE, all.y=FALSE)
+> print(dtM[,fullMerge := ifelse(is.na(`Account Number`), ifelse(is.na(PERMIT_NUMBER), "No match", "Partial match"), "Full match")])
+Key: <LEGAL_DESCRIPTION>
+         LEGAL_DESCRIPTION PERMIT_DATE PERMIT_NUMBER  YEAR
+                    <char>      <Date>        <char> <num>
+     1:               <NA>  2025-09-23          <NA>  2025
+     2:               <NA>  2025-09-23          <NA>  2025
+     3:               <NA>  2025-09-23          <NA>  2025
+     4:               <NA>  2025-09-23          <NA>  2025
+     5:               <NA>  2025-09-23          <NA>  2025
+    ---                                                   
+712057:     Plan U1 Lot 33  2016-06-22          <NA>  2016
+712058:     Plan U1 Lot 33  2016-06-22          <NA>  2016
+712059:     Plan U1 Lot 33  2016-06-22          <NA>  2016
+712060: Plan U1 Lots 36-37  2012-06-15          <NA>  2012
+712061: Plan U1 Lots 36-37  2013-12-12          <NA>  2013
+                      BUILDING_TYPE           WORK_TYPE CONSTRUCTION_VALUE
+                             <char>              <char>              <num>
+     1: Single Detached House (110) (01) Building - New             317625
+     2: Single Detached House (110) (01) Building - New             317625
+     3: Single Detached House (110) (01) Building - New             317625
+     4: Single Detached House (110) (01) Building - New             317625
+     5: Single Detached House (110) (01) Building - New             317625
+    ---                                                                   
+712057: Single Detached House (110)  (03) Deck Attached               1000
+712058: Single Detached House (110)  (03) Deck Attached               1000
+712059: Single Detached House (110)  (03) Deck Attached               1000
+712060:       Detached Garage (010)     (99) Demolition               1500
+712061: Single Detached House (110)       (02) Addition              60000
+        FLOOR_AREA UNITS_ADDED                  ADDRESS ZONING
+             <num>       <num>                   <char> <char>
+     1:       2541           1   16B - MARLBORO ROAD NW     RS
+     2:       2541           1   16B - MARLBORO ROAD NW     RS
+     3:       2541           1   16B - MARLBORO ROAD NW     RS
+     4:       2541           1   16B - MARLBORO ROAD NW     RS
+     5:       2541           1   16B - MARLBORO ROAD NW     RS
+    ---                                                       
+712057:         NA           0     10030 - 94 STREET NW     RS
+712058:         NA           0     10030 - 94 STREET NW     RS
+712059:         NA           0     10030 - 94 STREET NW     RS
+712060:        400           0 9320 - CAMERON AVENUE NW     RS
+712061:        300           0 9320 - CAMERON AVENUE NW     RS
+            NEIGHBOURHOOD LATITUDE LONGITUDE Account Number Assessed Value
+                   <char>    <num>     <num>          <num>         <char>
+     1: WESTBROOK ESTATES       NA        NA        9975672      $5,500.00
+     2: WESTBROOK ESTATES       NA        NA        9975672      $5,500.00
+     3: WESTBROOK ESTATES       NA        NA        9975672      $5,500.00
+     4: WESTBROOK ESTATES       NA        NA        9975672      $5,500.00
+     5: WESTBROOK ESTATES       NA        NA        9975672      $5,500.00
+    ---                                                                   
+712057:         RIVERDALE 53.54222 -113.4749        3750601    $390,000.00
+712058:         RIVERDALE 53.54222 -113.4749        3750601    $420,000.00
+712059:         RIVERDALE 53.54222 -113.4749        3750601    $459,000.00
+712060:         RIVERDALE 53.54172 -113.4744             NA           <NA>
+712061:         RIVERDALE 53.54172 -113.4744             NA           <NA>
+        Zoning Legal Description Latitude Longitude Lot Size Neighbourhood
+        <char>            <char>    <num>     <num>   <char>        <char>
+     1:   <NA>              <NA> 53.47693 -113.5499 150.8180 ASPEN GARDENS
+     2:     RS              <NA> 53.47693 -113.5499     <NA> ASPEN GARDENS
+     3:    RF1              <NA> 53.47693 -113.5499 150.8180 ASPEN GARDENS
+     4:    RF1              <NA> 53.47693 -113.5499 150.8180 ASPEN GARDENS
+     5:    RF1              <NA> 53.47693 -113.5499 150.8180 ASPEN GARDENS
+    ---                                                                   
+712057:    RF2 Plan: U1  Lot: 33 53.54221 -113.4749 343.9610     RIVERDALE
+712058:    RF2 Plan: U1  Lot: 33 53.54221 -113.4749 343.9610     RIVERDALE
+712059:    RF2 Plan: U1  Lot: 33 53.54221 -113.4749 343.9610     RIVERDALE
+712060:   <NA>              <NA>       NA        NA     <NA>          <NA>
+712061:   <NA>              <NA>       NA        NA     <NA>          <NA>
+         fullMerge
+            <char>
+     1: Full match
+     2: Full match
+     3: Full match
+     4: Full match
+     5: Full match
+    ---           
+712057: Full match
+712058: Full match
+712059: Full match
+712060:   No match
+712061:   No match
 > 
-> dtA <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv")
-> dtC <- fread("~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv")
-> dtP  <- fread("~/DropboxExternal/dataRaw/edmonton/edmontonBuildingPermits.csv")
-> 
-> 
-> # first question: Suites in RS 2025+ completions
-> print(head(dtC))
-   Account Number  Suite House Number   Street Name
-            <int> <char>        <int>        <char>
-1:       11219634                 303  29 STREET SW
-2:       11143030                  NA              
-3:       10945021                  NA              
-4:       10191816                3327 184 STREET NW
-5:       10191803                  NA              
-6:        9990838                  NA              
-                   legal_description zoning   lot_size Total Gross Area
-                              <char> <char>     <char>            <num>
-1: Plan: 2322574  Block: 11  Lot: 42    RSF    335.364          183.400
-2:            Plan: 1820547  Unit: G         1,843.578         1925.787
-3:                                             849.898            0.000
-4:                                          29,220.296            0.000
-5:                                              15,210            0.000
-6:                                             204.261            0.000
-   year_built garage Neighbourhood ID             Neighbourhood
-        <int> <lgcl>            <int>                    <char>
-1:       2024   TRUE             6669                     ALCES
-2:       2023  FALSE             5458                    ALLARD
-3:         NA  FALSE             4011            ANTHONY HENDAY
-4:         NA  FALSE             4012 ANTHONY HENDAY SOUTH WEST
-5:         NA  FALSE             4012 ANTHONY HENDAY SOUTH WEST
-6:         NA  FALSE             5020             ASPEN GARDENS
-                    Ward Latitude Longitude
-                  <char>    <num>     <num>
-1:            Sspomitapi 53.43008 -113.3859
-2: Ipiihkoohkanipiaohtsi 53.39971 -113.5398
-3:           Nakota Isga 53.54234 -113.6525
-4:         sipiwiyiniwak 53.46493 -113.6275
-5:         sipiwiyiniwak 53.46167 -113.6215
-6:              papastew 53.47912 -113.5415
-                                   Point Location
-                                           <char>
-1:  POINT (-113.38586836927416 53.43007553480231)
-2:  POINT (-113.53980916769041 53.39971248175877)
-3: POINT (-113.65249892113263 53.542342638025914)
-4:  POINT (-113.62752901286129 53.46493004655662)
-5:   POINT (-113.62147184037028 53.4616716042854)
-6:  POINT (-113.54153138860967 53.47912453730056)
-> dtCs <- dtC[zoning=="RS" & year_built>=2025 ]
-> print(dtCs[,.(N=.N,hasSuite=sum(Suite!=""))])
-       N hasSuite
-   <int>    <int>
-1:   569        0
 > q("no")
 > proc.time()
    user  system elapsed 
- 24.004   0.337   6.557 
+ 23.597   1.745  13.570 
