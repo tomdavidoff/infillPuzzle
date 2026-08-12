@@ -7,18 +7,31 @@
 library(data.table)
 library(fixest)
 library(sf)
-library(polars)
 library(duckdb)
-assessorPath <- "~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv"
-con <- dbConnect(duckdb())
-q <- sprintf("SELECT \"Account Number\", \"Assessed Value\", \"Zoning\", \"Legal Description\",\"Latitude\", \"Longitude\", \"Lot Size\", \"Neighbourhood\"
-  FROM read_csv_auto('%s')
-  QUALIFY bool_or(Zoning = 'RS') OVER (PARTITION BY \"Account Number\")", assessorPath)
-dfA <- dbGetQuery(con,q)
-dtA <- as.data.table(dfA)
- 
-# convert below to duckdb query
+
+# Compare assessor historical and current data to verify that current lot size is always historical lot size
+assessorHistoricalPath <- "~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv"
+assessorCurrentPath <- "~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv"
+
+dtAH <- fread(assessorHistoricalPath,select=c("Lot Size","Account Number","Zoning","Legal Description","Latitude","Longitude","Assessment Year"))
+dtAC <- fread(assessorCurrentPath,select = c("lot_size","zoning","legal_description","Latitude","Longitude","Account Number","year_built"))
+dtAC <- dtAC[zoning=="RS"]
+setkey(dtAH, "Account Number")
+setkey(dtAC, "Account Number")
+dtAM <- dtAH[dtAC]
+print(head(dtAM))
+print(summary(dtAM[,as.numeric(lot_size)==as.numeric(`Lot Size`)]))
+print(summary(dtAM[,legal_description==`Legal Description`]))
+print(dtAM[legal_description!=`Legal Description`,.(legal_description,`Legal Description`)])
+print(dtAM[as.numeric(lot_size)!=as.numeric(`Lot Size`),.(lot_size,`Lot Size`)])
+print(dtAM[as.numeric(lot_size)!=as.numeric(`Lot Size`),summary(as.numeric(lot_size)-as.numeric(`Lot Size`))])
+print(dtAM[as.numeric(lot_size)!=as.numeric(`Lot Size`),quantile(abs(as.numeric(lot_size)-as.numeric(`Lot Size`)),probs=c(.9,.95,.975,.99),na.rm=TRUE)])
+print(dtAM[as.numeric(lot_size)!=as.numeric(`Lot Size`) & legal_description!=`Legal Description`,quantile(abs(as.numeric(lot_size)-as.numeric(`Lot Size`)),probs=c(.9,.95,.975,.99),na.rm=TRUE)])
+print(dtAM[as.numeric(lot_size)!=as.numeric(`Lot Size`) & legal_description!=`Legal Description`,quantile((as.numeric(lot_size)/as.numeric(`Lot Size`)),probs=c(.001,.01,.05,.95,.99,.999),na.rm=TRUE)])
+
+# now permit match quality
 permitPath <- "~/DropboxExternal/dataRaw/edmonton/edmontonBuildingPermits.csv"
+con <- dbConnect(duckdb())
 q <- sprintf(R"(
   SELECT
     "PERMIT_DATE", "PERMIT_NUMBER", "YEAR", "BUILDING_TYPE", "WORK_TYPE",
@@ -28,8 +41,49 @@ q <- sprintf(R"(
   WHERE ZONING = 'RS'
 )", permitPath)
 dfP <- dbGetQuery(con,q)
-dtP <- as.data.table(dfP)
 dbDisconnect(con, shutdown = TRUE)
+dtP <- as.data.table(dfP)
+dtAM[,LEGAL_DESCRIPTION := gsub("\\s+", " ", `Legal Description`)]
+dtAM[,LEGAL_DESCRIPTION := gsub("Plan:", "Plan", LEGAL_DESCRIPTION)]
+dtAM[,LEGAL_DESCRIPTION := gsub("Block:", "Blk", LEGAL_DESCRIPTION)]
+dtAM[,LEGAL_DESCRIPTION := gsub("Lot:", "Lot", LEGAL_DESCRIPTION)]
+dtAM[,minYear:=min(`Assessment Year`),by=`Account Number`]
+dtAM[,maxYear:=max(`Assessment Year`),by=`Account Number`]
+print(summary(dtAM[,.(minYear,maxYear)]))
+dtAM <- dtAM[`Assessment Year`==maxYear] # pretty much all good for lot size per the above analysis. FORMALIZE THIS
+
+dtPM <- merge(dtP, dtAM, by="LEGAL_DESCRIPTION",all.x=TRUE, all.y=FALSE)
+dtPM[,hasAccount := !is.na(`Account Number`) & `Account Number`!=""]
+print(dtPM[,.(mean(hasAccount),.N),by=WORK_TYPE])
+print(dtPM[,table(BUILDING_TYPE)])
+dtPM[,isRowHouse := grepl("Row House",BUILDING_TYPE)]
+dtPM[,isDetached := grepl("Single Detached",BUILDING_TYPE)]
+dtPM <- dtPM[isRowHouse | isDetached]
+print(dtPM[,summary(as.numeric(lot_size)),by=.(isRowHouse)])
+
+
+dtR <- dtPM[grepl("Row House",BUILDING_TYPE)]
+
+print(dtR[YEAR>=2022 & grepl("(01)",WORK_TYPE),mean(year_built>=YEAR,na.rm=TRUE),by=YEAR])
+print(dtPM[YEAR>=2022 & grepl("(01)",WORK_TYPE),mean(year_built>=YEAR,na.rm=TRUE),by=YEAR])
+print(head(dtR))
+print(dtR[year_built>YEAR,summary(abs(as.numeric(lot_size)-as.numeric(`Lot Size`)),na.rm=TRUE)])
+# reverse merge: can we find a permit for properties built starting 2023
+dtAMR <- dtAM[year_built>=2023]
+dtAMR <- merge(dtAMR, dtP, by="LEGAL_DESCRIPTION",all.x=TRUE, all.y=FALSE)
+dtAMR[,hasPermit:=!is.na(YEAR)]
+print(dtAMR[,table(hasPermit)])
+
+q("no")
+
+
+q <- sprintf("SELECT \"Account Number\", \"Assessed Value\", \"Zoning\", \"Legal Description\",\"Latitude\", \"Longitude\", \"Lot Size\", \"Neighbourhood\"
+  FROM read_csv_auto('%s')
+  QUALIFY bool_or(Zoning = 'RS') OVER (PARTITION BY \"Account Number\")", assessorPath)
+dfA <- dbGetQuery(con,q)
+dtA <- as.data.table(dfA)
+ 
+# convert below to duckdb query
 print(head(dtP))
 print(head(dtA))
 dtA[,LEGAL_DESCRIPTION := gsub("\\s+", " ", `Legal Description`)]
