@@ -8,13 +8,14 @@ library(data.table)
 library(fixest)
 library(sf)
 library(duckdb)
+library(ggplot2)
 
 # Compare assessor historical and current data to verify that current lot size is always historical lot size
 assessorHistoricalPath <- "~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv"
 assessorCurrentPath <- "~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv"
 
-dtAH <- fread(assessorHistoricalPath,select=c("Lot Size","Account Number","Zoning","Legal Description","Latitude","Longitude","Assessment Year"))
-dtAC <- fread(assessorCurrentPath,select = c("lot_size","zoning","legal_description","Latitude","Longitude","Account Number","year_built"))
+dtAH <- fread(assessorHistoricalPath,select=c("Lot Size","Account Number","Zoning","Legal Description","Latitude","Longitude","Assessment Year","Assessed Value"))
+dtAC <- fread(assessorCurrentPath,select = c("lot_size","zoning","legal_description","Latitude","Longitude","Account Number","year_built","Total Gross Area"))
 dtAC <- dtAC[zoning=="RS"]
 setkey(dtAH, "Account Number")
 setkey(dtAC, "Account Number")
@@ -43,6 +44,8 @@ q <- sprintf(R"(
 dfP <- dbGetQuery(con,q)
 dbDisconnect(con, shutdown = TRUE)
 dtP <- as.data.table(dfP)
+dtP[,isRowHouse := grepl("Row House",BUILDING_TYPE)]
+dtP[,isDetached := grepl("Single Detached",BUILDING_TYPE)]
 dtAM[,LEGAL_DESCRIPTION := gsub("\\s+", " ", `Legal Description`)]
 dtAM[,LEGAL_DESCRIPTION := gsub("Plan:", "Plan", LEGAL_DESCRIPTION)]
 dtAM[,LEGAL_DESCRIPTION := gsub("Block:", "Blk", LEGAL_DESCRIPTION)]
@@ -56,8 +59,6 @@ dtPM <- merge(dtP, dtAM, by="LEGAL_DESCRIPTION",all.x=TRUE, all.y=FALSE)
 dtPM[,hasAccount := !is.na(`Account Number`) & `Account Number`!=""]
 print(dtPM[,.(mean(hasAccount),.N),by=WORK_TYPE])
 print(dtPM[,table(BUILDING_TYPE)])
-dtPM[,isRowHouse := grepl("Row House",BUILDING_TYPE)]
-dtPM[,isDetached := grepl("Single Detached",BUILDING_TYPE)]
 dtPM <- dtPM[isRowHouse | isDetached]
 print(dtPM[,summary(as.numeric(lot_size)),by=.(isRowHouse)])
 
@@ -74,6 +75,72 @@ dtAMR <- merge(dtAMR, dtP, by="LEGAL_DESCRIPTION",all.x=TRUE, all.y=FALSE)
 dtAMR[,hasPermit:=!is.na(YEAR)]
 print(dtAMR[,table(hasPermit)])
 
+# Now merge with census tracts to get shares of different projects by tract, elasticities, and mean price/rent
+dfT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
+print(head(dfT))
+
+print(summary(dtPM))
+# use LATITUDE and LONGITUDE from permit data to get census tract for each permit by making a sf object and doing a spatial join
+dfP <- st_as_sf(dtP[!is.na(LONGITUDE)], coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
+dfT <- st_transform(dfT, crs = 4326)
+# Error in wk_handle.wk_wkb(wkb, s2_geography_writer(oriented = oriented,  : Loop 0 is not valid: Edge 383 has duplicate vertex with edge 841 fix this
+dfP <- st_make_valid(dfP)
+dfT <- st_make_valid(dfT)
+
+dfP <- st_join(dfP, dfT, join = st_within)
+dtP <- as.data.table(dfP)
+# get fraction that is detached vs row house by tract
+dtShare <- dtP[,.(N=.N, NDetached=sum(isDetached), NRowHouse=sum(isRowHouse)), by=.(CTNAME)]
+print(dtShare)
+
+# make a similar tract merge for the current-year assessor data, but first filter to only RS properties
+dfAM <- st_as_sf(dtAM[!is.na(Longitude)], coords = c("Longitude", "Latitude"), crs = 4326)
+dfAM <- st_make_valid(dfAM)
+dfAM <- st_join(dfAM, dfT, join = st_within)
+dtAM <- as.data.table(dfAM)
+print(head(dtAM))
+dtAM[,assessed:=gsub("\\$","",`Assessed Value`)]
+print(head(dtAM[,assessed]))
+dtAM[,assessed:=as.numeric(gsub(",","",assessed))]
+print(head(dtAM[,assessed]))
+regHedonic <- feols(log(as.numeric(assessed)) ~ log(as.numeric(lot_size)) + log(`Total Gross Area`) | CTNAME, data=dtAM)
+# data table of fixed effects DGUID with the associated DGUID value
+dtHedonic <- as.data.table(fixef(regHedonic), keep.rownames = TRUE)
+print(head(dtHedonic))
+names(dtHedonic) <- c("CTNAME","FE")
+print(summary(regHedonic))
+
+regElasticity <- feols(log(as.numeric(assessed)) ~ log(`Total Gross Area`)*i(CTNAME) | CTNAME, data=dtAM)
+# get interaction terms
+dtCoef <- as.data.table(coef(regElasticity), keep.rownames = TRUE)
+print(sum(!is.na(dtCoef$CTNAME)))
+print(summary(dtCoef))
+# do differently, just cov(log(`Total Gross Area`), log(as.numeric(assessed))) / var(log(`Total Gross Area`)) by CTNAME
+dtAM[,lotNumeric := as.numeric(lot_size)]
+dtAM[,LotNumeric := as.numeric(`Lot Size`)]
+dtAM <- dtAM[!is.na(lotNumeric) & !is.na(`Total Gross Area`) & !is.na(assessed) & lotNumeric>0 & `Total Gross Area`>0 & assessed>0]
+dtCoef <- dtAM[,.(Elasticity=cov(log(`Total Gross Area`), log(assessed))/var(log(`Total Gross Area`))), by=.(CTNAME)]
+dtCheck <- merge(dtAM,dtCoef,by="CTNAME",all.x=TRUE,all.y=TRUE)
+print(dtCheck[is.na(Elasticity)])
+print(summary(dtCoef))
+print(summary(dtAM))
+print(dtCoef)
+print(dtCoef[!is.na(Elasticity),.N])
+setkey(dtCoef, "CTNAME")
+setkey(dtHedonic, "CTNAME")
+dtCoef <- merge(dtCoef, dtHedonic, by="CTNAME", all.x=TRUE, all.y=FALSE)
+print(dtCoef)
+print(cor(dtCoef[,Elasticity], dtCoef[,FE], use="complete.obs"))
+ggplot(dtCoef, aes(x=Elasticity, y=FE)) + geom_point() + geom_smooth(method="lm") + theme_bw() + labs(title="Elasticity vs Fixed Effect by Census Tract", x="Elasticity", y="Fixed Effect")
+ggsave("text/edmontonElasticityFE.png")
+
+setkey(dtShare, "CTNAME")
+dtCoefShare <- dtCoef[dtShare, nomatch=0]
+print(cor(dtCoefShare[,.(Elasticity, FE, NRowHouse/(NDetached+NRowHouse))], use="complete.obs"))
+ggplot(dtCoefShare, aes(x=Elasticity, y=NRowHouse/(NDetached+NRowHouse))) + geom_point() + geom_smooth(method="lm") + theme_bw() + labs(title="Elasticity vs Share of Row Houses by Census Tract", x="Elasticity", y="Share of Row Houses")
+ggsave("text/edmontonElasticityShare.png")
+ggplot(dtCoefShare, aes(x=FE, y=NRowHouse/(NDetached+NRowHouse))) + geom_point() + geom_smooth(method="lm") + theme_bw() + labs(title="Fixed Effect vs Share of Row Houses by Census Tract", x="Fixed Effect", y="Share of Row Houses")
+ggsave("text/edmontonFEShare.png")
 q("no")
 
 
