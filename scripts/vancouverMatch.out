@@ -1,0 +1,284 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # vancouverMatch.R
+> # match permits to neighbourhoods, assessments, etc
+> # Objective -- correlation and plots elasticity, price, duplex share. Then do multiplex share
+> # Tom Davidoff 
+> # 08/13/26
+> 
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> # permits
+> dtP <- fread("~/DropboxExternal/dataRaw/issued-building-permitsDwellingUses.csv") # pre-filtered for dwelling uses on download from Vancouver Open Data
+> print(head(dtP))
+    PermitNumber PermitNumberCreatedDate  IssueDate PermitElapsedDays
+          <char>                  <IDat>     <IDat>             <int>
+1: BP-2023-00600              2023-02-15 2025-02-28               744
+2: BP-2024-02928              2024-08-02 2024-09-09                38
+3: BP-2023-01509              2023-05-04 2023-05-12                 8
+4: BP-2021-04733              2021-09-07 2021-10-07                30
+5: DB-2024-04710              2024-11-27 2025-05-22               176
+6: BP-2022-01592              2022-03-28 2022-06-01                65
+   ProjectValue            TypeOfWork
+          <num>                <char>
+1:      2743500          New Building
+2:            0 Salvage and Abatement
+3:        10000 Addition / Alteration
+4:        50000 Addition / Alteration
+5:       800000          New Building
+6:       500000 Addition / Alteration
+                                          Address
+                                           <char>
+1:             4271 HEATHER STREET, Vancouver, BC
+2:       707 W 27TH AVENUE, Vancouver, BC V5Z 2G5
+3:      2675 DUNDAS STREET, Vancouver, BC V5K 1R1
+4: 2965 HORLEY STREET #110, Vancouver, BC V5R 6B9
+5:     2211 WILLIAM STREET, Vancouver, BC V5L 2S5
+6:       4416 W 1ST AVENUE, Vancouver, BC V6R 4J4
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ProjectDescription
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               <char>
+1:                                                                                                                                                                                                                                                                                                                                                         High Density Housing / Commercial - New Building - To construct a 3-storey multiple dwelling, with roof deck, containing a total of seven (7) dwelling units, all over one level of underground parking having vehicular access lane. \n\nSchedule A, Schedule B (Architectural) Brian Billingsley, AIBC; \nSchedule B (Structural) Darryl J. Bowers, Struct. Eng; \nSchedule B (Mechanical and Plumbing) Charlie Smeenk, P.Eng.;\nSchedule B (Electrical) Brennan Town, P. Eng. \nSchedule B (Geotechnical) GongZuo Zhou, P.Eng. and\nSchedule D, Joel Schwartz, P.Eng. provided for this project. \n\nBuilding Review Branch Notes:\n1. This permit has been reviewed under the requirements of VBBL 2019 \n2. Entire building to be sprinklered to NFPA 13R\n\nRev #1 - M. Aminfard - March 12, 2026\nTo change the Mechanical/Plumbing Engineer on the project from Charlie Smeenk to Stephen Youden under Furano Pacific Consulting Ltd., effective October 15, 2025.
+2:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Enquiry Centre - Salvage and Abatement - This permit is for Salvage and Abatement work only to this existing Single Detached House; to be completed under the supervision of a Qualified Professional.\r\n\r\nQP:  Ramin Hamidnejad, CRSP of Kinetic OHS Services Ltd.\r\n\r\nBuilding Permit for BP-2024-02912
+3:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               Low Density Housing - Addition / Alteration - Exterior and interior alterations to extend the rear deck, relocate the rear stairs and convert the area under the rear deck to an enclosed storage in this existing single detached dwelling on this site. Scope to include validation of previous unapproved work on this site.\r\n\r\nStructural Schedule B submitted by Scott Loptson, P. Eng., 604.454.0402\r\n\r\nNote:\r\n- This is a non sprinklered building.
+4:                                                                                                                                                                                Field Review - Addition / Alteration - #110 - Floor 1\r\n\r\nInterior alterations only t provide improvements to this unit (110) in this existing multiple dwelling building on this site.\r\n\r\nScope of work:  Deconstruct portion of interior wall. Kitchen reno. ensuite reno. Electrical and plumbing to suit.\r\n\r\nNote to applicant: The services of a structural engineer may be required, based upon site inspection by the District Building Inspector.\r\nA Sprinkler permit may be required, as determined by the District Building Inspector.  \r\n\r\nEnergy checklist is currently no longer required with your Building Permit (BP) application. Some supporting documents are still required at BP stage, specifically Envelope and HVAC, if applicable. Service Water Heating and Lighting supporting documents, if applicable, must be submitted with your related Trades permits (e.g. electrical and plumbing).  All energy upgrades will be checked during inspections stage.  It is the applicant’s responsibility to identify and note all required upgrades including energy upgrades on their BP drawings at BP stage.
+5: Low Density Housing - New Building - To construct a 2.5 storey Duplex ($800,000) with a detached accessory building (garage) at the rear providing 2 parking spaces, having vehicular access from the lane.\r\n\r\n\r\n1.\\tEntire building to be sprinklered 2 x NFPA 13D \r\n2.\\tExternal mechanical unit – Exterior component located in front yard\r\n3.\\tSchedule B: (Alan Prahalad) P. Eng (604-831-1431) Structural and Geotechnical\r\n4.\\tHPO: Residential Builder- Modern Styles Home Ltd.\r\n\r\nAddress information:\r\n\r\n\r\nFront Unit (south) -\\t\\t\\t\r\n#1-2211 William St - Dwelling Unit (south side 1st-3rd floors),\\t\\t\\t\r\n\\t\\t\\t\r\nBack Unit (north) -\\t\\t\\t\r\n#2-2211 William St - Dwelling Unit (north side 1st-3rd floors).\\t\r\n\r\nAddress and suite numbers assigned as per approved plans for Fire and Emergency response. The address number is to be posted on the building to be visible from the street and the suite numbers are to be posted at the suite entries in accordance with the Building By-law prior to final inspection.\r\n\\t\\t\r\n\r\nNote: This is a 2 storey building pursuant to the Zoning and Development By-Law\r\n\r\n***This permit is issued under the VBBL 2019, with updated energy requirements as per bylaw # 12997 effective Jan 01, 2022.***
+6:                                                                                                                                                                                                                                                                                                                                                                                                                                                                 Field Review - Addition / Alteration - Interior alterations to repair fire damage and to remove and restore all work without permit on this site to its last approved conditions.\r\n\r\nScope of work includes changing the second floor laundry room to an ensuite bathroom and infilling one of the doors to the existing second floor north-west bathroom. \r\n\r\nOk for field review per J. Zhang Mar 28/22\r\n\r\nNotes:\r\n- Schedule B, Structural, Scott Ash-Anderson, P.Eng, 604-228-0518. \r\n- This building is sprinklered. DBI to determine on site if a separate sprinkler permit is required.\r\n- REUP Submitted by Ke Jiang, 604-562-0387.\r\nScope of work to include energy upgrade in accordance with Article 11.2.1.4 of the 2019 Vancouver Building By-law and as per the Energy Efficiency Upgrade Details noted in the Energuide Report.
+                                PermitCategory
+                                        <char>
+1:                                            
+2:                                            
+3:                                            
+4: Renovation - Residential - Lower Complexity
+5:             New Build - Low Density Housing
+6: Renovation - Residential - Lower Complexity
+                                            Applicant
+                                               <char>
+1:                    Ammar Bajwa DBA: A1 Ideal Homes
+2:                    Ammar Bajwa DBA: A1 Ideal Homes
+3:                                   marek lesniewski
+4: ADEPT Engineering Ltd. DBA: ADEPT Engineering Ltd.
+5:         Jasbir Sekhon DBA: Modern Style Homes Ltd.
+6:               Alex Laos DBA: Intern Architect AIBC
+                                     ApplicantAddress   PropertyUse
+                                               <char>        <char>
+1:                16165 111a st\r\nSurrey, BC  V4N4T1 Dwelling Uses
+2:                16165 111a st\r\nSurrey, BC  V4N4T1 Dwelling Uses
+3:            2675 Dundas St\r\nVancouver, BC  V5R1R1 Dwelling Uses
+4:      1514 Marine Dr\r\nWest Vancouver, BC  V7V 1H8 Dwelling Uses
+5:            6458 Malvern Ave\r\nBurnaby, BC  V5E3G1 Dwelling Uses
+6: #360 – 1650 West 2nd Ave\r\nVancouver, BC  V6J 1H4 Dwelling Uses
+     SpecificUseCategory                        BuildingContractor
+                  <char>                                    <char>
+1:     Multiple Dwelling P Square Engineering And Construction Ltd
+2: Single Detached House                                          
+3: Single Detached House                                          
+4:     Multiple Dwelling                                          
+5:                Duplex                    Modern Styles Home Ltd
+6: Single Detached House                     Keystone Projects Ltd
+                                   BuildingContractorAddress IssueYear
+                                                      <char>     <int>
+1: 602 W HASTINGS ST  \r\nUnit 402\r\nVancouver, BC  V6B 1P2      2025
+2:                                                                2024
+3:                                                                2023
+4:                                                                2021
+5:                                                                2025
+6:      4907 Chisholm St  \r\nUnit 220\r\nDelta, BC  V4K 2K6      2022
+          GeoLocalArea
+                <char>
+1:        South Cambie
+2:        South Cambie
+3:    Hastings-Sunrise
+4: Renfrew-Collingwood
+5:  Grandview-Woodland
+6:     West Point Grey
+                                                                 Geom YearMonth
+                                                               <char>    <char>
+1: {""coordinates"": [-123.1204926, 49.2473731], ""type"": ""Point""}   2025-02
+2: {""coordinates"": [-123.1206837, 49.2473735], ""type"": ""Point""}   2024-09
+3: {""coordinates"": [-123.0501588, 49.2850388], ""type"": ""Point""}   2023-05
+4:   {""coordinates"": [-123.04458, 49.2392977], ""type"": ""Point""}   2021-10
+5: {""coordinates"": [-123.0595101, 49.2741246], ""type"": ""Point""}   2025-05
+6: {""coordinates"": [-123.2064534, 49.2718579], ""type"": ""Point""}   2022-06
+               geo_point_2d
+                     <char>
+1: 49.2473731, -123.1204926
+2: 49.2473735, -123.1206837
+3: 49.2850388, -123.0501588
+4:   49.2392977, -123.04458
+5: 49.2741246, -123.0595101
+6: 49.2718579, -123.2064534
+> 
+> # grab zoning and census tracts to make spatial
+> dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson") # vancouver_zoning.geojson
+Reading layer `vancouver_zoning' from data source 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/vancouver_zoning.geojson' 
+  using driver `GeoJSON'
+Simple feature collection with 1590 features and 6 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -123.2248 ymin: 49.19952 xmax: -123.0233 ymax: 49.31617
+Geodetic CRS:  WGS 84
+> print(head(dgZ))
+Simple feature collection with 6 features and 6 fields
+Geometry type: POLYGON
+Dimension:     XY
+Bounding box:  xmin: -123.1249 ymin: 49.21592 xmax: -123.0916 ymax: 49.29136
+Geodetic CRS:  WGS 84
+  object_id     zoning_classification zoning_category zoning_district
+1    439926                Commercial               C             C-1
+2    439927                Commercial               C             C-2
+3    439930           Historical Area              HA            HA-3
+4    439935               Residential              RM            RM-2
+5    439948 Comprehensive Development             CWD             CWD
+6    439949 Comprehensive Development           BCPED           BCPED
+  cd_1_number                                              geo_point_2d
+1        <NA> { "lon": -123.11734153855396, "lat": 49.216436796428134 }
+2        <NA>  { "lon": -123.11571232676653, "lat": 49.23470110220218 }
+3        <NA> { "lon": -123.12121379903199, "lat": 49.275621887234252 }
+4        <NA>  { "lon": -123.09445718436889, "lat": 49.23037528699075 }
+5        <NA> { "lon": -123.10585081087413, "lat": 49.287203302838662 }
+6        <NA> { "lon": -123.12069930027863, "lat": 49.270525694692253 }
+                        geometry
+1 POLYGON ((-123.1177 49.2159...
+2 POLYGON ((-123.1153 49.2344...
+3 POLYGON ((-123.1188 49.2752...
+4 POLYGON ((-123.0973 49.2311...
+5 POLYGON ((-123.1134 49.2862...
+6 POLYGON ((-123.1198 49.2710...
+> dgZ <- dgZ[dgZ$zoning_district=="R1-1",]
+> 
+> # use data below on dtP variables to convert to sf with key PermitNumber -- just export geo variables and PermitNumber
+> dtP[, c("lat", "lon") := tstrsplit(geo_point_2d, ",\\s*", type.convert = TRUE)]
+> 
+> dtPgeo <- st_as_sf(dtP[!is.na(lat),.(SpecificUseCategory,PermitNumber,lat,lon)], coords = c("lon", "lat"), crs = 4326)
+> print(head(dtPgeo))
+Simple feature collection with 6 features and 2 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -123.2065 ymin: 49.2393 xmax: -123.0446 ymax: 49.28504
+Geodetic CRS:  WGS 84
+    SpecificUseCategory  PermitNumber                   geometry
+1     Multiple Dwelling BP-2023-00600 POINT (-123.1205 49.24737)
+2 Single Detached House BP-2024-02928 POINT (-123.1207 49.24737)
+3 Single Detached House BP-2023-01509 POINT (-123.0502 49.28504)
+4     Multiple Dwelling BP-2021-04733  POINT (-123.0446 49.2393)
+5                Duplex DB-2024-04710 POINT (-123.0595 49.27412)
+6 Single Detached House BP-2022-01592 POINT (-123.2065 49.27186)
+> # merge as point within shapes to dgZ
+> dtPgeo <- st_join(dtPgeo, dgZ, join = st_within) # spatial join to zoning shapes
+> print(head(dtPgeo))
+Simple feature collection with 6 features and 8 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -123.2065 ymin: 49.2393 xmax: -123.0446 ymax: 49.28504
+Geodetic CRS:  WGS 84
+    SpecificUseCategory  PermitNumber object_id zoning_classification
+1     Multiple Dwelling BP-2023-00600      <NA>                  <NA>
+2 Single Detached House BP-2024-02928      <NA>                  <NA>
+3 Single Detached House BP-2023-01509    440207 Residential Inclusive
+4     Multiple Dwelling BP-2021-04733      <NA>                  <NA>
+5                Duplex DB-2024-04710      <NA>                  <NA>
+6 Single Detached House BP-2022-01592    440267 Residential Inclusive
+  zoning_category zoning_district cd_1_number
+1            <NA>            <NA>        <NA>
+2            <NA>            <NA>        <NA>
+3              R1            R1-1        <NA>
+4            <NA>            <NA>        <NA>
+5            <NA>            <NA>        <NA>
+6              R1            R1-1        <NA>
+                                               geo_point_2d
+1                                                      <NA>
+2                                                      <NA>
+3 { "lon": -123.04981996163599, "lat": 49.286953038534001 }
+4                                                      <NA>
+5                                                      <NA>
+6 { "lon": -123.13291589602453, "lat": 49.247966210253324 }
+                    geometry
+1 POINT (-123.1205 49.24737)
+2 POINT (-123.1207 49.24737)
+3 POINT (-123.0502 49.28504)
+4  POINT (-123.0446 49.2393)
+5 POINT (-123.0595 49.27412)
+6 POINT (-123.2065 49.27186)
+> print(table(dtPgeo$zoning_district)) # check zoning districts
+
+ R1-1 
+23105 
+> write.table(table(is.na(dtPgeo$zoning_district),dtPgeo$SpecificUseCategory),"text/sanityCheckVancouverZoning.txt") # check zoning districts
+> dtPgeo$SpecificUseCategory <- NULL
+> dtPgeo <- dtPgeo[!is.na(dtPgeo$zoning_district),] # drop NA zoning districts
+> 
+> # census tract shapes
+> dfT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
+Reading layer `lct_000b21a_e' from data source 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
+  using driver `ESRI Shapefile'
+Simple feature collection with 6247 features and 5 fields
+Geometry type: MULTIPOLYGON
+Dimension:     XY
+Bounding box:  xmin: 3912489 ymin: 687427.7 xmax: 8996148 ymax: 2810992
+Projected CRS: NAD83 / Statistics Canada Lambert
+> dfT <- st_transform(dfT, crs = 4326)
+> dfT <- st_make_valid(dfT)
+> 
+> 
+> dtPgeo <- st_join(dtPgeo, dfT, join = st_within) # spatial join to census tract shapes
+> print(head(dtPgeo))
+Simple feature collection with 6 features and 12 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -123.2065 ymin: 49.22515 xmax: -123.0502 ymax: 49.28504
+Geodetic CRS:  WGS 84
+    PermitNumber object_id zoning_classification zoning_category
+3  BP-2023-01509    440207 Residential Inclusive              R1
+6  BP-2022-01592    440267 Residential Inclusive              R1
+9  BP-2021-06423    440267 Residential Inclusive              R1
+10 DB-2021-03511    440251 Residential Inclusive              R1
+11 DB-2021-06422    440267 Residential Inclusive              R1
+12 DB-2021-01579    440267 Residential Inclusive              R1
+   zoning_district cd_1_number
+3             R1-1        <NA>
+6             R1-1        <NA>
+9             R1-1        <NA>
+10            R1-1        <NA>
+11            R1-1        <NA>
+12            R1-1        <NA>
+                                                geo_point_2d      CTUID
+3  { "lon": -123.04981996163599, "lat": 49.286953038534001 } 9330053.01
+6  { "lon": -123.13291589602453, "lat": 49.247966210253324 } 9330044.00
+9  { "lon": -123.13291589602453, "lat": 49.247966210253324 } 9330013.03
+10 { "lon": -123.04258063114891, "lat": 49.258424918417361 } 9330032.02
+11 { "lon": -123.13291589602453, "lat": 49.247966210253324 } 9330013.03
+12 { "lon": -123.13291589602453, "lat": 49.247966210253324 } 9330018.01
+                 DGUID  CTNAME LANDAREA PRUID                   geometry
+3  2021S05079330053.01 0053.01   2.6249    59 POINT (-123.0502 49.28504)
+6  2021S05079330044.00 0044.00   2.8772    59 POINT (-123.2065 49.27186)
+9  2021S05079330013.03 0013.03   0.6239    59 POINT (-123.0863 49.22515)
+10 2021S05079330032.02 0032.02   0.6622    59 POINT (-123.0747 49.25512)
+11 2021S05079330013.03 0013.03   0.6239    59 POINT (-123.0863 49.22515)
+12 2021S05079330018.01 0018.01   0.9026    59 POINT (-123.0596 49.23585)
+> 
+> 
+> q("no")
+> proc.time()
+   user  system elapsed 
+  6.056   0.176   6.176 

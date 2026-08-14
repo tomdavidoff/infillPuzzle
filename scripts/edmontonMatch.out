@@ -19,7 +19,6 @@ Type 'q()' to quit R.
 
 > # edmontonMatch.R
 > # Match building permits to assessment
-> # Strategy: do 2026 and late 2025 permits so old address still valid maybe
 > # Tom Davidoff
 > # 07/16/26
 > 
@@ -31,7 +30,6 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 Loading required package: DBI
 > library(ggplot2)
 > 
-> # Compare assessor historical and current data to verify that current lot size is always historical lot size
 > assessorHistoricalPath <- "~/DropboxExternal/dataRaw/edmonton/Property_Assessment_Data_(Historical)_20260611.csv"
 > assessorCurrentPath <- "~/DropboxExternal/dataRaw/edmonton/Property_Information_(Current_Calendar_Year)_20260612.csv"
 > 
@@ -41,111 +39,8 @@ Loading required package: DBI
 > setkey(dtAH, "Account Number")
 > setkey(dtAC, "Account Number")
 > dtAM <- dtAH[dtAC]
-> print(head(dtAM))
-Key: <Account Number>
-   Lot Size Account Number Zoning    Legal Description Latitude Longitude
-     <char>          <int> <char>               <char>    <num>     <num>
-1: 905.4880        1003904    RF1 Plan: 4622NY  Lot: 5 53.48529 -113.6312
-2: 905.4880        1003904     RR Plan: 4622NY  Lot: 5 53.48529 -113.6312
-3: 905.4880        1003904    RF1 Plan: 4622NY  Lot: 5 53.48529 -113.6312
-4: 905.4880        1003904     RR Plan: 4622NY  Lot: 5 53.48529 -113.6312
-5: 905.4880        1003904    RF1 Plan: 4622NY  Lot: 5 53.48529 -113.6312
-6: 905.4880        1003904     RR Plan: 4622NY  Lot: 5 53.48529 -113.6312
-   Assessment Year Assessed Value lot_size zoning    legal_description
-             <int>         <char>   <char> <char>               <char>
-1:            2023  $1,046,500.00  905.488     RS Plan: 4622NY  Lot: 5
-2:            2012    $346,500.00  905.488     RS Plan: 4622NY  Lot: 5
-3:            2020  $1,003,500.00  905.488     RS Plan: 4622NY  Lot: 5
-4:            2015    $358,000.00  905.488     RS Plan: 4622NY  Lot: 5
-5:            2018  $1,042,500.00  905.488     RS Plan: 4622NY  Lot: 5
-6:            2014    $325,500.00  905.488     RS Plan: 4622NY  Lot: 5
-   i.Latitude i.Longitude year_built Total Gross Area
-        <num>       <num>      <int>            <num>
-1:   53.48523   -113.6312       2017            201.7
-2:   53.48523   -113.6312       2017            201.7
-3:   53.48523   -113.6312       2017            201.7
-4:   53.48523   -113.6312       2017            201.7
-5:   53.48523   -113.6312       2017            201.7
-6:   53.48523   -113.6312       2017            201.7
-> print(summary(dtAM[,as.numeric(lot_size)==as.numeric(`Lot Size`)]))
-   Mode   FALSE    TRUE    NA's 
-logical  175675 1772277   62725 
-Warning messages:
-1: In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
-2: In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
-> print(summary(dtAM[,legal_description==`Legal Description`]))
-   Mode   FALSE    TRUE    NA's 
-logical    2667 2007788     222 
-> print(dtAM[legal_description!=`Legal Description`,.(legal_description,`Legal Description`)])
-                                                                                                                                                                                                       legal_description
-                                                                                                                                                                                                                  <char>
-   1:                                                                                                                                                    Plan: 4697TR  Block: 2  Lot: 1 / Plan: 4697TR  Block: 2  Lot: 2
-   2:                                                                                                                                                    Plan: 4697TR  Block: 2  Lot: 1 / Plan: 4697TR  Block: 2  Lot: 2
-   3:                                                                                                                                                    Plan: 4697TR  Block: 2  Lot: 1 / Plan: 4697TR  Block: 2  Lot: 2
-   4:                                                                                                                                                    Plan: 4697TR  Block: 2  Lot: 1 / Plan: 4697TR  Block: 2  Lot: 2
-   5:                                                                                                                                                    Plan: 4697TR  Block: 2  Lot: 1 / Plan: 4697TR  Block: 2  Lot: 2
-  ---                                                                                                                                                                                                                   
-2663:                                                                                                                                              Plan: 2320689  Block: 25  Lot: 2A / Plan: 2320689  Block: 25  Lot: 2B
-2664:                                                                                                                                              Plan: 2320689  Block: 25  Lot: 2A / Plan: 2320689  Block: 25  Lot: 2B
-2665: Plan: 6090U  Block: 149  Lot: 29 / Plan: 6090U  Block: 149  Lot: 29-31 / Plan: 6090U  Block: 149  Lot: 30 / Plan: 6090U  Block: 149  Lot: 31 / Plan: 6090U  Block: 149  Lot: 28 / Plan: 6090U  Block: 149  Lot: 29
-2666:                                                                                                                                              Plan: 2420791  Block: 12  Lot: 1A / Plan: 2420791  Block: 12  Lot: 1B
-2667:                                                                                                                                              Plan: 2420791  Block: 12  Lot: 1A / Plan: 2420791  Block: 12  Lot: 1B
-                                                                                                                                                                                             Legal Description
-                                                                                                                                                                                                        <char>
-   1:                                                                                                                                                                          Plan: 4697TR  Block: 2  Lot: 1U
-   2:                                                                                                                                                                          Plan: 4697TR  Block: 2  Lot: 1U
-   3:                                                                                                                                                                          Plan: 4697TR  Block: 2  Lot: 1U
-   4:                                                                                                                                                                          Plan: 4697TR  Block: 2  Lot: 1U
-   5:                                                                                                                                                                          Plan: 4697TR  Block: 2  Lot: 1U
-  ---                                                                                                                                                                                                         
-2663:                                                                                                                                                                        Plan: 2320689  Block: 25  Lot: 2A
-2664:                                                                                                                                                                        Plan: 2320689  Block: 25  Lot: 2B
-2665: Plan: 6090U  Block: 149  Lot: 29 / Plan: 6090U  Block: 149  Lot: 29-31 / Plan: 6090U  Block: 149  Lot: 30 / Plan: 6090U  Block: 149  Lot: 31 / Plan: 6090U  Block: 149  Lot: 28 / Plan: 6090U  Block: 14
-2666:                                                                                                                                                                        Plan: 2420791  Block: 12  Lot: 1A
-2667:                                                                                                                                                                        Plan: 2420791  Block: 12  Lot: 1B
-> print(dtAM[as.numeric(lot_size)!=as.numeric(`Lot Size`),.(lot_size,`Lot Size`)])
-        lot_size Lot Size
-          <char>   <char>
-     1:  905.488 905.0000
-     2:  570.463 570.0000
-     3:  478.983 479.0000
-     4:  478.973 479.0000
-     5:   478.94 479.0000
-    ---                  
-175671:  347.947 348.0000
-175672:  278.109 278.0000
-175673:  277.642 278.0000
-175674:  440.246 440.0000
-175675:  496.233 496.0000
-Warning messages:
-1: In eval(.massagei(isub), x, ienv) : NAs introduced by coercion
-2: In eval(.massagei(isub), x, ienv) : NAs introduced by coercion
-> print(dtAM[as.numeric(lot_size)!=as.numeric(`Lot Size`),summary(as.numeric(lot_size)-as.numeric(`Lot Size`))])
-     Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
--574.1980   -0.2640    0.0020   -0.4281    0.2780  359.8650 
-Warning messages:
-1: In eval(.massagei(isub), x, ienv) : NAs introduced by coercion
-2: In eval(.massagei(isub), x, ienv) : NAs introduced by coercion
-> print(dtAM[as.numeric(lot_size)!=as.numeric(`Lot Size`),quantile(abs(as.numeric(lot_size)-as.numeric(`Lot Size`)),probs=c(.9,.95,.975,.99),na.rm=TRUE)])
-  90%   95% 97.5%   99% 
-0.652 1.448 2.510 4.907 
-Warning messages:
-1: In eval(.massagei(isub), x, ienv) : NAs introduced by coercion
-2: In eval(.massagei(isub), x, ienv) : NAs introduced by coercion
-> print(dtAM[as.numeric(lot_size)!=as.numeric(`Lot Size`) & legal_description!=`Legal Description`,quantile(abs(as.numeric(lot_size)-as.numeric(`Lot Size`)),probs=c(.9,.95,.975,.99),na.rm=TRUE)])
-    90%     95%   97.5%     99% 
- 18.879  75.754 222.859 222.859 
-Warning messages:
-1: In eval(.massagei(isub), x, ienv) : NAs introduced by coercion
-2: In eval(.massagei(isub), x, ienv) : NAs introduced by coercion
-> print(dtAM[as.numeric(lot_size)!=as.numeric(`Lot Size`) & legal_description!=`Legal Description`,quantile((as.numeric(lot_size)/as.numeric(`Lot Size`)),probs=c(.001,.01,.05,.95,.99,.999),na.rm=TRUE)])
-     0.1%        1%        5%       95%       99%     99.9% 
-0.7430632 0.7430632 0.8420880 1.0222592 1.4000449 1.4000449 
-Warning messages:
-1: In eval(.massagei(isub), x, ienv) : NAs introduced by coercion
-2: In eval(.massagei(isub), x, ienv) : NAs introduced by coercion
 > 
-> # now permit match quality
+> # permit match
 > permitPath <- "~/DropboxExternal/dataRaw/edmonton/edmontonBuildingPermits.csv"
 > con <- dbConnect(duckdb())
 > q <- sprintf(R"(
@@ -161,263 +56,21 @@ Warning messages:
 > dtP <- as.data.table(dfP)
 > dtP[,isRowHouse := grepl("Row House",BUILDING_TYPE)]
 > dtP[,isDetached := grepl("Single Detached",BUILDING_TYPE)]
+> 
+> # only new construction or construction value above critical percentile of new building types
+> QCRIT <- .25
+> qNew <- dtP[isRowHouse | isDetached,quantile(CONSTRUCTION_VALUE/FLOOR_AREA,probs=c(QCRIT),na.rm=TRUE)]
+> dtP <- dtP[isRowHouse | isDetached | (CONSTRUCTION_VALUE/FLOOR_AREA)>=qNew]
+> 
 > dtAM[,LEGAL_DESCRIPTION := gsub("\\s+", " ", `Legal Description`)]
 > dtAM[,LEGAL_DESCRIPTION := gsub("Plan:", "Plan", LEGAL_DESCRIPTION)]
 > dtAM[,LEGAL_DESCRIPTION := gsub("Block:", "Blk", LEGAL_DESCRIPTION)]
 > dtAM[,LEGAL_DESCRIPTION := gsub("Lot:", "Lot", LEGAL_DESCRIPTION)]
-> dtAM[,minYear:=min(`Assessment Year`),by=`Account Number`]
 > dtAM[,maxYear:=max(`Assessment Year`),by=`Account Number`]
-> print(summary(dtAM[,.(minYear,maxYear)]))
-    minYear        maxYear    
- Min.   :2012   Min.   :2025  
- 1st Qu.:2012   1st Qu.:2025  
- Median :2012   Median :2025  
- Mean   :2012   Mean   :2025  
- 3rd Qu.:2012   3rd Qu.:2025  
- Max.   :2025   Max.   :2025  
- NA's   :222    NA's   :222   
-> dtAM <- dtAM[`Assessment Year`==maxYear] # pretty much all good for lot size per the above analysis. FORMALIZE THIS
+> dtAM <- dtAM[`Assessment Year`==maxYear] # lot size current==historical for ~all accounts. FORMALIZE THIS
 > 
 > dtPM <- merge(dtP, dtAM, by="LEGAL_DESCRIPTION",all.x=TRUE, all.y=FALSE)
-> dtPM[,hasAccount := !is.na(`Account Number`) & `Account Number`!=""]
-> print(dtPM[,.(mean(hasAccount),.N),by=WORK_TYPE])
-                              WORK_TYPE        V1     N
-                                 <char>     <num> <int>
- 1:                 (01) Building - New 0.9293943  6076
- 2:                     (99) Demolition 0.9330958  5052
- 3:                                <NA> 0.9227867  8483
- 4:           (03) Interior Alterations 0.9474672  5330
- 5:                  (11) Remove Suites 0.9565217    46
- 6:           (03) Exterior Alterations 0.9502488  1809
- 7:                  (03) Deck Attached 0.9722700  4652
- 8:   (08) Add Suites to Multi-Dwelling 0.8260870    46
- 9:                       (02) Addition 0.9624820  2772
-10:                            (01) New 0.6666667    72
-11: (10) Convert Residential to Non-Res 0.9827586   174
-12:                        (14) Hot Tub 0.9752187   686
-13:                     (04) Foundation 0.9047619    63
-14:                  (14) Swimming Pool 1.0000000    27
-15:  (07) Add Suites to Single Dwelling 0.9657444  2277
-16:         (98) Move Building OFF Site 0.7333333    30
-17:                (11) Remove Suite(s) 1.0000000     5
-18:                      (05) Structure 0.6250000     8
-19:                     (04) Excavation 1.0000000     4
-20:        (15) Attached Garage/Carport 0.9000000    30
-21:           (04) Footing & Foundation 0.6000000     5
-22:       (12) Move Building on to Site 0.5000000     2
-23:           (12) Move Building OnSite 0.0000000     2
-24: (09) Convert Non-Res to Residential 0.7500000     4
-                              WORK_TYPE        V1     N
-                                 <char>     <num> <int>
-> print(dtPM[,table(BUILDING_TYPE)])
-BUILDING_TYPE
-                         Apartment (310) 
-                                      16 
-                   Apartment Condo (315) 
-                                       1 
-                  Apartment Condos (315) 
-                                       5 
-                        Apartments (310) 
-                                      55 
-                    Backyard House (110) 
-                                     767 
-             Clinics, Health Units (642) 
-                                       1 
-          Day Cares, Nursing Homes (650) 
-                                     209 
-                     Detached Deck (020) 
-                                      43 
-                   Detached Garage (010) 
-                                    3532 
-               Detached Greenhouse (030) 
-                                       3 
-          Detached Misc. Structure (090) 
-                                     662 
-                     Detached Shed (040) 
-                                      56 
-                            Duplex (210) 
-                                      76 
-                      Duplex Condo (215) 
-                                       1 
-                Elementary Schools (620) 
-                                       3 
-                          Hoarding (910) 
-                                       3 
-     Indoor Recreational Buildings (560) 
-                                       4 
-   Law Enforcement/Emergency Svcs. (612) 
-                                       2 
-Maintenance Buildings incl Hangars (450) 
-                                       1 
-           Manufacturing Buildings (430) 
-                                       3 
-                         Mixed Use (522) 
-                                       4 
-                       Mobile Home (130) 
-                                      23 
-                  Office Buildings (520) 
-                                      11 
-                    Office Complex (522) 
-                                       1 
-               Other Accommodation (534) 
-                                      66 
-                Other Accomodation (534) 
-                                       7 
-    Outdoor Recreational Buildings (562) 
-                                       2 
-               Religious Buildings (660) 
-                                      96 
-              Restaurants and Bars (540) 
-                                       2 
-                  Retail and Shops (510) 
-                                       9 
-                         Row House (330) 
-                                    1108 
-                   Row House Condo (335) 
-                                      26 
-                  Row House Condos (335) 
-                                       4 
-                        Row Houses (330) 
-                                      26 
-                     Semi Detached House 
-                                       1 
-               Semi Detached House (210) 
-                                       5 
-               Semi-Detached Condo (215) 
-                                      29 
-               Semi-Detached House (210) 
-                                    3999 
-  Service Stations, Repair Garages (572) 
-                                       2 
-             Single Detached Condo (115) 
-                                      45 
-             Single Detached House (110) 
-                                   26113 
-                      Single House (110) 
-                                      33 
-     Storage Buildings, Warehouses (460) 
-                                      20 
-               Temporary Structure (099) 
-                                       3 
-              Temporary Structures (999) 
-                                       5 
-                 Utility Buildings (480) 
-                                       6 
 > dtPM <- dtPM[isRowHouse | isDetached]
-> print(dtPM[,summary(as.numeric(lot_size)),by=.(isRowHouse)])
-    isRowHouse               V1
-        <lgcl> <summaryDefault>
- 1:      FALSE            10.12
- 2:      FALSE           487.35
- 3:      FALSE           569.70
- 4:      FALSE           573.63
- 5:      FALSE           657.65
- 6:      FALSE           999.87
- 7:      FALSE          2180.00
- 8:       TRUE            10.12
- 9:       TRUE           606.69
-10:       TRUE           682.66
-11:       TRUE           656.63
-12:       TRUE           696.67
-13:       TRUE           995.43
-14:       TRUE           193.00
-Warning messages:
-1: In summary(as.numeric(lot_size)) : NAs introduced by coercion
-2: In summary(as.numeric(lot_size)) : NAs introduced by coercion
-> 
-> 
-> dtR <- dtPM[grepl("Row House",BUILDING_TYPE)]
-> 
-> print(dtR[YEAR>=2022 & grepl("(01)",WORK_TYPE),mean(year_built>=YEAR,na.rm=TRUE),by=YEAR])
-    YEAR        V1
-   <num>     <num>
-1:  2025 0.8968610
-2:  2024 1.0000000
-3:  2026 0.0000000
-4:  2022 0.9666667
-5:  2023 0.9523810
-> print(dtPM[YEAR>=2022 & grepl("(01)",WORK_TYPE),mean(year_built>=YEAR,na.rm=TRUE),by=YEAR])
-    YEAR        V1
-   <num>     <num>
-1:  2025 0.8950276
-2:  2022 0.9723757
-3:  2024 0.9555556
-4:  2023 0.8939394
-5:  2026 0.0000000
-> print(head(dtR))
-Key: <LEGAL_DESCRIPTION>
-                  LEGAL_DESCRIPTION PERMIT_DATE PERMIT_NUMBER  YEAR
-                             <char>      <Date>        <char> <num>
-1: Condo Common Area (Plan 0024087)  2025-03-05          <NA>  2025
-2: Condo Common Area (Plan 0725961)  2025-03-13          <NA>  2025
-3: Condo Common Area (Plan 0725961)  2025-12-04          <NA>  2025
-4: Condo Common Area (Plan 0825358)  2009-08-27          <NA>  2009
-5: Condo Common Area (Plan 0825358)  2010-11-29          <NA>  2010
-6: Condo Common Area (Plan 0825358)  2016-06-22          <NA>  2016
-           BUILDING_TYPE                 WORK_TYPE CONSTRUCTION_VALUE
-                  <char>                    <char>              <num>
-1:       Row House (330)                      <NA>             201831
-2:       Row House (330)                      <NA>                200
-3:       Row House (330)                      <NA>              30000
-4:       Row House (330) (03) Interior Alterations              13151
-5: Row House Condo (335)        (03) Deck Attached               2000
-6: Row House Condo (335)        (03) Deck Attached               5000
-   FLOOR_AREA UNITS_ADDED              ADDRESS ZONING NEIGHBOURHOOD LATITUDE
-        <num>       <num>               <char> <char>        <char>    <num>
-1:         NA          NA  9306 - 91 STREET NW     RS   BONNIE DOON 53.52917
-2:         NA          NA 7106 - 127 AVENUE NW     RS        BALWIN 53.58527
-3:         NA          NA 7106 - 127 AVENUE NW     RS        BALWIN 53.58527
-4:        278           0  8733 - 83 AVENUE NW     RS   BONNIE DOON 53.51875
-5:        120           0  8735 - 83 AVENUE NW     RS   BONNIE DOON 53.51875
-6:        156           0  8733 - 83 AVENUE NW     RS   BONNIE DOON 53.51875
-   LONGITUDE isRowHouse isDetached Lot Size Account Number Zoning
-       <num>     <lgcl>     <lgcl>   <char>          <int> <char>
-1: -113.4673       TRUE      FALSE     <NA>             NA   <NA>
-2: -113.4511       TRUE      FALSE     <NA>             NA   <NA>
-3: -113.4511       TRUE      FALSE     <NA>             NA   <NA>
-4: -113.4635       TRUE      FALSE     <NA>             NA   <NA>
-5: -113.4635       TRUE      FALSE     <NA>             NA   <NA>
-6: -113.4635       TRUE      FALSE     <NA>             NA   <NA>
-   Legal Description Latitude Longitude Assessment Year Assessed Value lot_size
-              <char>    <num>     <num>           <int>         <char>   <char>
-1:              <NA>       NA        NA              NA           <NA>     <NA>
-2:              <NA>       NA        NA              NA           <NA>     <NA>
-3:              <NA>       NA        NA              NA           <NA>     <NA>
-4:              <NA>       NA        NA              NA           <NA>     <NA>
-5:              <NA>       NA        NA              NA           <NA>     <NA>
-6:              <NA>       NA        NA              NA           <NA>     <NA>
-   zoning legal_description i.Latitude i.Longitude year_built Total Gross Area
-   <char>            <char>      <num>       <num>      <int>            <num>
-1:   <NA>              <NA>         NA          NA         NA               NA
-2:   <NA>              <NA>         NA          NA         NA               NA
-3:   <NA>              <NA>         NA          NA         NA               NA
-4:   <NA>              <NA>         NA          NA         NA               NA
-5:   <NA>              <NA>         NA          NA         NA               NA
-6:   <NA>              <NA>         NA          NA         NA               NA
-   minYear maxYear hasAccount
-     <int>   <int>     <lgcl>
-1:      NA      NA      FALSE
-2:      NA      NA      FALSE
-3:      NA      NA      FALSE
-4:      NA      NA      FALSE
-5:      NA      NA      FALSE
-6:      NA      NA      FALSE
-> print(dtR[year_built>YEAR,summary(abs(as.numeric(lot_size)-as.numeric(`Lot Size`)),na.rm=TRUE)])
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
- 0.0000  0.0000  0.0000  0.0005  0.0000  0.0460       1 
-Warning messages:
-1: In summary(abs(as.numeric(lot_size) - as.numeric(`Lot Size`)), na.rm = TRUE) :
-  NAs introduced by coercion
-2: In summary(abs(as.numeric(lot_size) - as.numeric(`Lot Size`)), na.rm = TRUE) :
-  NAs introduced by coercion
-> # reverse merge: can we find a permit for properties built starting 2023
-> dtAMR <- dtAM[year_built>=2023]
-> dtAMR <- merge(dtAMR, dtP, by="LEGAL_DESCRIPTION",all.x=TRUE, all.y=FALSE)
-> dtAMR[,hasPermit:=!is.na(YEAR)]
-> print(dtAMR[,table(hasPermit)])
-hasPermit
-FALSE  TRUE 
-  172  2521 
 > 
 > # Now merge with census tracts to get shares of different projects by tract, elasticities, and mean price/rent
 > dfT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
@@ -429,337 +82,41 @@ Geometry type: MULTIPOLYGON
 Dimension:     XY
 Bounding box:  xmin: 3912489 ymin: 687427.7 xmax: 8996148 ymax: 2810992
 Projected CRS: NAD83 / Statistics Canada Lambert
-> print(head(dfT))
-Simple feature collection with 6 features and 5 fields
-Geometry type: MULTIPOLYGON
-Dimension:     XY
-Bounding box:  xmin: 7172098 ymin: 860422.8 xmax: 8980685 ymax: 2153697
-Projected CRS: NAD83 / Statistics Canada Lambert
-       CTUID               DGUID  CTNAME LANDAREA PRUID
-1 5370001.08 2021S05075370001.08 0001.08   1.6383    35
-2 0010002.00 2021S05070010002.00 0002.00   1.9638    10
-3 5370001.09 2021S05075370001.09 0001.09   1.9699    35
-4 5370120.02 2021S05075370120.02 0120.02  76.9650    35
-5 0010006.00 2021S05070010006.00 0006.00   1.0467    10
-6 0010007.00 2021S05070010007.00 0007.00   0.5364    10
-                        geometry
-1 MULTIPOLYGON (((7196507 869...
-2 MULTIPOLYGON (((8980217 215...
-3 MULTIPOLYGON (((7196437 869...
-4 MULTIPOLYGON (((7189476 865...
-5 MULTIPOLYGON (((8980091 215...
-6 MULTIPOLYGON (((8980158 215...
-> 
-> print(summary(dtPM))
- LEGAL_DESCRIPTION   PERMIT_DATE         PERMIT_NUMBER           YEAR     
- Length:27322       Min.   :2009-01-05   Length:27322       Min.   :2009  
- Class :character   1st Qu.:2013-07-12   Class :character   1st Qu.:2013  
- Mode  :character   Median :2017-02-21   Mode  :character   Median :2017  
-                    Mean   :2018-02-15                      Mean   :2018  
-                    3rd Qu.:2024-06-25                      3rd Qu.:2024  
-                    Max.   :2026-06-08                      Max.   :2026  
-                                                                          
- BUILDING_TYPE       WORK_TYPE         CONSTRUCTION_VALUE   FLOOR_AREA     
- Length:27322       Length:27322       Min.   :      0    Min.   :      0  
- Class :character   Class :character   1st Qu.:   4000    1st Qu.:    275  
- Mode  :character   Mode  :character   Median :  10000    Median :    894  
-                                       Mean   :  74342    Mean   :   1222  
-                                       3rd Qu.:  48000    3rd Qu.:   1370  
-                                       Max.   :3000000    Max.   :1000000  
-                                       NA's   :5007       NA's   :11263    
-  UNITS_ADDED        ADDRESS             ZONING          NEIGHBOURHOOD     
- Min.   :-2.0000   Length:27322       Length:27322       Length:27322      
- 1st Qu.: 0.0000   Class :character   Class :character   Class :character  
- Median : 0.0000   Mode  :character   Mode  :character   Mode  :character  
- Mean   : 0.4408                                                           
- 3rd Qu.: 1.0000                                                           
- Max.   :11.0000                                                           
- NA's   :7178                                                              
-    LATITUDE       LONGITUDE      isRowHouse      isDetached     
- Min.   :53.43   Min.   :-113.7   Mode :logical   Mode :logical  
- 1st Qu.:53.50   1st Qu.:-113.6   FALSE:26158     FALSE:1164     
- Median :53.53   Median :-113.5   TRUE :1164      TRUE :26158    
- Mean   :53.53   Mean   :-113.5                                  
- 3rd Qu.:53.57   3rd Qu.:-113.5                                  
- Max.   :53.64   Max.   :-113.4                                  
- NA's   :470     NA's   :470                                     
-   Lot Size         Account Number        Zoning          Legal Description 
- Length:27322       Min.   : 1007103   Length:27322       Length:27322      
- Class :character   1st Qu.: 3059326   Class :character   Class :character  
- Mode  :character   Median : 7157506   Mode  :character   Mode  :character  
-                    Mean   : 6331074                                        
-                    3rd Qu.: 9064023                                        
-                    Max.   :11309634                                        
-                    NA's   :1279                                            
-    Latitude       Longitude      Assessment Year Assessed Value    
- Min.   :53.43   Min.   :-113.7   Min.   :2025    Length:27322      
- 1st Qu.:53.50   1st Qu.:-113.6   1st Qu.:2025    Class :character  
- Median :53.53   Median :-113.5   Median :2025    Mode  :character  
- Mean   :53.53   Mean   :-113.5   Mean   :2025                      
- 3rd Qu.:53.57   3rd Qu.:-113.5   3rd Qu.:2025                      
- Max.   :53.64   Max.   :-113.4   Max.   :2025                      
- NA's   :1279    NA's   :1279     NA's   :1279                      
-   lot_size            zoning          legal_description    i.Latitude   
- Length:27322       Length:27322       Length:27322       Min.   :53.43  
- Class :character   Class :character   Class :character   1st Qu.:53.50  
- Mode  :character   Mode  :character   Mode  :character   Median :53.53  
-                                                          Mean   :53.53  
-                                                          3rd Qu.:53.57  
-                                                          Max.   :53.64  
-                                                          NA's   :1279   
-  i.Longitude       year_built   Total Gross Area    minYear        maxYear    
- Min.   :-113.7   Min.   :1902   Min.   :   0.0   Min.   :2012   Min.   :2025  
- 1st Qu.:-113.6   1st Qu.:1961   1st Qu.: 103.5   1st Qu.:2012   1st Qu.:2025  
- Median :-113.5   Median :1980   Median : 135.8   Median :2012   Median :2025  
- Mean   :-113.5   Mean   :1984   Mean   : 160.1   Mean   :2013   Mean   :2025  
- 3rd Qu.:-113.5   3rd Qu.:2010   3rd Qu.: 198.8   3rd Qu.:2012   3rd Qu.:2025  
- Max.   :-113.4   Max.   :2026   Max.   :1460.3   Max.   :2025   Max.   :2025  
- NA's   :1279     NA's   :1978   NA's   :1279     NA's   :1279   NA's   :1279  
- hasAccount     
- Mode :logical  
- FALSE:1279     
- TRUE :26043    
-                
-                
-                
-                
-> # use LATITUDE and LONGITUDE from permit data to get census tract for each permit by making a sf object and doing a spatial join
-> dfP <- st_as_sf(dtP[!is.na(LONGITUDE)], coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
 > dfT <- st_transform(dfT, crs = 4326)
-> # Error in wk_handle.wk_wkb(wkb, s2_geography_writer(oriented = oriented,  : Loop 0 is not valid: Edge 383 has duplicate vertex with edge 841 fix this
-> dfP <- st_make_valid(dfP)
 > dfT <- st_make_valid(dfT)
 > 
+> # use LATITUDE and LONGITUDE from permit data to get census tract for each permit by making a sf object and doing a spatial join
+> dfP <- st_as_sf(dtP[!is.na(LONGITUDE)], coords = c("LONGITUDE", "LATITUDE"), crs = 4326)
+> dfP <- st_make_valid(dfP)
 > dfP <- st_join(dfP, dfT, join = st_within)
 > dtP <- as.data.table(dfP)
 > # get fraction that is detached vs row house by tract
-> dtShare <- dtP[,.(N=.N, NDetached=sum(isDetached), NRowHouse=sum(isRowHouse)), by=.(CTNAME)]
-> print(dtShare)
-      CTNAME     N NDetached NRowHouse
-      <char> <int>     <int>     <int>
-  1: 0104.25   300       286         0
-  2: 0059.00   416       263        18
-  3: 0054.01    97        61         4
-  4: 0066.01   191       102        18
-  5: 0078.20   301       101         0
- ---                                  
-183: 0104.47    16         0         0
-184: 0075.12    31        20         0
-185: 0121.17    30        27         0
-186: 0140.18     2         0         0
-187: 0104.69     1         0         0
+> dtShare <- dtP[YEAR>2023,.(N=.N, NDetached=sum(isDetached), NRowHouse=sum(isRowHouse)), by=.(CTNAME)]
 > 
-> # make a similar tract merge for the current-year assessor data, but first filter to only RS properties
+> # same tract merge for the current-year assessor data
 > dfAM <- st_as_sf(dtAM[!is.na(Longitude)], coords = c("Longitude", "Latitude"), crs = 4326)
 > dfAM <- st_make_valid(dfAM)
 > dfAM <- st_join(dfAM, dfT, join = st_within)
 > dtAM <- as.data.table(dfAM)
-> print(head(dtAM))
-   Lot Size Account Number Zoning                 Legal Description
-     <char>          <int> <char>                            <char>
-1: 905.4880        1003904     RS              Plan: 4622NY  Lot: 5
-2: 570.4630        1006949     RS Plan: 8023176  Block: 31  Lot: 84
-3: 478.9830        1006956     RS Plan: 8023176  Block: 31  Lot: 85
-4: 478.9730        1006972     RS Plan: 8023176  Block: 31  Lot: 86
-5: 478.9400        1006980     RS Plan: 8023176  Block: 31  Lot: 87
-6: 478.9330        1007004     RS Plan: 8023176  Block: 31  Lot: 88
-   Assessment Year Assessed Value lot_size zoning
-             <int>         <char>   <char> <char>
-1:            2025  $1,301,500.00  905.488     RS
-2:            2025    $356,000.00  570.463     RS
-3:            2025    $374,000.00  478.983     RS
-4:            2025    $392,000.00  478.973     RS
-5:            2025    $367,000.00   478.94     RS
-6:            2025    $414,500.00  478.933     RS
-                   legal_description i.Latitude i.Longitude year_built
-                              <char>      <num>       <num>      <int>
-1:              Plan: 4622NY  Lot: 5   53.48523   -113.6312       2017
-2: Plan: 8023176  Block: 31  Lot: 84   53.61422   -113.4770       1983
-3: Plan: 8023176  Block: 31  Lot: 85   53.61422   -113.4772       1981
-4: Plan: 8023176  Block: 31  Lot: 86   53.61421   -113.4775       1981
-5: Plan: 8023176  Block: 31  Lot: 87   53.61421   -113.4777       1983
-6: Plan: 8023176  Block: 31  Lot: 88   53.61421   -113.4779       1983
-   Total Gross Area          LEGAL_DESCRIPTION minYear maxYear      CTUID
-              <num>                     <char>   <int>   <int>     <char>
-1:           201.70          Plan 4622NY Lot 5    2012    2025 8350006.18
-2:            94.25 Plan 8023176 Blk 31 Lot 84    2012    2025 8350077.02
-3:           130.72 Plan 8023176 Blk 31 Lot 85    2012    2025 8350077.02
-4:           122.49 Plan 8023176 Blk 31 Lot 86    2012    2025 8350077.02
-5:            98.48 Plan 8023176 Blk 31 Lot 87    2012    2025 8350077.02
-6:           132.31 Plan 8023176 Blk 31 Lot 88    2012    2025 8350077.02
-                 DGUID  CTNAME LANDAREA  PRUID                   geometry
-                <char>  <char>    <num> <char>                <sfc_POINT>
-1: 2021S05078350006.18 0006.18   1.6039     48 POINT (-113.6312 53.48523)
-2: 2021S05078350077.02 0077.02   1.5761     48  POINT (-113.477 53.61422)
-3: 2021S05078350077.02 0077.02   1.5761     48 POINT (-113.4772 53.61422)
-4: 2021S05078350077.02 0077.02   1.5761     48 POINT (-113.4775 53.61421)
-5: 2021S05078350077.02 0077.02   1.5761     48 POINT (-113.4777 53.61421)
-6: 2021S05078350077.02 0077.02   1.5761     48 POINT (-113.4779 53.61421)
 > dtAM[,assessed:=gsub("\\$","",`Assessed Value`)]
-> print(head(dtAM[,assessed]))
-[1] "1,301,500.00" "356,000.00"   "374,000.00"   "392,000.00"   "367,000.00"  
-[6] "414,500.00"  
 > dtAM[,assessed:=as.numeric(gsub(",","",assessed))]
-> print(head(dtAM[,assessed]))
-[1] 1301500  356000  374000  392000  367000  414500
+> 
 > regHedonic <- feols(log(as.numeric(assessed)) ~ log(as.numeric(lot_size)) + log(`Total Gross Area`) | CTNAME, data=dtAM)
 NOTE: 7,897 observations removed because of NA and infinite values (LHS: 26, RHS: 7,896).
 Warning message:
 In eval(predvars, data, env) : NAs introduced by coercion
-> # data table of fixed effects DGUID with the associated DGUID value
 > dtHedonic <- as.data.table(fixef(regHedonic), keep.rownames = TRUE)
-> print(head(dtHedonic))
-        rn   CTNAME
-    <char>    <num>
-1: 0001.02 9.166266
-2: 0001.03 9.248439
-3: 0001.04 9.190523
-4: 0001.05 9.155937
-5: 0001.06 9.107538
-6: 0001.07 9.170769
 > names(dtHedonic) <- c("CTNAME","FE")
-> print(summary(regHedonic))
-OLS estimation, Dep. Var.: log(as.numeric(assessed))
-Observations: 138,480
-Fixed-effects: CTNAME: 187
-Standard-errors: IID 
-                          Estimate Std. Error  t value  Pr(>|t|)    
-log(as.numeric(lot_size)) 0.150734   0.001843  81.7913 < 2.2e-16 ***
-log(`Total Gross Area`)   0.582587   0.001419 410.5442 < 2.2e-16 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.146632     Adj. R2: 0.812691
-                 Within R2: 0.58182 
 > 
-> regElasticity <- feols(log(as.numeric(assessed)) ~ log(`Total Gross Area`)*i(CTNAME) | CTNAME, data=dtAM)
-NOTE: 3,746 observations removed because of infinite values (LHS: 26, RHS: 3,745).
-The variables 'CTNAME::0001.03', 'CTNAME::0001.04', 'CTNAME::0001.05',
-'CTNAME::0001.06', 'CTNAME::0001.07', 'CTNAME::0002.01' and 181 others have been
-removed because of collinearity (see $collin.var).
-> # get interaction terms
-> dtCoef <- as.data.table(coef(regElasticity), keep.rownames = TRUE)
-> print(sum(!is.na(dtCoef$CTNAME)))
-[1] 0
-> print(summary(dtCoef))
-      V1                  V2          
- Length:187         Min.   :-0.52321  
- Class :character   1st Qu.:-0.16165  
- Mode  :character   Median :-0.05251  
-                    Mean   :-0.03954  
-                    3rd Qu.: 0.06295  
-                    Max.   : 0.75244  
-> # do differently, just cov(log(`Total Gross Area`), log(as.numeric(assessed))) / var(log(`Total Gross Area`)) by CTNAME
+> # elasticity by tract: cov(log(`Total Gross Area`), log(assessed)) / var(log(`Total Gross Area`))
 > dtAM[,lotNumeric := as.numeric(lot_size)]
-Warning message:
-In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
-> dtAM[,LotNumeric := as.numeric(`Lot Size`)]
 Warning message:
 In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
 > dtAM <- dtAM[!is.na(lotNumeric) & !is.na(`Total Gross Area`) & !is.na(assessed) & lotNumeric>0 & `Total Gross Area`>0 & assessed>0]
 > dtCoef <- dtAM[,.(Elasticity=cov(log(`Total Gross Area`), log(assessed))/var(log(`Total Gross Area`))), by=.(CTNAME)]
-> dtCheck <- merge(dtAM,dtCoef,by="CTNAME",all.x=TRUE,all.y=TRUE)
-> print(dtCheck[is.na(Elasticity)])
-Key: <CTNAME>
-Empty data.table (0 rows and 26 cols): CTNAME,Lot Size,Account Number,Zoning,Legal Description,Assessment Year...
-> print(summary(dtCoef))
-    CTNAME            Elasticity    
- Length:187         Min.   :0.1693  
- Class :character   1st Qu.:0.4408  
- Mode  :character   Median :0.5301  
-                    Mean   :0.5487  
-                    3rd Qu.:0.6536  
-                    Max.   :1.3554  
-> print(summary(dtAM))
-   Lot Size         Account Number        Zoning          Legal Description 
- Length:138480      Min.   : 1003904   Length:138480      Length:138480     
- Class :character   1st Qu.: 3767553   Class :character   Class :character  
- Mode  :character   Median : 6705738   Mode  :character   Mode  :character  
-                    Mean   : 6213368                                        
-                    3rd Qu.: 9158847                                        
-                    Max.   :11309634                                        
-                                                                            
- Assessment Year Assessed Value       lot_size            zoning         
- Min.   :2025    Length:138480      Length:138480      Length:138480     
- 1st Qu.:2025    Class :character   Class :character   Class :character  
- Median :2025    Mode  :character   Mode  :character   Mode  :character  
- Mean   :2025                                                            
- 3rd Qu.:2025                                                            
- Max.   :2025                                                            
-                                                                         
- legal_description    i.Latitude     i.Longitude       year_built  
- Length:138480      Min.   :53.43   Min.   :-113.7   Min.   :1900  
- Class :character   1st Qu.:53.49   1st Qu.:-113.5   1st Qu.:1960  
- Mode  :character   Median :53.54   Median :-113.5   Median :1976  
-                    Mean   :53.54   Mean   :-113.5   Mean   :1976  
-                    3rd Qu.:53.59   3rd Qu.:-113.4   3rd Qu.:1989  
-                    Max.   :53.65   Max.   :-113.4   Max.   :2025  
-                                                                   
- Total Gross Area  LEGAL_DESCRIPTION     minYear        maxYear    
- Min.   :   1.00   Length:138480      Min.   :2012   Min.   :2025  
- 1st Qu.:  98.75   Class :character   1st Qu.:2012   1st Qu.:2025  
- Median : 114.90   Mode  :character   Median :2012   Median :2025  
- Mean   : 134.89                      Mean   :2012   Mean   :2025  
- 3rd Qu.: 159.10                      3rd Qu.:2012   3rd Qu.:2025  
- Max.   :1460.34                      Max.   :2025   Max.   :2025  
-                                                                   
-    CTUID              DGUID              CTNAME             LANDAREA     
- Length:138480      Length:138480      Length:138480      Min.   :0.4707  
- Class :character   Class :character   Class :character   1st Qu.:1.2248  
- Mode  :character   Mode  :character   Mode  :character   Median :1.5833  
-                                                          Mean   :1.7962  
-                                                          3rd Qu.:2.1041  
-                                                          Max.   :4.9835  
-                                                                          
-    PRUID                    geometry         assessed         lotNumeric    
- Length:138480      POINT        :138480   Min.   :  31500   Min.   : 36.57  
- Class :character   epsg:4326    :     0   1st Qu.: 350000   1st Qu.:496.71  
- Mode  :character   +proj=long...:     0   Median : 413000   Median :568.14  
-                                           Mean   : 458899   Mean   :569.94  
-                                           3rd Qu.: 506000   3rd Qu.:649.69  
-                                           Max.   :5137500   Max.   :999.95  
-                                                                             
-   LotNumeric    
- Min.   : 36.57  
- 1st Qu.:496.71  
- Median :568.13  
- Mean   :569.94  
- 3rd Qu.:649.68  
- Max.   :999.95  
- NA's   :1       
-> print(dtCoef)
-      CTNAME Elasticity
-      <char>      <num>
-  1: 0006.18  0.6936728
-  2: 0077.02  0.4503350
-  3: 0050.00  0.5826216
-  4: 0005.07  0.8235273
-  5: 0007.02  0.6992752
- ---                   
-183: 0104.48  0.7363914
-184: 0140.16  0.6029167
-185: 0140.14  0.4270667
-186: 0104.50  0.8171166
-187: 0078.19  0.7977392
-> print(dtCoef[!is.na(Elasticity),.N])
-[1] 187
 > setkey(dtCoef, "CTNAME")
 > setkey(dtHedonic, "CTNAME")
 > dtCoef <- merge(dtCoef, dtHedonic, by="CTNAME", all.x=TRUE, all.y=FALSE)
-> print(dtCoef)
-Key: <CTNAME>
-      CTNAME Elasticity       FE
-      <char>      <num>    <num>
-  1: 0001.02  0.2757796 9.166266
-  2: 0001.03  0.3692594 9.248439
-  3: 0001.04  0.2227248 9.190523
-  4: 0001.05  0.1693011 9.155937
-  5: 0001.06  0.4815256 9.107538
- ---                            
-183: 0140.09  0.3604622 9.164412
-184: 0140.10  0.6121130 9.155708
-185: 0140.14  0.4270667 9.144803
-186: 0140.15  0.7321452 9.155713
-187: 0140.16  0.6029167 9.179689
 > print(cor(dtCoef[,Elasticity], dtCoef[,FE], use="complete.obs"))
 [1] 0.4160205
 > ggplot(dtCoef, aes(x=Elasticity, y=FE)) + geom_point() + geom_smooth(method="lm") + theme_bw() + labs(title="Elasticity vs Fixed Effect by Census Tract", x="Elasticity", y="Fixed Effect")
@@ -771,37 +128,21 @@ Saving 7 x 7 in image
 > setkey(dtShare, "CTNAME")
 > dtCoefShare <- dtCoef[dtShare, nomatch=0]
 > print(cor(dtCoefShare[,.(Elasticity, FE, NRowHouse/(NDetached+NRowHouse))], use="complete.obs"))
-           Elasticity         FE         V3
-Elasticity  1.0000000  0.3959076  0.2245420
-FE          0.3959076  1.0000000 -0.1146147
-V3          0.2245420 -0.1146147  1.0000000
+           Elasticity          FE          V3
+Elasticity  1.0000000  0.39654669  0.26003575
+FE          0.3965467  1.00000000 -0.06058007
+V3          0.2600358 -0.06058007  1.00000000
 > ggplot(dtCoefShare, aes(x=Elasticity, y=NRowHouse/(NDetached+NRowHouse))) + geom_point() + geom_smooth(method="lm") + theme_bw() + labs(title="Elasticity vs Share of Row Houses by Census Tract", x="Elasticity", y="Share of Row Houses")
 `geom_smooth()` using formula = 'y ~ x'
-Warning messages:
-1: Removed 4 rows containing non-finite outside the scale range (`stat_smooth()`). 
-2: Removed 4 rows containing missing values or values outside the scale range
-(`geom_point()`). 
 > ggsave("text/edmontonElasticityShare.png")
 Saving 7 x 7 in image
 `geom_smooth()` using formula = 'y ~ x'
-Warning messages:
-1: Removed 4 rows containing non-finite outside the scale range (`stat_smooth()`). 
-2: Removed 4 rows containing missing values or values outside the scale range
-(`geom_point()`). 
 > ggplot(dtCoefShare, aes(x=FE, y=NRowHouse/(NDetached+NRowHouse))) + geom_point() + geom_smooth(method="lm") + theme_bw() + labs(title="Fixed Effect vs Share of Row Houses by Census Tract", x="Fixed Effect", y="Share of Row Houses")
 `geom_smooth()` using formula = 'y ~ x'
-Warning messages:
-1: Removed 4 rows containing non-finite outside the scale range (`stat_smooth()`). 
-2: Removed 4 rows containing missing values or values outside the scale range
-(`geom_point()`). 
 > ggsave("text/edmontonFEShare.png")
 Saving 7 x 7 in image
 `geom_smooth()` using formula = 'y ~ x'
-Warning messages:
-1: Removed 4 rows containing non-finite outside the scale range (`stat_smooth()`). 
-2: Removed 4 rows containing missing values or values outside the scale range
-(`geom_point()`). 
 > q("no")
 > proc.time()
    user  system elapsed 
- 32.512   1.538  27.260 
+ 24.383   2.257  22.916 
