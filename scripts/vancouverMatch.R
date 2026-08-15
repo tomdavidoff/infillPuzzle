@@ -6,6 +6,9 @@
 
 library(data.table)
 library(sf)
+library(ggplot2)
+library(ggspatial)
+library(RSQLite)
 
 # permits
 dtP <- fread("~/DropboxExternal/dataRaw/issued-building-permitsDwellingUses.csv") # pre-filtered for dwelling uses on download from Vancouver Open Data
@@ -40,8 +43,73 @@ print(head(dtPgeo))
 
 dtPgeo <- as.data.table(dtPgeo)[,.(PermitNumber,DGUID,geometry)]
 
-# now get appraised values and sales for single family homes by tract for 2017, pre re-zonings. Do current appraisals and 2017 sales to show correlations.
-"~/OneDrive - UBC/Documents/data/bca/REVD18_and_inventory_extracts_CSV_files/REVD18_and_inventory_extracts_CSV_files"
+# now get appraised values and sales for single family homes by tract for 2017, pre re-zonings. Do current appraisals and 2017 sales to show correlations. Can get all this from current data
+
+# get census tract from lat/lon
+fGeo <- "~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds"
+dirGpkg <- "~/bigFiles/latestSpatialBCA/"
+fGpkg <- list.files(dirGpkg)
+fileGpkg <- paste0(dirGpkg,fGpkg)
+
+if (!file.exists(fGeo)) {
+  # Note: Extracting NEIGHBOURHOOD (BCA code) and joining with Census Tracts for Income
+
+  dfG <- st_read(fileGpkg,query = 
+	"SELECT ROLL_NUMBER, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, geom
+	FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
+	WHERE JURISDICTION = 'City of Vancouver' AND (ACTUAL_USE_DESCRIPTION IN ('Single Family Dwelling', 'Residential Dwelling with Suite') OR ACTUAL_USE_DESCRIPTION LIKE '%plex') "
+  )
+
+  dCT <- dfT[dfT$PRUID == "59", ]
+  dCT <- st_transform(dCT, st_crs(dfG))
+
+  dfG <- st_join(dfG, dCT, join = st_within)
+  # now return to normal lat lon crs and record longitude and latitude of parcel geom (not geom is a polygon)
+  dfG <- st_transform(dfG, crs = 4326)
+  # Need a single coordinate pair, as geom is a polygon()
+  dfG$centroid <- st_centroid(dfG)
+  dfG$longitude <- st_coordinates(dfG$centroid)[, 1]
+  dfG$latitude <- st_coordinates(dfG$centroid)[, 2]
+
+  saveRDS(dfG, fGeo)
+}
+dfG <- readRDS(fGeo)
+dtGeo <- as.data.table(dfG)[, .(ROLL_NUMBER, CTNAME, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, longitude, latitude, geom)]
+# use ggspatial with street map
+checkGEOPlotName <- "text/checkGEO.png"
+if (!file.exists(checkGEOPlotName)) {
+ggplot(dtGeo, aes(x = longitude, y = latitude, color = NEIGHBOURHOOD)) +
+  annotation_map_tile(type = "cartolight", zoom = 12) +
+  geom_point(size = 0.5) +
+  coord_sf(crs = 4326) +
+  theme(legend.position = "none") +
+  theme_minimal()
+ggsave(checkGEOPlotName, width = 8, height = 6)
+}
+
+print(summary(dtGeo))
+dtGeo[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
+
+# Merge with BCA 2019 Vancouver single family R1 -zoned parcels
+bca19 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
+# get zoning, rollnumber, folioID from bca19
+con <- dbConnect(RSQLite::SQLite(), bca19)
+dfFolio <- dbGetQuery(con, "SELECT folioID, rollNumber FROM folio WHERE jurisdictionCode=='200'")
+dfInventory <- dbGetQuery(con, "SELECT roll_number, zoning, MB_effective_year, MB_total_finished_area FROM residentialInventory") 
+dfDescription <- dbGetQuery(con, "SELECT folioID, actualUseDescription, neighbourhoodDescription, landWidth, landDepth FROM folioDescription")
+dfSales <- dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice, conveyanceTypeDescription FROM conveyance")
+print(nrow(dfFolio))
+dfBCA19 <- merge(dfFolio, dfInventory, by.x="rollNumber", by.y="roll_number")
+dtBCA19 <- data.table(merge(dfBCA19, dfDescription, by="folioID"))
+print(head(dtBCA19))
+print(table(dtBCA19[,actualUseDescription])[order(-table(dtBCA19[,actualUseDescription]))])
+dtBCA19 <- dtBCA19[actualUseDescription %in% c("Single Family Dwelling","Residential Dwelling with Suite")]
+print(nrow(dtBCA19))
+
+dtBCA19[,rollStart:=floor(as.numeric(rollNumber)/1000)]
+print(head(dtBCA19))
+
+
 
 
 q("no")

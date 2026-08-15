@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -26,6 +26,9 @@ Type 'q()' to quit R.
 > library(data.table)
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(ggplot2)
+> library(ggspatial)
+> library(RSQLite)
 > 
 > # permits
 > dtP <- fread("~/DropboxExternal/dataRaw/issued-building-permitsDwellingUses.csv") # pre-filtered for dwelling uses on download from Vancouver Open Data
@@ -130,7 +133,7 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > # grab zoning and census tracts to make spatial
 > dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson") # vancouver_zoning.geojson
 Reading layer `vancouver_zoning' from data source 
-  `/Volumes/Micron2TB/Dropbox/dataRaw/vancouver_zoning.geojson' 
+  `/Volumes/Crucial X10/Dropbox/dataRaw/vancouver_zoning.geojson' 
   using driver `GeoJSON'
 Simple feature collection with 1590 features and 6 fields
 Geometry type: POLYGON
@@ -230,7 +233,7 @@ Geodetic CRS:  WGS 84
 > # census tract shapes
 > dfT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
 Reading layer `lct_000b21a_e' from data source 
-  `/Volumes/Micron2TB/Dropbox/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
+  `/Volumes/Crucial X10/Dropbox/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
   using driver `ESRI Shapefile'
 Simple feature collection with 6247 features and 5 fields
 Geometry type: MULTIPOLYGON
@@ -277,8 +280,179 @@ Geodetic CRS:  WGS 84
 11 2021S05079330013.03 0013.03   0.6239    59 POINT (-123.0863 49.22515)
 12 2021S05079330018.01 0018.01   0.9026    59 POINT (-123.0596 49.23585)
 > 
+> dtPgeo <- as.data.table(dtPgeo)[,.(PermitNumber,DGUID,geometry)]
+> 
+> # now get appraised values and sales for single family homes by tract for 2017, pre re-zonings. Do current appraisals and 2017 sales to show correlations. Can get all this from current data
+> 
+> # get census tract from lat/lon
+> fGeo <- "~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds"
+> dirGpkg <- "~/bigFiles/latestSpatialBCA/"
+> fGpkg <- list.files(dirGpkg)
+> fileGpkg <- paste0(dirGpkg,fGpkg)
+> 
+> if (!file.exists(fGeo)) {
++   # Note: Extracting NEIGHBOURHOOD (BCA code) and joining with Census Tracts for Income
++ 
++   dfG <- st_read(fileGpkg,query = 
++ 	"SELECT ROLL_NUMBER, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, geom
++ 	FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
++ 	WHERE JURISDICTION = 'City of Vancouver' AND (ACTUAL_USE_DESCRIPTION IN ('Single Family Dwelling', 'Residential Dwelling with Suite') OR ACTUAL_USE_DESCRIPTION LIKE '%plex') "
++   )
++ 
++   dCT <- dfT[dfT$PRUID == "59", ]
++   dCT <- st_transform(dCT, st_crs(dfG))
++ 
++   dfG <- st_join(dfG, dCT, join = st_within)
++   # now return to normal lat lon crs and record longitude and latitude of parcel geom (not geom is a polygon)
++   dfG <- st_transform(dfG, crs = 4326)
++   # Need a single coordinate pair, as geom is a polygon()
++   dfG$centroid <- st_centroid(dfG)
++   dfG$longitude <- st_coordinates(dfG$centroid)[, 1]
++   dfG$latitude <- st_coordinates(dfG$centroid)[, 2]
++ 
++   saveRDS(dfG, fGeo)
++ }
+> dfG <- readRDS(fGeo)
+> dtGeo <- as.data.table(dfG)[, .(ROLL_NUMBER, CTNAME, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, longitude, latitude, geom)]
+> # use ggspatial with street map
+> checkGEOPlotName <- "text/checkGEO.png"
+> if (!file.exists(checkGEOPlotName)) {
++ ggplot(dtGeo, aes(x = longitude, y = latitude, color = NEIGHBOURHOOD)) +
++   annotation_map_tile(type = "cartolight", zoom = 12) +
++   geom_point(size = 0.5) +
++   coord_sf(crs = 4326) +
++   theme(legend.position = "none") +
++   theme_minimal()
++ ggsave(checkGEOPlotName, width = 8, height = 6)
++ }
+> 
+> print(summary(dtGeo))
+ ROLL_NUMBER           CTNAME          ACTUAL_USE_DESCRIPTION
+ Length:72424       Length:72424       Length:72424          
+ Class :character   Class :character   Class :character      
+ Mode  :character   Mode  :character   Mode  :character      
+                                                             
+                                                             
+                                                             
+ NEIGHBOURHOOD        longitude         latitude                geom      
+ Length:72424       Min.   :-123.2   Min.   :49.21   MULTIPOLYGON :72424  
+ Class :character   1st Qu.:-123.1   1st Qu.:49.23   epsg:4326    :    0  
+ Mode  :character   Median :-123.1   Median :49.24   +proj=long...:    0  
+                    Mean   :-123.1   Mean   :49.24                        
+                    3rd Qu.:-123.1   3rd Qu.:49.26                        
+                    Max.   :-123.0   Max.   :49.29                        
+> dtGeo[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
+> 
+> # Merge with BCA 2019 Vancouver single family R1 -zoned parcels
+> bca19 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
+> # get zoning, rollnumber, folioID from bca19
+> con <- dbConnect(RSQLite::SQLite(), bca19)
+> dfFolio <- dbGetQuery(con, "SELECT folioID, rollNumber FROM folio WHERE jurisdictionCode=='200'")
+> dfInventory <- dbGetQuery(con, "SELECT roll_number, zoning, MB_effective_year, MB_total_finished_area FROM residentialInventory") 
+> dfDescription <- dbGetQuery(con, "SELECT folioID, actualUseDescription, neighbourhoodDescription, landWidth, landDepth FROM folioDescription")
+> print(nrow(dfFolio))
+[1] 208724
+> dfBCA19 <- merge(dfFolio, dfInventory, by.x="rollNumber", by.y="roll_number")
+> dtBCA19 <- data.table(merge(dfBCA19, dfDescription, by="folioID"))
+> print(head(dtBCA19))
+      folioID      rollNumber zoning MB_effective_year MB_total_finished_area
+       <char>          <char> <char>            <char>                 <char>
+1: A000000009 001019632060000    RS1              2019                  11895
+2: A00000000A 001019632290000    RS1              1997                   7760
+3: A00000000B 001019632450000    RS1              1945                   3215
+4: A00000000C 001019632650000    RS1              2011                   8673
+5: A00000000D 001019632760000    RS1              2000                   7238
+6: A00000000E 001019635070000    RS1              1995                   4739
+     actualUseDescription neighbourhoodDescription landWidth landDepth
+                   <char>                   <char>    <char>    <char>
+1: Single Family Dwelling               POINT GREY                    
+2: Single Family Dwelling               POINT GREY                    
+3: Single Family Dwelling               POINT GREY                    
+4: Single Family Dwelling               POINT GREY                    
+5: Single Family Dwelling               POINT GREY                    
+6: Single Family Dwelling               POINT GREY                    
+> print(table(dtBCA19[,actualUseDescription])[order(-table(dtBCA19[,actualUseDescription]))])
+
+                Strata-Lot Residence (Condominium) 
+                                             90144 
+                            Single Family Dwelling 
+                                             39542 
+                   Residential Dwelling with Suite 
+                                             34790 
+               Row Housing (Single Unit Ownership) 
+                                             10766 
+                       Duplex, Strata Front / Back 
+                                              2620 
+Stratified Rental Apartment (Hi-Rise Construction) 
+                                              2475 
+  Stratified Rental Apartment (Frame Construction) 
+                                              2341 
+                       Duplex, Strata Side by Side 
+                                              1518 
+                 Property Subject To Section 19(8) 
+                                               994 
+   Duplex, Non-Strata Side by Side or Front / Back 
+                                               832 
+              Vacant Residential Less Than 2 Acres 
+                                               300 
+               Individual Strata Lot (Hotel/Motel) 
+                                               284 
+                          Duplex, Strata Up / Down 
+                                               159 
+                      Duplex, Non-Strata Up / Down 
+                                                95 
+                       Stratified Rental Townhouse 
+                                                72 
+                         Multi-Family (Conversion) 
+                                                49 
+  2 Acres Or More (Single Family Dwelling, Duplex) 
+                                                36 
+                      Residential Outbuilding Only 
+                                                21 
+                          2 Acres Or More (Vacant) 
+                                                 4 
+                                           Triplex 
+                                                 4 
+       Bed & Breakfast Operation Less Than 4 Units 
+                                                 1 
+           Parking (Lot Only, Paved Or Gravel-Res) 
+                                                 1 
+             Stratified Operational Facility Areas 
+                                                 1 
+                                       Vacant IC&I 
+                                                 1 
+> dtBCA19 <- dtBCA19[actualUseDescription %in% c("Single Family Dwelling","Residential Dwelling with Suite")]
+> print(nrow(dtBCA19))
+[1] 74332
+> 
+> dtBCA19[,rollStart:=floor(as.numeric(rollNumber)/1000)]
+> print(head(dtBCA19))
+      folioID      rollNumber zoning MB_effective_year MB_total_finished_area
+       <char>          <char> <char>            <char>                 <char>
+1: A000000009 001019632060000    RS1              2019                  11895
+2: A00000000A 001019632290000    RS1              1997                   7760
+3: A00000000B 001019632450000    RS1              1945                   3215
+4: A00000000C 001019632650000    RS1              2011                   8673
+5: A00000000D 001019632760000    RS1              2000                   7238
+6: A00000000E 001019635070000    RS1              1995                   4739
+     actualUseDescription neighbourhoodDescription landWidth landDepth
+                   <char>                   <char>    <char>    <char>
+1: Single Family Dwelling               POINT GREY                    
+2: Single Family Dwelling               POINT GREY                    
+3: Single Family Dwelling               POINT GREY                    
+4: Single Family Dwelling               POINT GREY                    
+5: Single Family Dwelling               POINT GREY                    
+6: Single Family Dwelling               POINT GREY                    
+    rollStart
+        <num>
+1: 1019632060
+2: 1019632290
+3: 1019632450
+4: 1019632650
+5: 1019632760
+6: 1019635070
 > 
 > q("no")
 > proc.time()
    user  system elapsed 
-  6.056   0.176   6.176 
+ 23.478   1.897  24.138 
