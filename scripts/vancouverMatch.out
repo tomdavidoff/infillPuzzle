@@ -20,7 +20,7 @@ Type 'q()' to quit R.
 > # vancouverMatch.R
 > # match permits to neighbourhoods, assessments, etc
 > # Objective -- correlation and plots elasticity, price, duplex share. Then do multiplex share
-> # Tom Davidoff 
+> # Tom Davidoff
 > # 08/13/26
 > 
 > library(data.table)
@@ -29,106 +29,25 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(ggplot2)
 > library(ggspatial)
 > library(RSQLite)
+> library(fixest)
+> 
+> sf_use_s2(TRUE) # (5) ensure s2 for fast lat/lon st_within
 > 
 > # permits
-> dtP <- fread("~/DropboxExternal/dataRaw/issued-building-permitsDwellingUses.csv") # pre-filtered for dwelling uses on download from Vancouver Open Data
+> # (7) only read the columns actually used downstream
+> dtP <- fread(
++   "~/DropboxExternal/dataRaw/issued-building-permitsDwellingUses.csv",
++   select = c("SpecificUseCategory", "PermitNumber", "geo_point_2d")
++ ) # pre-filtered for dwelling uses on download from Vancouver Open Data
 > print(head(dtP))
-    PermitNumber PermitNumberCreatedDate  IssueDate PermitElapsedDays
-          <char>                  <IDat>     <IDat>             <int>
-1: BP-2023-00600              2023-02-15 2025-02-28               744
-2: BP-2024-02928              2024-08-02 2024-09-09                38
-3: BP-2023-01509              2023-05-04 2023-05-12                 8
-4: BP-2021-04733              2021-09-07 2021-10-07                30
-5: DB-2024-04710              2024-11-27 2025-05-22               176
-6: BP-2022-01592              2022-03-28 2022-06-01                65
-   ProjectValue            TypeOfWork
-          <num>                <char>
-1:      2743500          New Building
-2:            0 Salvage and Abatement
-3:        10000 Addition / Alteration
-4:        50000 Addition / Alteration
-5:       800000          New Building
-6:       500000 Addition / Alteration
-                                          Address
-                                           <char>
-1:             4271 HEATHER STREET, Vancouver, BC
-2:       707 W 27TH AVENUE, Vancouver, BC V5Z 2G5
-3:      2675 DUNDAS STREET, Vancouver, BC V5K 1R1
-4: 2965 HORLEY STREET #110, Vancouver, BC V5R 6B9
-5:     2211 WILLIAM STREET, Vancouver, BC V5L 2S5
-6:       4416 W 1ST AVENUE, Vancouver, BC V6R 4J4
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   ProjectDescription
-                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               <char>
-1:                                                                                                                                                                                                                                                                                                                                                         High Density Housing / Commercial - New Building - To construct a 3-storey multiple dwelling, with roof deck, containing a total of seven (7) dwelling units, all over one level of underground parking having vehicular access lane. \n\nSchedule A, Schedule B (Architectural) Brian Billingsley, AIBC; \nSchedule B (Structural) Darryl J. Bowers, Struct. Eng; \nSchedule B (Mechanical and Plumbing) Charlie Smeenk, P.Eng.;\nSchedule B (Electrical) Brennan Town, P. Eng. \nSchedule B (Geotechnical) GongZuo Zhou, P.Eng. and\nSchedule D, Joel Schwartz, P.Eng. provided for this project. \n\nBuilding Review Branch Notes:\n1. This permit has been reviewed under the requirements of VBBL 2019 \n2. Entire building to be sprinklered to NFPA 13R\n\nRev #1 - M. Aminfard - March 12, 2026\nTo change the Mechanical/Plumbing Engineer on the project from Charlie Smeenk to Stephen Youden under Furano Pacific Consulting Ltd., effective October 15, 2025.
-2:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    Enquiry Centre - Salvage and Abatement - This permit is for Salvage and Abatement work only to this existing Single Detached House; to be completed under the supervision of a Qualified Professional.\r\n\r\nQP:  Ramin Hamidnejad, CRSP of Kinetic OHS Services Ltd.\r\n\r\nBuilding Permit for BP-2024-02912
-3:                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               Low Density Housing - Addition / Alteration - Exterior and interior alterations to extend the rear deck, relocate the rear stairs and convert the area under the rear deck to an enclosed storage in this existing single detached dwelling on this site. Scope to include validation of previous unapproved work on this site.\r\n\r\nStructural Schedule B submitted by Scott Loptson, P. Eng., 604.454.0402\r\n\r\nNote:\r\n- This is a non sprinklered building.
-4:                                                                                                                                                                                Field Review - Addition / Alteration - #110 - Floor 1\r\n\r\nInterior alterations only t provide improvements to this unit (110) in this existing multiple dwelling building on this site.\r\n\r\nScope of work:  Deconstruct portion of interior wall. Kitchen reno. ensuite reno. Electrical and plumbing to suit.\r\n\r\nNote to applicant: The services of a structural engineer may be required, based upon site inspection by the District Building Inspector.\r\nA Sprinkler permit may be required, as determined by the District Building Inspector.  \r\n\r\nEnergy checklist is currently no longer required with your Building Permit (BP) application. Some supporting documents are still required at BP stage, specifically Envelope and HVAC, if applicable. Service Water Heating and Lighting supporting documents, if applicable, must be submitted with your related Trades permits (e.g. electrical and plumbing).  All energy upgrades will be checked during inspections stage.  It is the applicant’s responsibility to identify and note all required upgrades including energy upgrades on their BP drawings at BP stage.
-5: Low Density Housing - New Building - To construct a 2.5 storey Duplex ($800,000) with a detached accessory building (garage) at the rear providing 2 parking spaces, having vehicular access from the lane.\r\n\r\n\r\n1.\\tEntire building to be sprinklered 2 x NFPA 13D \r\n2.\\tExternal mechanical unit – Exterior component located in front yard\r\n3.\\tSchedule B: (Alan Prahalad) P. Eng (604-831-1431) Structural and Geotechnical\r\n4.\\tHPO: Residential Builder- Modern Styles Home Ltd.\r\n\r\nAddress information:\r\n\r\n\r\nFront Unit (south) -\\t\\t\\t\r\n#1-2211 William St - Dwelling Unit (south side 1st-3rd floors),\\t\\t\\t\r\n\\t\\t\\t\r\nBack Unit (north) -\\t\\t\\t\r\n#2-2211 William St - Dwelling Unit (north side 1st-3rd floors).\\t\r\n\r\nAddress and suite numbers assigned as per approved plans for Fire and Emergency response. The address number is to be posted on the building to be visible from the street and the suite numbers are to be posted at the suite entries in accordance with the Building By-law prior to final inspection.\r\n\\t\\t\r\n\r\nNote: This is a 2 storey building pursuant to the Zoning and Development By-Law\r\n\r\n***This permit is issued under the VBBL 2019, with updated energy requirements as per bylaw # 12997 effective Jan 01, 2022.***
-6:                                                                                                                                                                                                                                                                                                                                                                                                                                                                 Field Review - Addition / Alteration - Interior alterations to repair fire damage and to remove and restore all work without permit on this site to its last approved conditions.\r\n\r\nScope of work includes changing the second floor laundry room to an ensuite bathroom and infilling one of the doors to the existing second floor north-west bathroom. \r\n\r\nOk for field review per J. Zhang Mar 28/22\r\n\r\nNotes:\r\n- Schedule B, Structural, Scott Ash-Anderson, P.Eng, 604-228-0518. \r\n- This building is sprinklered. DBI to determine on site if a separate sprinkler permit is required.\r\n- REUP Submitted by Ke Jiang, 604-562-0387.\r\nScope of work to include energy upgrade in accordance with Article 11.2.1.4 of the 2019 Vancouver Building By-law and as per the Energy Efficiency Upgrade Details noted in the Energuide Report.
-                                PermitCategory
-                                        <char>
-1:                                            
-2:                                            
-3:                                            
-4: Renovation - Residential - Lower Complexity
-5:             New Build - Low Density Housing
-6: Renovation - Residential - Lower Complexity
-                                            Applicant
-                                               <char>
-1:                    Ammar Bajwa DBA: A1 Ideal Homes
-2:                    Ammar Bajwa DBA: A1 Ideal Homes
-3:                                   marek lesniewski
-4: ADEPT Engineering Ltd. DBA: ADEPT Engineering Ltd.
-5:         Jasbir Sekhon DBA: Modern Style Homes Ltd.
-6:               Alex Laos DBA: Intern Architect AIBC
-                                     ApplicantAddress   PropertyUse
-                                               <char>        <char>
-1:                16165 111a st\r\nSurrey, BC  V4N4T1 Dwelling Uses
-2:                16165 111a st\r\nSurrey, BC  V4N4T1 Dwelling Uses
-3:            2675 Dundas St\r\nVancouver, BC  V5R1R1 Dwelling Uses
-4:      1514 Marine Dr\r\nWest Vancouver, BC  V7V 1H8 Dwelling Uses
-5:            6458 Malvern Ave\r\nBurnaby, BC  V5E3G1 Dwelling Uses
-6: #360 – 1650 West 2nd Ave\r\nVancouver, BC  V6J 1H4 Dwelling Uses
-     SpecificUseCategory                        BuildingContractor
-                  <char>                                    <char>
-1:     Multiple Dwelling P Square Engineering And Construction Ltd
-2: Single Detached House                                          
-3: Single Detached House                                          
-4:     Multiple Dwelling                                          
-5:                Duplex                    Modern Styles Home Ltd
-6: Single Detached House                     Keystone Projects Ltd
-                                   BuildingContractorAddress IssueYear
-                                                      <char>     <int>
-1: 602 W HASTINGS ST  \r\nUnit 402\r\nVancouver, BC  V6B 1P2      2025
-2:                                                                2024
-3:                                                                2023
-4:                                                                2021
-5:                                                                2025
-6:      4907 Chisholm St  \r\nUnit 220\r\nDelta, BC  V4K 2K6      2022
-          GeoLocalArea
-                <char>
-1:        South Cambie
-2:        South Cambie
-3:    Hastings-Sunrise
-4: Renfrew-Collingwood
-5:  Grandview-Woodland
-6:     West Point Grey
-                                                                 Geom YearMonth
-                                                               <char>    <char>
-1: {""coordinates"": [-123.1204926, 49.2473731], ""type"": ""Point""}   2025-02
-2: {""coordinates"": [-123.1206837, 49.2473735], ""type"": ""Point""}   2024-09
-3: {""coordinates"": [-123.0501588, 49.2850388], ""type"": ""Point""}   2023-05
-4:   {""coordinates"": [-123.04458, 49.2392977], ""type"": ""Point""}   2021-10
-5: {""coordinates"": [-123.0595101, 49.2741246], ""type"": ""Point""}   2025-05
-6: {""coordinates"": [-123.2064534, 49.2718579], ""type"": ""Point""}   2022-06
-               geo_point_2d
-                     <char>
-1: 49.2473731, -123.1204926
-2: 49.2473735, -123.1206837
-3: 49.2850388, -123.0501588
-4:   49.2392977, -123.04458
-5: 49.2741246, -123.0595101
-6: 49.2718579, -123.2064534
+     SpecificUseCategory  PermitNumber             geo_point_2d
+                  <char>        <char>                   <char>
+1:     Multiple Dwelling BP-2023-00600 49.2473731, -123.1204926
+2: Single Detached House BP-2024-02928 49.2473735, -123.1206837
+3: Single Detached House BP-2023-01509 49.2850388, -123.0501588
+4:     Multiple Dwelling BP-2021-04733   49.2392977, -123.04458
+5:                Duplex DB-2024-04710 49.2741246, -123.0595101
+6: Single Detached House BP-2022-01592 49.2718579, -123.2064534
 > 
 > # grab zoning and census tracts to make spatial
 > dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson") # vancouver_zoning.geojson
@@ -186,6 +105,10 @@ Geodetic CRS:  WGS 84
 4     Multiple Dwelling BP-2021-04733  POINT (-123.0446 49.2393)
 5                Duplex DB-2024-04710 POINT (-123.0595 49.27412)
 6 Single Detached House BP-2022-01592 POINT (-123.2065 49.27186)
+> 
+> # (4) pre-filter permits to the zoning bbox before the join to shrink the join input
+> dtPgeo <- dtPgeo[st_intersects(dtPgeo, st_as_sfc(st_bbox(dgZ)), sparse = FALSE)[,1], ]
+> 
 > # merge as point within shapes to dgZ
 > dtPgeo <- st_join(dtPgeo, dgZ, join = st_within) # spatial join to zoning shapes
 > print(head(dtPgeo))
@@ -231,17 +154,17 @@ Geodetic CRS:  WGS 84
 > dtPgeo <- dtPgeo[!is.na(dtPgeo$zoning_district),] # drop NA zoning districts
 > 
 > # census tract shapes
-> dfT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
-Reading layer `lct_000b21a_e' from data source 
-  `/Volumes/Crucial X10/Dropbox/dataRaw/lct_000b21a_e/lct_000b21a_e.shp' 
-  using driver `ESRI Shapefile'
-Simple feature collection with 6247 features and 5 fields
-Geometry type: MULTIPOLYGON
-Dimension:     XY
-Bounding box:  xmin: 3912489 ymin: 687427.7 xmax: 8996148 ymax: 2810992
-Projected CRS: NAD83 / Statistics Canada Lambert
-> dfT <- st_transform(dfT, crs = 4326)
-> dfT <- st_make_valid(dfT)
+> # (2,3) build a Vancouver-only, validated, reprojected tract subset once and cache it.
+> # (3) filter to BC (PRUID 59) BEFORE make_valid/transform so we don't validate all of Canada.
+> fTract <- "~/DropboxExternal/dataProcessed/censusTractsBC.rds"
+> if (!file.exists(fTract)) {
++   dfT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
++   dfT <- dfT[dfT$PRUID == "59", ]        # (3) BC only, before validate/transform
++   dfT <- st_make_valid(dfT)
++   dfT <- st_transform(dfT, crs = 4326)
++   saveRDS(dfT, fTract)
++ }
+> dfT <- readRDS(fTract)
 > 
 > 
 > dtPgeo <- st_join(dtPgeo, dfT, join = st_within) # spatial join to census tract shapes
@@ -293,10 +216,10 @@ Geodetic CRS:  WGS 84
 > if (!file.exists(fGeo)) {
 +   # Note: Extracting NEIGHBOURHOOD (BCA code) and joining with Census Tracts for Income
 + 
-+   dfG <- st_read(fileGpkg,query = 
++   dfG <- st_read(fileGpkg,query =
 + 	"SELECT ROLL_NUMBER, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, geom
 + 	FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
-+ 	WHERE JURISDICTION = 'City of Vancouver' AND (ACTUAL_USE_DESCRIPTION IN ('Single Family Dwelling', 'Residential Dwelling with Suite') OR ACTUAL_USE_DESCRIPTION LIKE '%plex') "
++ 	WHERE JURISDICTION = 'City of Vancouver' AND (ACTUAL_USE_DESCRIPTION IN ('Single Family Dwelling', 'Residential Dwelling with Suite') OR ACTUAL_USE_DESCRIPTION LIKE '%plex%') "
 +   )
 + 
 +   dCT <- dfT[dfT$PRUID == "59", ]
@@ -345,15 +268,22 @@ Geodetic CRS:  WGS 84
 > 
 > # Merge with BCA 2019 Vancouver single family R1 -zoned parcels
 > bca19 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
-> # get zoning, rollnumber, folioID from bca19
 > con <- dbConnect(RSQLite::SQLite(), bca19)
-> dfFolio <- dbGetQuery(con, "SELECT folioID, rollNumber FROM folio WHERE jurisdictionCode=='200'")
-> dfInventory <- dbGetQuery(con, "SELECT roll_number, zoning, MB_effective_year, MB_total_finished_area FROM residentialInventory") 
-> dfDescription <- dbGetQuery(con, "SELECT folioID, actualUseDescription, neighbourhoodDescription, landWidth, landDepth FROM folioDescription")
-> print(nrow(dfFolio))
-[1] 208724
-> dfBCA19 <- merge(dfFolio, dfInventory, by.x="rollNumber", by.y="roll_number")
-> dtBCA19 <- data.table(merge(dfBCA19, dfDescription, by="folioID"))
+> # (1) one join across folio (jurisdiction) + residentialInventory (zoning/area) + folioDescription
+> # (use description) -- replaces the three separate pulls and the two R merges, and filters
+> # in SQL before pulling into R. INNER JOINs reproduce the old merge()-without-all=TRUE
+> # behavior (rows without a match in every table are dropped, same as before).
+> dtBCA19 <- data.table(dbGetQuery(con, "
++   SELECT d.folioID, f.rollNumber, i.zoning, i.MB_effective_year, i.MB_total_finished_area, i.land_width, i.land_depth,
++          d.actualUseDescription, d.neighbourhoodDescription, d.landWidth, d.landDepth
++   FROM folio f
++   JOIN residentialInventory i ON i.roll_number = f.rollNumber
++   JOIN folioDescription d      ON d.folioID     = f.folioID
++   WHERE f.jurisdictionCode = '200'
++     AND (d.actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
++          OR d.actualUseDescription LIKE '%plex%')
++ "))
+> dfSales <- dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice FROM sales WHERE     conveyanceTypeDescription  = 'Improved Single Property Transaction' ")
 > print(head(dtBCA19))
       folioID      rollNumber zoning MB_effective_year MB_total_finished_area
        <char>          <char> <char>            <char>                 <char>
@@ -363,67 +293,44 @@ Geodetic CRS:  WGS 84
 4: A00000000C 001019632650000    RS1              2011                   8673
 5: A00000000D 001019632760000    RS1              2000                   7238
 6: A00000000E 001019635070000    RS1              1995                   4739
-     actualUseDescription neighbourhoodDescription landWidth landDepth
-                   <char>                   <char>    <char>    <char>
-1: Single Family Dwelling               POINT GREY                    
-2: Single Family Dwelling               POINT GREY                    
-3: Single Family Dwelling               POINT GREY                    
-4: Single Family Dwelling               POINT GREY                    
-5: Single Family Dwelling               POINT GREY                    
-6: Single Family Dwelling               POINT GREY                    
+   land_width land_depth   actualUseDescription neighbourhoodDescription
+       <char>     <char>                 <char>                   <char>
+1:                       Single Family Dwelling               POINT GREY
+2:        195      251.9 Single Family Dwelling               POINT GREY
+3:        150        250 Single Family Dwelling               POINT GREY
+4:        150        250 Single Family Dwelling               POINT GREY
+5:        170      215.2 Single Family Dwelling               POINT GREY
+6:        170      217.8 Single Family Dwelling               POINT GREY
+   landWidth landDepth
+      <char>    <char>
+1:                    
+2:                    
+3:                    
+4:                    
+5:                    
+6:                    
 > print(table(dtBCA19[,actualUseDescription])[order(-table(dtBCA19[,actualUseDescription]))])
 
-                Strata-Lot Residence (Condominium) 
-                                             90144 
-                            Single Family Dwelling 
-                                             39542 
-                   Residential Dwelling with Suite 
-                                             34790 
-               Row Housing (Single Unit Ownership) 
-                                             10766 
-                       Duplex, Strata Front / Back 
-                                              2620 
-Stratified Rental Apartment (Hi-Rise Construction) 
-                                              2475 
-  Stratified Rental Apartment (Frame Construction) 
-                                              2341 
-                       Duplex, Strata Side by Side 
-                                              1518 
-                 Property Subject To Section 19(8) 
-                                               994 
-   Duplex, Non-Strata Side by Side or Front / Back 
-                                               832 
-              Vacant Residential Less Than 2 Acres 
-                                               300 
-               Individual Strata Lot (Hotel/Motel) 
-                                               284 
-                          Duplex, Strata Up / Down 
-                                               159 
-                      Duplex, Non-Strata Up / Down 
-                                                95 
-                       Stratified Rental Townhouse 
-                                                72 
-                         Multi-Family (Conversion) 
-                                                49 
-  2 Acres Or More (Single Family Dwelling, Duplex) 
-                                                36 
-                      Residential Outbuilding Only 
-                                                21 
-                          2 Acres Or More (Vacant) 
-                                                 4 
-                                           Triplex 
-                                                 4 
-       Bed & Breakfast Operation Less Than 4 Units 
-                                                 1 
-           Parking (Lot Only, Paved Or Gravel-Res) 
-                                                 1 
-             Stratified Operational Facility Areas 
-                                                 1 
-                                       Vacant IC&I 
-                                                 1 
-> dtBCA19 <- dtBCA19[actualUseDescription %in% c("Single Family Dwelling","Residential Dwelling with Suite")]
+                          Single Family Dwelling 
+                                           39542 
+                 Residential Dwelling with Suite 
+                                           34790 
+                     Duplex, Strata Front / Back 
+                                            2620 
+                     Duplex, Strata Side by Side 
+                                            1518 
+ Duplex, Non-Strata Side by Side or Front / Back 
+                                             832 
+                        Duplex, Strata Up / Down 
+                                             159 
+                    Duplex, Non-Strata Up / Down 
+                                              95 
+2 Acres Or More (Single Family Dwelling, Duplex) 
+                                              36 
+                                         Triplex 
+                                               4 
 > print(nrow(dtBCA19))
-[1] 74332
+[1] 79596
 > 
 > dtBCA19[,rollStart:=floor(as.numeric(rollNumber)/1000)]
 > print(head(dtBCA19))
@@ -435,24 +342,183 @@ Stratified Rental Apartment (Hi-Rise Construction)
 4: A00000000C 001019632650000    RS1              2011                   8673
 5: A00000000D 001019632760000    RS1              2000                   7238
 6: A00000000E 001019635070000    RS1              1995                   4739
+   land_width land_depth   actualUseDescription neighbourhoodDescription
+       <char>     <char>                 <char>                   <char>
+1:                       Single Family Dwelling               POINT GREY
+2:        195      251.9 Single Family Dwelling               POINT GREY
+3:        150        250 Single Family Dwelling               POINT GREY
+4:        150        250 Single Family Dwelling               POINT GREY
+5:        170      215.2 Single Family Dwelling               POINT GREY
+6:        170      217.8 Single Family Dwelling               POINT GREY
+   landWidth landDepth  rollStart
+      <char>    <char>      <num>
+1:                     1019632060
+2:                     1019632290
+3:                     1019632450
+4:                     1019632650
+5:                     1019632760
+6:                     1019635070
+> dtBCA19[is.na(landWidth),landWidth:=land_width]
+> dtBCA19[is.na(landDepth),landDepth:=land_depth]
+> 
+> setkey(dtBCA19,rollStart)
+> setkey(dtGeo,rollStart)
+> print(table(dtBCA19[,zoning]))
+
+         C1    C2   C2C  C2C1   C3A    C5   CD1  DDL1  DEOD DEOD2 FCCDD   FM1 
+    1    28    38     2     1     3     1   440     3    30     4    13    18 
+  FSD    I1    I2   IC3   M1B    M2   MC1   RA1   RM1 RM10N  RM11 RM11N RM12N 
+  555    37    25     2     2    10     2    96   211    26    16   123   164 
+ RM1N   RM2   RM3  RM3A   RM4  RM4N   RM5  RM5A  RM5B   RM7 RM7AN  RM7N   RM8 
+  128    63    16   144   661   135    13    10     8   644    80    24   190 
+ RM8A RM8AN  RM8N   RM9  RM9A RM9AN RM9BN  RM9N  RS05   RS1  RS1A  RS1B  RS1S 
+  193    25    58    38   163    36    66     3     1 49111   173   189    77 
+  RS2   RS3  RS3A   RS4   RS5  RS5S   RS6   RS7  RSIS    RT   RT1  RT10 RT10N 
+  151   389   182    16 11483     2  1058  1811     1     1    35  1119    79 
+ RT11 RT11N   RT2   RT3   RT4  RT4A RT4AN  RT4N   RT5  RT5A RT5AN  RT5N   RT6 
+  856    60  1983   539   900    36     8     2  2058   113    16   108   182 
+  RT7   RT8   RT9 
+  956  1107   245 
+> dtBCA19 <- dtBCA19[dtGeo]
+> print(table(dtBCA19[,zoning]))
+
+         C1    C2   C2C   C3A    C5   CD1  DDL1  DEOD FCCDD   FM1   FSD    I1 
+    1    20    17     1     3     1  4029     3    24   103    15   560    33 
+   I2   IC3    M2   MC1   RA1   RM1 RM10N  RM11 RM11N RM12N  RM1N   RM2   RM3 
+   22     2     9     2    78   195    21    12    69   133   111    15     3 
+ RM3A   RM4  RM4N   RM5  RM5A  RM5B   RM7 RM7AN  RM7N   RM8  RM8A RM8AN  RM8N 
+   70   421    53    11     5     4   462    73    11   176   142    21    51 
+  RM9  RM9A RM9AN RM9BN  RM9N  RS05   RS1  RS1A  RS1B  RS1S   RS2   RS3  RS3A 
+   27   148    19    58     3     1 47455   160   203    71   128   378   179 
+  RS4   RS5  RS5S   RS6   RS7  RSIS   RT1  RT10 RT10N  RT11 RT11N   RT2   RT3 
+   14 11220     2  1043  1724     1     1   967    70   747    36   614   419 
+  RT4  RT4A RT4AN  RT4N   RT5  RT5A RT5AN  RT5N   RT6   RT7   RT8   RT9 
+  653    19     1     2  1042    60     7    54   103   449   507    97 
+> dtBCA19 <- dtBCA19[substring(zoning,1,2)=="RS"]
+> for (v in c("landWidth","landDepth","MB_total_finished_area")) {
++ 	dtBCA19[,(v):=as.numeric(get(v))]
++ }
+> 
+> dtSales <- merge(data.table(dfSales), dtBCA19, by="folioID")
+> print(head(dtSales))
+Key: <folioID>
+      folioID conveyanceDate conveyancePrice      rollNumber zoning
+       <char>         <char>          <char>          <char> <char>
+1: A000000009     2014-06-16         9450000 001019632060000    RS1
+2: A00000000A     2013-02-08         8800000 001019632290000    RS1
+3: A00000000A     1991-07-09         1700000 001019632290000    RS1
+4: A00000000B     2006-12-04         3850000 001019632450000    RS1
+5: A00000000B     1977-04-15          190000 001019632450000    RS1
+6: A00000000C     1991-09-03         2308000 001019632650000    RS1
+   MB_effective_year MB_total_finished_area land_width land_depth
+              <char>                  <num>     <char>     <char>
+1:              2019                  11895                      
+2:              1997                   7760        195      251.9
+3:              1997                   7760        195      251.9
+4:              1945                   3215        150        250
+5:              1945                   3215        150        250
+6:              2011                   8673        150        250
      actualUseDescription neighbourhoodDescription landWidth landDepth
-                   <char>                   <char>    <char>    <char>
-1: Single Family Dwelling               POINT GREY                    
-2: Single Family Dwelling               POINT GREY                    
-3: Single Family Dwelling               POINT GREY                    
-4: Single Family Dwelling               POINT GREY                    
-5: Single Family Dwelling               POINT GREY                    
-6: Single Family Dwelling               POINT GREY                    
-    rollStart
-        <num>
-1: 1019632060
-2: 1019632290
-3: 1019632450
-4: 1019632650
-5: 1019632760
-6: 1019635070
+                   <char>                   <char>     <num>     <num>
+1: Single Family Dwelling               POINT GREY        NA        NA
+2: Single Family Dwelling               POINT GREY        NA        NA
+3: Single Family Dwelling               POINT GREY        NA        NA
+4: Single Family Dwelling               POINT GREY        NA        NA
+5: Single Family Dwelling               POINT GREY        NA        NA
+6: Single Family Dwelling               POINT GREY        NA        NA
+    rollStart     ROLL_NUMBER  CTNAME          ACTUAL_USE_DESCRIPTION
+        <num>          <char>  <char>                          <char>
+1: 1019632060 001019632060000 0044.00          Single Family Dwelling
+2: 1019632290 001019632290000 0044.00          Single Family Dwelling
+3: 1019632290 001019632290000 0044.00          Single Family Dwelling
+4: 1019632450 001019632450000 0044.00 Residential Dwelling with Suite
+5: 1019632450 001019632450000 0044.00 Residential Dwelling with Suite
+6: 1019632650 001019632650000 0044.00          Single Family Dwelling
+   NEIGHBOURHOOD longitude latitude                           geom
+          <char>     <num>    <num>             <sfc_MULTIPOLYGON>
+1:    Point Grey -123.2229 49.27488 MULTIPOLYGON (((-123.2222 4...
+2:    Point Grey -123.2243 49.27431 MULTIPOLYGON (((-123.2239 4...
+3:    Point Grey -123.2243 49.27431 MULTIPOLYGON (((-123.2239 4...
+4:    Point Grey -123.2236 49.27424 MULTIPOLYGON (((-123.224 49...
+5:    Point Grey -123.2236 49.27424 MULTIPOLYGON (((-123.224 49...
+6:    Point Grey -123.2230 49.27420 MULTIPOLYGON (((-123.2232 4...
+> print(table(dtSales[,actualUseDescription]))
+
+Duplex, Non-Strata Side by Side or Front / Back 
+                                              5 
+                    Duplex, Strata Front / Back 
+                                             74 
+                    Duplex, Strata Side by Side 
+                                              4 
+                Residential Dwelling with Suite 
+                                          53499 
+                         Single Family Dwelling 
+                                          53985 
+> # almost no duplex sales
+> dtSales <- dtSales[actualUseDescription %in% c("Single Family Dwelling", "Residential Dwelling with Suite")]
+> dtSales[,year:=as.numeric(substr(conveyanceDate,1,4))]
+> dtSales[,yearMonth:=substr(conveyanceDate,1,7)]
+> print(summary(dtSales[year==2017,.N,by=CTNAME]))
+    CTNAME                N        
+ Length:77          Min.   : 1.00  
+ Class :character   1st Qu.:13.00  
+ Mode  :character   Median :24.00  
+                    Mean   :25.69  
+                    3rd Qu.:34.00  
+                    Max.   :97.00  
+> print(summary(dtSales[year %between% c(2016,2017),.N,by=CTNAME]))
+    CTNAME                N         
+ Length:78          Min.   :  2.00  
+ Class :character   1st Qu.: 33.00  
+ Mode  :character   Median : 56.00  
+                    Mean   : 61.46  
+                    3rd Qu.: 77.00  
+                    Max.   :242.00  
+> print(summary(dtSales[year %between% c(2015,2017),.N,by=CTNAME]))
+    CTNAME                N         
+ Length:78          Min.   :  2.00  
+ Class :character   1st Qu.: 53.25  
+ Mode  :character   Median : 92.00  
+                    Mean   :104.36  
+                    3rd Qu.:131.75  
+                    Max.   :401.00  
+> MINYEAR <- 2015
+> MAXYEAR <- 2017
+> for (v in c("conveyancePrice")) {
++ 	dtSales[,(v):=as.numeric(get(v))]
++ }
+> dtSales <- dtSales[year %between% c(MINYEAR,MAXYEAR) & !is.na(landWidth) & !is.na(landDepth) & !is.na(MB_total_finished_area) & !is.na(conveyancePrice) & conveyancePrice>0 & MB_total_finished_area>0]
+> 
+> regH <- feols(log(conveyancePrice) ~ log(MB_total_finished_area) + log(landWidth) + (landDepth),data=dtSales)
+> dtSales[,hedonicResidual:=residuals(regH)]
+> dtHedonicC <- dtSales[,.(hedonicResidualMean=mean(hedonicResidual)),by=CTNAME]
+> print(summary(dtHedonicC))
+    CTNAME          hedonicResidualMean
+ Length:78          Min.   :-0.45690   
+ Class :character   1st Qu.:-0.27814   
+ Mode  :character   Median :-0.17019   
+                    Mean   :-0.06991   
+                    3rd Qu.: 0.08787   
+                    Max.   : 1.28805   
+> dtElasticityC <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area))),by=CTNAME]
+> dtHedonicN <- dtSales[,.(hedonicResidualMean=mean(hedonicResidual)),by=NEIGHBOURHOOD]
+> print(summary(dtHedonicN))
+ NEIGHBOURHOOD      hedonicResidualMean
+ Length:23          Min.   :-0.49087   
+ Class :character   1st Qu.:-0.26439   
+ Mode  :character   Median :-0.05109   
+                    Mean   :-0.04948   
+                    3rd Qu.: 0.16671   
+                    Max.   : 0.44495   
+> dtElasticityN <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area))),by=NEIGHBOURHOOD]
+> dtCT <- merge(dtHedonicC,dtElasticityC,by="CTNAME")
+> dtN <- merge(dtHedonicN,dtElasticityN,by="NEIGHBOURHOOD")
+> print(dtCT[,cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
+[1] 0.2389436
+> print(dtN[,cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
+[1] 0.6365405
 > 
 > q("no")
 > proc.time()
    user  system elapsed 
- 23.478   1.897  24.138 
+ 20.912   5.141  17.898 
