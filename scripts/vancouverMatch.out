@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -52,7 +52,7 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > # grab zoning and census tracts to make spatial
 > dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson") # vancouver_zoning.geojson
 Reading layer `vancouver_zoning' from data source 
-  `/Volumes/Crucial X10/Dropbox/dataRaw/vancouver_zoning.geojson' 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/vancouver_zoning.geojson' 
   using driver `GeoJSON'
 Simple feature collection with 1590 features and 6 fields
 Geometry type: POLYGON
@@ -203,7 +203,7 @@ Geodetic CRS:  WGS 84
 11 2021S05079330013.03 0013.03   0.6239    59 POINT (-123.0863 49.22515)
 12 2021S05079330018.01 0018.01   0.9026    59 POINT (-123.0596 49.23585)
 > 
-> dtPgeo <- as.data.table(dtPgeo)[,.(PermitNumber,DGUID,geometry)]
+> dtPgeo <- as.data.table(dtPgeo)[,.(PermitNumber,DGUID,CTNAME,geometry)]
 > 
 > # now get appraised values and sales for single family homes by tract for 2017, pre re-zonings. Do current appraisals and 2017 sales to show correlations. Can get all this from current data
 > 
@@ -500,7 +500,7 @@ Duplex, Non-Strata Side by Side or Front / Back
                     Mean   :-0.06991   
                     3rd Qu.: 0.08787   
                     Max.   : 1.28805   
-> dtElasticityC <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area))),by=CTNAME]
+> dtElasticityC <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area)),count=.N),by=CTNAME]
 > dtHedonicN <- dtSales[,.(hedonicResidualMean=mean(hedonicResidual)),by=NEIGHBOURHOOD]
 > print(summary(dtHedonicN))
  NEIGHBOURHOOD      hedonicResidualMean
@@ -510,15 +510,94 @@ Duplex, Non-Strata Side by Side or Front / Back
                     Mean   :-0.04948   
                     3rd Qu.: 0.16671   
                     Max.   : 0.44495   
-> dtElasticityN <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area))),by=NEIGHBOURHOOD]
+> dtElasticityN <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area)),count=.N),by=NEIGHBOURHOOD]
 > dtCT <- merge(dtHedonicC,dtElasticityC,by="CTNAME")
 > dtN <- merge(dtHedonicN,dtElasticityN,by="NEIGHBOURHOOD")
-> print(dtCT[,cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
+> for (k in c(0,.05,.1,.5)) {
++ 	print(k)
++ 	print(quantile(dtCT[,count],k))
++ 	print(dtCT[count>quantile(count,k),cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
++ 	print(quantile(dtN[,count],k))
++ 	print(dtN[count>quantile(count,k),cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
++ }
+[1] 0
+0% 
+ 1 
 [1] 0.2389436
-> print(dtN[,cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
-[1] 0.6365405
+0% 
+16 
+[1] 0.6882224
+[1] 0.05
+5% 
+ 6 
+[1] 0.5305628
+   5% 
+112.5 
+[1] 0.692825
+[1] 0.1
+ 10% 
+19.4 
+[1] 0.5242494
+  10% 
+163.6 
+[1] 0.6986962
+[1] 0.5
+ 50% 
+89.5 
+[1] 0.6469042
+50% 
+286 
+[1] 0.8514486
+> ggplot(dtCT,aes(x=hedonicResidualMean,y=hedonicElasticity)) + geom_point(aes(size=count,color=count))
+Warning message:
+Removed 1 row containing missing values or values outside the scale range
+(`geom_point()`). 
+> ggsave("text/ctElasticityFE.png",width=8,height=6)
+Warning message:
+Removed 1 row containing missing values or values outside the scale range
+(`geom_point()`). 
+> ggplot(dtN,aes(x=hedonicResidualMean,y=hedonicElasticity)) + geom_point(aes(size=count,color=count))
+> ggsave("text/neighbourhoodElasticityFE.png",width=8,height=6)
 > 
-> q("no")
-> proc.time()
-   user  system elapsed 
- 20.912   5.141  17.898 
+> print(head(dtPgeo))
+    PermitNumber               DGUID  CTNAME                   geometry
+          <char>              <char>  <char>                <sfc_POINT>
+1: BP-2023-01509 2021S05079330053.01 0053.01 POINT (-123.0502 49.28504)
+2: BP-2022-01592 2021S05079330044.00 0044.00 POINT (-123.2065 49.27186)
+3: BP-2021-06423 2021S05079330013.03 0013.03 POINT (-123.0863 49.22515)
+4: DB-2021-03511 2021S05079330032.02 0032.02 POINT (-123.0747 49.25512)
+5: DB-2021-06422 2021S05079330013.03 0013.03 POINT (-123.0863 49.22515)
+6: DB-2021-01579 2021S05079330018.01 0018.01 POINT (-123.0596 49.23585)
+> dtPgeo <- merge(dtPgeo,dtCT,by="CTNAME",all.x=TRUE)
+> dtP <- merge(dtP,dtPgeo,by="PermitNumber")
+> print(head(dtP))
+Key: <PermitNumber>
+    PermitNumber   SpecificUseCategory             geo_point_2d      lat
+          <char>                <char>                   <char>    <num>
+1: BP-2016-00054 Single Detached House 49.2173228, -123.0994903 49.21732
+2: BP-2016-00114 Single Detached House 49.2370435, -123.1046014 49.23704
+3: BP-2016-00130 Single Detached House 49.2325094, -123.1826968 49.23251
+4: BP-2016-00132 Single Detached House 49.2325094, -123.1826968 49.23251
+5: BP-2016-00160 Single Detached House 49.2165507, -123.0725981 49.21655
+6: BP-2016-00167 Single Detached House 49.2622733, -123.2098877 49.26227
+         lon  CTNAME               DGUID                   geometry
+       <num>  <char>              <char>                <sfc_POINT>
+1: -123.0995 0004.02 2021S05079330004.02 POINT (-123.0995 49.21732)
+2: -123.1046 0019.00 2021S05079330019.00 POINT (-123.1046 49.23704)
+3: -123.1827 0008.02 2021S05079330008.02 POINT (-123.1827 49.23251)
+4: -123.1827 0008.02 2021S05079330008.02 POINT (-123.1827 49.23251)
+5: -123.0726 0003.01 2021S05079330003.01 POINT (-123.0726 49.21655)
+6: -123.2099 0043.01 2021S05079330043.01 POINT (-123.2099 49.26227)
+   hedonicResidualMean hedonicElasticity count
+                 <num>             <num> <int>
+1:         -0.35927681         0.4362496    90
+2:          0.05054903         0.6541972   108
+3:         -0.03081893         0.7206260   176
+4:         -0.03081893         0.7206260   176
+5:         -0.31821815         0.4679524    71
+6:          0.40882793         0.6068964   161
+> useList <- dtP[, .N, by=SpecificUseCategory][order(N)][N>100]["SpecificUseCategory"]
+Error in `[.data.table`(dtP[, .N, by = SpecificUseCategory][order(N)][N >  : 
+  When i is a data.table (or character vector), the columns to join by must be specified using the 'on=' argument (see ?data.table); by keying x (i.e., x is sorted and marked as such, see ?setkey); or by using 'on = .NATURAL' to indicate using the shared column names between x and i (i.e., a natural join). Keyed joins might have further speed benefits on very large data due to x being sorted in RAM.
+Calls: [ -> [.data.table -> stopf -> raise_condition -> signal
+Execution halted

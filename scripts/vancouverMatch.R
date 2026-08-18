@@ -60,7 +60,7 @@ dfT <- readRDS(fTract)
 dtPgeo <- st_join(dtPgeo, dfT, join = st_within) # spatial join to census tract shapes
 print(head(dtPgeo))
 
-dtPgeo <- as.data.table(dtPgeo)[,.(PermitNumber,DGUID,geometry)]
+dtPgeo <- as.data.table(dtPgeo)[,.(PermitNumber,DGUID,CTNAME,geometry)]
 
 # now get appraised values and sales for single family homes by tract for 2017, pre re-zonings. Do current appraisals and 2017 sales to show correlations. Can get all this from current data
 
@@ -167,13 +167,34 @@ regH <- feols(log(conveyancePrice) ~ log(MB_total_finished_area) + log(landWidth
 dtSales[,hedonicResidual:=residuals(regH)]
 dtHedonicC <- dtSales[,.(hedonicResidualMean=mean(hedonicResidual)),by=CTNAME]
 print(summary(dtHedonicC))
-dtElasticityC <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area))),by=CTNAME]
+dtElasticityC <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area)),count=.N),by=CTNAME]
 dtHedonicN <- dtSales[,.(hedonicResidualMean=mean(hedonicResidual)),by=NEIGHBOURHOOD]
 print(summary(dtHedonicN))
-dtElasticityN <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area))),by=NEIGHBOURHOOD]
+dtElasticityN <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area)),count=.N),by=NEIGHBOURHOOD]
 dtCT <- merge(dtHedonicC,dtElasticityC,by="CTNAME")
 dtN <- merge(dtHedonicN,dtElasticityN,by="NEIGHBOURHOOD")
-print(dtCT[,cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
-print(dtN[,cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
+for (k in c(0,.05,.1,.5)) {
+	print(k)
+	print(quantile(dtCT[,count],k))
+	print(dtCT[count>quantile(count,k),cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
+	print(quantile(dtN[,count],k))
+	print(dtN[count>quantile(count,k),cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
+}
+ggplot(dtCT,aes(x=hedonicResidualMean,y=hedonicElasticity)) + geom_point(aes(size=count,color=count))
+ggsave("text/ctElasticityFE.png",width=8,height=6)
+ggplot(dtN,aes(x=hedonicResidualMean,y=hedonicElasticity)) + geom_point(aes(size=count,color=count))
+ggsave("text/neighbourhoodElasticityFE.png",width=8,height=6)
+
+print(head(dtPgeo))
+dtPgeo <- merge(dtPgeo,dtCT,by="CTNAME",all.x=TRUE)
+dtP <- merge(dtP,dtPgeo,by="PermitNumber")
+print(head(dtP))
+useList <- dtP[, .N, by = SpecificUseCategory][order(-N)][N > 100, "SpecificUseCategory"]
+dtP <- dtP[SpecificUseCategory %in% useList]
+dtP[,single:=grepl("Single",SpecificUseCategory)]
+dtP[,duplex:=grepl("Duplex",SpecificUseCategory)]
+dtP <- dtP[single==TRUE | duplex==TRUE]
+print(dtP[,cor(Duplex,hedonicElasticity,hedonicResidualMean,use="complete.obs")])
+print(dtP[count>100,cor(Duplex,hedonicElasticity,hedonicResidualMean,use="complete.obs")])
 
 q("no")
