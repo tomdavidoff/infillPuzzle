@@ -30,6 +30,8 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(ggspatial)
 > library(RSQLite)
 > library(fixest)
+> library(units)
+udunits database from /Users/davidoff/Library/R/arm64/4.5/library/units/share/udunits/udunits2.xml
 > 
 > sf_use_s2(TRUE) # (5) ensure s2 for fast lat/lon st_within
 > 
@@ -37,7 +39,7 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > # (7) only read the columns actually used downstream
 > dtP <- fread(
 +   "~/DropboxExternal/dataRaw/issued-building-permitsDwellingUses.csv",
-+   select = c("SpecificUseCategory", "PermitNumber", "geo_point_2d")
++   select = c("SpecificUseCategory", "PermitNumber", "geo_point_2d","PermitNumberCreatedDate","TypeOfWork","ProjectValue")
 + ) # pre-filtered for dwelling uses on download from Vancouver Open Data
 > print(head(dtP))
      SpecificUseCategory  PermitNumber             geo_point_2d
@@ -48,6 +50,14 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 4:     Multiple Dwelling BP-2021-04733   49.2392977, -123.04458
 5:                Duplex DB-2024-04710 49.2741246, -123.0595101
 6: Single Detached House BP-2022-01592 49.2718579, -123.2064534
+   PermitNumberCreatedDate            TypeOfWork ProjectValue
+                    <IDat>                <char>        <num>
+1:              2023-02-15          New Building      2743500
+2:              2024-08-02 Salvage and Abatement            0
+3:              2023-05-04 Addition / Alteration        10000
+4:              2021-09-07 Addition / Alteration        50000
+5:              2024-11-27          New Building       800000
+6:              2022-03-28 Addition / Alteration       500000
 > 
 > # grab zoning and census tracts to make spatial
 > dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson") # vancouver_zoning.geojson
@@ -572,14 +582,22 @@ Removed 1 row containing missing values or values outside the scale range
 > dtP <- merge(dtP,dtPgeo,by="PermitNumber")
 > print(head(dtP))
 Key: <PermitNumber>
-    PermitNumber   SpecificUseCategory             geo_point_2d      lat
-          <char>                <char>                   <char>    <num>
-1: BP-2016-00054 Single Detached House 49.2173228, -123.0994903 49.21732
-2: BP-2016-00114 Single Detached House 49.2370435, -123.1046014 49.23704
-3: BP-2016-00130 Single Detached House 49.2325094, -123.1826968 49.23251
-4: BP-2016-00132 Single Detached House 49.2325094, -123.1826968 49.23251
-5: BP-2016-00160 Single Detached House 49.2165507, -123.0725981 49.21655
-6: BP-2016-00167 Single Detached House 49.2622733, -123.2098877 49.26227
+    PermitNumber   SpecificUseCategory             geo_point_2d
+          <char>                <char>                   <char>
+1: BP-2016-00054 Single Detached House 49.2173228, -123.0994903
+2: BP-2016-00114 Single Detached House 49.2370435, -123.1046014
+3: BP-2016-00130 Single Detached House 49.2325094, -123.1826968
+4: BP-2016-00132 Single Detached House 49.2325094, -123.1826968
+5: BP-2016-00160 Single Detached House 49.2165507, -123.0725981
+6: BP-2016-00167 Single Detached House 49.2622733, -123.2098877
+   PermitNumberCreatedDate                  TypeOfWork ProjectValue      lat
+                    <IDat>                      <char>        <num>    <num>
+1:              2016-05-26       Salvage and Abatement            0 49.21732
+2:              2016-05-31 Demolition / Deconstruction        15000 49.23704
+3:              2016-06-01                New Building      1603625 49.23251
+4:              2016-06-01 Demolition / Deconstruction        15000 49.23251
+5:              2016-06-02       Salvage and Abatement            0 49.21655
+6:              2016-06-02 Demolition / Deconstruction        15000 49.26227
          lon  CTNAME               DGUID                   geometry
        <num>  <char>              <char>                <sfc_POINT>
 1: -123.0995 0004.02 2021S05079330004.02 POINT (-123.0995 49.21732)
@@ -596,8 +614,178 @@ Key: <PermitNumber>
 4:         -0.03081893         0.7206260   176
 5:         -0.31821815         0.4679524    71
 6:          0.40882793         0.6068964   161
-> useList <- dtP[, .N, by=SpecificUseCategory][order(N)][N>100]["SpecificUseCategory"]
-Error in `[.data.table`(dtP[, .N, by = SpecificUseCategory][order(N)][N >  : 
-  When i is a data.table (or character vector), the columns to join by must be specified using the 'on=' argument (see ?data.table); by keying x (i.e., x is sorted and marked as such, see ?setkey); or by using 'on = .NATURAL' to indicate using the shared column names between x and i (i.e., a natural join). Keyed joins might have further speed benefits on very large data due to x being sorted in RAM.
-Calls: [ -> [.data.table -> stopf -> raise_condition -> signal
-Execution halted
+> useList <- dtP[, .N, by = SpecificUseCategory][order(-N)][N > 100]
+> useList <- useList[,SpecificUseCategory]
+> 
+> CRITVAL <- .5
+> dtP[,single:=grepl("Single",SpecificUseCategory)]
+> dtP[,duplex:=grepl("Duplex",SpecificUseCategory)]
+> dtP <- dtP[single==TRUE | duplex==TRUE] # for now
+> minSpend <- quantile(dtP[,ProjectValue],CRITVAL)
+> dtP <- dtP[TypeOfWork=="New Building" & single==1| ProjectValue>minSpend]
+> dtP[,year:=as.numeric(substr(PermitNumberCreatedDate,1,4))]
+> dtP <- dtP[year>2018 & year<2024]
+> dtP <- dtP[SpecificUseCategory %in% useList]
+> print(cor(dtP[,.(duplex,hedonicElasticity,hedonicResidualMean)],use="complete.obs"))
+                        duplex hedonicElasticity hedonicResidualMean
+duplex               1.0000000        -0.1959121          -0.2466431
+hedonicElasticity   -0.1959121         1.0000000           0.6370412
+hedonicResidualMean -0.2466431         0.6370412           1.0000000
+> print(cor(dtP[count>100,.(duplex,hedonicElasticity,hedonicResidualMean)],use="complete.obs"))
+                        duplex hedonicElasticity hedonicResidualMean
+duplex               1.0000000        -0.2099780          -0.2326065
+hedonicElasticity   -0.2099780         1.0000000           0.6828788
+hedonicResidualMean -0.2326065         0.6828788           1.0000000
+> 
+> # match dtP with dfGeo by lat lon distance nearest neighbour
+> # make a spatial data frame
+> crr <- st_crs(dfG)
+> dtPgeo <- st_as_sf(
++   dtP[, .(PermitNumber,lat, lon)],
++   coords = c("lon", "lat"),
++   crs = 4326                    # what lat/lon actually are
++ )
+> dtPgeo <- st_transform(dtPgeo, st_crs(dfG))   # now match dfG
+> idx  <- st_nearest_feature(dtPgeo, dfG)
+> dist <- st_distance(dtPgeo, dfG[idx, ], by_element = TRUE)
+> 
+> cols <- setdiff(names(dfG), attr(dfG, "sf_column"))
+> matched <- st_drop_geometry(dfG)[idx, cols, drop = FALSE]
+> matched[dist > set_units(10, "m"), ] <- NA
+> dtPgeo <- cbind(dtPgeo, matched)
+> dtPgeo$dist <- dist
+> print(head(dtPgeo))
+Simple feature collection with 6 features and 13 fields
+Geometry type: POINT
+Dimension:     XY
+Bounding box:  xmin: -123.1948 ymin: 49.22423 xmax: -123.0358 ymax: 49.259
+Geodetic CRS:  WGS 84
+       PermitNumber     ROLL_NUMBER          ACTUAL_USE_DESCRIPTION
+43503 BP-2019-00001 002686077740000          Single Family Dwelling
+64507 BP-2019-00016 023702250950000 Residential Dwelling with Suite
+42816 BP-2019-00024 011152790890000 Residential Dwelling with Suite
+16442 BP-2019-00140 022688297310000 Residential Dwelling with Suite
+68605 BP-2019-00142 003725030650000          Single Family Dwelling
+51772 BP-2019-00149 004721079050000          Single Family Dwelling
+                          NEIGHBOURHOOD      CTUID               DGUID  CTNAME
+43503                         Kitsilano 9330041.02 2021S05079330041.02 0041.02
+64507                       Collingwood 9330034.02 2021S05079330034.02 0034.02
+42816                          Oakridge 9330010.02 2021S05079330010.02 0010.02
+16442                   Renfrew Heights 9330036.01 2021S05079330036.01 0036.01
+68605                            Dunbar 9330024.00 2021S05079330024.00 0024.00
+51772 Arbutus Ridge - Mackenzie Heights 9330027.01 2021S05079330027.01 0027.01
+      LANDAREA PRUID centroid.ROLL_NUMBER centroid.ACTUAL_USE_DESCRIPTION
+43503   1.0012    59      002686077740000          Single Family Dwelling
+64507   1.3371    59      023702250950000 Residential Dwelling with Suite
+42816   1.3930    59      011152790890000 Residential Dwelling with Suite
+16442   1.3696    59      022688297310000 Residential Dwelling with Suite
+68605   1.7023    59      003725030650000          Single Family Dwelling
+51772   1.2742    59      004721079050000          Single Family Dwelling
+                 centroid.NEIGHBOURHOOD centroid.CTUID      centroid.DGUID
+43503                         Kitsilano     9330041.02 2021S05079330041.02
+64507                       Collingwood     9330034.02 2021S05079330034.02
+42816                          Oakridge     9330010.02 2021S05079330010.02
+16442                   Renfrew Heights     9330036.01 2021S05079330036.01
+68605                            Dunbar     9330024.00 2021S05079330024.00
+51772 Arbutus Ridge - Mackenzie Heights     9330027.01 2021S05079330027.01
+      centroid.CTNAME centroid.LANDAREA centroid.PRUID
+43503         0041.02            1.0012             59
+64507         0034.02            1.3371             59
+42816         0010.02            1.3930             59
+16442         0036.01            1.3696             59
+68605         0024.00            1.7023             59
+51772         0027.01            1.2742             59
+                   centroid.geom longitude latitude                   geometry
+43503 POINT (-123.1609 49.25901) -123.1609 49.25901   POINT (-123.1609 49.259)
+64507 POINT (-123.0627 49.24962) -123.0627 49.24962 POINT (-123.0627 49.24962)
+42816 POINT (-123.1272 49.22423) -123.1272 49.22423 POINT (-123.1272 49.22423)
+16442 POINT (-123.0358 49.25582) -123.0358 49.25582 POINT (-123.0358 49.25582)
+68605 POINT (-123.1948 49.24458) -123.1948 49.24458 POINT (-123.1948 49.24458)
+51772 POINT (-123.1604 49.24548) -123.1604 49.24548 POINT (-123.1604 49.24549)
+       dist
+43503 0 [m]
+64507 0 [m]
+42816 0 [m]
+16442 0 [m]
+68605 0 [m]
+51772 0 [m]
+> print(summary(dtPgeo$dist))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
+   0.00    0.00    0.00    2.29    4.69  510.64 
+> dtPgeo <- as.data.table(dtPgeo)
+> dtPgeo <- dtPgeo[,.(PermitNumber,ROLL_NUMBER)]
+> dtPgeo[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
+> dtPgeo <- merge(dtPgeo,dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year)],by="rollStart",all.x=TRUE)
+> dtP <- merge(dtP,dtPgeo,by="PermitNumber")
+> print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==33],cluster="CTNAME")))
+NOTE: 4 observations removed because of NA values (RHS: 4).
+OLS estimation, Dep. Var.: duplex
+Observations: 1,395
+Fixed-effects: year: 5
+Standard-errors: Clustered (CTNAME) 
+                     Estimate Std. Error   t value   Pr(>|t|)    
+hedonicElasticity   -0.029048   0.096812 -0.300044 0.76516377    
+hedonicResidualMean -0.365091   0.075643 -4.826474 0.00000968 ***
+landDepth            0.001495   0.001523  0.981515 0.33021580    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.417457     Adj. R2: 0.076797
+                 Within R2: 0.053183
+> print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==33 & count>100],cluster="CTNAME")))
+OLS estimation, Dep. Var.: duplex
+Observations: 945
+Fixed-effects: year: 5
+Standard-errors: Clustered (CTNAME) 
+                     Estimate Std. Error   t value  Pr(>|t|)    
+hedonicElasticity   -0.075136   0.131694 -0.570539 0.5725615    
+hedonicResidualMean -0.317737   0.097833 -3.247739 0.0028628 ** 
+landDepth            0.002098   0.001802  1.163925 0.2536279    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.390183     Adj. R2: 0.077344
+                 Within R2: 0.057443
+> print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==50],cluster="CTNAME")))
+OLS estimation, Dep. Var.: duplex
+Observations: 383
+Fixed-effects: year: 5
+Standard-errors: Clustered (CTNAME) 
+                     Estimate Std. Error   t value  Pr(>|t|)    
+hedonicElasticity   -0.135480   0.104169 -1.300588 0.1984567    
+hedonicResidualMean -0.332008   0.111822 -2.969087 0.0043123 ** 
+landDepth           -0.000332   0.000968 -0.343296 0.7325962    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.35264     Adj. R2: 0.101015
+                Within R2: 0.071291
+> print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==50 & count>100],cluster="CTNAME")))
+OLS estimation, Dep. Var.: duplex
+Observations: 279
+Fixed-effects: year: 5
+Standard-errors: Clustered (CTNAME) 
+                     Estimate Std. Error  t value  Pr(>|t|)    
+hedonicElasticity   -0.131774   0.130573 -1.00919 0.3212286    
+hedonicResidualMean -0.420737   0.125784 -3.34492 0.0022854 ** 
+landDepth           -0.001178   0.000807 -1.45947 0.1551841    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.326665     Adj. R2: 0.108686
+                 Within R2: 0.08562 
+> print(summary(feols(duplex ~ hedonicElasticity +  landDepth| year,data=dtP[round(landWidth)==33],cluster="CTNAME")))
+NOTE: 4 observations removed because of NA values (RHS: 4).
+OLS estimation, Dep. Var.: duplex
+Observations: 1,395
+Fixed-effects: year: 5
+Standard-errors: Clustered (CTNAME) 
+                   Estimate Std. Error   t value   Pr(>|t|)    
+hedonicElasticity -0.348793   0.082464 -4.229615 7.9825e-05 ***
+landDepth          0.000741   0.001656  0.447476 6.5612e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.423702     Adj. R2: 0.049657
+                 Within R2: 0.024646
+> 
+> 
+> q("no")
+> proc.time()
+   user  system elapsed 
+ 14.656   1.644  13.742 

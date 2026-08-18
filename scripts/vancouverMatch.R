@@ -10,6 +10,7 @@ library(ggplot2)
 library(ggspatial)
 library(RSQLite)
 library(fixest)
+library(units)
 
 sf_use_s2(TRUE) # (5) ensure s2 for fast lat/lon st_within
 
@@ -17,7 +18,7 @@ sf_use_s2(TRUE) # (5) ensure s2 for fast lat/lon st_within
 # (7) only read the columns actually used downstream
 dtP <- fread(
   "~/DropboxExternal/dataRaw/issued-building-permitsDwellingUses.csv",
-  select = c("SpecificUseCategory", "PermitNumber", "geo_point_2d")
+  select = c("SpecificUseCategory", "PermitNumber", "geo_point_2d","PermitNumberCreatedDate","TypeOfWork","ProjectValue")
 ) # pre-filtered for dwelling uses on download from Vancouver Open Data
 print(head(dtP))
 
@@ -189,12 +190,50 @@ print(head(dtPgeo))
 dtPgeo <- merge(dtPgeo,dtCT,by="CTNAME",all.x=TRUE)
 dtP <- merge(dtP,dtPgeo,by="PermitNumber")
 print(head(dtP))
-useList <- dtP[, .N, by = SpecificUseCategory][order(-N)][N > 100, "SpecificUseCategory"]
-dtP <- dtP[SpecificUseCategory %in% useList]
+useList <- dtP[, .N, by = SpecificUseCategory][order(-N)][N > 100]
+useList <- useList[,SpecificUseCategory]
+
+CRITVAL <- .5
 dtP[,single:=grepl("Single",SpecificUseCategory)]
 dtP[,duplex:=grepl("Duplex",SpecificUseCategory)]
-dtP <- dtP[single==TRUE | duplex==TRUE]
-print(dtP[,cor(Duplex,hedonicElasticity,hedonicResidualMean,use="complete.obs")])
-print(dtP[count>100,cor(Duplex,hedonicElasticity,hedonicResidualMean,use="complete.obs")])
+dtP <- dtP[single==TRUE | duplex==TRUE] # for now
+minSpend <- quantile(dtP[,ProjectValue],CRITVAL)
+dtP <- dtP[TypeOfWork=="New Building" & single==1| ProjectValue>minSpend]
+dtP[,year:=as.numeric(substr(PermitNumberCreatedDate,1,4))]
+dtP <- dtP[year>2018 & year<2024]
+dtP <- dtP[SpecificUseCategory %in% useList]
+print(cor(dtP[,.(duplex,hedonicElasticity,hedonicResidualMean)],use="complete.obs"))
+print(cor(dtP[count>100,.(duplex,hedonicElasticity,hedonicResidualMean)],use="complete.obs"))
+
+# match dtP with dfGeo by lat lon distance nearest neighbour
+# make a spatial data frame
+crr <- st_crs(dfG)
+dtPgeo <- st_as_sf(
+  dtP[, .(PermitNumber,lat, lon)],
+  coords = c("lon", "lat"),
+  crs = 4326                    # what lat/lon actually are
+)
+dtPgeo <- st_transform(dtPgeo, st_crs(dfG))   # now match dfG
+idx  <- st_nearest_feature(dtPgeo, dfG)
+dist <- st_distance(dtPgeo, dfG[idx, ], by_element = TRUE)
+
+cols <- setdiff(names(dfG), attr(dfG, "sf_column"))
+matched <- st_drop_geometry(dfG)[idx, cols, drop = FALSE]
+matched[dist > set_units(10, "m"), ] <- NA
+dtPgeo <- cbind(dtPgeo, matched)
+dtPgeo$dist <- dist
+print(head(dtPgeo))
+print(summary(dtPgeo$dist))
+dtPgeo <- as.data.table(dtPgeo)
+dtPgeo <- dtPgeo[,.(PermitNumber,ROLL_NUMBER)]
+dtPgeo[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
+dtPgeo <- merge(dtPgeo,dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year)],by="rollStart",all.x=TRUE)
+dtP <- merge(dtP,dtPgeo,by="PermitNumber")
+print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==33],cluster="CTNAME")))
+print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==33 & count>100],cluster="CTNAME")))
+print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==50],cluster="CTNAME")))
+print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==50 & count>100],cluster="CTNAME")))
+print(summary(feols(duplex ~ hedonicElasticity +  landDepth| year,data=dtP[round(landWidth)==33],cluster="CTNAME")))
+
 
 q("no")
