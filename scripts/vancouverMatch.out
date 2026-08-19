@@ -22,6 +22,18 @@ Type 'q()' to quit R.
 > # Objective -- correlation and plots elasticity, price, duplex share. Then do multiplex share
 > # Tom Davidoff
 > # 08/13/26
+> #
+> # 08/19/26 revision: replace the RS-only / single-family hedonic-by-tract block with a
+> # per-permit distance-weighted local kernel price prediction.
+> #   - Comp pool: ALL improved-property Vancouver sales STARTYEAR..ENDYEAR, agnostic on
+> #     zoning and property type, ignoring land area entirely (sqft of structure only).
+> #   - For each R1 permit (permit years 2019-2023), local LINEAR fit of
+> #     log(price) ~ log(sqft) over in-radius comps, weighted by structure age at sale
+> #     (exp(-age/AGE_DECAY)), predicting price at 1250 and 2500 sqft.
+> #   - Spatial weighting: HARD truncation at a single global radius R, with NO distance
+> #     taper. R = 80th percentile across permits of each permit's distance to its
+> #     KNN_TARGET-th (100th) nearest comp.
+> #   - All distances in projected meters (EPSG:3005, BC Albers).
 > 
 > library(data.table)
 > library(sf)
@@ -34,6 +46,17 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 udunits database from /Users/davidoff/Library/R/arm64/4.5/library/units/share/udunits/udunits2.xml
 > 
 > sf_use_s2(TRUE) # (5) ensure s2 for fast lat/lon st_within
+> 
+> # ---- kernel / prediction tuning knobs ---------------------------------------
+> SALE_MINYEAR <- 2015    # comp sales window start (pre-rezoning, avoids supply endogeneity)
+> SALE_MAXYEAR <- 2017    # comp sales window end
+> AGE_DECAY    <- 10      # years; weight = exp(-(saleYear - effectiveYear)/AGE_DECAY)
+> KNN_TARGET   <- 100     # global radius set from distance to this-th nearest comp
+> KNN_PCTL     <- 0.80    # ...taken at this percentile across permits
+> TARGET_SQFT  <- c(1250, 2500)   # sizes to predict
+> MIN_COMPS    <- 10      # permits with fewer in-radius comps -> NA prediction
+> CRS_M        <- 3005    # BC Albers, meters
+> # -----------------------------------------------------------------------------
 > 
 > # permits
 > # (7) only read the columns actually used downstream
@@ -276,24 +299,22 @@ Geodetic CRS:  WGS 84
                     Max.   :-123.0   Max.   :49.29                        
 > dtGeo[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
 > 
-> # Merge with BCA 2019 Vancouver single family R1 -zoned parcels
+> # Merge with BCA 2019 sales/inventory.
+> # NOTE (08/19/26): comp pool is now AGNOSTIC on zoning and property type. We keep the
+> # use-description filter OUT of SQL and pull effective year + finished area for every
+> # improved sale, then apply only the sqft/price/age sanity filters below.
 > bca19 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 > con <- dbConnect(RSQLite::SQLite(), bca19)
-> # (1) one join across folio (jurisdiction) + residentialInventory (zoning/area) + folioDescription
-> # (use description) -- replaces the three separate pulls and the two R merges, and filters
-> # in SQL before pulling into R. INNER JOINs reproduce the old merge()-without-all=TRUE
-> # behavior (rows without a match in every table are dropped, same as before).
 > dtBCA19 <- data.table(dbGetQuery(con, "
-+   SELECT d.folioID, f.rollNumber, i.zoning, i.MB_effective_year, i.MB_total_finished_area, i.land_width, i.land_depth,
++   SELECT d.folioID, f.rollNumber, i.zoning, i.MB_effective_year, i.MB_total_finished_area,
++          i.land_width, i.land_depth,
 +          d.actualUseDescription, d.neighbourhoodDescription, d.landWidth, d.landDepth
 +   FROM folio f
 +   JOIN residentialInventory i ON i.roll_number = f.rollNumber
 +   JOIN folioDescription d      ON d.folioID     = f.folioID
 +   WHERE f.jurisdictionCode = '200'
-+     AND (d.actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
-+          OR d.actualUseDescription LIKE '%plex%')
 + "))
-> dfSales <- dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice FROM sales WHERE     conveyanceTypeDescription  = 'Improved Single Property Transaction' ")
+> dfSales <- dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice FROM sales WHERE conveyanceTypeDescription = 'Improved Single Property Transaction' ")
 > print(head(dtBCA19))
       folioID      rollNumber zoning MB_effective_year MB_total_finished_area
        <char>          <char> <char>            <char>                 <char>
@@ -321,301 +342,296 @@ Geodetic CRS:  WGS 84
 6:                    
 > print(table(dtBCA19[,actualUseDescription])[order(-table(dtBCA19[,actualUseDescription]))])
 
-                          Single Family Dwelling 
-                                           39542 
-                 Residential Dwelling with Suite 
-                                           34790 
-                     Duplex, Strata Front / Back 
-                                            2620 
-                     Duplex, Strata Side by Side 
-                                            1518 
- Duplex, Non-Strata Side by Side or Front / Back 
-                                             832 
-                        Duplex, Strata Up / Down 
-                                             159 
-                    Duplex, Non-Strata Up / Down 
-                                              95 
-2 Acres Or More (Single Family Dwelling, Duplex) 
-                                              36 
-                                         Triplex 
-                                               4 
+                Strata-Lot Residence (Condominium) 
+                                             90144 
+                            Single Family Dwelling 
+                                             39542 
+                   Residential Dwelling with Suite 
+                                             34790 
+               Row Housing (Single Unit Ownership) 
+                                             10766 
+                       Duplex, Strata Front / Back 
+                                              2620 
+Stratified Rental Apartment (Hi-Rise Construction) 
+                                              2475 
+  Stratified Rental Apartment (Frame Construction) 
+                                              2341 
+                       Duplex, Strata Side by Side 
+                                              1518 
+                 Property Subject To Section 19(8) 
+                                               994 
+   Duplex, Non-Strata Side by Side or Front / Back 
+                                               832 
+              Vacant Residential Less Than 2 Acres 
+                                               300 
+               Individual Strata Lot (Hotel/Motel) 
+                                               284 
+                          Duplex, Strata Up / Down 
+                                               159 
+                      Duplex, Non-Strata Up / Down 
+                                                95 
+                       Stratified Rental Townhouse 
+                                                72 
+                         Multi-Family (Conversion) 
+                                                49 
+  2 Acres Or More (Single Family Dwelling, Duplex) 
+                                                36 
+                      Residential Outbuilding Only 
+                                                21 
+                          2 Acres Or More (Vacant) 
+                                                 4 
+                                           Triplex 
+                                                 4 
+       Bed & Breakfast Operation Less Than 4 Units 
+                                                 1 
+           Parking (Lot Only, Paved Or Gravel-Res) 
+                                                 1 
+             Stratified Operational Facility Areas 
+                                                 1 
+                                       Vacant IC&I 
+                                                 1 
 > print(nrow(dtBCA19))
-[1] 79596
+[1] 187050
 > 
 > dtBCA19[,rollStart:=floor(as.numeric(rollNumber)/1000)]
-> print(head(dtBCA19))
-      folioID      rollNumber zoning MB_effective_year MB_total_finished_area
-       <char>          <char> <char>            <char>                 <char>
-1: A000000009 001019632060000    RS1              2019                  11895
-2: A00000000A 001019632290000    RS1              1997                   7760
-3: A00000000B 001019632450000    RS1              1945                   3215
-4: A00000000C 001019632650000    RS1              2011                   8673
-5: A00000000D 001019632760000    RS1              2000                   7238
-6: A00000000E 001019635070000    RS1              1995                   4739
-   land_width land_depth   actualUseDescription neighbourhoodDescription
-       <char>     <char>                 <char>                   <char>
-1:                       Single Family Dwelling               POINT GREY
-2:        195      251.9 Single Family Dwelling               POINT GREY
-3:        150        250 Single Family Dwelling               POINT GREY
-4:        150        250 Single Family Dwelling               POINT GREY
-5:        170      215.2 Single Family Dwelling               POINT GREY
-6:        170      217.8 Single Family Dwelling               POINT GREY
-   landWidth landDepth  rollStart
-      <char>    <char>      <num>
-1:                     1019632060
-2:                     1019632290
-3:                     1019632450
-4:                     1019632650
-5:                     1019632760
-6:                     1019635070
 > dtBCA19[is.na(landWidth),landWidth:=land_width]
 > dtBCA19[is.na(landDepth),landDepth:=land_depth]
-> 
-> setkey(dtBCA19,rollStart)
-> setkey(dtGeo,rollStart)
-> print(table(dtBCA19[,zoning]))
-
-         C1    C2   C2C  C2C1   C3A    C5   CD1  DDL1  DEOD DEOD2 FCCDD   FM1 
-    1    28    38     2     1     3     1   440     3    30     4    13    18 
-  FSD    I1    I2   IC3   M1B    M2   MC1   RA1   RM1 RM10N  RM11 RM11N RM12N 
-  555    37    25     2     2    10     2    96   211    26    16   123   164 
- RM1N   RM2   RM3  RM3A   RM4  RM4N   RM5  RM5A  RM5B   RM7 RM7AN  RM7N   RM8 
-  128    63    16   144   661   135    13    10     8   644    80    24   190 
- RM8A RM8AN  RM8N   RM9  RM9A RM9AN RM9BN  RM9N  RS05   RS1  RS1A  RS1B  RS1S 
-  193    25    58    38   163    36    66     3     1 49111   173   189    77 
-  RS2   RS3  RS3A   RS4   RS5  RS5S   RS6   RS7  RSIS    RT   RT1  RT10 RT10N 
-  151   389   182    16 11483     2  1058  1811     1     1    35  1119    79 
- RT11 RT11N   RT2   RT3   RT4  RT4A RT4AN  RT4N   RT5  RT5A RT5AN  RT5N   RT6 
-  856    60  1983   539   900    36     8     2  2058   113    16   108   182 
-  RT7   RT8   RT9 
-  956  1107   245 
-> dtBCA19 <- dtBCA19[dtGeo]
-> print(table(dtBCA19[,zoning]))
-
-         C1    C2   C2C   C3A    C5   CD1  DDL1  DEOD FCCDD   FM1   FSD    I1 
-    1    20    17     1     3     1  4029     3    24   103    15   560    33 
-   I2   IC3    M2   MC1   RA1   RM1 RM10N  RM11 RM11N RM12N  RM1N   RM2   RM3 
-   22     2     9     2    78   195    21    12    69   133   111    15     3 
- RM3A   RM4  RM4N   RM5  RM5A  RM5B   RM7 RM7AN  RM7N   RM8  RM8A RM8AN  RM8N 
-   70   421    53    11     5     4   462    73    11   176   142    21    51 
-  RM9  RM9A RM9AN RM9BN  RM9N  RS05   RS1  RS1A  RS1B  RS1S   RS2   RS3  RS3A 
-   27   148    19    58     3     1 47455   160   203    71   128   378   179 
-  RS4   RS5  RS5S   RS6   RS7  RSIS   RT1  RT10 RT10N  RT11 RT11N   RT2   RT3 
-   14 11220     2  1043  1724     1     1   967    70   747    36   614   419 
-  RT4  RT4A RT4AN  RT4N   RT5  RT5A RT5AN  RT5N   RT6   RT7   RT8   RT9 
-  653    19     1     2  1042    60     7    54   103   449   507    97 
-> dtBCA19 <- dtBCA19[substring(zoning,1,2)=="RS"]
-> for (v in c("landWidth","landDepth","MB_total_finished_area")) {
+> for (v in c("landWidth","landDepth","MB_total_finished_area","MB_effective_year")) {
 + 	dtBCA19[,(v):=as.numeric(get(v))]
 + }
 > 
+> # ---- assemble comp sales (agnostic on zoning + use; structure sqft only) -----
 > dtSales <- merge(data.table(dfSales), dtBCA19, by="folioID")
-> print(head(dtSales))
-Key: <folioID>
-      folioID conveyanceDate conveyancePrice      rollNumber zoning
-       <char>         <char>          <char>          <char> <char>
-1: A000000009     2014-06-16         9450000 001019632060000    RS1
-2: A00000000A     2013-02-08         8800000 001019632290000    RS1
-3: A00000000A     1991-07-09         1700000 001019632290000    RS1
-4: A00000000B     2006-12-04         3850000 001019632450000    RS1
-5: A00000000B     1977-04-15          190000 001019632450000    RS1
-6: A00000000C     1991-09-03         2308000 001019632650000    RS1
-   MB_effective_year MB_total_finished_area land_width land_depth
-              <char>                  <num>     <char>     <char>
-1:              2019                  11895                      
-2:              1997                   7760        195      251.9
-3:              1997                   7760        195      251.9
-4:              1945                   3215        150        250
-5:              1945                   3215        150        250
-6:              2011                   8673        150        250
-     actualUseDescription neighbourhoodDescription landWidth landDepth
-                   <char>                   <char>     <num>     <num>
-1: Single Family Dwelling               POINT GREY        NA        NA
-2: Single Family Dwelling               POINT GREY        NA        NA
-3: Single Family Dwelling               POINT GREY        NA        NA
-4: Single Family Dwelling               POINT GREY        NA        NA
-5: Single Family Dwelling               POINT GREY        NA        NA
-6: Single Family Dwelling               POINT GREY        NA        NA
-    rollStart     ROLL_NUMBER  CTNAME          ACTUAL_USE_DESCRIPTION
-        <num>          <char>  <char>                          <char>
-1: 1019632060 001019632060000 0044.00          Single Family Dwelling
-2: 1019632290 001019632290000 0044.00          Single Family Dwelling
-3: 1019632290 001019632290000 0044.00          Single Family Dwelling
-4: 1019632450 001019632450000 0044.00 Residential Dwelling with Suite
-5: 1019632450 001019632450000 0044.00 Residential Dwelling with Suite
-6: 1019632650 001019632650000 0044.00          Single Family Dwelling
-   NEIGHBOURHOOD longitude latitude                           geom
-          <char>     <num>    <num>             <sfc_MULTIPOLYGON>
-1:    Point Grey -123.2229 49.27488 MULTIPOLYGON (((-123.2222 4...
-2:    Point Grey -123.2243 49.27431 MULTIPOLYGON (((-123.2239 4...
-3:    Point Grey -123.2243 49.27431 MULTIPOLYGON (((-123.2239 4...
-4:    Point Grey -123.2236 49.27424 MULTIPOLYGON (((-123.224 49...
-5:    Point Grey -123.2236 49.27424 MULTIPOLYGON (((-123.224 49...
-6:    Point Grey -123.2230 49.27420 MULTIPOLYGON (((-123.2232 4...
-> print(table(dtSales[,actualUseDescription]))
-
-Duplex, Non-Strata Side by Side or Front / Back 
-                                              5 
-                    Duplex, Strata Front / Back 
-                                             74 
-                    Duplex, Strata Side by Side 
-                                              4 
-                Residential Dwelling with Suite 
-                                          53499 
-                         Single Family Dwelling 
-                                          53985 
-> # almost no duplex sales
-> dtSales <- dtSales[actualUseDescription %in% c("Single Family Dwelling", "Residential Dwelling with Suite")]
-> dtSales[,year:=as.numeric(substr(conveyanceDate,1,4))]
-> dtSales[,yearMonth:=substr(conveyanceDate,1,7)]
-> print(summary(dtSales[year==2017,.N,by=CTNAME]))
-    CTNAME                N        
- Length:77          Min.   : 1.00  
- Class :character   1st Qu.:13.00  
- Mode  :character   Median :24.00  
-                    Mean   :25.69  
-                    3rd Qu.:34.00  
-                    Max.   :97.00  
-> print(summary(dtSales[year %between% c(2016,2017),.N,by=CTNAME]))
-    CTNAME                N         
- Length:78          Min.   :  2.00  
- Class :character   1st Qu.: 33.00  
- Mode  :character   Median : 56.00  
-                    Mean   : 61.46  
-                    3rd Qu.: 77.00  
-                    Max.   :242.00  
-> print(summary(dtSales[year %between% c(2015,2017),.N,by=CTNAME]))
-    CTNAME                N         
- Length:78          Min.   :  2.00  
- Class :character   1st Qu.: 53.25  
- Mode  :character   Median : 92.00  
-                    Mean   :104.36  
-                    3rd Qu.:131.75  
-                    Max.   :401.00  
-> MINYEAR <- 2015
-> MAXYEAR <- 2017
-> for (v in c("conveyancePrice")) {
-+ 	dtSales[,(v):=as.numeric(get(v))]
-+ }
-> dtSales <- dtSales[year %between% c(MINYEAR,MAXYEAR) & !is.na(landWidth) & !is.na(landDepth) & !is.na(MB_total_finished_area) & !is.na(conveyancePrice) & conveyancePrice>0 & MB_total_finished_area>0]
+> dtSales[,conveyancePrice := as.numeric(conveyancePrice)]
+> dtSales[,year := as.numeric(substr(conveyanceDate,1,4))]
+> dtSales[,structAge := year - MB_effective_year]
+> dtSales[structAge < 0, structAge := 0]   # clamp reno-updated effective years to new-ish
+> dtSales <- dtSales[
++   year %between% c(SALE_MINYEAR, SALE_MAXYEAR) &
++   !is.na(MB_total_finished_area) & MB_total_finished_area > 0 &
++   !is.na(conveyancePrice)        & conveyancePrice > 0 &
++   !is.na(structAge)
++ ]
+> cat("comp sales after filters:", nrow(dtSales), "\n")
+comp sales after filters: 38843 
+> print(summary(dtSales[,.(conveyancePrice, MB_total_finished_area, structAge)]))
+ conveyancePrice    MB_total_finished_area   structAge     
+ Min.   :  132500   Min.   :  329          Min.   :  0.00  
+ 1st Qu.:  463000   1st Qu.:  654          1st Qu.:  1.00  
+ Median :  726000   Median :  929          Median : 10.00  
+ Mean   : 1181675   Mean   : 1388          Mean   : 14.89  
+ 3rd Qu.: 1375000   3rd Qu.: 1776          3rd Qu.: 23.00  
+ Max.   :31100000   Max.   :26505          Max.   :115.00  
 > 
-> regH <- feols(log(conveyancePrice) ~ log(MB_total_finished_area) + log(landWidth) + (landDepth),data=dtSales)
-> dtSales[,hedonicResidual:=residuals(regH)]
-> dtHedonicC <- dtSales[,.(hedonicResidualMean=mean(hedonicResidual)),by=CTNAME]
-> print(summary(dtHedonicC))
-    CTNAME          hedonicResidualMean
- Length:78          Min.   :-0.45690   
- Class :character   1st Qu.:-0.27814   
- Mode  :character   Median :-0.17019   
-                    Mean   :-0.06991   
-                    3rd Qu.: 0.08787   
-                    Max.   : 1.28805   
-> dtElasticityC <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area)),count=.N),by=CTNAME]
-> dtHedonicN <- dtSales[,.(hedonicResidualMean=mean(hedonicResidual)),by=NEIGHBOURHOOD]
-> print(summary(dtHedonicN))
- NEIGHBOURHOOD      hedonicResidualMean
- Length:23          Min.   :-0.49087   
- Class :character   1st Qu.:-0.26439   
- Mode  :character   Median :-0.05109   
-                    Mean   :-0.04948   
-                    3rd Qu.: 0.16671   
-                    Max.   : 0.44495   
-> dtElasticityN <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area)),count=.N),by=NEIGHBOURHOOD]
-> dtCT <- merge(dtHedonicC,dtElasticityC,by="CTNAME")
-> dtN <- merge(dtHedonicN,dtElasticityN,by="NEIGHBOURHOOD")
-> for (k in c(0,.05,.1,.5)) {
-+ 	print(k)
-+ 	print(quantile(dtCT[,count],k))
-+ 	print(dtCT[count>quantile(count,k),cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
-+ 	print(quantile(dtN[,count],k))
-+ 	print(dtN[count>quantile(count,k),cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
-+ }
-[1] 0
-0% 
- 1 
-[1] 0.2389436
-0% 
-16 
-[1] 0.6882224
-[1] 0.05
-5% 
- 6 
-[1] 0.5305628
-   5% 
-112.5 
-[1] 0.692825
-[1] 0.1
- 10% 
-19.4 
-[1] 0.5242494
-  10% 
-163.6 
-[1] 0.6986962
-[1] 0.5
- 50% 
-89.5 
-[1] 0.6469042
-50% 
-286 
-[1] 0.8514486
-> ggplot(dtCT,aes(x=hedonicResidualMean,y=hedonicElasticity)) + geom_point(aes(size=count,color=count))
-Warning message:
-Removed 1 row containing missing values or values outside the scale range
-(`geom_point()`). 
-> ggsave("text/ctElasticityFE.png",width=8,height=6)
-Warning message:
-Removed 1 row containing missing values or values outside the scale range
-(`geom_point()`). 
-> ggplot(dtN,aes(x=hedonicResidualMean,y=hedonicElasticity)) + geom_point(aes(size=count,color=count))
-> ggsave("text/neighbourhoodElasticityFE.png",width=8,height=6)
+> # comp coordinates: use the folio geometry (dfG) roll match for lat/lon of each sale.
+> dtSales[, rollStart := floor(as.numeric(rollNumber)/1000)]
+> dtSalesXY <- merge(
++   dtSales[, .(folioID, rollStart, conveyancePrice, MB_total_finished_area, structAge)],
++   dtGeo[, .(rollStart, longitude, latitude)],
++   by = "rollStart"
++ )
+> dtSalesXY <- dtSalesXY[!is.na(longitude) & !is.na(latitude)]
+> cat("comp sales with coordinates:", nrow(dtSalesXY), "\n")
+comp sales with coordinates: 9603 
 > 
-> print(head(dtPgeo))
-    PermitNumber               DGUID  CTNAME                   geometry
-          <char>              <char>  <char>                <sfc_POINT>
-1: BP-2023-01509 2021S05079330053.01 0053.01 POINT (-123.0502 49.28504)
-2: BP-2022-01592 2021S05079330044.00 0044.00 POINT (-123.2065 49.27186)
-3: BP-2021-06423 2021S05079330013.03 0013.03 POINT (-123.0863 49.22515)
-4: DB-2021-03511 2021S05079330032.02 0032.02 POINT (-123.0747 49.25512)
-5: DB-2021-06422 2021S05079330013.03 0013.03 POINT (-123.0863 49.22515)
-6: DB-2021-01579 2021S05079330018.01 0018.01 POINT (-123.0596 49.23585)
-> dtPgeo <- merge(dtPgeo,dtCT,by="CTNAME",all.x=TRUE)
-> dtP <- merge(dtP,dtPgeo,by="PermitNumber")
-> print(head(dtP))
-Key: <PermitNumber>
-    PermitNumber   SpecificUseCategory             geo_point_2d
-          <char>                <char>                   <char>
-1: BP-2016-00054 Single Detached House 49.2173228, -123.0994903
-2: BP-2016-00114 Single Detached House 49.2370435, -123.1046014
-3: BP-2016-00130 Single Detached House 49.2325094, -123.1826968
-4: BP-2016-00132 Single Detached House 49.2325094, -123.1826968
-5: BP-2016-00160 Single Detached House 49.2165507, -123.0725981
-6: BP-2016-00167 Single Detached House 49.2622733, -123.2098877
-   PermitNumberCreatedDate                  TypeOfWork ProjectValue      lat
-                    <IDat>                      <char>        <num>    <num>
-1:              2016-05-26       Salvage and Abatement            0 49.21732
-2:              2016-05-31 Demolition / Deconstruction        15000 49.23704
-3:              2016-06-01                New Building      1603625 49.23251
-4:              2016-06-01 Demolition / Deconstruction        15000 49.23251
-5:              2016-06-02       Salvage and Abatement            0 49.21655
-6:              2016-06-02 Demolition / Deconstruction        15000 49.26227
-         lon  CTNAME               DGUID                   geometry
-       <num>  <char>              <char>                <sfc_POINT>
-1: -123.0995 0004.02 2021S05079330004.02 POINT (-123.0995 49.21732)
-2: -123.1046 0019.00 2021S05079330019.00 POINT (-123.1046 49.23704)
-3: -123.1827 0008.02 2021S05079330008.02 POINT (-123.1827 49.23251)
-4: -123.1827 0008.02 2021S05079330008.02 POINT (-123.1827 49.23251)
-5: -123.0726 0003.01 2021S05079330003.01 POINT (-123.0726 49.21655)
-6: -123.2099 0043.01 2021S05079330043.01 POINT (-123.2099 49.26227)
-   hedonicResidualMean hedonicElasticity count
-                 <num>             <num> <int>
-1:         -0.35927681         0.4362496    90
-2:          0.05054903         0.6541972   108
-3:         -0.03081893         0.7206260   176
-4:         -0.03081893         0.7206260   176
-5:         -0.31821815         0.4679524    71
-6:          0.40882793         0.6068964   161
+> # ================= per-permit distance-weighted local kernel =================
+> # project comps and permits to meters (BC Albers) for honest distances.
+> sfComp <- st_transform(
++   st_as_sf(dtSalesXY, coords = c("longitude","latitude"), crs = 4326),
++   CRS_M
++ )
+> compXY <- st_coordinates(sfComp)
+> 
+> # permit points: one row per permit from dtP (all R1 permits; we predict everywhere,
+> # and subset to the analysis permit-years later, same as the original flow).
+> dtPermPts <- unique(dtP[!is.na(lat) & !is.na(lon), .(PermitNumber, lat, lon)])
+> sfPerm <- st_transform(
++   st_as_sf(dtPermPts, coords = c("lon","lat"), crs = 4326),
++   CRS_M
++ )
+> permXY <- st_coordinates(sfPerm)
+> 
+> # --- global radius R: 80th pctl across permits of distance to KNN_TARGET-th comp ----
+> # use FNN for a fast exact kNN in projected meters.
+> if (!requireNamespace("FNN", quietly = TRUE)) install.packages("FNN", repos="https://cloud.r-project.org")
+> kk <- min(KNN_TARGET, nrow(compXY))
+> knn <- FNN::get.knnx(compXY, permXY, k = kk)
+> distK <- knn$nn.dist[, kk]                 # each permit's distance to its kk-th comp (m)
+> R <- as.numeric(quantile(distK, KNN_PCTL, na.rm = TRUE))
+> cat(sprintf("global radius R = %.0f m (%.2f km); %d permits, %d comps, k=%d\n",
++             R, R/1000, nrow(permXY), nrow(compXY), kk))
+global radius R = 790 m (0.79 km); 36213 permits, 9603 comps, k=100
+> 
+> # --- per-permit local linear fit, hard-truncated at R, age-weighted ----------
+> # True fixed-radius neighbour query: for each permit, every comp within R metres.
+> # st_is_within_distance returns exactly those (no k to guess, no silent truncation).
+> # sfPerm/sfComp are already in projected metres (EPSG:CRS_M), so R is metres directly.
+> nbList <- st_is_within_distance(sfPerm, sfComp, dist = R)   # list, one vector of comp idx per permit
+> 
+> logComp <- log(dtSalesXY$conveyancePrice)
+> logSqft <- log(dtSalesXY$MB_total_finished_area)
+> wAge    <- exp(-dtSalesXY$structAge / AGE_DECAY)
+> lt      <- log(TARGET_SQFT)
+> 
+> predMat <- matrix(NA_real_, nrow = nrow(permXY), ncol = length(TARGET_SQFT))
+> nComp   <- integer(nrow(permXY))
+> 
+> for (i in seq_len(nrow(permXY))) {
++   ii <- nbList[[i]]
++   nComp[i] <- length(ii)
++   if (length(ii) < MIN_COMPS) next
++   x <- logSqft[ii]; y <- logComp[ii]; w <- wAge[ii]
++   if (length(unique(x)) < 2) next            # need sqft variation for a slope
++   fit <- tryCatch(stats::lm.wfit(cbind(1, x), y, w), error = function(e) NULL)
++   if (is.null(fit) || any(is.na(fit$coefficients))) next
++   b <- fit$coefficients                      # intercept, slope
++   predMat[i, ] <- exp(b[1] + b[2] * lt)
++ }
+> 
+> dtPred <- data.table(
++   PermitNumber = dtPermPts$PermitNumber,
++   price1250    = predMat[, 1],
++   price2500    = predMat[, 2],
++   nCompKernel  = nComp
++ )
+> dtPred[, logRatio2500_1250 := log(price2500) - log(price1250)]
+> dtPred[, kernelElasticity  := logRatio2500_1250 / (log(2500) - log(1250))]
+> cat("permits with non-NA kernel prediction:", dtPred[!is.na(price1250), .N], "of", nrow(dtPred), "\n")
+permits with non-NA kernel prediction: 32594 of 36213 
+> print(summary(dtPred[, .(price1250, price2500, kernelElasticity, nCompKernel)]))
+   price1250         price2500       kernelElasticity   nCompKernel   
+ Min.   : 131899   Min.   : 616601   Min.   :-0.6125   Min.   :  0.0  
+ 1st Qu.:1079315   1st Qu.:1364164   1st Qu.: 0.2796   1st Qu.:122.0  
+ Median :1210329   Median :1530982   Median : 0.4830   Median :190.0  
+ Mean   :1247622   Mean   :1827179   Mean   : 0.5246   Mean   :186.2  
+ 3rd Qu.:1368965   3rd Qu.:2297637   3rd Qu.: 0.7730   3rd Qu.:241.0  
+ Max.   :3755643   Max.   :6017169   Max.   : 4.3125   Max.   :642.0  
+ NA's   :3619      NA's   :3619      NA's   :3619                     
+> 
+> # merge kernel predictions onto permits
+> dtP <- merge(dtP, dtPred, by = "PermitNumber", all.x = TRUE)
+> # ============================================================================
+> 
 > useList <- dtP[, .N, by = SpecificUseCategory][order(-N)][N > 100]
 > useList <- useList[,SpecificUseCategory]
+> dtP[,year:=as.numeric(substr(PermitNumberCreatedDate,1,4))]
+> for (y in 2017:2026) {
++ 	print(dtP[year==y & SpecificUseCategory %in% useList, .N, by = SpecificUseCategory][order(-N)])
++ }
+                 SpecificUseCategory     N
+                              <char> <int>
+1:             Single Detached House  1524
+2: Single Detached House w/Sec Suite  1067
+3:                 Multiple Dwelling   861
+4:                     Laneway House   533
+5:                            Duplex   156
+6:      Multiple Conversion Dwelling    31
+7:                     Dwelling Unit    29
+8:      Infill Single Detached House    20
+9:          Duplex w/Secondary Suite    11
+                 SpecificUseCategory     N
+                              <char> <int>
+1: Single Detached House w/Sec Suite  1195
+2:             Single Detached House  1106
+3:                 Multiple Dwelling   859
+4:                     Laneway House   559
+5:                            Duplex   245
+6:                     Dwelling Unit    54
+7:          Duplex w/Secondary Suite    52
+8:      Multiple Conversion Dwelling    35
+9:      Infill Single Detached House    23
+                 SpecificUseCategory     N
+                              <char> <int>
+1:             Single Detached House  1115
+2:                 Multiple Dwelling   811
+3: Single Detached House w/Sec Suite   713
+4:                     Laneway House   496
+5:                            Duplex   217
+6:          Duplex w/Secondary Suite   111
+7:      Multiple Conversion Dwelling    52
+8:      Infill Single Detached House    46
+9:                     Dwelling Unit    42
+                 SpecificUseCategory     N
+                              <char> <int>
+1:             Single Detached House   877
+2:                 Multiple Dwelling   579
+3: Single Detached House w/Sec Suite   489
+4:                     Laneway House   288
+5:                            Duplex   191
+6:          Duplex w/Secondary Suite   129
+7:      Multiple Conversion Dwelling    68
+8:                     Dwelling Unit    37
+9:      Infill Single Detached House    33
+                         SpecificUseCategory     N
+                                      <char> <int>
+ 1:                    Single Detached House  1991
+ 2:                        Multiple Dwelling   809
+ 3:        Single Detached House w/Sec Suite   688
+ 4:                            Laneway House   561
+ 5:                                   Duplex   391
+ 6:                 Duplex w/Secondary Suite   282
+ 7:                            Dwelling Unit    77
+ 8:             Multiple Conversion Dwelling    50
+ 9:             Infill Single Detached House    30
+10: Duplex w/Secondary Suite,Secondary Suite    13
+                         SpecificUseCategory     N
+                                      <char> <int>
+ 1:                    Single Detached House  1910
+ 2:                        Multiple Dwelling   603
+ 3:        Single Detached House w/Sec Suite   341
+ 4:                            Laneway House   309
+ 5:                                   Duplex   204
+ 6:                            Dwelling Unit    89
+ 7: Duplex w/Secondary Suite,Secondary Suite    53
+ 8:             Multiple Conversion Dwelling    49
+ 9:                 Duplex w/Secondary Suite    41
+10:             Infill Single Detached House    26
+                         SpecificUseCategory     N
+                                      <char> <int>
+ 1:                    Single Detached House  1355
+ 2:                        Multiple Dwelling   447
+ 3:        Single Detached House w/Sec Suite   330
+ 4:                                   Duplex   186
+ 5:                            Laneway House   184
+ 6:                            Dwelling Unit   162
+ 7:             Multiple Conversion Dwelling    38
+ 8: Duplex w/Secondary Suite,Secondary Suite    31
+ 9:                 Duplex w/Secondary Suite    21
+10:             Infill Single Detached House    12
+                         SpecificUseCategory     N
+                                      <char> <int>
+ 1:                    Single Detached House  1417
+ 2:                        Multiple Dwelling   643
+ 3:                            Laneway House   473
+ 4:        Single Detached House w/Sec Suite   226
+ 5:                                   Duplex   214
+ 6:                            Dwelling Unit   138
+ 7: Duplex w/Secondary Suite,Secondary Suite    37
+ 8:             Multiple Conversion Dwelling    23
+ 9:                 Duplex w/Secondary Suite    15
+10:             Infill Single Detached House     8
+                 SpecificUseCategory     N
+                              <char> <int>
+1:             Single Detached House  1393
+2:                 Multiple Dwelling   665
+3:                     Laneway House   290
+4: Single Detached House w/Sec Suite   229
+5:                            Duplex   195
+6:                     Dwelling Unit   148
+7:          Duplex w/Secondary Suite    45
+8:      Multiple Conversion Dwelling    24
+9:      Infill Single Detached House     8
+                 SpecificUseCategory     N
+                              <char> <int>
+1:             Single Detached House   292
+2:                 Multiple Dwelling   196
+3: Single Detached House w/Sec Suite    77
+4:                     Laneway House    72
+5:                            Duplex    47
+6:                     Dwelling Unit    30
+7:          Duplex w/Secondary Suite     8
+8:      Multiple Conversion Dwelling     3
+9:      Infill Single Detached House     1
 > 
 > CRITVAL <- .5
 > dtP[,single:=grepl("Single",SpecificUseCategory)]
@@ -623,169 +639,202 @@ Key: <PermitNumber>
 > dtP <- dtP[single==TRUE | duplex==TRUE] # for now
 > minSpend <- quantile(dtP[,ProjectValue],CRITVAL)
 > dtP <- dtP[TypeOfWork=="New Building" & single==1| ProjectValue>minSpend]
-> dtP[,year:=as.numeric(substr(PermitNumberCreatedDate,1,4))]
 > dtP <- dtP[year>2018 & year<2024]
 > dtP <- dtP[SpecificUseCategory %in% useList]
-> print(cor(dtP[,.(duplex,hedonicElasticity,hedonicResidualMean)],use="complete.obs"))
-                        duplex hedonicElasticity hedonicResidualMean
-duplex               1.0000000        -0.1959121          -0.2466431
-hedonicElasticity   -0.1959121         1.0000000           0.6370412
-hedonicResidualMean -0.2466431         0.6370412           1.0000000
-> print(cor(dtP[count>100,.(duplex,hedonicElasticity,hedonicResidualMean)],use="complete.obs"))
-                        duplex hedonicElasticity hedonicResidualMean
-duplex               1.0000000        -0.2099780          -0.2326065
-hedonicElasticity   -0.2099780         1.0000000           0.6828788
-hedonicResidualMean -0.2326065         0.6828788           1.0000000
+> print(useList)
+ [1] "Single Detached House"                   
+ [2] "Multiple Dwelling"                       
+ [3] "Single Detached House w/Sec Suite"       
+ [4] "Laneway House"                           
+ [5] "Duplex"                                  
+ [6] "Dwelling Unit"                           
+ [7] "Duplex w/Secondary Suite"                
+ [8] "Multiple Conversion Dwelling"            
+ [9] "Infill Single Detached House"            
+[10] "Duplex w/Secondary Suite,Secondary Suite"
 > 
-> # match dtP with dfGeo by lat lon distance nearest neighbour
-> # make a spatial data frame
+> # correlations: duplex share vs local kernel price level & local elasticity
+> print(cor(dtP[,.(duplex, kernelElasticity, price1250, price2500)], use="complete.obs"))
+                      duplex kernelElasticity   price1250  price2500
+duplex            1.00000000       -0.2005363 -0.08106591 -0.2190547
+kernelElasticity -0.20053629        1.0000000 -0.11483126  0.6365770
+price1250        -0.08106591       -0.1148313  1.00000000  0.6734992
+price2500        -0.21905467        0.6365770  0.67349924  1.0000000
+> print(cor(dtP[nCompKernel>KNN_TARGET,.(duplex, kernelElasticity, price1250, price2500)], use="complete.obs"))
+                      duplex kernelElasticity   price1250  price2500
+duplex            1.00000000      -0.23625345 -0.07396047 -0.2276220
+kernelElasticity -0.23625345       1.00000000 -0.01648347  0.7330329
+price1250        -0.07396047      -0.01648347  1.00000000  0.6603985
+price2500        -0.22762195       0.73303295  0.66039846  1.0000000
+> 
+> ggplot(dtP[!is.na(price1250)], aes(x=log(price1250), y=kernelElasticity)) +
++   geom_point(aes(color=nCompKernel), alpha=0.5) + theme_minimal()
+> ggsave("text/kernelPriceElasticity.png", width=8, height=6)
+> 
+> # ---- lot geometry from nearest folio (unchanged: for landWidth/landDepth splits) ----
 > crr <- st_crs(dfG)
-> dtPgeo <- st_as_sf(
+> dtP <- dtP[!is.na(lat) & !is.na(lon)]
+> dtPgeoNN <- st_as_sf(
 +   dtP[, .(PermitNumber,lat, lon)],
 +   coords = c("lon", "lat"),
-+   crs = 4326                    # what lat/lon actually are
++   crs = 4326
 + )
-> dtPgeo <- st_transform(dtPgeo, st_crs(dfG))   # now match dfG
-> idx  <- st_nearest_feature(dtPgeo, dfG)
-> dist <- st_distance(dtPgeo, dfG[idx, ], by_element = TRUE)
-> 
+> dtPgeoNN <- st_transform(dtPgeoNN, st_crs(dfG))
+> idx  <- st_nearest_feature(dtPgeoNN, dfG)
+> dist <- st_distance(dtPgeoNN, dfG[idx, ], by_element = TRUE)
+> print("post-geo merge to R1 only")
+[1] "post-geo merge to R1 only"
+> for (y in 2017:2026) {
++ 	print(y)
++ 	print(dtP[year==y & SpecificUseCategory %in% useList, .N, by = SpecificUseCategory][order(-N)])
++ }
+[1] 2017
+Empty data.table (0 rows and 2 cols): SpecificUseCategory,N
+[1] 2018
+Empty data.table (0 rows and 2 cols): SpecificUseCategory,N
+[1] 2019
+                 SpecificUseCategory     N
+                              <char> <int>
+1:             Single Detached House   423
+2: Single Detached House w/Sec Suite   339
+3:                            Duplex   106
+4:          Duplex w/Secondary Suite    55
+5:      Infill Single Detached House    34
+[1] 2020
+                 SpecificUseCategory     N
+                              <char> <int>
+1:             Single Detached House   300
+2: Single Detached House w/Sec Suite   264
+3:                            Duplex    85
+4:          Duplex w/Secondary Suite    70
+5:      Infill Single Detached House    31
+[1] 2021
+                        SpecificUseCategory     N
+                                     <char> <int>
+1:                    Single Detached House   571
+2:        Single Detached House w/Sec Suite   479
+3:                                   Duplex   235
+4:                 Duplex w/Secondary Suite   176
+5:             Infill Single Detached House    26
+6: Duplex w/Secondary Suite,Secondary Suite    11
+[1] 2022
+                        SpecificUseCategory     N
+                                     <char> <int>
+1:                    Single Detached House   390
+2:        Single Detached House w/Sec Suite   269
+3:                                   Duplex   165
+4: Duplex w/Secondary Suite,Secondary Suite    48
+5:                 Duplex w/Secondary Suite    41
+6:             Infill Single Detached House    21
+[1] 2023
+                        SpecificUseCategory     N
+                                     <char> <int>
+1:                    Single Detached House   410
+2:        Single Detached House w/Sec Suite   267
+3:                                   Duplex   157
+4: Duplex w/Secondary Suite,Secondary Suite    30
+5:                 Duplex w/Secondary Suite    14
+6:             Infill Single Detached House    11
+[1] 2024
+Empty data.table (0 rows and 2 cols): SpecificUseCategory,N
+[1] 2025
+Empty data.table (0 rows and 2 cols): SpecificUseCategory,N
+[1] 2026
+Empty data.table (0 rows and 2 cols): SpecificUseCategory,N
 > cols <- setdiff(names(dfG), attr(dfG, "sf_column"))
 > matched <- st_drop_geometry(dfG)[idx, cols, drop = FALSE]
 > matched[dist > set_units(10, "m"), ] <- NA
-> dtPgeo <- cbind(dtPgeo, matched)
-> dtPgeo$dist <- dist
-> print(head(dtPgeo))
-Simple feature collection with 6 features and 13 fields
-Geometry type: POINT
-Dimension:     XY
-Bounding box:  xmin: -123.1948 ymin: 49.22423 xmax: -123.0358 ymax: 49.259
-Geodetic CRS:  WGS 84
-       PermitNumber     ROLL_NUMBER          ACTUAL_USE_DESCRIPTION
-43503 BP-2019-00001 002686077740000          Single Family Dwelling
-64507 BP-2019-00016 023702250950000 Residential Dwelling with Suite
-42816 BP-2019-00024 011152790890000 Residential Dwelling with Suite
-16442 BP-2019-00140 022688297310000 Residential Dwelling with Suite
-68605 BP-2019-00142 003725030650000          Single Family Dwelling
-51772 BP-2019-00149 004721079050000          Single Family Dwelling
-                          NEIGHBOURHOOD      CTUID               DGUID  CTNAME
-43503                         Kitsilano 9330041.02 2021S05079330041.02 0041.02
-64507                       Collingwood 9330034.02 2021S05079330034.02 0034.02
-42816                          Oakridge 9330010.02 2021S05079330010.02 0010.02
-16442                   Renfrew Heights 9330036.01 2021S05079330036.01 0036.01
-68605                            Dunbar 9330024.00 2021S05079330024.00 0024.00
-51772 Arbutus Ridge - Mackenzie Heights 9330027.01 2021S05079330027.01 0027.01
-      LANDAREA PRUID centroid.ROLL_NUMBER centroid.ACTUAL_USE_DESCRIPTION
-43503   1.0012    59      002686077740000          Single Family Dwelling
-64507   1.3371    59      023702250950000 Residential Dwelling with Suite
-42816   1.3930    59      011152790890000 Residential Dwelling with Suite
-16442   1.3696    59      022688297310000 Residential Dwelling with Suite
-68605   1.7023    59      003725030650000          Single Family Dwelling
-51772   1.2742    59      004721079050000          Single Family Dwelling
-                 centroid.NEIGHBOURHOOD centroid.CTUID      centroid.DGUID
-43503                         Kitsilano     9330041.02 2021S05079330041.02
-64507                       Collingwood     9330034.02 2021S05079330034.02
-42816                          Oakridge     9330010.02 2021S05079330010.02
-16442                   Renfrew Heights     9330036.01 2021S05079330036.01
-68605                            Dunbar     9330024.00 2021S05079330024.00
-51772 Arbutus Ridge - Mackenzie Heights     9330027.01 2021S05079330027.01
-      centroid.CTNAME centroid.LANDAREA centroid.PRUID
-43503         0041.02            1.0012             59
-64507         0034.02            1.3371             59
-42816         0010.02            1.3930             59
-16442         0036.01            1.3696             59
-68605         0024.00            1.7023             59
-51772         0027.01            1.2742             59
-                   centroid.geom longitude latitude                   geometry
-43503 POINT (-123.1609 49.25901) -123.1609 49.25901   POINT (-123.1609 49.259)
-64507 POINT (-123.0627 49.24962) -123.0627 49.24962 POINT (-123.0627 49.24962)
-42816 POINT (-123.1272 49.22423) -123.1272 49.22423 POINT (-123.1272 49.22423)
-16442 POINT (-123.0358 49.25582) -123.0358 49.25582 POINT (-123.0358 49.25582)
-68605 POINT (-123.1948 49.24458) -123.1948 49.24458 POINT (-123.1948 49.24458)
-51772 POINT (-123.1604 49.24548) -123.1604 49.24548 POINT (-123.1604 49.24549)
-       dist
-43503 0 [m]
-64507 0 [m]
-42816 0 [m]
-16442 0 [m]
-68605 0 [m]
-51772 0 [m]
-> print(summary(dtPgeo$dist))
-   Min. 1st Qu.  Median    Mean 3rd Qu.    Max. 
-   0.00    0.00    0.00    2.29    4.69  510.64 
-> dtPgeo <- as.data.table(dtPgeo)
-> dtPgeo <- dtPgeo[,.(PermitNumber,ROLL_NUMBER)]
-> dtPgeo[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-> dtPgeo <- merge(dtPgeo,dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year)],by="rollStart",all.x=TRUE)
-> dtP <- merge(dtP,dtPgeo,by="PermitNumber")
-> print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==33],cluster="CTNAME")))
-NOTE: 4 observations removed because of NA values (RHS: 4).
+> dtPgeoNN <- cbind(dtPgeoNN, matched)
+> dtPgeoNN$dist <- dist
+> dtPgeoNN <- as.data.table(dtPgeoNN)[,.(PermitNumber,ROLL_NUMBER)]
+> dtPgeoNN[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
+> dtPgeoNN <- merge(dtPgeoNN, dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year)], by="rollStart", all.x=TRUE)
+> dtP <- merge(dtP, dtPgeoNN, by="PermitNumber")
+> 
+> # baseline
+> print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtP[round(landWidth)==33], cluster="PermitNumber")))
 OLS estimation, Dep. Var.: duplex
-Observations: 1,395
+Observations: 1,796
 Fixed-effects: year: 5
-Standard-errors: Clustered (CTNAME) 
-                     Estimate Std. Error   t value   Pr(>|t|)    
-hedonicElasticity   -0.029048   0.096812 -0.300044 0.76516377    
-hedonicResidualMean -0.365091   0.075643 -4.826474 0.00000968 ***
-landDepth            0.001495   0.001523  0.981515 0.33021580    
+Standard-errors: Clustered (PermitNumber) 
+                Estimate Std. Error   t value  Pr(>|t|)    
+log(price2500) -0.377052   0.031093 -12.12670 < 2.2e-16 ***
+landDepth       0.002209   0.000807   2.73904 0.0062227 ** 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.417457     Adj. R2: 0.076797
-                 Within R2: 0.053183
-> print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==33 & count>100],cluster="CTNAME")))
+RMSE: 0.429028     Adj. R2: 0.069111
+                 Within R2: 0.05843 
+> print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtP[round(landWidth)==50], cluster="PermitNumber")))
 OLS estimation, Dep. Var.: duplex
-Observations: 945
+Observations: 455
 Fixed-effects: year: 5
-Standard-errors: Clustered (CTNAME) 
-                     Estimate Std. Error   t value  Pr(>|t|)    
-hedonicElasticity   -0.075136   0.131694 -0.570539 0.5725615    
-hedonicResidualMean -0.317737   0.097833 -3.247739 0.0028628 ** 
-landDepth            0.002098   0.001802  1.163925 0.2536279    
+Standard-errors: Clustered (PermitNumber) 
+                Estimate Std. Error   t value   Pr(>|t|)    
+log(price2500) -0.354348   0.069404 -5.105565 4.8611e-07 ***
+landDepth      -0.000547   0.000882 -0.620499 5.3524e-01    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.390183     Adj. R2: 0.077344
-                 Within R2: 0.057443
-> print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==50],cluster="CTNAME")))
+RMSE: 0.358631     Adj. R2: 0.100555
+                 Within R2: 0.068472
+> 
+> # duplex ~ local kernel elasticity + local price level, by lot width
+> print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtP[round(landWidth)==33], cluster="PermitNumber")))
 OLS estimation, Dep. Var.: duplex
-Observations: 383
+Observations: 1,796
 Fixed-effects: year: 5
-Standard-errors: Clustered (CTNAME) 
-                     Estimate Std. Error   t value  Pr(>|t|)    
-hedonicElasticity   -0.135480   0.104169 -1.300588 0.1984567    
-hedonicResidualMean -0.332008   0.111822 -2.969087 0.0043123 ** 
-landDepth           -0.000332   0.000968 -0.343296 0.7325962    
+Standard-errors: Clustered (PermitNumber) 
+                  Estimate Std. Error   t value   Pr(>|t|)    
+kernelElasticity -0.345930   0.034166 -10.12511  < 2.2e-16 ***
+log(price1250)   -0.242239   0.046606  -5.19755 2.2497e-07 ***
+landDepth         0.002206   0.000801   2.75414 5.9440e-03 ** 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.35264     Adj. R2: 0.101015
-                Within R2: 0.071291
-> print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==50 & count>100],cluster="CTNAME")))
+RMSE: 0.427744     Adj. R2: 0.074157
+                 Within R2: 0.064057
+> print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtP[round(landWidth)==50], cluster="PermitNumber")))
 OLS estimation, Dep. Var.: duplex
-Observations: 279
+Observations: 455
 Fixed-effects: year: 5
-Standard-errors: Clustered (CTNAME) 
-                     Estimate Std. Error  t value  Pr(>|t|)    
-hedonicElasticity   -0.131774   0.130573 -1.00919 0.3212286    
-hedonicResidualMean -0.420737   0.125784 -3.34492 0.0022854 ** 
-landDepth           -0.001178   0.000807 -1.45947 0.1551841    
+Standard-errors: Clustered (PermitNumber) 
+                  Estimate Std. Error   t value   Pr(>|t|)    
+kernelElasticity -0.303111   0.066590 -4.551867 6.8367e-06 ***
+log(price1250)   -0.260551   0.087683 -2.971511 3.1207e-03 ** 
+landDepth        -0.000495   0.000879 -0.562636 5.7396e-01    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.326665     Adj. R2: 0.108686
-                 Within R2: 0.08562 
-> print(summary(feols(duplex ~ hedonicElasticity +  landDepth| year,data=dtP[round(landWidth)==33],cluster="CTNAME")))
-NOTE: 4 observations removed because of NA values (RHS: 4).
+RMSE: 0.357813     Adj. R2: 0.10265 
+                 Within R2: 0.072717
+> 
+> # do differently
+> print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtP[round(landWidth)==33], cluster="PermitNumber")))
 OLS estimation, Dep. Var.: duplex
-Observations: 1,395
+Observations: 1,796
 Fixed-effects: year: 5
-Standard-errors: Clustered (CTNAME) 
-                   Estimate Std. Error   t value   Pr(>|t|)    
-hedonicElasticity -0.348793   0.082464 -4.229615 7.9825e-05 ***
-landDepth          0.000741   0.001656  0.447476 6.5612e-01    
+Standard-errors: Clustered (PermitNumber) 
+                Estimate Std. Error   t value   Pr(>|t|)    
+log(price2500) -0.499071   0.049290 -10.12511  < 2.2e-16 ***
+log(price1250)  0.256833   0.073364   3.50082 0.00047517 ***
+landDepth       0.002206   0.000801   2.75414 0.00594405 ** 
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.423702     Adj. R2: 0.049657
-                 Within R2: 0.024646
+RMSE: 0.427744     Adj. R2: 0.074157
+                 Within R2: 0.064057
+> print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtP[round(landWidth)==50], cluster="PermitNumber")))
+OLS estimation, Dep. Var.: duplex
+Observations: 455
+Fixed-effects: year: 5
+Standard-errors: Clustered (PermitNumber) 
+                Estimate Std. Error   t value   Pr(>|t|)    
+log(price2500) -0.437297   0.096070 -4.551867 6.8367e-06 ***
+log(price1250)  0.176746   0.122369  1.444368 1.4933e-01    
+landDepth      -0.000495   0.000879 -0.562636 5.7396e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.357813     Adj. R2: 0.10265 
+                 Within R2: 0.072717
 > 
 > 
 > q("no")
 > proc.time()
    user  system elapsed 
- 14.656   1.644  13.742 
+ 21.544   2.234  20.989 
