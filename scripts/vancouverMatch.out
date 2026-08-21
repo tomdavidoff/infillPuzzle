@@ -48,7 +48,7 @@ udunits database from /Users/davidoff/Library/R/arm64/4.5/library/units/share/ud
 > sf_use_s2(TRUE) # (5) ensure s2 for fast lat/lon st_within
 > 
 > # ---- kernel / prediction tuning knobs ---------------------------------------
-> SALE_MINYEAR <- 2015    # comp sales window start (pre-rezoning, avoids supply endogeneity)
+> SALE_MINYEAR <- 2015    # comp sales window start (pre-rezoning, avoids supply endogeneity) (note results robust to 2010 start)
 > SALE_MAXYEAR <- 2017    # comp sales window end
 > AGE_DECAY    <- 10      # years; weight = exp(-(saleYear - effectiveYear)/AGE_DECAY)
 > KNN_TARGET   <- 100     # global radius set from distance to this-th nearest comp
@@ -636,10 +636,9 @@ permits with non-NA kernel prediction: 32594 of 36213
 > CRITVAL <- .5
 > dtP[,single:=grepl("Single",SpecificUseCategory)]
 > dtP[,duplex:=grepl("Duplex",SpecificUseCategory)]
-> dtP <- dtP[single==TRUE | duplex==TRUE] # for now
 > minSpend <- quantile(dtP[,ProjectValue],CRITVAL)
 > dtP <- dtP[TypeOfWork=="New Building" & single==1| ProjectValue>minSpend]
-> dtP <- dtP[year>2018 & year<2024]
+> dtP <- dtP[year>2018 ]
 > dtP <- dtP[SpecificUseCategory %in% useList]
 > print(useList)
  [1] "Single Detached House"                   
@@ -656,16 +655,16 @@ permits with non-NA kernel prediction: 32594 of 36213
 > # correlations: duplex share vs local kernel price level & local elasticity
 > print(cor(dtP[,.(duplex, kernelElasticity, price1250, price2500)], use="complete.obs"))
                       duplex kernelElasticity   price1250  price2500
-duplex            1.00000000       -0.2005363 -0.08106591 -0.2190547
-kernelElasticity -0.20053629        1.0000000 -0.11483126  0.6365770
-price1250        -0.08106591       -0.1148313  1.00000000  0.6734992
-price2500        -0.21905467        0.6365770  0.67349924  1.0000000
+duplex            1.00000000       -0.1526787 -0.02701687 -0.1367355
+kernelElasticity -0.15267875        1.0000000 -0.14535326  0.5976704
+price1250        -0.02701687       -0.1453533  1.00000000  0.6823586
+price2500        -0.13673546        0.5976704  0.68235856  1.0000000
 > print(cor(dtP[nCompKernel>KNN_TARGET,.(duplex, kernelElasticity, price1250, price2500)], use="complete.obs"))
-                      duplex kernelElasticity   price1250  price2500
-duplex            1.00000000      -0.23625345 -0.07396047 -0.2276220
-kernelElasticity -0.23625345       1.00000000 -0.01648347  0.7330329
-price1250        -0.07396047      -0.01648347  1.00000000  0.6603985
-price2500        -0.22762195       0.73303295  0.66039846  1.0000000
+                     duplex kernelElasticity   price1250  price2500
+duplex            1.0000000      -0.17516517 -0.01947630 -0.1412531
+kernelElasticity -0.1751652       1.00000000  0.02176655  0.7337460
+price1250        -0.0194763       0.02176655  1.00000000  0.6882282
+price2500        -0.1412531       0.73374597  0.68822822  1.0000000
 > 
 > ggplot(dtP[!is.na(price1250)], aes(x=log(price1250), y=kernelElasticity)) +
 +   geom_point(aes(color=nCompKernel), alpha=0.5) + theme_minimal()
@@ -695,52 +694,103 @@ Empty data.table (0 rows and 2 cols): SpecificUseCategory,N
 [1] 2019
                  SpecificUseCategory     N
                               <char> <int>
-1:             Single Detached House   423
-2: Single Detached House w/Sec Suite   339
-3:                            Duplex   106
-4:          Duplex w/Secondary Suite    55
-5:      Infill Single Detached House    34
+1:                     Laneway House   491
+2:                 Multiple Dwelling   394
+3:             Single Detached House   346
+4: Single Detached House w/Sec Suite   288
+5:                            Duplex    95
+6:          Duplex w/Secondary Suite    54
+7:      Multiple Conversion Dwelling    38
+8:      Infill Single Detached House    34
+9:                     Dwelling Unit    14
 [1] 2020
                  SpecificUseCategory     N
                               <char> <int>
-1:             Single Detached House   300
-2: Single Detached House w/Sec Suite   264
-3:                            Duplex    85
-4:          Duplex w/Secondary Suite    70
-5:      Infill Single Detached House    31
+1:                     Laneway House   282
+2:                 Multiple Dwelling   280
+3: Single Detached House w/Sec Suite   237
+4:             Single Detached House   218
+5:                            Duplex    79
+6:          Duplex w/Secondary Suite    70
+7:      Multiple Conversion Dwelling    42
+8:      Infill Single Detached House    31
+9:                     Dwelling Unit    15
 [1] 2021
-                        SpecificUseCategory     N
-                                     <char> <int>
-1:                    Single Detached House   571
-2:        Single Detached House w/Sec Suite   479
-3:                                   Duplex   235
-4:                 Duplex w/Secondary Suite   176
-5:             Infill Single Detached House    26
-6: Duplex w/Secondary Suite,Secondary Suite    11
+                         SpecificUseCategory     N
+                                      <char> <int>
+ 1:                            Laneway House   556
+ 2:        Single Detached House w/Sec Suite   442
+ 3:                    Single Detached House   424
+ 4:                        Multiple Dwelling   367
+ 5:                                   Duplex   224
+ 6:                 Duplex w/Secondary Suite   176
+ 7:             Multiple Conversion Dwelling    30
+ 8:             Infill Single Detached House    26
+ 9:                            Dwelling Unit    20
+10: Duplex w/Secondary Suite,Secondary Suite    11
 [1] 2022
-                        SpecificUseCategory     N
-                                     <char> <int>
-1:                    Single Detached House   390
-2:        Single Detached House w/Sec Suite   269
-3:                                   Duplex   165
-4: Duplex w/Secondary Suite,Secondary Suite    48
-5:                 Duplex w/Secondary Suite    41
-6:             Infill Single Detached House    21
+                         SpecificUseCategory     N
+                                      <char> <int>
+ 1:                            Laneway House   302
+ 2:                    Single Detached House   292
+ 3:                        Multiple Dwelling   261
+ 4:        Single Detached House w/Sec Suite   246
+ 5:                                   Duplex   161
+ 6: Duplex w/Secondary Suite,Secondary Suite    48
+ 7:                 Duplex w/Secondary Suite    41
+ 8:             Multiple Conversion Dwelling    31
+ 9:                            Dwelling Unit    26
+10:             Infill Single Detached House    21
 [1] 2023
-                        SpecificUseCategory     N
-                                     <char> <int>
-1:                    Single Detached House   410
-2:        Single Detached House w/Sec Suite   267
-3:                                   Duplex   157
-4: Duplex w/Secondary Suite,Secondary Suite    30
-5:                 Duplex w/Secondary Suite    14
-6:             Infill Single Detached House    11
+                         SpecificUseCategory     N
+                                      <char> <int>
+ 1:                    Single Detached House   300
+ 2:                        Multiple Dwelling   243
+ 3:        Single Detached House w/Sec Suite   232
+ 4:                            Laneway House   178
+ 5:                                   Duplex   143
+ 6:                            Dwelling Unit    43
+ 7: Duplex w/Secondary Suite,Secondary Suite    30
+ 8:             Multiple Conversion Dwelling    29
+ 9:                 Duplex w/Secondary Suite    14
+10:             Infill Single Detached House    11
 [1] 2024
-Empty data.table (0 rows and 2 cols): SpecificUseCategory,N
+                         SpecificUseCategory     N
+                                      <char> <int>
+ 1:                            Laneway House   459
+ 2:                        Multiple Dwelling   396
+ 3:                    Single Detached House   320
+ 4:                                   Duplex   178
+ 5:        Single Detached House w/Sec Suite   154
+ 6:                            Dwelling Unit    59
+ 7: Duplex w/Secondary Suite,Secondary Suite    34
+ 8:             Multiple Conversion Dwelling    18
+ 9:                 Duplex w/Secondary Suite    11
+10:             Infill Single Detached House     8
 [1] 2025
-Empty data.table (0 rows and 2 cols): SpecificUseCategory,N
+                 SpecificUseCategory     N
+                              <char> <int>
+1:                 Multiple Dwelling   457
+2:             Single Detached House   382
+3:                     Laneway House   283
+4:                            Duplex   147
+5: Single Detached House w/Sec Suite   138
+6:                     Dwelling Unit    61
+7:          Duplex w/Secondary Suite    38
+8:      Multiple Conversion Dwelling    14
+9:      Infill Single Detached House     8
 [1] 2026
-Empty data.table (0 rows and 2 cols): SpecificUseCategory,N
+                 SpecificUseCategory     N
+                              <char> <int>
+1:                 Multiple Dwelling   122
+2:             Single Detached House   120
+3:                     Laneway House    65
+4: Single Detached House w/Sec Suite    49
+5:                            Duplex    38
+6:                     Dwelling Unit    13
+7:          Duplex w/Secondary Suite     7
+8:      Multiple Conversion Dwelling     2
+9:      Infill Single Detached House     1
 > cols <- setdiff(names(dfG), attr(dfG, "sf_column"))
 > matched <- st_drop_geometry(dfG)[idx, cols, drop = FALSE]
 > matched[dist > set_units(10, "m"), ] <- NA
@@ -748,93 +798,188 @@ Empty data.table (0 rows and 2 cols): SpecificUseCategory,N
 > dtPgeoNN$dist <- dist
 > dtPgeoNN <- as.data.table(dtPgeoNN)[,.(PermitNumber,ROLL_NUMBER)]
 > dtPgeoNN[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-> dtPgeoNN <- merge(dtPgeoNN, dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year)], by="rollStart", all.x=TRUE)
+> dtPgeoNN <- merge(dtPgeoNN, dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year,neighbourhoodDescription)], by="rollStart", all.x=TRUE)
 > dtP <- merge(dtP, dtPgeoNN, by="PermitNumber")
+> dtP[,multiPlex:= SpecificUseCategory=="Multiple Dwelling"]
+> print(table(dtP[,.(SpecificUseCategory,multiPlex)]))
+                                          multiPlex
+SpecificUseCategory                        FALSE TRUE
+  Duplex                                    1066    0
+  Duplex w/Secondary Suite                   411    0
+  Duplex w/Secondary Suite,Secondary Suite   123    0
+  Dwelling Unit                              251    0
+  Infill Single Detached House               142    0
+  Laneway House                             2617    0
+  Multiple Conversion Dwelling               204    0
+  Multiple Dwelling                            0 2520
+  Single Detached House                     2514    0
+  Single Detached House w/Sec Suite         1786    0
+> print(names(dtP))
+ [1] "PermitNumber"             "SpecificUseCategory"     
+ [3] "geo_point_2d"             "PermitNumberCreatedDate" 
+ [5] "TypeOfWork"               "ProjectValue"            
+ [7] "lat"                      "lon"                     
+ [9] "price1250"                "price2500"               
+[11] "nCompKernel"              "logRatio2500_1250"       
+[13] "kernelElasticity"         "year"                    
+[15] "single"                   "duplex"                  
+[17] "rollStart"                "ROLL_NUMBER"             
+[19] "landWidth"                "landDepth"               
+[21] "MB_total_finished_area"   "MB_effective_year"       
+[23] "neighbourhoodDescription" "multiPlex"               
+> dtD <- dtP[single==TRUE | duplex==TRUE & year<2024] # for now
 > 
 > # baseline
-> print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtP[round(landWidth)==33], cluster="PermitNumber")))
+> print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtD[round(landWidth)==33], cluster="neighbourhoodDescription")))
 OLS estimation, Dep. Var.: duplex
-Observations: 1,796
-Fixed-effects: year: 5
-Standard-errors: Clustered (PermitNumber) 
-                Estimate Std. Error   t value  Pr(>|t|)    
-log(price2500) -0.377052   0.031093 -12.12670 < 2.2e-16 ***
-landDepth       0.002209   0.000807   2.73904 0.0062227 ** 
+Observations: 1,944
+Fixed-effects: year: 8
+Standard-errors: Clustered (neighbourhoodDescription) 
+                Estimate Std. Error  t value   Pr(>|t|)    
+log(price2500) -0.344422   0.052768 -6.52709 1.8222e-06 ***
+landDepth       0.002260   0.001167  1.93707 6.6306e-02 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.429028     Adj. R2: 0.069111
-                 Within R2: 0.05843 
-> print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtP[round(landWidth)==50], cluster="PermitNumber")))
+RMSE: 0.402546     Adj. R2: 0.130555
+                 Within R2: 0.056668
+> print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtD[round(landWidth)==50], cluster="neighbourhoodDescription")))
 OLS estimation, Dep. Var.: duplex
-Observations: 455
-Fixed-effects: year: 5
-Standard-errors: Clustered (PermitNumber) 
+Observations: 536
+Fixed-effects: year: 8
+Standard-errors: Clustered (neighbourhoodDescription) 
                 Estimate Std. Error   t value   Pr(>|t|)    
-log(price2500) -0.354348   0.069404 -5.105565 4.8611e-07 ***
-landDepth      -0.000547   0.000882 -0.620499 5.3524e-01    
+log(price2500) -0.338045   0.057084 -5.921845 5.8493e-06 ***
+landDepth      -0.000109   0.000896 -0.121894 9.0409e-01    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.358631     Adj. R2: 0.100555
-                 Within R2: 0.068472
+RMSE: 0.321255     Adj. R2: 0.155813
+                 Within R2: 0.067506
 > 
 > # duplex ~ local kernel elasticity + local price level, by lot width
-> print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtP[round(landWidth)==33], cluster="PermitNumber")))
+> print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtD[round(landWidth)==33], cluster="neighbourhoodDescription")))
 OLS estimation, Dep. Var.: duplex
-Observations: 1,796
-Fixed-effects: year: 5
-Standard-errors: Clustered (PermitNumber) 
-                  Estimate Std. Error   t value   Pr(>|t|)    
-kernelElasticity -0.345930   0.034166 -10.12511  < 2.2e-16 ***
-log(price1250)   -0.242239   0.046606  -5.19755 2.2497e-07 ***
-landDepth         0.002206   0.000801   2.75414 5.9440e-03 ** 
+Observations: 1,944
+Fixed-effects: year: 8
+Standard-errors: Clustered (neighbourhoodDescription) 
+                  Estimate Std. Error  t value   Pr(>|t|)    
+kernelElasticity -0.318323   0.048950 -6.50297 1.9215e-06 ***
+log(price1250)   -0.220683   0.041654 -5.29801 2.9756e-05 ***
+landDepth         0.002258   0.001114  2.02692 5.5554e-02 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.427744     Adj. R2: 0.074157
-                 Within R2: 0.064057
-> print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtP[round(landWidth)==50], cluster="PermitNumber")))
+RMSE: 0.401314     Adj. R2: 0.135418
+                 Within R2: 0.062431
+> print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtD[round(landWidth)==50], cluster="neighbourhoodDescription")))
 OLS estimation, Dep. Var.: duplex
-Observations: 455
-Fixed-effects: year: 5
-Standard-errors: Clustered (PermitNumber) 
+Observations: 536
+Fixed-effects: year: 8
+Standard-errors: Clustered (neighbourhoodDescription) 
                   Estimate Std. Error   t value   Pr(>|t|)    
-kernelElasticity -0.303111   0.066590 -4.551867 6.8367e-06 ***
-log(price1250)   -0.260551   0.087683 -2.971511 3.1207e-03 ** 
-landDepth        -0.000495   0.000879 -0.562636 5.7396e-01    
+kernelElasticity -0.300206   0.040836 -7.351491 2.3322e-07 ***
+log(price1250)   -0.238634   0.062672 -3.807694 9.6294e-04 ***
+landDepth        -0.000054   0.000902 -0.059602 9.5301e-01    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.357813     Adj. R2: 0.10265 
-                 Within R2: 0.072717
+RMSE: 0.320163     Adj. R2: 0.159947
+                 Within R2: 0.073837
 > 
 > # do differently
-> print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtP[round(landWidth)==33], cluster="PermitNumber")))
+> print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtD[round(landWidth)==33], cluster="neighbourhoodDescription")))
 OLS estimation, Dep. Var.: duplex
-Observations: 1,796
-Fixed-effects: year: 5
-Standard-errors: Clustered (PermitNumber) 
-                Estimate Std. Error   t value   Pr(>|t|)    
-log(price2500) -0.499071   0.049290 -10.12511  < 2.2e-16 ***
-log(price1250)  0.256833   0.073364   3.50082 0.00047517 ***
-landDepth       0.002206   0.000801   2.75414 0.00594405 ** 
+Observations: 1,944
+Fixed-effects: year: 8
+Standard-errors: Clustered (neighbourhoodDescription) 
+                Estimate Std. Error  t value   Pr(>|t|)    
+log(price2500) -0.459244   0.070621 -6.50297 1.9215e-06 ***
+log(price1250)  0.238561   0.085192  2.80027 1.0723e-02 *  
+landDepth       0.002258   0.001114  2.02692 5.5554e-02 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.427744     Adj. R2: 0.074157
-                 Within R2: 0.064057
-> print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtP[round(landWidth)==50], cluster="PermitNumber")))
+RMSE: 0.401314     Adj. R2: 0.135418
+                 Within R2: 0.062431
+> print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtD[round(landWidth)==50], cluster="neighbourhoodDescription")))
 OLS estimation, Dep. Var.: duplex
-Observations: 455
-Fixed-effects: year: 5
-Standard-errors: Clustered (PermitNumber) 
+Observations: 536
+Fixed-effects: year: 8
+Standard-errors: Clustered (neighbourhoodDescription) 
                 Estimate Std. Error   t value   Pr(>|t|)    
-log(price2500) -0.437297   0.096070 -4.551867 6.8367e-06 ***
-log(price1250)  0.176746   0.122369  1.444368 1.4933e-01    
-landDepth      -0.000495   0.000879 -0.562636 5.7396e-01    
+log(price2500) -0.433106   0.058914 -7.351491 2.3322e-07 ***
+log(price1250)  0.194472   0.065059  2.989168 6.7622e-03 ** 
+landDepth      -0.000054   0.000902 -0.059602 9.5301e-01    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.357813     Adj. R2: 0.10265 
-                 Within R2: 0.072717
+RMSE: 0.320163     Adj. R2: 0.159947
+                 Within R2: 0.073837
+> 
+> dtM <- dtP[year>=2024 & (single==TRUE | duplex==TRUE | multiPlex==TRUE)]
+> # duplex ~ local kernel elasticity + local price level, by lot width
+> print(summary(feols(multiPlex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtM[round(landWidth)==33], cluster="neighbourhoodDescription")))
+NOTE: 1 observation removed because of NA values (RHS: 1).
+OLS estimation, Dep. Var.: multiPlex
+Observations: 698
+Fixed-effects: year: 3
+Standard-errors: Clustered (neighbourhoodDescription) 
+                  Estimate Std. Error  t value  Pr(>|t|)    
+kernelElasticity -0.187191   0.070299 -2.66279 0.0153727 *  
+log(price1250)   -0.201568   0.071963 -2.80099 0.0113990 *  
+landDepth         0.006541   0.001606  4.07207 0.0006499 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.394846     Adj. R2: 0.078158
+                 Within R2: 0.069778
+> print(summary(feols(multiPlex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtM[round(landWidth)==50], cluster="neighbourhoodDescription")))
+NOTE: 1 observation removed because of NA values (RHS: 1).
+OLS estimation, Dep. Var.: multiPlex
+Observations: 205
+Fixed-effects: year: 3
+Standard-errors: Clustered (neighbourhoodDescription) 
+                  Estimate Std. Error   t value Pr(>|t|) 
+kernelElasticity -0.256955   0.160209 -1.603871  0.12300 
+log(price1250)   -0.028949   0.209638 -0.138090  0.89143 
+landDepth         0.000753   0.001834  0.410491  0.68542 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.407563     Adj. R2: 0.021592
+                 Within R2: 0.026892
+> 
+> # do differently
+> print(summary(feols(multiPlex ~ log(price2500) + log(price1250) + landDepth | year, data=dtM[round(landWidth)==33], cluster="neighbourhoodDescription")))
+NOTE: 1 observation removed because of NA values (RHS: 1).
+OLS estimation, Dep. Var.: multiPlex
+Observations: 698
+Fixed-effects: year: 3
+Standard-errors: Clustered (neighbourhoodDescription) 
+                Estimate Std. Error   t value  Pr(>|t|)    
+log(price2500) -0.270059   0.101419 -2.662794 0.0153727 *  
+log(price1250)  0.068491   0.106735  0.641689 0.5287413    
+landDepth       0.006541   0.001606  4.072071 0.0006499 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.394846     Adj. R2: 0.078158
+                 Within R2: 0.069778
+> print(summary(feols(multiPlex ~ log(price2500) + log(price1250) + landDepth | year, data=dtM[round(landWidth)==50], cluster="neighbourhoodDescription")))
+NOTE: 1 observation removed because of NA values (RHS: 1).
+OLS estimation, Dep. Var.: multiPlex
+Observations: 205
+Fixed-effects: year: 3
+Standard-errors: Clustered (neighbourhoodDescription) 
+                Estimate Std. Error   t value Pr(>|t|) 
+log(price2500) -0.370707   0.231133 -1.603871  0.12300 
+log(price1250)  0.341758   0.280128  1.220006  0.23538 
+landDepth       0.000753   0.001834  0.410491  0.68542 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.407563     Adj. R2: 0.021592
+                 Within R2: 0.026892
+> print(summary(dtD[,landWidth]))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+  16.50   33.00   33.08   42.29   49.50  187.00    1076 
+> print(summary(dtM[,landWidth]))
+   Min. 1st Qu.  Median    Mean 3rd Qu.    Max.    NA's 
+   24.5    33.0    34.0    42.8    50.0   187.0     926 
 > 
 > 
 > q("no")
 > proc.time()
    user  system elapsed 
- 21.544   2.234  20.989 
+ 22.458   2.604  22.482 

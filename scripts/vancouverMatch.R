@@ -27,7 +27,7 @@ library(units)
 sf_use_s2(TRUE) # (5) ensure s2 for fast lat/lon st_within
 
 # ---- kernel / prediction tuning knobs ---------------------------------------
-SALE_MINYEAR <- 2015    # comp sales window start (pre-rezoning, avoids supply endogeneity)
+SALE_MINYEAR <- 2015    # comp sales window start (pre-rezoning, avoids supply endogeneity) (note results robust to 2010 start)
 SALE_MAXYEAR <- 2017    # comp sales window end
 AGE_DECAY    <- 10      # years; weight = exp(-(saleYear - effectiveYear)/AGE_DECAY)
 KNN_TARGET   <- 100     # global radius set from distance to this-th nearest comp
@@ -263,10 +263,9 @@ for (y in 2017:2026) {
 CRITVAL <- .5
 dtP[,single:=grepl("Single",SpecificUseCategory)]
 dtP[,duplex:=grepl("Duplex",SpecificUseCategory)]
-dtP <- dtP[single==TRUE | duplex==TRUE] # for now
 minSpend <- quantile(dtP[,ProjectValue],CRITVAL)
 dtP <- dtP[TypeOfWork=="New Building" & single==1| ProjectValue>minSpend]
-dtP <- dtP[year>2018 & year<2024]
+dtP <- dtP[year>2018 ]
 dtP <- dtP[SpecificUseCategory %in% useList]
 print(useList)
 
@@ -301,20 +300,35 @@ dtPgeoNN <- cbind(dtPgeoNN, matched)
 dtPgeoNN$dist <- dist
 dtPgeoNN <- as.data.table(dtPgeoNN)[,.(PermitNumber,ROLL_NUMBER)]
 dtPgeoNN[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-dtPgeoNN <- merge(dtPgeoNN, dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year)], by="rollStart", all.x=TRUE)
+dtPgeoNN <- merge(dtPgeoNN, dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year,neighbourhoodDescription)], by="rollStart", all.x=TRUE)
 dtP <- merge(dtP, dtPgeoNN, by="PermitNumber")
+dtP[,multiPlex:= SpecificUseCategory=="Multiple Dwelling"]
+print(table(dtP[,.(SpecificUseCategory,multiPlex)]))
+print(names(dtP))
+dtD <- dtP[single==TRUE | duplex==TRUE & year<2024] # for now
 
 # baseline
-print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtP[round(landWidth)==33], cluster="PermitNumber")))
-print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtP[round(landWidth)==50], cluster="PermitNumber")))
+print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtD[round(landWidth)==33], cluster="neighbourhoodDescription")))
+print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtD[round(landWidth)==50], cluster="neighbourhoodDescription")))
 
 # duplex ~ local kernel elasticity + local price level, by lot width
-print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtP[round(landWidth)==33], cluster="PermitNumber")))
-print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtP[round(landWidth)==50], cluster="PermitNumber")))
+print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtD[round(landWidth)==33], cluster="neighbourhoodDescription")))
+print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtD[round(landWidth)==50], cluster="neighbourhoodDescription")))
 
 # do differently
-print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtP[round(landWidth)==33], cluster="PermitNumber")))
-print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtP[round(landWidth)==50], cluster="PermitNumber")))
+print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtD[round(landWidth)==33], cluster="neighbourhoodDescription")))
+print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtD[round(landWidth)==50], cluster="neighbourhoodDescription")))
+
+dtM <- dtP[year>=2024 & (single==TRUE | duplex==TRUE | multiPlex==TRUE)]
+# duplex ~ local kernel elasticity + local price level, by lot width
+print(summary(feols(multiPlex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtM[round(landWidth)==33], cluster="neighbourhoodDescription")))
+print(summary(feols(multiPlex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtM[round(landWidth)==50], cluster="neighbourhoodDescription")))
+
+# do differently
+print(summary(feols(multiPlex ~ log(price2500) + log(price1250) + landDepth | year, data=dtM[round(landWidth)==33], cluster="neighbourhoodDescription")))
+print(summary(feols(multiPlex ~ log(price2500) + log(price1250) + landDepth | year, data=dtM[round(landWidth)==50], cluster="neighbourhoodDescription")))
+print(summary(dtD[,landWidth]))
+print(summary(dtM[,landWidth]))
 
 
 q("no")
@@ -517,11 +531,10 @@ useList <- useList[,SpecificUseCategory]
 CRITVAL <- .5
 dtP[,single:=grepl("Single",SpecificUseCategory)]
 dtP[,duplex:=grepl("Duplex",SpecificUseCategory)]
-dtP <- dtP[single==TRUE | duplex==TRUE] # for now
 minSpend <- quantile(dtP[,ProjectValue],CRITVAL)
 dtP <- dtP[TypeOfWork=="New Building" & single==1| ProjectValue>minSpend]
 dtP[,year:=as.numeric(substr(PermitNumberCreatedDate,1,4))]
-dtP <- dtP[year>2018 & year<2024]
+dtP <- dtP[year>2018 ]
 dtP <- dtP[SpecificUseCategory %in% useList]
 print(cor(dtP[,.(duplex,hedonicElasticity,hedonicResidualMean)],use="complete.obs"))
 print(cor(dtP[count>100,.(duplex,hedonicElasticity,hedonicResidualMean)],use="complete.obs"))
@@ -550,11 +563,5 @@ dtPgeo <- dtPgeo[,.(PermitNumber,ROLL_NUMBER)]
 dtPgeo[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
 dtPgeo <- merge(dtPgeo,dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year)],by="rollStart",all.x=TRUE)
 dtP <- merge(dtP,dtPgeo,by="PermitNumber")
-print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==33],cluster="CTNAME")))
-print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==33 & count>100],cluster="CTNAME")))
-print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==50],cluster="CTNAME")))
-print(summary(feols(duplex ~ hedonicElasticity + hedonicResidualMean + landDepth| year,data=dtP[round(landWidth)==50 & count>100],cluster="CTNAME")))
-print(summary(feols(duplex ~ hedonicElasticity +  landDepth| year,data=dtP[round(landWidth)==33],cluster="CTNAME")))
-
 
 q("no")
