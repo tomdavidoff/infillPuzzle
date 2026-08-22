@@ -1,20 +1,27 @@
 # vancouverMatch.R
 # match permits to neighbourhoods, assessments, etc
-# Objective -- correlation and plots elasticity, price, duplex share. Then do multiplex share
+# Objective -- correlation and plots: local price levels vs duplex / multiplex choice.
 # Tom Davidoff
 # 08/13/26
 #
-# 08/19/26 revision: replace the RS-only / single-family hedonic-by-tract block with a
-# per-permit distance-weighted local kernel price prediction.
-#   - Comp pool: ALL improved-property Vancouver sales STARTYEAR..ENDYEAR, agnostic on
-#     zoning and property type, ignoring land area entirely (sqft of structure only).
-#   - For each R1 permit (permit years 2019-2023), local LINEAR fit of
-#     log(price) ~ log(sqft) over in-radius comps, weighted by structure age at sale
-#     (exp(-age/AGE_DECAY)), predicting price at 1250 and 2500 sqft.
-#   - Spatial weighting: HARD truncation at a single global radius R, with NO distance
-#     taper. R = 80th percentile across permits of each permit's distance to its
-#     KNN_TARGET-th (100th) nearest comp.
-#   - All distances in projected meters (EPSG:3005, BC Albers).
+# 08/19/26: per-permit distance-weighted local kernel price prediction.
+# 08/21/26 (this file):
+#   (A) Comp pool = ground-oriented improved residential (SFD, suite, plex, row housing).
+#       Strata condos purged AT THE SQLITE SOURCE so they never reach the rollStart merge.
+#   (B) Analysis permit sample defined BEFORE the kernel; R calibrated on those permits.
+#   (C) COORDINATE MERGE is region-split to kill rollStart fan-out:
+#         - comps INSIDE R1-1 join geometry on rollStart (collapsed to ONE point per
+#           rollStart), so SFD->duplex/multiplex conversions on a shared truncated roll
+#           map to a single lot location instead of fanning out.
+#         - comps OUTSIDE R1-1 join geometry on folioID (exact, one-to-one).
+#       inR1 is a point-in-polygon flag on each comp's own geometry, stored in the cache.
+#   (D) PRICE ESTIMATOR: for each permit and each TARGET_SQFT, a THREE-WAY product kernel
+#       over space (bisquare/SPACE_BW) x age (exp/AGE_DECAY) x size (gaussian in log-sqft
+#       / SIZE_BW around the target). Two SEPARATE local fits per permit (one per target),
+#       so no single slope is carried 1250 -> 2500. Worked in price-per-sqft:
+#         - FLAT (primary):  weighted mean PPSF in the size band, price = mean(PPSF) * s*.
+#         - SLOPE (robust):  local logPPSF ~ log(sqft), evaluated AT s* only.
+#       No elasticity is produced; the deliverables are price1250 and price2500.
 
 library(data.table)
 library(sf)
@@ -22,121 +29,127 @@ library(ggplot2)
 library(ggspatial)
 library(RSQLite)
 library(fixest)
+library(parallel)
 library(units)
 
-sf_use_s2(TRUE) # (5) ensure s2 for fast lat/lon st_within
+sf_use_s2(TRUE)
 
 # ---- kernel / prediction tuning knobs ---------------------------------------
-SALE_MINYEAR <- 2015    # comp sales window start (pre-rezoning, avoids supply endogeneity) (note results robust to 2010 start)
+SALE_MINYEAR <- 2015    # comp sales window start (pre-rezoning)
 SALE_MAXYEAR <- 2017    # comp sales window end
-AGE_DECAY    <- 10      # years; weight = exp(-(saleYear - effectiveYear)/AGE_DECAY)
+AGE_DECAY    <- 20      # years; age weight = exp(-structAge / AGE_DECAY)
+SIZE_BW      <- log(1.5)# log-sqft; size weight = exp(-0.5 * (dlogsqft / SIZE_BW)^2)
 KNN_TARGET   <- 100     # global radius set from distance to this-th nearest comp
 KNN_PCTL     <- 0.80    # ...taken at this percentile across permits
-TARGET_SQFT  <- c(1250, 2500)   # sizes to predict
-MIN_COMPS    <- 10      # permits with fewer in-radius comps -> NA prediction
+TARGET_SQFT  <- c(1500, 2500)   # sizes to predict
+MIN_EFFN     <- 8       # local fit requires this much Kish effective N (else NA)
 CRS_M        <- 3005    # BC Albers, meters
+MC_CORES     <- 4       # cores for the per-permit local fits
+
+# ---- analysis-sample knobs (define which permits enter the kernel) ----------
+CRITVAL         <- 0.5  # ProjectValue percentile threshold for non-new-SFD permits
+MIN_PERMIT_YEAR <- 2018 # keep permit years strictly greater than this
+USE_MIN_N       <- 100  # SpecificUseCategory kept if it has more than this many permits
 # -----------------------------------------------------------------------------
 
-# permits
-# (7) only read the columns actually used downstream
+# ============================ permits ========================================
 dtP <- fread(
   "~/DropboxExternal/dataRaw/issued-building-permitsDwellingUses.csv",
-  select = c("SpecificUseCategory", "PermitNumber", "geo_point_2d","PermitNumberCreatedDate","TypeOfWork","ProjectValue")
-) # pre-filtered for dwelling uses on download from Vancouver Open Data
-print(head(dtP))
-
-# grab zoning and census tracts to make spatial
-dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson") # vancouver_zoning.geojson
-print(head(dgZ))
-dgZ <- dgZ[dgZ$zoning_district=="R1-1",]
-
-# use data below on dtP variables to convert to sf with key PermitNumber -- just export geo variables and PermitNumber
+  select = c("SpecificUseCategory", "PermitNumber", "geo_point_2d",
+             "PermitNumberCreatedDate", "TypeOfWork", "ProjectValue")
+)
 dtP[, c("lat", "lon") := tstrsplit(geo_point_2d, ",\\s*", type.convert = TRUE)]
 
-dtPgeo <- st_as_sf(dtP[!is.na(lat),.(SpecificUseCategory,PermitNumber,lat,lon)], coords = c("lon", "lat"), crs = 4326)
-print(head(dtPgeo))
+# ---- zoning: R1-1 shapes (used for permits AND for the comp inR1 flag) -------
+dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson")
+dgZ <- dgZ[dgZ$zoning_district == "R1-1", ]
 
-# (4) pre-filter permits to the zoning bbox before the join to shrink the join input
-dtPgeo <- dtPgeo[st_intersects(dtPgeo, st_as_sfc(st_bbox(dgZ)), sparse = FALSE)[,1], ]
+dtPgeo <- st_as_sf(dtP[!is.na(lat), .(PermitNumber, lat, lon)],
+                   coords = c("lon", "lat"), crs = 4326)
+dtPgeo <- dtPgeo[st_intersects(dtPgeo, st_as_sfc(st_bbox(dgZ)), sparse = FALSE)[, 1], ]
+dtPgeo <- st_join(dtPgeo, dgZ, join = st_within)
+dtPgeo <- dtPgeo[!is.na(dtPgeo$zoning_district), ]
+r1Permits <- unique(as.data.table(dtPgeo)$PermitNumber)
+cat("R1-1 permits:", length(r1Permits), "\n")
 
-# merge as point within shapes to dgZ
-dtPgeo <- st_join(dtPgeo, dgZ, join = st_within) # spatial join to zoning shapes
-print(head(dtPgeo))
-print(table(dtPgeo$zoning_district)) # check zoning districts
-write.table(table(is.na(dtPgeo$zoning_district),dtPgeo$SpecificUseCategory),"text/sanityCheckVancouverZoning.txt") # check zoning districts
-dtPgeo$SpecificUseCategory <- NULL
-dtPgeo <- dtPgeo[!is.na(dtPgeo$zoning_district),] # drop NA zoning districts
+# ============================================================================
+# (B) DEFINE THE ANALYSIS PERMIT SAMPLE *BEFORE* THE KERNEL
+# ============================================================================
+dtP[, year   := as.numeric(substr(PermitNumberCreatedDate, 1, 4))]
+dtP[, single := grepl("Single", SpecificUseCategory)]
+dtP[, duplex := grepl("Duplex", SpecificUseCategory)]
 
-# census tract shapes
-# (2,3) build a Vancouver-only, validated, reprojected tract subset once and cache it.
-# (3) filter to BC (PRUID 59) BEFORE make_valid/transform so we don't validate all of Canada.
+useList  <- dtP[, .N, by = SpecificUseCategory][order(-N)][N > USE_MIN_N, SpecificUseCategory]
+minSpend <- quantile(dtP[, ProjectValue], CRITVAL)
+
+dtP <- dtP[PermitNumber %in% r1Permits]
+dtP <- dtP[(TypeOfWork == "New Building" & single == 1) | ProjectValue > minSpend]
+dtP <- dtP[year > MIN_PERMIT_YEAR]
+dtP <- dtP[SpecificUseCategory %in% useList]
+dtP <- dtP[!is.na(lat) & !is.na(lon)]
+cat("analysis permits after all filters:", nrow(dtP), "\n")
+print(useList)
+
+# ============================================================================
+# comp geometry: ground-oriented improved residential folios (coords for comp pool).
+# Cache carries folioID (if present in the layer), ROLL_NUMBER, coords, and inR1.
+# NOTE: this cache now stores inR1 -- if the previous .rds lacks it, DELETE the cache:
+#   file.remove("~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds")
+# ============================================================================
 fTract <- "~/DropboxExternal/dataProcessed/censusTractsBC.rds"
 if (!file.exists(fTract)) {
   dfT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
-  dfT <- dfT[dfT$PRUID == "59", ]        # (3) BC only, before validate/transform
+  dfT <- dfT[dfT$PRUID == "59", ]
   dfT <- st_make_valid(dfT)
   dfT <- st_transform(dfT, crs = 4326)
   saveRDS(dfT, fTract)
 }
 dfT <- readRDS(fTract)
 
-
-dtPgeo <- st_join(dtPgeo, dfT, join = st_within) # spatial join to census tract shapes
-print(head(dtPgeo))
-
-dtPgeo <- as.data.table(dtPgeo)[,.(PermitNumber,DGUID,CTNAME,geometry)]
-
-# now get appraised values and sales for single family homes by tract for 2017, pre re-zonings. Do current appraisals and 2017 sales to show correlations. Can get all this from current data
-
-# get census tract from lat/lon
-fGeo <- "~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds"
-dirGpkg <- "~/bigFiles/latestSpatialBCA/"
-fGpkg <- list.files(dirGpkg)
-fileGpkg <- paste0(dirGpkg,fGpkg)
+fGeo     <- "~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds"
+dirGpkg  <- "~/bigFiles/latestSpatialBCA/"
+gpkgFiles <- list.files(dirGpkg, pattern = "\\.gpkg$", full.names = TRUE)
+stopifnot(length(gpkgFiles) == 1)
+fileGpkg <- gpkgFiles
 
 if (!file.exists(fGeo)) {
-  # Note: Extracting NEIGHBOURHOOD (BCA code) and joining with Census Tracts for Income
-
-  dfG <- st_read(fileGpkg,query =
-	"SELECT ROLL_NUMBER, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, geom
-	FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
-	WHERE JURISDICTION = 'City of Vancouver' AND (ACTUAL_USE_DESCRIPTION IN ('Single Family Dwelling', 'Residential Dwelling with Suite') OR ACTUAL_USE_DESCRIPTION LIKE '%plex%') "
+  # pull folioID too (layer has it); keep ROLL_NUMBER for the R1 rollStart path
+  dfG <- st_read(fileGpkg, query =
+    "SELECT FOLIO_ID, ROLL_NUMBER, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, geom
+     FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
+     WHERE JURISDICTION = 'City of Vancouver'
+       AND (ACTUAL_USE_DESCRIPTION IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
+            OR ACTUAL_USE_DESCRIPTION LIKE '%plex%'
+            OR ACTUAL_USE_DESCRIPTION LIKE '%Row Hous%')"
   )
 
+  # census tract tag (unchanged purpose)
   dCT <- dfT[dfT$PRUID == "59", ]
   dCT <- st_transform(dCT, st_crs(dfG))
-
   dfG <- st_join(dfG, dCT, join = st_within)
-  # now return to normal lat lon crs and record longitude and latitude of parcel geom (not geom is a polygon)
-  dfG <- st_transform(dfG, crs = 4326)
-  # Need a single coordinate pair, as geom is a polygon()
-  dfG$centroid <- st_centroid(dfG)
-  dfG$longitude <- st_coordinates(dfG$centroid)[, 1]
-  dfG$latitude <- st_coordinates(dfG$centroid)[, 2]
 
+  # inR1 flag: point-in-polygon of each folio centroid against R1-1 shapes.
+  dfGpt  <- st_transform(st_centroid(st_geometry(dfG)), st_crs(dgZ))
+  inR1   <- lengths(st_within(dfGpt, dgZ)) > 0
+  dfG$inR1 <- inR1
+
+  dfG <- st_transform(dfG, crs = 4326)
+  dfG$centroid  <- st_centroid(st_geometry(dfG))
+  dfG$longitude <- st_coordinates(dfG$centroid)[, 1]
+  dfG$latitude  <- st_coordinates(dfG$centroid)[, 2]
+  dfG$centroid  <- NULL
   saveRDS(dfG, fGeo)
 }
 dfG <- readRDS(fGeo)
-dtGeo <- as.data.table(dfG)[, .(ROLL_NUMBER, CTNAME, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, longitude, latitude, geom)]
-# use ggspatial with street map
-checkGEOPlotName <- "text/checkGEO.png"
-if (!file.exists(checkGEOPlotName)) {
-ggplot(dtGeo, aes(x = longitude, y = latitude, color = NEIGHBOURHOOD)) +
-  annotation_map_tile(type = "cartolight", zoom = 12) +
-  geom_point(size = 0.5) +
-  coord_sf(crs = 4326) +
-  theme(legend.position = "none") +
-  theme_minimal()
-ggsave(checkGEOPlotName, width = 8, height = 6)
-}
+dtGeo <- as.data.table(dfG)[, .(FOLIO_ID, ROLL_NUMBER, CTNAME, ACTUAL_USE_DESCRIPTION,
+                                NEIGHBOURHOOD, inR1, longitude, latitude, geom)]
+print(table(dtGeo$ACTUAL_USE_DESCRIPTION)[order(-table(dtGeo$ACTUAL_USE_DESCRIPTION))])
+cat("geometry folios inR1:", sum(dtGeo$inR1), "of", nrow(dtGeo), "\n")
+dtGeo[, rollStart := floor(as.numeric(ROLL_NUMBER) / 1000)]
 
-print(summary(dtGeo))
-dtGeo[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-
-# Merge with BCA 2019 sales/inventory.
-# NOTE (08/19/26): comp pool is now AGNOSTIC on zoning and property type. We keep the
-# use-description filter OUT of SQL and pull effective year + finished area for every
-# improved sale, then apply only the sqft/price/age sanity filters below.
+# ============================================================================
+# BCA 2019 sales/inventory. Comp pool ground-oriented (condos purged in SQL).
+# ============================================================================
 bca19 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 con <- dbConnect(RSQLite::SQLite(), bca19)
 dtBCA19 <- data.table(dbGetQuery(con, "
@@ -147,421 +160,254 @@ dtBCA19 <- data.table(dbGetQuery(con, "
   JOIN residentialInventory i ON i.roll_number = f.rollNumber
   JOIN folioDescription d      ON d.folioID     = f.folioID
   WHERE f.jurisdictionCode = '200'
+    AND (d.actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
+         OR d.actualUseDescription LIKE '%plex%'
+         OR d.actualUseDescription LIKE '%Row Hous%')
 "))
-dfSales <- dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice FROM sales WHERE conveyanceTypeDescription = 'Improved Single Property Transaction' ")
-print(head(dtBCA19))
-print(table(dtBCA19[,actualUseDescription])[order(-table(dtBCA19[,actualUseDescription]))])
-print(nrow(dtBCA19))
+dfSales <- dbGetQuery(con, "
+  SELECT folioID, conveyanceDate, conveyancePrice
+  FROM sales
+  WHERE conveyanceTypeDescription = 'Improved Single Property Transaction'
+")
 
-dtBCA19[,rollStart:=floor(as.numeric(rollNumber)/1000)]
-dtBCA19[is.na(landWidth),landWidth:=land_width]
-dtBCA19[is.na(landDepth),landDepth:=land_depth]
-for (v in c("landWidth","landDepth","MB_total_finished_area","MB_effective_year")) {
-	dtBCA19[,(v):=as.numeric(get(v))]
+dtBCA19[, rollStart := floor(as.numeric(rollNumber) / 1000)]
+dtBCA19[is.na(landWidth), landWidth := land_width]
+dtBCA19[is.na(landDepth), landDepth := land_depth]
+for (v in c("landWidth", "landDepth", "MB_total_finished_area", "MB_effective_year")) {
+  dtBCA19[, (v) := as.numeric(get(v))]
 }
 
-# ---- assemble comp sales (agnostic on zoning + use; structure sqft only) -----
-dtSales <- merge(data.table(dfSales), dtBCA19, by="folioID")
-dtSales[,conveyancePrice := as.numeric(conveyancePrice)]
-dtSales[,year := as.numeric(substr(conveyanceDate,1,4))]
-dtSales[,structAge := year - MB_effective_year]
-dtSales[structAge < 0, structAge := 0]   # clamp reno-updated effective years to new-ish
+# ---- assemble comp sales (structure sqft only) ------------------------------
+dtSales <- merge(data.table(dfSales), dtBCA19, by = "folioID")
+dtSales[, conveyancePrice := as.numeric(conveyancePrice)]
+dtSales[, year := as.numeric(substr(conveyanceDate, 1, 4))]
+dtSales[, structAge := year - MB_effective_year]
+dtSales[structAge < 0, structAge := 0]
 dtSales <- dtSales[
   year %between% c(SALE_MINYEAR, SALE_MAXYEAR) &
   !is.na(MB_total_finished_area) & MB_total_finished_area > 0 &
   !is.na(conveyancePrice)        & conveyancePrice > 0 &
   !is.na(structAge)
 ]
-cat("comp sales after filters:", nrow(dtSales), "\n")
-print(summary(dtSales[,.(conveyancePrice, MB_total_finished_area, structAge)]))
+dtSales[, rollStart := floor(as.numeric(rollNumber) / 1000)]
+cat("comp sales after filters (pre-coordinate merge):", nrow(dtSales), "\n")
 
-# comp coordinates: use the folio geometry (dfG) roll match for lat/lon of each sale.
-dtSales[, rollStart := floor(as.numeric(rollNumber)/1000)]
-dtSalesXY <- merge(
-  dtSales[, .(folioID, rollStart, conveyancePrice, MB_total_finished_area, structAge)],
-  dtGeo[, .(rollStart, longitude, latitude)],
+# ============================================================================
+# (C) REGION-SPLIT COORDINATE MERGE -- kills rollStart fan-out.
+#   A sale is tagged inR1 by whether its folio has an R1 geometry match. We route:
+#     inR1  -> merge on rollStart, geometry collapsed to ONE point per rollStart
+#     !inR1 -> merge on folioID (FOLIO_ID), exact one-to-one
+# ============================================================================
+
+# folioID-keyed geometry (non-R1 path): one row per folio, exact.
+dtGeoFolio <- unique(dtGeo[!is.na(FOLIO_ID) & !is.na(longitude) & !is.na(latitude),
+                           .(FOLIO_ID, longitude, latitude)], by = "FOLIO_ID")
+
+# rollStart-collapsed geometry (R1 path): one representative point per rollStart,
+# built ONLY from folios that are inR1, so non-R1 folios can't pollute the centroid.
+dtGeoRoll <- dtGeo[inR1 == TRUE & !is.na(longitude) & !is.na(latitude),
+                   .(longitude = mean(longitude), latitude = mean(latitude),
+                     nFolio = .N),
+                   by = rollStart]
+cat("R1 rollStart fan-out: median", dtGeoRoll[, median(nFolio)],
+    " p95", dtGeoRoll[, quantile(nFolio, .95)],
+    " max", dtGeoRoll[, max(nFolio)], "\n")
+
+# which sales are R1? a sale's folio is R1 if it appears in the inR1 geometry set.
+r1Folios <- dtGeo[inR1 == TRUE, unique(FOLIO_ID)]
+dtSales[, inR1 := folioID %in% r1Folios]
+cat("comp sales inR1:", dtSales[, sum(inR1)], "of", nrow(dtSales), "\n")
+
+# R1 comps -> rollStart (collapsed); non-R1 comps -> folioID (exact)
+xyR1 <- merge(
+  dtSales[inR1 == TRUE, .(folioID, rollStart, conveyancePrice, MB_total_finished_area, structAge)],
+  dtGeoRoll[, .(rollStart, longitude, latitude)],
   by = "rollStart"
 )
-dtSalesXY <- dtSalesXY[!is.na(longitude) & !is.na(latitude)]
-cat("comp sales with coordinates:", nrow(dtSalesXY), "\n")
-
-# ================= per-permit distance-weighted local kernel =================
-# project comps and permits to meters (BC Albers) for honest distances.
-sfComp <- st_transform(
-  st_as_sf(dtSalesXY, coords = c("longitude","latitude"), crs = 4326),
-  CRS_M
+xyOut <- merge(
+  dtSales[inR1 == FALSE, .(folioID, conveyancePrice, MB_total_finished_area, structAge)],
+  dtGeoFolio, by.x = "folioID", by.y = "FOLIO_ID"
 )
+
+dtSalesXY <- rbindlist(list(
+  xyR1[,  .(folioID, conveyancePrice, MB_total_finished_area, structAge, longitude, latitude)],
+  xyOut[, .(folioID, conveyancePrice, MB_total_finished_area, structAge, longitude, latitude)]
+))
+dtSalesXY <- dtSalesXY[!is.na(longitude) & !is.na(latitude)]
+cat("comp sales with coordinates:", nrow(dtSalesXY),
+    "(should be <=", nrow(dtSales), ")\n")
+print(summary(dtSalesXY[, .(conveyancePrice, MB_total_finished_area, structAge)]))
+
+# ================= per-permit three-way (space x age x size) kernel ==========
+sfComp <- st_transform(st_as_sf(dtSalesXY, coords = c("longitude", "latitude"), crs = 4326), CRS_M)
 compXY <- st_coordinates(sfComp)
 
-# permit points: one row per permit from dtP (all R1 permits; we predict everywhere,
-# and subset to the analysis permit-years later, same as the original flow).
-dtPermPts <- unique(dtP[!is.na(lat) & !is.na(lon), .(PermitNumber, lat, lon)])
-sfPerm <- st_transform(
-  st_as_sf(dtPermPts, coords = c("lon","lat"), crs = 4326),
-  CRS_M
-)
+dtPermPts <- unique(dtP[, .(PermitNumber, lat, lon)])
+sfPerm <- st_transform(st_as_sf(dtPermPts, coords = c("lon", "lat"), crs = 4326), CRS_M)
 permXY <- st_coordinates(sfPerm)
 
-# --- global radius R: 80th pctl across permits of distance to KNN_TARGET-th comp ----
-# use FNN for a fast exact kNN in projected meters.
-if (!requireNamespace("FNN", quietly = TRUE)) install.packages("FNN", repos="https://cloud.r-project.org")
-kk <- min(KNN_TARGET, nrow(compXY))
-knn <- FNN::get.knnx(compXY, permXY, k = kk)
-distK <- knn$nn.dist[, kk]                 # each permit's distance to its kk-th comp (m)
-R <- as.numeric(quantile(distK, KNN_PCTL, na.rm = TRUE))
+if (!requireNamespace("FNN", quietly = TRUE))
+  install.packages("FNN", repos = "https://cloud.r-project.org")
+kk    <- min(KNN_TARGET, nrow(compXY))
+knn   <- FNN::get.knnx(compXY, permXY, k = kk)
+distK <- knn$nn.dist[, kk]
+R     <- as.numeric(quantile(distK, KNN_PCTL, na.rm = TRUE))
 cat(sprintf("global radius R = %.0f m (%.2f km); %d permits, %d comps, k=%d\n",
-            R, R/1000, nrow(permXY), nrow(compXY), kk))
+            R, R / 1000, nrow(permXY), nrow(compXY), kk))
 
-# --- per-permit local linear fit, hard-truncated at R, age-weighted ----------
-# True fixed-radius neighbour query: for each permit, every comp within R metres.
-# st_is_within_distance returns exactly those (no k to guess, no silent truncation).
-# sfPerm/sfComp are already in projected metres (EPSG:CRS_M), so R is metres directly.
-nbList <- st_is_within_distance(sfPerm, sfComp, dist = R)   # list, one vector of comp idx per permit
+SPACE_BW <- R / 2
+nbList   <- st_is_within_distance(sfPerm, sfComp, dist = R)
 
-logComp <- log(dtSalesXY$conveyancePrice)
-logSqft <- log(dtSalesXY$MB_total_finished_area)
+price   <- dtSalesXY$conveyancePrice
+sqft    <- dtSalesXY$MB_total_finished_area
+logSqft <- log(sqft)
+ppsf    <- price / sqft
+logPpsf <- log(ppsf)
 wAge    <- exp(-dtSalesXY$structAge / AGE_DECAY)
-lt      <- log(TARGET_SQFT)
+logTgt  <- log(TARGET_SQFT)
 
-predMat <- matrix(NA_real_, nrow = nrow(permXY), ncol = length(TARGET_SQFT))
-nComp   <- integer(nrow(permXY))
+# For each permit we return, per target size s*:
+#   priceFlat  = mean_w(PPSF) * s*     [w = space x age x size(s*)]
+#   priceSlope = exp( a + b*log(s*) )  from local logPPSF ~ log(sqft), then * s*... but
+#     since logPPSF = log(price) - log(sqft), we fit log(price) ~ log(sqft) locally and
+#     read at s* directly (identical target, avoids double-logging).
+# Two separate size-kernels (one per s*) => two independent local fits; no slope carried.
 
-for (i in seq_len(nrow(permXY))) {
+TARGET_N <- length(TARGET_SQFT)
+naRes <- list(flat = rep(NA_real_, TARGET_N), slope = rep(NA_real_, TARGET_N),
+              effN = rep(0, TARGET_N), n = 0L)
+
+rowOp <- function(i) {
   ii <- nbList[[i]]
-  nComp[i] <- length(ii)
-  if (length(ii) < MIN_COMPS) next
-  x <- logSqft[ii]; y <- logComp[ii]; w <- wAge[ii]
-  if (length(unique(x)) < 2) next            # need sqft variation for a slope
-  fit <- tryCatch(stats::lm.wfit(cbind(1, x), y, w), error = function(e) NULL)
-  if (is.null(fit) || any(is.na(fit$coefficients))) next
-  b <- fit$coefficients                      # intercept, slope
-  predMat[i, ] <- exp(b[1] + b[2] * lt)
+  if (length(ii) < MIN_EFFN) return(naRes)
+  d   <- sqrt((compXY[ii, 1] - permXY[i, 1])^2 + (compXY[ii, 2] - permXY[i, 2])^2)
+  wS  <- pmax(0, 1 - (d / SPACE_BW)^2)^2          # spatial bisquare
+  wA  <- wAge[ii]                                  # age
+  ls  <- logSqft[ii]
+  lp  <- logPpsf[ii]
+  lpr <- lp + ls                                   # = log(price)
+  flat <- rep(NA_real_, TARGET_N); slope <- rep(NA_real_, TARGET_N); eff <- rep(0, TARGET_N)
+  for (t in seq_len(TARGET_N)) {
+    wZ <- exp(-0.5 * ((ls - logTgt[t]) / SIZE_BW)^2)   # size gaussian around s*
+    w  <- wS * wA * wZ
+    sw <- sum(w)
+    if (!is.finite(sw) || sw <= 0) next
+    eff[t] <- sw^2 / sum(w^2)                          # Kish effN in this size band
+    if (eff[t] < MIN_EFFN) next
+    # FLAT: weighted mean PPSF -> price at s*
+    mLogPpsf <- sum(w * lp) / sw
+    flat[t]  <- exp(mLogPpsf) * TARGET_SQFT[t]
+    # SLOPE: local log(price) ~ log(sqft), read at s* (needs sqft variation)
+    if (length(unique(ls[w > 0])) >= 2) {
+      fit <- tryCatch(stats::lm.wfit(cbind(1, ls), lpr, w), error = function(e) NULL)
+      if (!is.null(fit) && !any(is.na(fit$coefficients))) {
+        b <- fit$coefficients
+        slope[t] <- exp(b[1] + b[2] * logTgt[t])
+      }
+    }
+  }
+  list(flat = flat, slope = slope, effN = eff, n = length(ii))
 }
 
-dtPred <- data.table(
-  PermitNumber = dtPermPts$PermitNumber,
-  price1250    = predMat[, 1],
-  price2500    = predMat[, 2],
-  nCompKernel  = nComp
-)
-dtPred[, logRatio2500_1250 := log(price2500) - log(price1250)]
-dtPred[, kernelElasticity  := logRatio2500_1250 / (log(2500) - log(1250))]
-cat("permits with non-NA kernel prediction:", dtPred[!is.na(price1250), .N], "of", nrow(dtPred), "\n")
-print(summary(dtPred[, .(price1250, price2500, kernelElasticity, nCompKernel)]))
+res <- mclapply(seq_len(nrow(permXY)), rowOp, mc.cores = MC_CORES)
+res <- lapply(res, function(r) if (is.list(r) && !is.null(r$flat)) r else naRes)
+nBad <- sum(vapply(res, function(r) all(is.na(r$flat)), logical(1)))
+cat("permits with no flat price (any size):", nBad, "of", length(res), "\n")
 
-# merge kernel predictions onto permits
+flatMat  <- do.call(rbind, lapply(res, `[[`, "flat"))
+slopeMat <- do.call(rbind, lapply(res, `[[`, "slope"))
+effMat   <- do.call(rbind, lapply(res, `[[`, "effN"))
+nComp    <- vapply(res, `[[`, integer(1), "n")
+
+dtPred <- data.table(
+  PermitNumber   = dtPermPts$PermitNumber,
+  price1250      = flatMat[, 1],    # FLAT PPSF (primary)
+  price2500      = flatMat[, 2],
+  price1250_sl   = slopeMat[, 1],   # SLOPE (robustness)
+  price2500_sl   = slopeMat[, 2],
+  effN1250       = effMat[, 1],
+  effN2500       = effMat[, 2],
+  nCompKernel    = nComp
+)
+i <- which(!is.na(dtPred$price1250))[1:5]
+for (k in i) {
+  ii <- nbList[[k]]
+  cat("permit", k, ": n=", length(ii),
+      " sqft IQR=", paste(round(quantile(dtSalesXY$MB_total_finished_area[ii], c(.25,.75))), collapse="-"),
+      "\n")
+}
+cat("permits with non-NA price1250 (flat):", dtPred[!is.na(price1250), .N],
+    "  price2500 (flat):", dtPred[!is.na(price2500), .N], "of", nrow(dtPred), "\n")
+print(summary(dtPred[, .(price1250, price2500, price1250_sl, price2500_sl,
+                         effN1250, effN2500, nCompKernel)]))
+# flat vs slope agreement (should be close where both exist)
+print(dtPred[!is.na(price1250) & !is.na(price1250_sl),
+             .(cor1250 = cor(log(price1250), log(price1250_sl)),
+               cor2500 = cor(log(price2500), log(price2500_sl), use = "complete.obs"))])
+
 dtP <- merge(dtP, dtPred, by = "PermitNumber", all.x = TRUE)
 # ============================================================================
 
-useList <- dtP[, .N, by = SpecificUseCategory][order(-N)][N > 100]
-useList <- useList[,SpecificUseCategory]
-dtP[,year:=as.numeric(substr(PermitNumberCreatedDate,1,4))]
-for (y in 2017:2026) {
-	print(dtP[year==y & SpecificUseCategory %in% useList, .N, by = SpecificUseCategory][order(-N)])
-}
+# correlations: duplex vs the two local price levels (flat primary)
+print(cor(dtP[, .(duplex, price1250, price2500)], use = "complete.obs"))
 
-CRITVAL <- .5
-dtP[,single:=grepl("Single",SpecificUseCategory)]
-dtP[,duplex:=grepl("Duplex",SpecificUseCategory)]
-minSpend <- quantile(dtP[,ProjectValue],CRITVAL)
-dtP <- dtP[TypeOfWork=="New Building" & single==1| ProjectValue>minSpend]
-dtP <- dtP[year>2018 ]
-dtP <- dtP[SpecificUseCategory %in% useList]
-print(useList)
+print("CLAUDE!")
+dtP[!is.na(price1250_sl) & !is.na(price2500_sl), cor(log(price1250_sl), log(price2500_sl))]
+ggplot(dtP[!is.na(price1250)], aes(x = log(price1250), y = log(price2500))) +
+  geom_point(aes(color = nCompKernel), alpha = 0.5) + theme_minimal()
+ggsave("text/kernelPrices.png", width = 8, height = 6)
 
-# correlations: duplex share vs local kernel price level & local elasticity
-print(cor(dtP[,.(duplex, kernelElasticity, price1250, price2500)], use="complete.obs"))
-print(cor(dtP[nCompKernel>KNN_TARGET,.(duplex, kernelElasticity, price1250, price2500)], use="complete.obs"))
-
-ggplot(dtP[!is.na(price1250)], aes(x=log(price1250), y=kernelElasticity)) +
-  geom_point(aes(color=nCompKernel), alpha=0.5) + theme_minimal()
-ggsave("text/kernelPriceElasticity.png", width=8, height=6)
-
-# ---- lot geometry from nearest folio (unchanged: for landWidth/landDepth splits) ----
-crr <- st_crs(dfG)
-dtP <- dtP[!is.na(lat) & !is.na(lon)]
-dtPgeoNN <- st_as_sf(
-  dtP[, .(PermitNumber,lat, lon)],
-  coords = c("lon", "lat"),
-  crs = 4326
-)
+# ---- lot geometry from nearest folio (for landWidth/landDepth splits) --------
+dtPgeoNN <- st_as_sf(dtP[, .(PermitNumber, lat, lon)], coords = c("lon", "lat"), crs = 4326)
 dtPgeoNN <- st_transform(dtPgeoNN, st_crs(dfG))
 idx  <- st_nearest_feature(dtPgeoNN, dfG)
 dist <- st_distance(dtPgeoNN, dfG[idx, ], by_element = TRUE)
-print("post-geo merge to R1 only")
-for (y in 2017:2026) {
-	print(y)
-	print(dtP[year==y & SpecificUseCategory %in% useList, .N, by = SpecificUseCategory][order(-N)])
-}
-cols <- setdiff(names(dfG), attr(dfG, "sf_column"))
+cols    <- setdiff(names(dfG), attr(dfG, "sf_column"))
 matched <- st_drop_geometry(dfG)[idx, cols, drop = FALSE]
 matched[dist > set_units(10, "m"), ] <- NA
 dtPgeoNN <- cbind(dtPgeoNN, matched)
 dtPgeoNN$dist <- dist
-dtPgeoNN <- as.data.table(dtPgeoNN)[,.(PermitNumber,ROLL_NUMBER)]
-dtPgeoNN[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-dtPgeoNN <- merge(dtPgeoNN, dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year,neighbourhoodDescription)], by="rollStart", all.x=TRUE)
-dtP <- merge(dtP, dtPgeoNN, by="PermitNumber")
-dtP[,multiPlex:= SpecificUseCategory=="Multiple Dwelling"]
-print(table(dtP[,.(SpecificUseCategory,multiPlex)]))
-print(names(dtP))
-dtD <- dtP[single==TRUE | duplex==TRUE & year<2024] # for now
+dtPgeoNN <- as.data.table(dtPgeoNN)[, .(PermitNumber, ROLL_NUMBER)]
+# lot attributes: exact folio join on ROLL_NUMBER via dtGeo->dtBCA19 would fan out on
+# rollStart, so pull them from dtBCA19 keyed to the matched folio's rollStart, taking
+# ONE row per rollStart to avoid duplication.
+dtPgeoNN[, rollStart := floor(as.numeric(ROLL_NUMBER) / 1000)]
+lotByRoll <- unique(dtBCA19[, .(rollStart, landWidth, landDepth, MB_total_finished_area,
+                                MB_effective_year, neighbourhoodDescription)],
+                     by = "rollStart")
+dtPgeoNN <- merge(dtPgeoNN, lotByRoll, by = "rollStart", all.x = TRUE)
+dtP <- merge(dtP, dtPgeoNN, by = "PermitNumber")
+dtP[, multiPlex := SpecificUseCategory == "Multiple Dwelling"]
+print(table(dtP[, .(SpecificUseCategory, multiPlex)]))
 
-# baseline
-print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtD[round(landWidth)==33], cluster="neighbourhoodDescription")))
-print(summary(feols(duplex ~  log(price2500) + landDepth | year, data=dtD[round(landWidth)==50], cluster="neighbourhoodDescription")))
+# ================================ regressions ================================
+dtD <- dtP[(single == TRUE | duplex == TRUE) & year < 2024]
 
-# duplex ~ local kernel elasticity + local price level, by lot width
-print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtD[round(landWidth)==33], cluster="neighbourhoodDescription")))
-print(summary(feols(duplex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtD[round(landWidth)==50], cluster="neighbourhoodDescription")))
+# FLAT (primary): duplex vs local low-end and high-end price levels, by lot width
+print(summary(feols(duplex ~ log(price2500) + landDepth | year,
+                    data = dtD[round(landWidth) == 33], cluster = "neighbourhoodDescription")))
+print(summary(feols(duplex ~ log(price2500) + landDepth | year,
+                    data = dtD[round(landWidth) == 50], cluster = "neighbourhoodDescription")))
 
-# do differently
-print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtD[round(landWidth)==33], cluster="neighbourhoodDescription")))
-print(summary(feols(duplex ~ log(price2500) + log(price1250) + landDepth | year, data=dtD[round(landWidth)==50], cluster="neighbourhoodDescription")))
+print(summary(feols(duplex ~ log(price1250) + log(price2500) + landDepth | year,
+                    data = dtD[round(landWidth) == 33], cluster = "neighbourhoodDescription")))
+print(summary(feols(duplex ~ log(price1250) + log(price2500) + landDepth | year,
+                    data = dtD[round(landWidth) == 50], cluster = "neighbourhoodDescription")))
 
-dtM <- dtP[year>=2024 & (single==TRUE | duplex==TRUE | multiPlex==TRUE)]
-# duplex ~ local kernel elasticity + local price level, by lot width
-print(summary(feols(multiPlex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtM[round(landWidth)==33], cluster="neighbourhoodDescription")))
-print(summary(feols(multiPlex ~ kernelElasticity + log(price1250) + landDepth | year, data=dtM[round(landWidth)==50], cluster="neighbourhoodDescription")))
+# SLOPE variant (robustness): same spec on the slope-based prices
+print(summary(feols(duplex ~ log(price1250_sl) + log(price2500_sl) + landDepth | year,
+                    data = dtD[round(landWidth) == 33], cluster = "neighbourhoodDescription")))
+print(summary(feols(duplex ~ log(price1250_sl) + log(price2500_sl) + landDepth | year,
+                    data = dtD[round(landWidth) == 50], cluster = "neighbourhoodDescription")))
 
-# do differently
-print(summary(feols(multiPlex ~ log(price2500) + log(price1250) + landDepth | year, data=dtM[round(landWidth)==33], cluster="neighbourhoodDescription")))
-print(summary(feols(multiPlex ~ log(price2500) + log(price1250) + landDepth | year, data=dtM[round(landWidth)==50], cluster="neighbourhoodDescription")))
-print(summary(dtD[,landWidth]))
-print(summary(dtM[,landWidth]))
+dtM <- dtP[year >= 2024 & (single == TRUE | duplex == TRUE | multiPlex == TRUE)]
 
+print(summary(feols(multiPlex ~ log(price1250) + log(price2500) + landDepth | year,
+                    data = dtM[round(landWidth) == 33], cluster = "neighbourhoodDescription")))
+print(summary(feols(multiPlex ~ log(price1250) + log(price2500) + landDepth | year,
+                    data = dtM[round(landWidth) == 50], cluster = "neighbourhoodDescription")))
 
-q("no")
-q("no")
-# vancouverMatch.R
-# match permits to neighbourhoods, assessments, etc
-# Objective -- correlation and plots elasticity, price, duplex share. Then do multiplex share
-# Tom Davidoff
-# 08/13/26
-
-library(data.table)
-library(sf)
-library(ggplot2)
-library(ggspatial)
-library(RSQLite)
-library(fixest)
-library(units)
-
-sf_use_s2(TRUE) # (5) ensure s2 for fast lat/lon st_within
-
-# permits
-# (7) only read the columns actually used downstream
-dtP <- fread(
-  "~/DropboxExternal/dataRaw/issued-building-permitsDwellingUses.csv",
-  select = c("SpecificUseCategory", "PermitNumber", "geo_point_2d","PermitNumberCreatedDate","TypeOfWork","ProjectValue")
-) # pre-filtered for dwelling uses on download from Vancouver Open Data
-print(head(dtP))
-
-# grab zoning and census tracts to make spatial
-dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson") # vancouver_zoning.geojson
-print(head(dgZ))
-dgZ <- dgZ[dgZ$zoning_district=="R1-1",]
-
-# use data below on dtP variables to convert to sf with key PermitNumber -- just export geo variables and PermitNumber
-dtP[, c("lat", "lon") := tstrsplit(geo_point_2d, ",\\s*", type.convert = TRUE)]
-
-dtPgeo <- st_as_sf(dtP[!is.na(lat),.(SpecificUseCategory,PermitNumber,lat,lon)], coords = c("lon", "lat"), crs = 4326)
-print(head(dtPgeo))
-
-# (4) pre-filter permits to the zoning bbox before the join to shrink the join input
-dtPgeo <- dtPgeo[st_intersects(dtPgeo, st_as_sfc(st_bbox(dgZ)), sparse = FALSE)[,1], ]
-
-# merge as point within shapes to dgZ
-dtPgeo <- st_join(dtPgeo, dgZ, join = st_within) # spatial join to zoning shapes
-print(head(dtPgeo))
-print(table(dtPgeo$zoning_district)) # check zoning districts
-write.table(table(is.na(dtPgeo$zoning_district),dtPgeo$SpecificUseCategory),"text/sanityCheckVancouverZoning.txt") # check zoning districts
-dtPgeo$SpecificUseCategory <- NULL
-dtPgeo <- dtPgeo[!is.na(dtPgeo$zoning_district),] # drop NA zoning districts
-
-# census tract shapes
-# (2,3) build a Vancouver-only, validated, reprojected tract subset once and cache it.
-# (3) filter to BC (PRUID 59) BEFORE make_valid/transform so we don't validate all of Canada.
-fTract <- "~/DropboxExternal/dataProcessed/censusTractsBC.rds"
-if (!file.exists(fTract)) {
-  dfT <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp")
-  dfT <- dfT[dfT$PRUID == "59", ]        # (3) BC only, before validate/transform
-  dfT <- st_make_valid(dfT)
-  dfT <- st_transform(dfT, crs = 4326)
-  saveRDS(dfT, fTract)
-}
-dfT <- readRDS(fTract)
-
-
-dtPgeo <- st_join(dtPgeo, dfT, join = st_within) # spatial join to census tract shapes
-print(head(dtPgeo))
-
-dtPgeo <- as.data.table(dtPgeo)[,.(PermitNumber,DGUID,CTNAME,geometry)]
-
-# now get appraised values and sales for single family homes by tract for 2017, pre re-zonings. Do current appraisals and 2017 sales to show correlations. Can get all this from current data
-
-# get census tract from lat/lon
-fGeo <- "~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds"
-dirGpkg <- "~/bigFiles/latestSpatialBCA/"
-fGpkg <- list.files(dirGpkg)
-fileGpkg <- paste0(dirGpkg,fGpkg)
-
-if (!file.exists(fGeo)) {
-  # Note: Extracting NEIGHBOURHOOD (BCA code) and joining with Census Tracts for Income
-
-  dfG <- st_read(fileGpkg,query =
-	"SELECT ROLL_NUMBER, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, geom
-	FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
-	WHERE JURISDICTION = 'City of Vancouver' AND (ACTUAL_USE_DESCRIPTION IN ('Single Family Dwelling', 'Residential Dwelling with Suite') OR ACTUAL_USE_DESCRIPTION LIKE '%plex%') "
-  )
-
-  dCT <- dfT[dfT$PRUID == "59", ]
-  dCT <- st_transform(dCT, st_crs(dfG))
-
-  dfG <- st_join(dfG, dCT, join = st_within)
-  # now return to normal lat lon crs and record longitude and latitude of parcel geom (not geom is a polygon)
-  dfG <- st_transform(dfG, crs = 4326)
-  # Need a single coordinate pair, as geom is a polygon()
-  dfG$centroid <- st_centroid(dfG)
-  dfG$longitude <- st_coordinates(dfG$centroid)[, 1]
-  dfG$latitude <- st_coordinates(dfG$centroid)[, 2]
-
-  saveRDS(dfG, fGeo)
-}
-dfG <- readRDS(fGeo)
-dtGeo <- as.data.table(dfG)[, .(ROLL_NUMBER, CTNAME, ACTUAL_USE_DESCRIPTION, NEIGHBOURHOOD, longitude, latitude, geom)]
-# use ggspatial with street map
-checkGEOPlotName <- "text/checkGEO.png"
-if (!file.exists(checkGEOPlotName)) {
-ggplot(dtGeo, aes(x = longitude, y = latitude, color = NEIGHBOURHOOD)) +
-  annotation_map_tile(type = "cartolight", zoom = 12) +
-  geom_point(size = 0.5) +
-  coord_sf(crs = 4326) +
-  theme(legend.position = "none") +
-  theme_minimal()
-ggsave(checkGEOPlotName, width = 8, height = 6)
-}
-
-print(summary(dtGeo))
-dtGeo[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-
-# Merge with BCA 2019 Vancouver single family R1 -zoned parcels
-bca19 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
-con <- dbConnect(RSQLite::SQLite(), bca19)
-# (1) one join across folio (jurisdiction) + residentialInventory (zoning/area) + folioDescription
-# (use description) -- replaces the three separate pulls and the two R merges, and filters
-# in SQL before pulling into R. INNER JOINs reproduce the old merge()-without-all=TRUE
-# behavior (rows without a match in every table are dropped, same as before).
-dtBCA19 <- data.table(dbGetQuery(con, "
-  SELECT d.folioID, f.rollNumber, i.zoning, i.MB_effective_year, i.MB_total_finished_area, i.land_width, i.land_depth,
-         d.actualUseDescription, d.neighbourhoodDescription, d.landWidth, d.landDepth
-  FROM folio f
-  JOIN residentialInventory i ON i.roll_number = f.rollNumber
-  JOIN folioDescription d      ON d.folioID     = f.folioID
-  WHERE f.jurisdictionCode = '200'
-    AND (d.actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
-         OR d.actualUseDescription LIKE '%plex%')
-"))
-dfSales <- dbGetQuery(con, "SELECT folioID, conveyanceDate, conveyancePrice FROM sales WHERE     conveyanceTypeDescription  = 'Improved Single Property Transaction' ")
-print(head(dtBCA19))
-print(table(dtBCA19[,actualUseDescription])[order(-table(dtBCA19[,actualUseDescription]))])
-print(nrow(dtBCA19))
-
-dtBCA19[,rollStart:=floor(as.numeric(rollNumber)/1000)]
-print(head(dtBCA19))
-dtBCA19[is.na(landWidth),landWidth:=land_width]
-dtBCA19[is.na(landDepth),landDepth:=land_depth]
-
-setkey(dtBCA19,rollStart)
-setkey(dtGeo,rollStart)
-print(table(dtBCA19[,zoning]))
-dtBCA19 <- dtBCA19[dtGeo]
-print(table(dtBCA19[,zoning]))
-dtBCA19 <- dtBCA19[substring(zoning,1,2)=="RS"]
-for (v in c("landWidth","landDepth","MB_total_finished_area")) {
-	dtBCA19[,(v):=as.numeric(get(v))]
-}
-
-dtSales <- merge(data.table(dfSales), dtBCA19, by="folioID")
-print(head(dtSales))
-print(table(dtSales[,actualUseDescription]))
-# almost no duplex sales
-dtSales <- dtSales[actualUseDescription %in% c("Single Family Dwelling", "Residential Dwelling with Suite")]
-dtSales[,year:=as.numeric(substr(conveyanceDate,1,4))]
-dtSales[,yearMonth:=substr(conveyanceDate,1,7)]
-print(summary(dtSales[year==2017,.N,by=CTNAME]))
-print(summary(dtSales[year %between% c(2016,2017),.N,by=CTNAME]))
-print(summary(dtSales[year %between% c(2015,2017),.N,by=CTNAME]))
-MINYEAR <- 2015
-MAXYEAR <- 2017
-for (v in c("conveyancePrice")) {
-	dtSales[,(v):=as.numeric(get(v))]
-}
-dtSales <- dtSales[year %between% c(MINYEAR,MAXYEAR) & !is.na(landWidth) & !is.na(landDepth) & !is.na(MB_total_finished_area) & !is.na(conveyancePrice) & conveyancePrice>0 & MB_total_finished_area>0]
-
-regH <- feols(log(conveyancePrice) ~ log(MB_total_finished_area) + log(landWidth) + (landDepth),data=dtSales)
-dtSales[,hedonicResidual:=residuals(regH)]
-dtHedonicC <- dtSales[,.(hedonicResidualMean=mean(hedonicResidual)),by=CTNAME]
-print(summary(dtHedonicC))
-dtElasticityC <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area)),count=.N),by=CTNAME]
-dtHedonicN <- dtSales[,.(hedonicResidualMean=mean(hedonicResidual)),by=NEIGHBOURHOOD]
-print(summary(dtHedonicN))
-dtElasticityN <- dtSales[,.(hedonicElasticity=cov(log(MB_total_finished_area),log(conveyancePrice))/var(log(MB_total_finished_area)),count=.N),by=NEIGHBOURHOOD]
-dtCT <- merge(dtHedonicC,dtElasticityC,by="CTNAME")
-dtN <- merge(dtHedonicN,dtElasticityN,by="NEIGHBOURHOOD")
-for (k in c(0,.05,.1,.5)) {
-	print(k)
-	print(quantile(dtCT[,count],k))
-	print(dtCT[count>quantile(count,k),cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
-	print(quantile(dtN[,count],k))
-	print(dtN[count>quantile(count,k),cor(hedonicResidualMean,hedonicElasticity,use="complete.obs")])
-}
-ggplot(dtCT,aes(x=hedonicResidualMean,y=hedonicElasticity)) + geom_point(aes(size=count,color=count))
-ggsave("text/ctElasticityFE.png",width=8,height=6)
-ggplot(dtN,aes(x=hedonicResidualMean,y=hedonicElasticity)) + geom_point(aes(size=count,color=count))
-ggsave("text/neighbourhoodElasticityFE.png",width=8,height=6)
-
-print(head(dtPgeo))
-dtPgeo <- merge(dtPgeo,dtCT,by="CTNAME",all.x=TRUE)
-dtP <- merge(dtP,dtPgeo,by="PermitNumber")
-print(head(dtP))
-useList <- dtP[, .N, by = SpecificUseCategory][order(-N)][N > 100]
-useList <- useList[,SpecificUseCategory]
-
-CRITVAL <- .5
-dtP[,single:=grepl("Single",SpecificUseCategory)]
-dtP[,duplex:=grepl("Duplex",SpecificUseCategory)]
-minSpend <- quantile(dtP[,ProjectValue],CRITVAL)
-dtP <- dtP[TypeOfWork=="New Building" & single==1| ProjectValue>minSpend]
-dtP[,year:=as.numeric(substr(PermitNumberCreatedDate,1,4))]
-dtP <- dtP[year>2018 ]
-dtP <- dtP[SpecificUseCategory %in% useList]
-print(cor(dtP[,.(duplex,hedonicElasticity,hedonicResidualMean)],use="complete.obs"))
-print(cor(dtP[count>100,.(duplex,hedonicElasticity,hedonicResidualMean)],use="complete.obs"))
-
-# match dtP with dfGeo by lat lon distance nearest neighbour
-# make a spatial data frame
-crr <- st_crs(dfG)
-dtPgeo <- st_as_sf(
-  dtP[, .(PermitNumber,lat, lon)],
-  coords = c("lon", "lat"),
-  crs = 4326                    # what lat/lon actually are
-)
-dtPgeo <- st_transform(dtPgeo, st_crs(dfG))   # now match dfG
-idx  <- st_nearest_feature(dtPgeo, dfG)
-dist <- st_distance(dtPgeo, dfG[idx, ], by_element = TRUE)
-
-cols <- setdiff(names(dfG), attr(dfG, "sf_column"))
-matched <- st_drop_geometry(dfG)[idx, cols, drop = FALSE]
-matched[dist > set_units(10, "m"), ] <- NA
-dtPgeo <- cbind(dtPgeo, matched)
-dtPgeo$dist <- dist
-print(head(dtPgeo))
-print(summary(dtPgeo$dist))
-dtPgeo <- as.data.table(dtPgeo)
-dtPgeo <- dtPgeo[,.(PermitNumber,ROLL_NUMBER)]
-dtPgeo[,rollStart:=floor(as.numeric(ROLL_NUMBER)/1000)]
-dtPgeo <- merge(dtPgeo,dtBCA19[,.(rollStart,landWidth,landDepth,MB_total_finished_area,MB_effective_year)],by="rollStart",all.x=TRUE)
-dtP <- merge(dtP,dtPgeo,by="PermitNumber")
+print(summary(dtD[, landWidth]))
+print(summary(dtM[, landWidth]))
 
 q("no")
