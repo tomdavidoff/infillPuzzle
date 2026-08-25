@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -17,7 +17,8 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
-> # vancouverMatch.R
+> 
+> # Now do sales within x KM of permit# vancouverMatch.R
 > # match permits to neighbourhoods, assessments, etc
 > # Objective -- correlation and plots: local price levels vs duplex / multiplex choice.
 > # Tom Davidoff
@@ -29,6 +30,7 @@ Type 'q()' to quit R.
 > CRITVAL         <- 0.5  # ProjectValue percentile threshold for non-new-SFD permits
 > MIN_PERMIT_YEAR <- 2018 # keep permit years strictly greater than this
 > USE_MIN_N       <- 100  # SpecificUseCategory kept if it has more than this many permits
+> MATCHDIST <- 7.5 # somewhat arbitrary, lots at 1 or below
 > 
 > library(data.table)
 > library(sf)
@@ -39,7 +41,17 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(fixest)
 > library(parallel)
 > library(units)
-udunits database from /Library/Frameworks/R.framework/Versions/4.5-arm64/Resources/library/units/share/udunits/udunits2.xml
+udunits database from /Users/davidoff/Library/R/arm64/4.5/library/units/share/udunits/udunits2.xml
+> library(scales)
+
+Attaching package: ‘scales’
+
+The following object is masked from ‘package:fixest’:
+
+    pvalue
+
+> library(patchwork)
+> 
 > 
 > sf_use_s2(TRUE)
 > 
@@ -73,53 +85,62 @@ udunits database from /Library/Frameworks/R.framework/Versions/4.5-arm64/Resourc
 > # BCA 2019 sales/inventory. Comp pool ground-oriented (condos purged in SQL).
 > 
 > fnameSingles <- "~/DropboxExternal/dataProcessed/bca19VancouverSingles.rds"
-> fnameComps   <- "~/DropboxExternal/dataProcessed/bca19VancouverCompSales.rds"
+> fnameComps   <- "~/DropboxExternal/dataProcessed/bca19VancouverCompValuation.rds"
 > if (!file.exists(fnameSingles) | !file.exists(fnameComps)) {
 + 	bca19 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 + 	con <- dbConnect(RSQLite::SQLite(), bca19)
 + 	dtBCA19 <- data.table(dbGetQuery(con, "
-+ 	  SELECT d.folioID, f.rollNumber, i.zoning, i.MB_effective_year, i.MB_total_finished_area,
++ 	  SELECT d.folioID, f.rollNumber, i.zoning, CAST(i.MB_effective_year AS NUMERIC) AS MB_effective_year, i.MB_total_finished_area,
 + 		 CAST(i.land_width AS NUMERIC) AS land_width, CAST(i.land_depth AS NUMERIC) AS land_depth,
-+ 		 d.actualUseDescription, d.neighbourhoodDescription, CAST(d.landWidth AS NUMERIC) AS landWidth, CAST(d.landDepth AS NUMERIC) AS landDepth
++ 		 d.actualUseDescription, d.neighbourhoodDescription, CAST(d.landWidth AS NUMERIC) AS landWidth, CAST(d.landDepth AS NUMERIC) AS landDepth, CAST(v.landValue AS NUMERIC) AS landValue, CAST(v.improvementValue AS NUMERIC) AS improvementValue
 + 	  FROM folio f
 + 	  JOIN residentialInventory i ON i.roll_number = f.rollNumber
 + 	  JOIN folioDescription d      ON d.folioID     = f.folioID
++ 	  JOIN valuation v            ON v.folioID  = f.folioID
 + 	  WHERE f.jurisdictionCode = '200'
 + 	"))
 + 	dtBCA19[, rollStart := floor(as.numeric(rollNumber) / 1000)]
 + 	dtBCA19[is.na(landWidth), landWidth := land_width]
 + 	dtBCA19[is.na(landDepth), landDepth := land_depth]
 + 	dtBCA19 <- merge(dtBCA19, dtGeo, by = "rollStart", all.x = TRUE)
-+ 	dtSingles <- dtBCA19[actualUseDescription %in% c("Single Family Dwelling", "Residential Dwelling with Suite"),.(landWidth, landDepth, MB_total_finished_area, MB_effective_year, rollNumber, folioID, longitude, latitude)]
++ 	dtSingles <- dtBCA19[actualUseDescription %in% c("Single Family Dwelling", "Residential Dwelling with Suite"),.(landWidth, landDepth, MB_total_finished_area, MB_effective_year, rollNumber, folioID, longitude, latitude,landValue)]
 + 	dtSingles <- dtSingles[!is.na(longitude) & !is.na(latitude)]
 + 	saveRDS(dtSingles, fnameSingles)
++ 	dtComps <- dtBCA19[, .(MB_total_finished_area, MB_effective_year, rollNumber, folioID, longitude, latitude,landValue, improvementValue)]
 + 
-+ 	dfSales <- dbGetQuery(con, "
-+ 	  SELECT folioID, conveyanceDate, conveyancePrice
-+ 	  FROM sales
-+ 	  WHERE conveyanceTypeDescription = 'Improved Single Property Transaction'
-+ 	")
 + 
 + 	for (v in c("landWidth", "landDepth", "MB_total_finished_area", "MB_effective_year")) {
 + 	  dtBCA19[, (v) := as.numeric(get(v))]
 + 	}
 + 
-+ 	dtSales <- merge(data.table(dfSales), dtBCA19, by = "folioID")
-+ 	dtSales[, conveyancePrice := as.numeric(conveyancePrice)]
-+ 	dtSales[, year := as.numeric(substr(conveyanceDate, 1, 4))]
-+ 	dtSales[, structAge := year - MB_effective_year]
-+ 	dtSales[structAge < 0, structAge := 0]
-+ 	dtSales <- dtSales[ year %between% c(SALE_MINYEAR, SALE_MAXYEAR) &
-+   !is.na(MB_total_finished_area) & MB_total_finished_area > 0 &
-+   !is.na(conveyancePrice)        & conveyancePrice > 0 &
-+   !is.na(structAge)
-+ ]
-+ 	saveRDS(dtSales, fnameComps)
++ 	dtComps[, structAge := 2018 - MB_effective_year]
++ 	dtComps[structAge < 0, structAge := 0]
++ 	dtComps <- dtComps[!is.na(longitude) & !is.na(latitude)	& !is.na(MB_total_finished_area) & !is.na(MB_effective_year)  & !is.na(landValue) & !is.na(improvementValue)]
++ 	dtComps[,totalValue := landValue + improvementValue]
++ 	saveRDS(dtComps, fnameComps)
 + }
 > dtSales <- readRDS(fnameComps)
 > cat("comp sales after filters (pre-coordinate merge):", nrow(dtSales), "\n")
-comp sales after filters (pre-coordinate merge): 45798 
+comp sales after filters (pre-coordinate merge): 241084 
 > dtSingles <- readRDS(fnameSingles)
+> print(head(dtSales))
+   MB_total_finished_area MB_effective_year      rollNumber    folioID
+                   <char>             <int>          <char>     <char>
+1:                  11895              2019 001019632060000 A000000009
+2:                   7760              1997 001019632290000 A00000000A
+3:                   3215              1945 001019632450000 A00000000B
+4:                   8673              2011 001019632650000 A00000000C
+5:                   7238              2000 001019632760000 A00000000D
+6:                   4739              1995 001019635070000 A00000000E
+   longitude latitude landValue improvementValue structAge totalValue
+       <num>    <num>     <int>            <int>     <num>      <int>
+1: -123.2229 49.27488  13555000          3754000         0   17309000
+2: -123.2243 49.27431  11912000          1358000        21   13270000
+3: -123.2236 49.27424  12046000            71900        73   12117900
+4: -123.2230 49.27420  12046000          5905000         7   17951000
+5: -123.2206 49.27456  14412000            10000        18   14422000
+6: -123.2214 49.27416  12292000           823000        23   13115000
+> dtSales[,MB_total_finished_area := as.numeric(MB_total_finished_area)]
 > 
 > # Now read permits and find matching single family dwelling where it exist
 > dtP <- fread(
@@ -132,7 +153,7 @@ comp sales after filters (pre-coordinate merge): 45798
 > # ---- zoning: R1-1 shapes (used for permits AND for the comp inR1 flag) -------
 > dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson")
 Reading layer `vancouver_zoning' from data source 
-  `/Volumes/Crucial X10/Dropbox/dataRaw/vancouver_zoning.geojson' 
+  `/Volumes/Micron2TB/Dropbox/dataRaw/vancouver_zoning.geojson' 
   using driver `GeoJSON'
 Simple feature collection with 1590 features and 6 fields
 Geometry type: POLYGON
@@ -182,26 +203,256 @@ analysis permits after all filters: 7499
 > 
 > idx  <- st_nearest_feature(dtPgeoNN, dfSingle)
 > dist <- as.numeric(st_distance(dtPgeoNN, dfSingle[idx, ], by_element = TRUE))  # meters, plain numeric
+> print(summary(dist))
+     Min.   1st Qu.    Median      Mean   3rd Qu.      Max. 
+  0.01565   0.40819   0.76415  14.51896  19.63654 941.30292 
 > 
 > matched <- as.data.table(st_drop_geometry(dfSingle))[idx]   # nearest folio's attrs, one row per permit
-> matched[dist > 10, names(matched) := NA]                    # data.table-correct gate at 10 m
+> matched[dist > MATCHDIST, names(matched) := NA]                    # data.table-correct gate at 10 m
 > matched[, PermitNumber := dtP$PermitNumber]                 # attach the key (order-safe: idx is in dtP order)
 > matched[, dist := dist]
-> print(matched[, .(PermitNumber, rollNumber, dist)])
-       PermitNumber      rollNumber       dist
-             <char>          <char>      <num>
-   1: BP-2023-00600            <NA> 13.6599100
-   2: DB-2024-04710 014606265110000  0.5435704
-   3: DB-2021-06422 017790214260000  0.7974498
-   4: DB-2021-01579            <NA> 26.5857560
-   5: DB-2020-03568 010122795470000  0.3364004
-  ---                                         
-7495: DB-2026-00467 023728276300000  0.3156069
-7496: DB-2023-03864 009702182860000  0.2895455
-7497: DB-2020-03824 001636019550000  1.1354638
-7498: BP-2023-01952            <NA> 73.7720704
-7499: DB-2021-02514 001632022740000  0.1935297
-> q("no")
-> proc.time()
-   user  system elapsed 
- 12.013   1.902   9.382 
+> print(matched)
+      landWidth landDepth MB_total_finished_area MB_effective_year
+          <num>     <num>                 <char>             <int>
+   1:        NA        NA                   <NA>                NA
+   2:     33.00    122.00                   2019              1970
+   3:     33.00    123.00                   1901              1940
+   4:        NA        NA                   <NA>                NA
+   5:     66.00    143.90                   5012              1995
+  ---                                                             
+7495:     33.00    102.00                   1395              1956
+7496:     33.00    122.00                   1159              1938
+7497:    101.50    248.03                   7968              1975
+7498:        NA        NA                   <NA>                NA
+7499:     54.95     99.70                   1823              1965
+           rollNumber    folioID landValue  PermitNumber       dist
+               <char>     <char>     <int>        <char>      <num>
+   1:            <NA>       <NA>        NA BP-2023-00600 13.6599100
+   2: 014606265110000 A000001Y26   1380000 DB-2024-04710  0.5435704
+   3: 017790214260000 A000002CMB   1331000 DB-2021-06422  0.7974498
+   4:            <NA>       <NA>        NA DB-2021-01579 26.5857560
+   5: 010122795470000 A000001B8E   4247000 DB-2020-03568  0.3364004
+  ---                                                              
+7495: 023728276300000 A00000374C   1186000 DB-2026-00467  0.3156069
+7496: 009702182860000 A0000019DJ   2175000 DB-2023-03864  0.2895455
+7497: 001636019550000 A0000000J0  10834000 DB-2020-03824  1.1354638
+7498:            <NA>       <NA>        NA BP-2023-01952 73.7720704
+7499: 001632022740000 A0000000BZ   3857000 DB-2021-02514  0.1935297
+> matched <- matched[dist<MATCHDIST, .(PermitNumber, rollNumber, dist,MB_total_finished_area, MB_effective_year, landWidth, landDepth,landValue)]
+> print(nrow(dtP))
+[1] 7499
+> dtP <- merge(dtP, matched, by = "PermitNumber")
+> print(head(dtP))
+Key: <PermitNumber>
+    PermitNumber               SpecificUseCategory             geo_point_2d
+          <char>                            <char>                   <char>
+1: BP-2019-00142             Single Detached House 49.2445792, -123.1947895
+2: BP-2019-00151 Single Detached House w/Sec Suite   49.2331193, -123.18881
+3: BP-2019-00222      Multiple Conversion Dwelling 49.2660862, -123.1774429
+4: BP-2019-00248                 Multiple Dwelling 49.2416446, -123.0388417
+5: BP-2019-00264      Multiple Conversion Dwelling 49.2554128, -123.0993344
+6: BP-2019-00315             Single Detached House 49.2353256, -123.1428625
+   PermitNumberCreatedDate            TypeOfWork ProjectValue      lat
+                    <IDat>                <char>        <num>    <num>
+1:              2019-01-11          New Building      1206000 49.24458
+2:              2019-01-11          New Building      1304572 49.23312
+3:              2019-01-17 Addition / Alteration       850000 49.26609
+4:              2019-01-21          New Building       500000 49.24164
+5:              2019-01-21          New Building      1400000 49.25541
+6:              2019-01-24 Addition / Alteration      3000000 49.23533
+         lon  year single duplex multiPlex      rollNumber      dist
+       <num> <num> <lgcl> <lgcl>    <lgcl>          <char>     <num>
+1: -123.1948  2019   TRUE  FALSE     FALSE 003725030650000 0.3784728
+2: -123.1888  2019   TRUE  FALSE     FALSE 006037750570000 0.2366640
+3: -123.1774  2019  FALSE  FALSE     FALSE 002050643940000 0.5646866
+4: -123.0388  2019  FALSE  FALSE      TRUE 023717297300000 0.1962281
+5: -123.0993  2019  FALSE  FALSE     FALSE 015691191600000 0.5613186
+6: -123.1429  2019   TRUE  FALSE     FALSE 008747122540000 0.3245629
+   MB_total_finished_area MB_effective_year landWidth landDepth landValue
+                   <char>             <int>     <num>     <num>     <int>
+1:                   4824              2019      53.0    130.00   3809000
+2:                   5191              2019      66.0    120.00   2696000
+3:                   1551              2020      40.0     90.00   1984000
+4:                                        0      33.0    112.00   1203000
+5:                   2809              2020      49.5    122.03   1996000
+6:                   7625              1995      90.0    190.00   7555000
+> print(nrow(dtP))
+[1] 5106
+> 
+> # Now do sales within x KM of permit
+> # ---- 2D kernel price estimates at 1250 & 2500 sqft for each permit --------
+> # distance dims: geographic (km) and floor area (sqft). Product of Epanechnikov kernels.
+> dtSales <- dtSales[!is.na(longitude) & !is.na(latitude) &
++                    !is.na(MB_total_finished_area) & MB_total_finished_area > 0]
+> print(summary(dtSales[,totalValue/MB_total_finished_area]))
+    Min.  1st Qu.   Median     Mean  3rd Qu.     Max. 
+     0.0    678.8    887.5    922.4   1095.6 519683.5 
+> quants <- quantile(dtSales[,totalValue/MB_total_finished_area], c(0.01, 0.99))
+> dtSales <- dtSales[totalValue/MB_total_finished_area > quants[1] &
++ 		   totalValue/MB_total_finished_area < quants[2]]
+> sfSales <- st_transform(st_as_sf(dtSales, coords = c("longitude","latitude"), crs = 4326), 3005)
+> sfPerm  <- st_transform(st_as_sf(dtP,     coords = c("lon","lat"),           crs = 4326), 3005)
+> 
+> 
+> MAXAGE  <- 10                                   # A: max comp structure age at sale
+> KM      <- 1.0                                  # d: geographic radius, km
+> AREABW  <- sd(dtSales$MB_total_finished_area)/2   # size bandwidth = 1 SD of area (sd appx 1Ksf)
+> TARGETS <- c(1250, 2500)
+> 
+> cat("area bandwidth (1 SD sqft):", round(AREABW), "\n")
+area bandwidth (1 SD sqft): 526 
+> 
+> pc <- st_coordinates(sfPerm)
+> sc <- st_coordinates(sfSales)
+> p  <- dtSales$totalValue
+> a  <- dtSales$MB_total_finished_area
+> age <- dtSales$structAge
+> 
+> epan <- function(u) 0.75 * (1 - u*u) * (abs(u) < 1)   # zero outside [-1,1]
+> 
+> estOne <- function(i) {
++   dx <- sc[,1] - pc[i,1]
++   dy <- sc[,2] - pc[i,2]
++   dgeo <- sqrt(dx*dx + dy*dy) / 1000                  # km
++   wgeo <- epan(dgeo / KM) * (age <= MAXAGE)           # geo kernel + age gate
++ 
++   out <- numeric(length(TARGETS))
++   nn  <- integer(length(TARGETS))
++   for (k in seq_along(TARGETS)) {
++     warea <- epan((a - TARGETS[k]) / AREABW)          # size kernel around this target
++     w <- wgeo * warea
++     ok <- w > 0
++     nn[k]  <- sum(ok)
++     out[k] <- if (any(ok)) weighted.mean(p[ok]/a[ok], w[ok]) else NA_real_
++   }
++   c(out, nn)
++ }
+> 
+> res <- t(vapply(seq_len(nrow(sfPerm)), estOne, numeric(2 * length(TARGETS))))
+> dtP[, `:=`(kEst1250 = res[,1], kEst2500 = res[,2],
++            kN1250   = as.integer(res[,3]), kN2500 = as.integer(res[,4]))]
+> 
+> cat("permits with >=1 comp @1250:", sum(dtP$kN1250 > 0),
++     " @2500:", sum(dtP$kN2500 > 0), "of", nrow(dtP), "\n")
+permits with >=1 comp @1250: 5041  @2500: 5106 of 5106 
+> print(summary(dtP[, .(kEst1250, kEst2500, kN1250, kN2500)]))
+    kEst1250         kEst2500          kN1250           kN2500     
+ Min.   : 708.3   Min.   : 645.6   Min.   :   0.0   Min.   :  3.0  
+ 1st Qu.: 861.1   1st Qu.: 713.4   1st Qu.:  42.0   1st Qu.:110.0  
+ Median : 924.3   Median : 756.5   Median :  90.0   Median :200.0  
+ Mean   : 981.5   Mean   : 883.3   Mean   : 205.1   Mean   :197.9  
+ 3rd Qu.:1091.9   3rd Qu.:1095.1   3rd Qu.: 320.8   3rd Qu.:279.0  
+ Max.   :1867.4   Max.   :1881.3   Max.   :2072.0   Max.   :453.0  
+ NA's   :65                                                        
+> 
+> # ---- cartolight heatmap of fitted price for each target -------------------
+> dtP[,landArea := landWidth * landDepth]
+> dtP <- dtP[landDepth %between% c(100,150) & landWidth %between% c(30,60)]
+> dtP[, landValue := landValue / (landWidth * landDepth)]
+> sfP <- st_as_sf(dtP, coords = c("lon","lat"), crs = 4326)
+> 
+> mapOne <- function(col, ttl)
++   ggplot(sfP) +
++     annotation_map_tile(type = "cartolight", zoomin = -1, progress = "none") +
++     geom_sf(aes(colour = .data[[col]]), size = 0.9, alpha = 0.85) +
++     scale_colour_viridis_c(option = "magma", direction = -1,
++                            labels = label_dollar(scale = 1e-6, suffix = "M"), name = NULL) +
++     labs(title = ttl) +
++     theme_void(base_size = 12) +
++     theme(plot.title = element_text(face = "bold", hjust = 0.01))
+> 
+> pp <- mapOne("kEst1250", "Fitted price — 1250 sqft") +
++       mapOne("kEst2500", "Fitted price — 2500 sqft")+
++       mapOne("landValue", "Land value (BC Assessment)") 
+> 
+> ggsave("text/fittedKernelPriceMaps.png", pp,
++        width = 14, height = 7, dpi = 200, bg = "white")
+Loading required namespace: raster
+> print(pp)
+Warning messages:
+1: In grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x, x$y,  :
+  for 'Fitted price — 1250 sqft' in 'mbcsToSbcs': - substituted for — (U+2014)
+2: In grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x, x$y,  :
+  for 'Fitted price — 2500 sqft' in 'mbcsToSbcs': - substituted for — (U+2014)
+> 
+> # plot simple xy fiited KEst1250 and KEst2500
+> ggplot(dtP, aes(x = kEst1250, y = kEst2500)) +
++   geom_point(alpha = 0.5) +
++   geom_abline(slope = 2, intercept = 0, colour = "red", linetype = "dashed") +
++   scale_x_continuous(labels = label_dollar(scale = 1e-6, suffix = "M")) +
++   scale_y_continuous(labels = label_dollar(scale = 1e-6, suffix = "M")) +
++   labs(x = "Fitted price @1250 sqft", y = "Fitted price @2500 sqft",
++        title = "Kernel-fitted prices at two target sizes") +
++   theme_minimal(base_size = 12)
+Warning message:
+Removed 12 rows containing missing values or values outside the scale range
+(`geom_point()`). 
+> ggsave("text/fittedKernelPriceXY.png", width = 7, height = 7, dpi = 200, bg = "white")
+Warning message:
+Removed 12 rows containing missing values or values outside the scale range
+(`geom_point()`). 
+> 
+> 
+> # land value per square foot
+> print(summary(feols(duplex ~ log(kEst2500/kEst1250) + landWidth+log(kEst1250), data = dtP[year<2024 ],vcov=vcov_conley(lat="lat",lon="lon",cutoff=2.0))))
+NOTE: 6 observations removed because of NA values (RHS: 6).
+OLS estimation, Dep. Var.: duplex
+Observations: 2,725
+Standard-errors: Conley (2km) 
+                        Estimate Std. Error  t value   Pr(>|t|)    
+(Intercept)             2.572439   0.718581  3.57989 0.00034975 ***
+log(kEst2500/kEst1250) -0.482960   0.181770 -2.65699 0.00793020 ** 
+landWidth              -0.003815   0.001716 -2.22272 0.02631638 *  
+log(kEst1250)          -0.326121   0.101167 -3.22361 0.00128083 ** 
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.422668   Adj. R2: 0.047786
+> print(summary(feols(duplex ~ log(kEst2500/kEst1250) + landWidth+log(landValue), data = dtP[year<2024 ],vcov=vcov_conley(lat="lat",lon="lon",cutoff=2.0))))
+NOTE: 6 observations removed because of NA values (RHS: 6).
+OLS estimation, Dep. Var.: duplex
+Observations: 2,725
+Standard-errors: Conley (2km) 
+                        Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)             2.156139   0.416874  5.172165 2.4821e-07 ***
+log(kEst2500/kEst1250) -0.159322   0.216813 -0.734837 4.6250e-01    
+landWidth              -0.006540   0.001960 -3.336989 8.5830e-04 ***
+log(landValue)         -0.282429   0.062091 -4.548618 5.6364e-06 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.421918   Adj. R2: 0.051163
+> print(summary(feols(duplex ~ log(kEst1250) + log(kEst2500) + landWidth+log(landValue), data = dtP[year<2024 ],vcov=vcov_conley(lat="lat",lon="lon",cutoff=2.0))))
+NOTE: 6 observations removed because of NA values (RHS: 6).
+OLS estimation, Dep. Var.: duplex
+Observations: 2,725
+Standard-errors: Conley (2km) 
+                Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)     2.183348   0.873271  2.500195 1.2471e-02 *  
+log(kEst1250)   0.157006   0.221273  0.709560 4.7804e-01    
+log(kEst2500)  -0.168369   0.292723 -0.575183 5.6522e-01    
+landWidth      -0.006452   0.001490 -4.329014 1.5519e-05 ***
+log(landValue) -0.274640   0.158152 -1.736555 8.2579e-02 .  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.421918   Adj. R2: 0.050817
+> print(summary(feols(multiPlex ~ log(kEst1250) + log(kEst2500) + landWidth, data = dtP[year>=2024 ],vcov=vcov_conley(lat="lat",lon="lon",cutoff=2.0))))
+NOTE: 6 observations removed because of NA values (RHS: 6).
+OLS estimation, Dep. Var.: multiPlex
+Observations: 1,281
+Standard-errors: Conley (2km) 
+               Estimate Std. Error   t value Pr(>|t|)    
+(Intercept)    0.879172   0.661365  1.329330 0.183977    
+log(kEst1250)  0.052920   0.117257  0.451317 0.651838    
+log(kEst2500) -0.195074   0.101806 -1.916131 0.055571 .  
+landWidth      0.005861   0.002611  2.244703 0.024958 *  
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.357501   Adj. R2: 0.015587
+> 
+> # ---- sub-1500 comps coloured by price/sqft --------------------------------
+> sfSmall <- st_as_sf(dtSales[MB_total_finished_area < 1500 &
++                             !is.na(longitude) & !is.na(latitude) &
++                             & MB_total_finished_area > 0 & structAge<=MAXAGE],
+Error: unexpected '&' in:
+"                            !is.na(longitude) & !is.na(latitude) &
+                            &"
+Execution halted

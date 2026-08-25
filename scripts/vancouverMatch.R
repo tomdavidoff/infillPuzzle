@@ -1,4 +1,5 @@
-# vancouverMatch.R
+
+# Now do sales within x KM of permit# vancouverMatch.R
 # match permits to neighbourhoods, assessments, etc
 # Objective -- correlation and plots: local price levels vs duplex / multiplex choice.
 # Tom Davidoff
@@ -10,6 +11,7 @@ SALE_MAXYEAR <- 2017    # comp sales window end
 CRITVAL         <- 0.5  # ProjectValue percentile threshold for non-new-SFD permits
 MIN_PERMIT_YEAR <- 2018 # keep permit years strictly greater than this
 USE_MIN_N       <- 100  # SpecificUseCategory kept if it has more than this many permits
+MATCHDIST <- 7.5 # somewhat arbitrary, lots at 1 or below
 
 library(data.table)
 library(sf)
@@ -19,6 +21,9 @@ library(RSQLite)
 library(fixest)
 library(parallel)
 library(units)
+library(scales)
+library(patchwork)
+
 
 sf_use_s2(TRUE)
 
@@ -52,52 +57,45 @@ dtGeo <- dtGeo[rr==1, .(rollStart, longitude, latitude)]
 # BCA 2019 sales/inventory. Comp pool ground-oriented (condos purged in SQL).
 
 fnameSingles <- "~/DropboxExternal/dataProcessed/bca19VancouverSingles.rds"
-fnameComps   <- "~/DropboxExternal/dataProcessed/bca19VancouverCompSales.rds"
+fnameComps   <- "~/DropboxExternal/dataProcessed/bca19VancouverCompValuation.rds"
 if (!file.exists(fnameSingles) | !file.exists(fnameComps)) {
 	bca19 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 	con <- dbConnect(RSQLite::SQLite(), bca19)
 	dtBCA19 <- data.table(dbGetQuery(con, "
-	  SELECT d.folioID, f.rollNumber, i.zoning, i.MB_effective_year, i.MB_total_finished_area,
+	  SELECT d.folioID, f.rollNumber, i.zoning, CAST(i.MB_effective_year AS NUMERIC) AS MB_effective_year, i.MB_total_finished_area,
 		 CAST(i.land_width AS NUMERIC) AS land_width, CAST(i.land_depth AS NUMERIC) AS land_depth,
-		 d.actualUseDescription, d.neighbourhoodDescription, CAST(d.landWidth AS NUMERIC) AS landWidth, CAST(d.landDepth AS NUMERIC) AS landDepth
+		 d.actualUseDescription, d.neighbourhoodDescription, CAST(d.landWidth AS NUMERIC) AS landWidth, CAST(d.landDepth AS NUMERIC) AS landDepth, CAST(v.landValue AS NUMERIC) AS landValue, CAST(v.improvementValue AS NUMERIC) AS improvementValue
 	  FROM folio f
 	  JOIN residentialInventory i ON i.roll_number = f.rollNumber
 	  JOIN folioDescription d      ON d.folioID     = f.folioID
+	  JOIN valuation v            ON v.folioID  = f.folioID
 	  WHERE f.jurisdictionCode = '200'
 	"))
 	dtBCA19[, rollStart := floor(as.numeric(rollNumber) / 1000)]
 	dtBCA19[is.na(landWidth), landWidth := land_width]
 	dtBCA19[is.na(landDepth), landDepth := land_depth]
 	dtBCA19 <- merge(dtBCA19, dtGeo, by = "rollStart", all.x = TRUE)
-	dtSingles <- dtBCA19[actualUseDescription %in% c("Single Family Dwelling", "Residential Dwelling with Suite"),.(landWidth, landDepth, MB_total_finished_area, MB_effective_year, rollNumber, folioID, longitude, latitude)]
+	dtSingles <- dtBCA19[actualUseDescription %in% c("Single Family Dwelling", "Residential Dwelling with Suite"),.(landWidth, landDepth, MB_total_finished_area, MB_effective_year, rollNumber, folioID, longitude, latitude,landValue)]
 	dtSingles <- dtSingles[!is.na(longitude) & !is.na(latitude)]
 	saveRDS(dtSingles, fnameSingles)
+	dtComps <- dtBCA19[, .(MB_total_finished_area, MB_effective_year, rollNumber, folioID, longitude, latitude,landValue, improvementValue)]
 
-	dfSales <- dbGetQuery(con, "
-	  SELECT folioID, conveyanceDate, conveyancePrice
-	  FROM sales
-	  WHERE conveyanceTypeDescription = 'Improved Single Property Transaction'
-	")
 
 	for (v in c("landWidth", "landDepth", "MB_total_finished_area", "MB_effective_year")) {
 	  dtBCA19[, (v) := as.numeric(get(v))]
 	}
 
-	dtSales <- merge(data.table(dfSales), dtBCA19, by = "folioID")
-	dtSales[, conveyancePrice := as.numeric(conveyancePrice)]
-	dtSales[, year := as.numeric(substr(conveyanceDate, 1, 4))]
-	dtSales[, structAge := year - MB_effective_year]
-	dtSales[structAge < 0, structAge := 0]
-	dtSales <- dtSales[ year %between% c(SALE_MINYEAR, SALE_MAXYEAR) &
-  !is.na(MB_total_finished_area) & MB_total_finished_area > 0 &
-  !is.na(conveyancePrice)        & conveyancePrice > 0 &
-  !is.na(structAge)
-]
-	saveRDS(dtSales, fnameComps)
+	dtComps[, structAge := 2018 - MB_effective_year]
+	dtComps[structAge < 0, structAge := 0]
+	dtComps <- dtComps[!is.na(longitude) & !is.na(latitude)	& !is.na(MB_total_finished_area) & !is.na(MB_effective_year)  & !is.na(landValue) & !is.na(improvementValue)]
+	dtComps[,totalValue := landValue + improvementValue]
+	saveRDS(dtComps, fnameComps)
 }
 dtSales <- readRDS(fnameComps)
 cat("comp sales after filters (pre-coordinate merge):", nrow(dtSales), "\n")
 dtSingles <- readRDS(fnameSingles)
+print(head(dtSales))
+dtSales[,MB_total_finished_area := as.numeric(MB_total_finished_area)]
 
 # Now read permits and find matching single family dwelling where it exist
 dtP <- fread(
@@ -140,15 +138,181 @@ dfSingle <- st_as_sf(dtSingles, coords = c("longitude", "latitude"), crs = 4326)
 
 idx  <- st_nearest_feature(dtPgeoNN, dfSingle)
 dist <- as.numeric(st_distance(dtPgeoNN, dfSingle[idx, ], by_element = TRUE))  # meters, plain numeric
+print(summary(dist))
 
 matched <- as.data.table(st_drop_geometry(dfSingle))[idx]   # nearest folio's attrs, one row per permit
-matched[dist > 10, names(matched) := NA]                    # data.table-correct gate at 10 m
+matched[dist > MATCHDIST, names(matched) := NA]                    # data.table-correct gate at 10 m
 matched[, PermitNumber := dtP$PermitNumber]                 # attach the key (order-safe: idx is in dtP order)
 matched[, dist := dist]
-dtNN <- matched[, .(PermitNumber, rollNumber, dist,MB_total_finished_area, MB_effective_year, landWidth, landDepth,lonSingle=longitude, latSingle=latitude)]
-dtP <- merge(dtP, dtNN, by = "PermitNumber", all.x = TRUE)
-print(head(
+print(matched)
+matched <- matched[dist<MATCHDIST, .(PermitNumber, rollNumber, dist,MB_total_finished_area, MB_effective_year, landWidth, landDepth,landValue)]
+print(nrow(dtP))
+dtP <- merge(dtP, matched, by = "PermitNumber")
+print(head(dtP))
+print(nrow(dtP))
+
+# Now do sales within x KM of permit
+# ---- 2D kernel price estimates at 1250 & 2500 sqft for each permit --------
+# distance dims: geographic (km) and floor area (sqft). Product of Epanechnikov kernels.
+dtSales <- dtSales[!is.na(longitude) & !is.na(latitude) &
+                   !is.na(MB_total_finished_area) & MB_total_finished_area > 0]
+print(summary(dtSales[,totalValue/MB_total_finished_area]))
+quants <- quantile(dtSales[,totalValue/MB_total_finished_area], c(0.01, 0.99))
+dtSales <- dtSales[totalValue/MB_total_finished_area > quants[1] &
+		   totalValue/MB_total_finished_area < quants[2]]
+sfSales <- st_transform(st_as_sf(dtSales, coords = c("longitude","latitude"), crs = 4326), 3005)
+sfPerm  <- st_transform(st_as_sf(dtP,     coords = c("lon","lat"),           crs = 4326), 3005)
+
+
+MAXAGE  <- 10                                   # A: max comp structure age at sale
+KM      <- 1.0                                  # d: geographic radius, km
+AREABW  <- sd(dtSales$MB_total_finished_area)/2   # size bandwidth = 1 SD of area (sd appx 1Ksf)
+TARGETS <- c(1250, 2500)
+
+cat("area bandwidth (1 SD sqft):", round(AREABW), "\n")
+
+pc <- st_coordinates(sfPerm)
+sc <- st_coordinates(sfSales)
+p  <- dtSales$totalValue
+a  <- dtSales$MB_total_finished_area
+age <- dtSales$structAge
+
+epan <- function(u) 0.75 * (1 - u*u) * (abs(u) < 1)   # zero outside [-1,1]
+
+estOne <- function(i) {
+  dx <- sc[,1] - pc[i,1]
+  dy <- sc[,2] - pc[i,2]
+  dgeo <- sqrt(dx*dx + dy*dy) / 1000                  # km
+  wgeo <- epan(dgeo / KM) * (age <= MAXAGE)           # geo kernel + age gate
+
+  out <- numeric(length(TARGETS))
+  nn  <- integer(length(TARGETS))
+  for (k in seq_along(TARGETS)) {
+    warea <- epan((a - TARGETS[k]) / AREABW)          # size kernel around this target
+    w <- wgeo * warea
+    ok <- w > 0
+    nn[k]  <- sum(ok)
+    out[k] <- if (any(ok)) weighted.mean(p[ok]/a[ok], w[ok]) else NA_real_
+  }
+  c(out, nn)
+}
+
+res <- t(vapply(seq_len(nrow(sfPerm)), estOne, numeric(2 * length(TARGETS))))
+dtP[, `:=`(kEst1250 = res[,1], kEst2500 = res[,2],
+           kN1250   = as.integer(res[,3]), kN2500 = as.integer(res[,4]))]
+
+cat("permits with >=1 comp @1250:", sum(dtP$kN1250 > 0),
+    " @2500:", sum(dtP$kN2500 > 0), "of", nrow(dtP), "\n")
+print(summary(dtP[, .(kEst1250, kEst2500, kN1250, kN2500)]))
+
+# ---- cartolight heatmap of fitted price for each target -------------------
+dtP[,landArea := landWidth * landDepth]
+dtP <- dtP[landDepth %between% c(100,150) & landWidth %between% c(30,60)]
+dtP[, landValue := landValue / (landWidth * landDepth)]
+sfP <- st_as_sf(dtP, coords = c("lon","lat"), crs = 4326)
+
+mapOne <- function(col, ttl)
+  ggplot(sfP) +
+    annotation_map_tile(type = "cartolight", zoomin = -1, progress = "none") +
+    geom_sf(aes(colour = .data[[col]]), size = 0.9, alpha = 0.85) +
+    scale_colour_viridis_c(option = "magma", direction = -1,
+                           labels = label_dollar(scale = 1e-6, suffix = "M"), name = NULL) +
+    labs(title = ttl) +
+    theme_void(base_size = 12) +
+    theme(plot.title = element_text(face = "bold", hjust = 0.01))
+
+pp <- mapOne("kEst1250", "Fitted price — 1250 sqft") +
+      mapOne("kEst2500", "Fitted price — 2500 sqft")+
+      mapOne("landValue", "Land value (BC Assessment)") 
+
+ggsave("text/fittedKernelPriceMaps.png", pp,
+       width = 14, height = 7, dpi = 200, bg = "white")
+print(pp)
+
+# plot simple xy fiited KEst1250 and KEst2500
+ggplot(dtP, aes(x = kEst1250, y = kEst2500)) +
+  geom_point(alpha = 0.5) +
+  geom_abline(slope = 2, intercept = 0, colour = "red", linetype = "dashed") +
+  scale_x_continuous(labels = label_dollar(scale = 1e-6, suffix = "M")) +
+  scale_y_continuous(labels = label_dollar(scale = 1e-6, suffix = "M")) +
+  labs(x = "Fitted price @1250 sqft", y = "Fitted price @2500 sqft",
+       title = "Kernel-fitted prices at two target sizes") +
+  theme_minimal(base_size = 12)
+ggsave("text/fittedKernelPriceXY.png", width = 7, height = 7, dpi = 200, bg = "white")
+
+
+# land value per square foot
+print(summary(feols(duplex ~ log(kEst2500/kEst1250) + landWidth+log(kEst1250), data = dtP[year<2024 ],vcov=vcov_conley(lat="lat",lon="lon",cutoff=2.0))))
+print(summary(feols(duplex ~ log(kEst2500/kEst1250) + landWidth+log(landValue), data = dtP[year<2024 ],vcov=vcov_conley(lat="lat",lon="lon",cutoff=2.0))))
+print(summary(feols(duplex ~ log(kEst1250) + log(kEst2500) + landWidth+log(landValue), data = dtP[year<2024 ],vcov=vcov_conley(lat="lat",lon="lon",cutoff=2.0))))
+print(summary(feols(multiPlex ~ log(kEst1250) + log(kEst2500) + landWidth, data = dtP[year>=2024 ],vcov=vcov_conley(lat="lat",lon="lon",cutoff=2.0))))
+
+# ---- sub-1500 comps coloured by price/sqft --------------------------------
+sfSmall <- st_as_sf(dtSales[MB_total_finished_area < 1500 &
+                            !is.na(longitude) & !is.na(latitude) &
+                            & MB_total_finished_area > 0 & structAge<=MAXAGE],
+                    coords = c("longitude","latitude"), crs = 4326)
+
+ggplot(sfSmall) +
+  annotation_map_tile(type = "cartolight", zoomin = -1, progress = "none") +
+  geom_sf(aes(colour = MB_total_finished_area), size = 0.7, alpha = 0.7) +
+  scale_colour_viridis_c(option = "magma", direction = -1,
+                         limits = lims, oob = scales::squish,
+                         labels = scales::label_dollar(),
+                         name = "sqft") +
+  labs(title = "Sub-1500 sqft comps — sqft") +
+  theme_void(base_size = 12) +
+  theme(plot.title = element_text(face = "bold", hjust = 0.01),
+        legend.position = "right")
+ggsave("text/vancouverSub1500.png")
+
+# size distribution by use — is sub-1500 detached actually rare?
+dtSales[, .N, by = actualUseDescription][order(-N)]
+dtSales[MB_total_finished_area < 1500, .N, by = actualUseDescription][order(-N)]
+dtSales[MB_total_finished_area < 1250, .N, by = actualUseDescription][order(-N)]
+print(quantile(dtSales$MB_total_finished_area, seq(.05,1,.05), na.rm = TRUE))
 q("no")
+# ---- kernel price estimates at 1250 & 2500 sqft for each permit ----------
+# comp sales -> sf, project both to a metric CRS for planar distance
+dtSales <- dtSales[!is.na(longitude) & !is.na(latitude)]
+sfSales  <- st_transform(st_as_sf(dtSales, coords = c("longitude","latitude"), crs = 4326), 3005)  # BC Albers, metres
+sfPerm   <- st_transform(st_as_sf(dtP,     coords = c("lon","lon"),           crs = 4326), 3005)
+
+# NOTE: your dtP has lat/lon; guard against the c("lon","lon") typo:
+sfPerm   <- st_transform(st_as_sf(dtP, coords = c("lon","lat"), crs = 4326), 3005)
+
+MAXAGE   <- 30      # A: max comp structure age at sale
+KM       <- 1.0     # d: radius in km
+TARGETS  <- c(1250, 2500)
+
+pc <- st_coordinates(sfPerm)
+sc <- st_coordinates(sfSales)
+
+estOne <- function(i) {
+  dx <- sc[,1] - pc[i,1]
+  dy <- sc[,2] - pc[i,2]
+  d  <- sqrt(dx*dx + dy*dy) / 1000                      # km
+  ok <- d <= KM & dtSales$structAge <= MAXAGE
+  if (!any(ok)) return(c(NA_real_, NA_real_, 0L))
+  u  <- d[ok] / KM
+  w  <- 0.75 * (1 - u*u)                                # Epanechnikov
+  p  <- dtSales$conveyancePrice[ok]
+  a  <- dtSales$MB_total_finished_area[ok]
+  # price per sqft, kernel-weighted, then scale to each target size
+  pps <- weighted.mean(p / a, w)
+  c(pps * TARGETS[1], pps * TARGETS[2], sum(ok))
+}
+
+res <- t(vapply(seq_len(nrow(sfPerm)), estOne, numeric(3)))
+dtP[, `:=`(kEst1250 = res[,1], kEst2500 = res[,2], kN = as.integer(res[,3]))]
+
+cat("permits with >=1 comp:", sum(dtP$kN > 0), "of", nrow(dtP), "\n")
+print(summary(dtP[, .(kEst1250, kEst2500, kN)]))
+
+q("no")
+
+
+#shana
 dtPgeoNN <- st_as_sf(dtP[, .(PermitNumber, lat, lon)], coords = c("lon", "lat"), crs = 4326)
 dfSingle <- st_as_sf(dtSingles, coords = c("longitude", "latitude"), crs = 4326)
 idx  <- st_nearest_feature(dtPgeoNN, dfSingle)
