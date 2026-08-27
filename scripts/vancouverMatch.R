@@ -2,15 +2,15 @@
 # match permits to neighbourhoods, assessments, etc
 # Objective -- correlation and plots: local price levels vs duplex / multiplex choice.
 # Tom Davidoff
-# 08/13/26
+# 08/13/26  (rev: local level + elasticity, SFD-only comp pool)
 #
 
-SALE_MINYEAR <- 2015    # comp sales window start (pre-rezoning)
-SALE_MAXYEAR <- 2017    # comp sales window end
-CRITVAL         <- 0.5  # ProjectValue percentile threshold for non-new-SFD permits
-MIN_PERMIT_YEAR <- 2018 # keep permit years strictly greater than this
-USE_MIN_N       <- 100  # SpecificUseCategory kept if it has more than this many permits
-MATCHDIST <- 7.5 # somewhat arbitrary, lots at 1 or below
+SALE_MINYEAR    <- 2015    # comp sales window start (pre-rezoning)
+SALE_MAXYEAR    <- 2017    # comp sales window end
+CRITVAL         <- 0.5     # ProjectValue percentile threshold for non-new-SFD permits
+MIN_PERMIT_YEAR <- 2018    # keep permit years strictly greater than this
+USE_MIN_N       <- 100     # SpecificUseCategory kept if it has more than this many permits
+MATCHDIST       <- 7.5     # somewhat arbitrary, lots at 1 or below
 
 library(data.table)
 library(sf)
@@ -22,7 +22,6 @@ library(parallel)
 library(units)
 library(scales)
 library(patchwork)
-
 
 sf_use_s2(TRUE)
 
@@ -87,7 +86,6 @@ if (!file.exists(fnameSingles) | !file.exists(fnameComps)) {
 	dtSales[,year:=as.numeric(substring(conveyanceDate, 1, 4))]
 	dtSales <- dtSales[year %between% c(SALE_MINYEAR, SALE_MAXYEAR)]
 
-
 	for (v in c("landWidth", "landDepth", "MB_total_finished_area", "MB_effective_year")) {
 	  dtBCA19[, (v) := as.numeric(get(v))]
 	}
@@ -100,7 +98,6 @@ if (!file.exists(fnameSingles) | !file.exists(fnameComps)) {
 dtSales <- readRDS(fnameComps)
 cat("comp sales after filters (pre-coordinate merge):", nrow(dtSales), "\n")
 dtSingles <- readRDS(fnameSingles)
-print(head(dtSales))
 dtSales[, MB_total_finished_area := as.numeric(MB_total_finished_area)]
 
 # Now read permits and find matching single family dwelling where it exist
@@ -152,152 +149,140 @@ matched[, PermitNumber := dtP$PermitNumber]                 # attach the key (or
 matched[, dist := dist]
 matched <- matched[dist < MATCHDIST, .(PermitNumber, rollNumber, dist, MB_total_finished_area, MB_effective_year, landWidth, landDepth, landValue)]
 dtP <- merge(dtP, matched, by = "PermitNumber")
-print(head(dtP))
 print(nrow(dtP))
 
 # ============================================================================
-# Now do sales within x KM of permit
-# ---- 2D kernel price estimates at 1250 & 2500 sqft for each permit ----------
-# distance dims: geographic (km) and floor area (sqft). Product of Epanechnikov kernels.
+# LOCAL LEVEL + ELASTICITY  (replaces kEst1250 / kEst2500 / kEst3000)
+# For each permit: WLS of log(price) ~ log(sqft) on nearby SFD comps,
+# geographically weighted by an Epanechnikov kernel at radius KM. Extract:
+#   kLevel = fitted log(price) at reference size REF_SQFT (p20 of SFD sqft)
+#   kElast = slope d log(price) / d log(sqft)   [local price-size elasticity]
+# Note: kElast(price) = kElast(ppsf) + 1, so a mostly-negative ppsf slope
+#       becomes a positive price slope (bigger homes cost more in total).
 # ============================================================================
 
-MAXAGE  <- 50                                   # A: max comp structure age at sale
-KM      <- 1.0                                  # d: geographic radius, km
-TARGETS <- c(1250, 2500)
+MAXAGE   <- 50                                  # max comp structure age at sale
+KM       <- 1.0                                 # geographic radius, km
+REF_PCTL <- 0.20                                # reference size = p20 of SFD sqft
+MIN_COMPS <- 8                                  # min in-window SFD comps to fit a slope
 
-# ---- build ppsf and residual on dtSales, then do ALL row filtering, BEFORE
-#      extracting any parallel vectors. sc / p / a must derive from ONE table. ----
+# comp pool: SFD only (single detached + detached-with-suite).
+# Row Housing and Duplex categories are intentionally excluded so the level
+# and elasticity reflect SFD product, not a mixture of product types.
+sfdUse <- c("Single Family Dwelling", "Residential Dwelling with Suite")
+
 dtSales[, ppsf := as.numeric(conveyancePrice) / MB_total_finished_area]
 quants  <- quantile(dtSales$ppsf, c(0.01, 0.99), na.rm = TRUE)
 dtSales <- dtSales[ppsf > quants[1] & ppsf < quants[2]]
 dtSales <- dtSales[!is.na(longitude) & !is.na(latitude) &
                    !is.na(MB_total_finished_area) & MB_total_finished_area > 0 &
                    !is.na(ppsf) & ppsf > 0 &
-                   !is.na(structAge) & structAge <= MAXAGE &
-                   !is.na(actualUseDescription)]
+                   !is.na(structAge) & structAge >= 0 & structAge <= MAXAGE &
+                   actualUseDescription %in% sfdUse]
 
-dtSales[, sqftDecile := round(frank(MB_total_finished_area, na.last = "keep",
-                                    ties.method = "first") / nrow(dtSales) * 10)]
-dtSales[, groupMean := mean(ppsf), by = .(year, structAge, actualUseDescription, sqftDecile)]
-dtSales[, residual  := ppsf - groupMean]
+# demean log(price) by (year, ageBin) ONLY -- do NOT residualize out size,
+# since the local slope on log(sqft) is exactly what we want to estimate.
+dtSales[, price   := as.numeric(conveyancePrice)]
+dtSales[, ageBin  := pmin(structAge %/% 5, 9)]               # 0-4,5-9,...,45-50
+dtSales[, lprice  := log(price)]
+dtSales[, lsqft   := log(MB_total_finished_area)]
+dtSales[, yaMean  := mean(lprice), by = .(year, ageBin)]
+dtSales[, lpriceAdj := lprice - yaMean]                      # time/age-adjusted log price
 
-for (q in unique(dtSales[, actualUseDescription])) {
-	print(q)
-	print(summary(dtSales[actualUseDescription == q, .(ppsf, MB_total_finished_area, structAge)]))
-}
+# reference size: p20 of SFD sqft (above teardown territory, near the body)
+REF_SQFT <- quantile(dtSales$MB_total_finished_area, REF_PCTL, na.rm = TRUE)
+LREF     <- log(REF_SQFT)
+cat("SFD comps for local fits:", nrow(dtSales),
+    "| REF_SQFT (p", REF_PCTL*100, " SFD): ", round(REF_SQFT), "\n", sep = "")
 
-# keep ground-oriented comps; drop luxury condo / thin exotic categories
-dtSales <- dtSales[actualUseDescription %in% c("Single Family Dwelling",
-                                               "Residential Dwelling with Suite",
-                                               "Row Housing (Single Unit Ownership)") |
-                   grepl("Duplex", actualUseDescription)]
-dtSales <- dtSales[!is.na(residual)]
-
-# bandwidth AFTER final comp pool is fixed, so it reflects the pool actually used
-AREABW  <- sd(dtSales$MB_total_finished_area)   # size bandwidth = 1 SD of area
-cat("area bandwidth (1 SD sqft):", round(AREABW), "\n")
-
-# geometry + parallel vectors, ALL from the final dtSales
+# ---- geometry + parallel vectors, ALL from the final dtSales ---------------
 sfSales <- st_transform(st_as_sf(dtSales, coords = c("longitude","latitude"), crs = 4326), 3005)
 sfPerm  <- st_transform(st_as_sf(dtP,     coords = c("lon","lat"),           crs = 4326), 3005)
 
-pc <- st_coordinates(sfPerm)
 sc <- st_coordinates(sfSales)
-p  <- dtSales$residual
-a  <- dtSales$MB_total_finished_area
-stopifnot(nrow(sc) == length(p), length(p) == length(a))   # guard against vector misalignment
+pc <- st_coordinates(sfPerm)
+yv <- dtSales$lpriceAdj                                      # time/age-adjusted log price
+xv <- dtSales$lsqft                                          # log sqft
+stopifnot(nrow(sc) == length(yv), length(yv) == length(xv)) # guard against misalignment
 
-epan <- function(u) 0.75 * (1 - u*u) * (abs(u) < 1)   # zero outside [-1,1]
+epan <- function(u) 0.75 * (1 - u*u) * (abs(u) < 1)         # zero outside [-1,1]
 
+# Closed-form weighted simple regression of yv ~ xv within each permit's kernel.
+# Level recovered at LREF from the (uncentered) intercept + slope.
 estOne <- function(i) {
-  dx <- sc[,1] - pc[i,1]
-  dy <- sc[,2] - pc[i,2]
-  dgeo <- sqrt(dx*dx + dy*dy) / 1000                  # km
-  wgeo <- epan(dgeo / KM)                             # geo kernel
+  dx  <- sc[,1] - pc[i,1]
+  dy  <- sc[,2] - pc[i,2]
+  dkm <- sqrt(dx*dx + dy*dy) / 1000                          # km
+  w   <- epan(dkm / KM)
+  ok  <- w > 0
+  n   <- sum(ok)
+  if (n < MIN_COMPS) return(c(level = NA_real_, elast = NA_real_, n = n))
 
-  out <- numeric(length(TARGETS))
-  nn  <- integer(length(TARGETS))
-  for (k in seq_along(TARGETS)) {
-    warea <- epan((a - TARGETS[k]) / AREABW)          # size kernel around this target
-    w  <- wgeo * warea
-    ok <- w > 0
-    nn[k]  <- sum(ok)
-    out[k] <- if (any(ok)) weighted.mean(p[ok], w[ok], na.rm = TRUE) else NA_real_
-  }
-  c(out, nn)
+  xw <- xv[ok]; yw <- yv[ok]; ww <- w[ok]
+  sw   <- sum(ww)
+  xbar <- sum(ww * xw) / sw
+  ybar <- sum(ww * yw) / sw
+  sxx  <- sum(ww * (xw - xbar)^2)
+  if (sxx <= 0) return(c(level = NA_real_, elast = NA_real_, n = n))  # no local size variation
+  sxy  <- sum(ww * (xw - xbar) * (yw - ybar))
+  b1   <- sxy / sxx                                          # elasticity (price-size slope)
+  b0   <- ybar - b1 * xbar                                   # intercept (adj log price at lsqft=0)
+  level <- b0 + b1 * LREF                                    # adj log price at REF_SQFT
+  c(level = level, elast = b1, n = n)
 }
 
-res <- t(vapply(seq_len(nrow(sfPerm)), estOne, numeric(2 * length(TARGETS))))
-dtP[, `:=`(kEst1250 = res[,1], kEst2500 = res[,2],
-           kN1250   = as.integer(res[,3]), kN2500 = as.integer(res[,4]))]
+res <- t(vapply(seq_len(nrow(sfPerm)), estOne, c(level = NA_real_, elast = NA_real_, n = NA_real_)))
+dtP[, `:=`(kLevel = res[, 1],
+           kElast = res[, 2],
+           kN     = as.integer(res[, 3]))]
 
-cat("permits with >=1 comp @1250:", sum(dtP$kN1250 > 0),
-    " @2500:", sum(dtP$kN2500 > 0), "of", nrow(dtP), "\n")
-print(summary(dtP[, .(kEst1250, kEst2500, kN1250, kN2500)]))
-# confirm every NA estimate is genuinely zero in-window comps, not misalignment
-print(dtP[is.na(kEst2500), .N, by = .(zeroComps = kN2500 == 0)])
+cat("permits with a local fit:", sum(!is.na(dtP$kLevel)), "of", nrow(dtP), "\n")
+cat("dropped (kN <", MIN_COMPS, "):", sum(dtP$kN < MIN_COMPS), "\n")
+print(summary(dtP[, .(kLevel, kElast, kN)]))
+cat("cor(kLevel, kElast):", round(cor(dtP$kLevel, dtP$kElast, use = "complete.obs"), 3),
+    " -- if > ~0.7, evaluate level at local-mean sqft instead of REF_SQFT\n")
 
-# ---- cartolight heatmap of fitted price for each target -------------------
+# ---- cartolight heatmap of level and elasticity ----------------------------
 dtP <- dtP[landDepth %between% c(100,150) & landWidth %between% c(30,60)]
 dtP[, landValuePsf := landValue / (landWidth * landDepth)]
-sfP <- st_as_sf(dtP, coords = c("lon","lat"), crs = 4326)
+sfP <- st_as_sf(dtP[!is.na(kLevel)], coords = c("lon","lat"), crs = 4326)
 
-mapOne <- function(col, ttl)
+mapOne <- function(col, ttl, opt = "magma", dir = -1)
   ggplot(sfP) +
     annotation_map_tile(type = "cartolight", zoomin = -1, progress = "none") +
     geom_sf(aes(colour = .data[[col]]), size = 0.9, alpha = 0.85) +
-    scale_colour_viridis_c(option = "magma", direction = -1, name = NULL) +
+    scale_colour_viridis_c(option = opt, direction = dir, name = NULL) +
     labs(title = ttl) +
     theme_void(base_size = 12) +
     theme(plot.title = element_text(face = "bold", hjust = 0.01))
 
-pp <- mapOne("kEst1250", "Fitted price resid — 1250 sqft") +
-      mapOne("kEst2500", "Fitted price resid — 2500 sqft") +
+pp <- mapOne("kLevel", "Local log price @ p20 SFD sqft") +
+      mapOne("kElast", "Local price-size elasticity") +
       mapOne("landValuePsf", "Land value / sqft (BC Assessment)")
 
-ggsave("text/fittedKernelPriceMaps.png", pp,
+ggsave("text/fittedLocalLevelElastMaps.png", pp,
        width = 14, height = 7, dpi = 200, bg = "white")
-print(pp)
 
-# plot simple xy fitted kEst1250 vs kEst2500 (these are ppsf residuals, not $)
-# plot simple xy fitted kEst1250 vs kEst2500 (these are ppsf residuals, not $)
-# colour by duplex: red = duplex, blue = otherwise
-ggplot(dtP, aes(x = kEst1250, y = kEst2500, colour = duplex)) +
-  geom_point(size=.5, alpha = 0.5) +
-  geom_abline(slope = 1, intercept = 0, colour = "grey40", linetype = "dashed") +
+# ---- level vs elasticity scatter, coloured by duplex -----------------------
+ggplot(dtP[year < 2024 & (single==1 | duplex==1)],
+       aes(x = kLevel, y = kElast, colour = duplex)) +
+  geom_point(size = .5, alpha = 0.5) +
   scale_colour_manual(values = c(`FALSE` = "blue", `TRUE` = "red"),
                       labels = c(`FALSE` = "Other", `TRUE` = "Duplex"),
                       name = NULL) +
-  labs(x = "Fitted resid @1250 sqft", y = "Fitted resid @2500 sqft",
-       title = "Kernel-fitted price residuals at two target sizes") +
+  labs(x = "Local log price @ p20 sqft", y = "Local price-size elasticity",
+       title = "Local level vs elasticity (pre-2024)") +
   theme_minimal(base_size = 12)
-ggsave("text/fittedKernelPriceXY.png", width = 7, height = 7, dpi = 200, bg = "white")
+ggsave("text/localLevelElastXY.png", width = 7, height = 7, dpi = 200, bg = "white")
 
-# ---- duplex / multiplex choice vs local fitted prices ---------------------
-print(summary(feols(duplex ~ log(kEst2500) + landWidth + landDepth + log(kEst1250),
-                    data = dtP[year < 2024], vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
-print(summary(feols(multiPlex ~ log(kEst2500) + landWidth + landDepth + log(kEst1250),
-                    data = dtP[year > 2024], vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
+# ---- duplex / multiplex choice vs local level + elasticity -----------------
+print(summary(feols(duplex ~ kLevel +  landWidth + landDepth | year, data = dtP[year < 2024 & (single==1|duplex==1)], vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
+print(summary(feols(duplex ~ kLevel + kElast + landWidth + landDepth | year, data = dtP[year < 2024 & (single==1|duplex==1)], vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
 
-# ---- sub-1500 comps coloured by sqft --------------------------------------
-sfSmall <- st_as_sf(dtSales[MB_total_finished_area < 1500 &
-                            !is.na(longitude) & !is.na(latitude) &
-                            MB_total_finished_area > 0 & structAge <= MAXAGE],
-                    coords = c("longitude","latitude"), crs = 4326)
 
-ggplot(sfSmall) +
-  annotation_map_tile(type = "cartolight", zoomin = -1, progress = "none") +
-  geom_sf(aes(colour = MB_total_finished_area), size = 0.7, alpha = 0.7) +
-  scale_colour_viridis_c(option = "magma", direction = -1) +
-  labs(title = "Sub-1500 sqft comps — sqft") +
-  theme_void(base_size = 12) +
-  theme(plot.title = element_text(face = "bold", hjust = 0.01),
-        legend.position = "right")
-ggsave("text/vancouverSub1500.png")
+print(summary(feols(multiPlex ~ kLevel + kElast + landWidth + landDepth | year,
+                    data = dtP[year > 2023 & (single==1|duplex==1|multiPlex==1)],
+                    vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
 
-# size distribution by use — is sub-1500 detached actually rare?
-dtSales[, .N, by = actualUseDescription][order(-N)]
-dtSales[MB_total_finished_area < 1500, .N, by = actualUseDescription][order(-N)]
-dtSales[MB_total_finished_area < 1250, .N, by = actualUseDescription][order(-N)]
-print(quantile(dtSales$MB_total_finished_area, seq(.05,1,.05), na.rm = TRUE))
-q("no")
+print("table of permit choice by year")
+print(dtP[,.N,by=.(year,SpecificUseCategory)])

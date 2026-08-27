@@ -21,15 +21,15 @@ Type 'q()' to quit R.
 > # match permits to neighbourhoods, assessments, etc
 > # Objective -- correlation and plots: local price levels vs duplex / multiplex choice.
 > # Tom Davidoff
-> # 08/13/26
+> # 08/13/26  (rev: local level + elasticity, SFD-only comp pool)
 > #
 > 
-> SALE_MINYEAR <- 2015    # comp sales window start (pre-rezoning)
-> SALE_MAXYEAR <- 2017    # comp sales window end
-> CRITVAL         <- 0.5  # ProjectValue percentile threshold for non-new-SFD permits
-> MIN_PERMIT_YEAR <- 2018 # keep permit years strictly greater than this
-> USE_MIN_N       <- 100  # SpecificUseCategory kept if it has more than this many permits
-> MATCHDIST <- 7.5 # somewhat arbitrary, lots at 1 or below
+> SALE_MINYEAR    <- 2015    # comp sales window start (pre-rezoning)
+> SALE_MAXYEAR    <- 2017    # comp sales window end
+> CRITVAL         <- 0.5     # ProjectValue percentile threshold for non-new-SFD permits
+> MIN_PERMIT_YEAR <- 2018    # keep permit years strictly greater than this
+> USE_MIN_N       <- 100     # SpecificUseCategory kept if it has more than this many permits
+> MATCHDIST       <- 7.5     # somewhat arbitrary, lots at 1 or below
 > 
 > library(data.table)
 > library(sf)
@@ -50,7 +50,6 @@ The following object is masked from ‘package:fixest’:
     pvalue
 
 > library(patchwork)
-> 
 > 
 > sf_use_s2(TRUE)
 > 
@@ -115,7 +114,6 @@ The following object is masked from ‘package:fixest’:
 + 	dtSales[,year:=as.numeric(substring(conveyanceDate, 1, 4))]
 + 	dtSales <- dtSales[year %between% c(SALE_MINYEAR, SALE_MAXYEAR)]
 + 
-+ 
 + 	for (v in c("landWidth", "landDepth", "MB_total_finished_area", "MB_effective_year")) {
 + 	  dtBCA19[, (v) := as.numeric(get(v))]
 + 	}
@@ -129,40 +127,6 @@ The following object is masked from ‘package:fixest’:
 > cat("comp sales after filters (pre-coordinate merge):", nrow(dtSales), "\n")
 comp sales after filters (pre-coordinate merge): 45682 
 > dtSingles <- readRDS(fnameSingles)
-> print(head(dtSales))
-Key: <folioID>
-      folioID conveyanceDate conveyancePrice
-       <char>         <char>          <char>
-1: A00000000V     2015-07-03        17550000
-2: A00000000Z     2015-01-05         8580000
-3: A00000001Q     2016-08-15         8560000
-4: A00000001Y     2016-05-27         8000000
-5: A00000002C     2015-10-29         3800000
-6: A00000002C     2015-10-29         3800000
-              conveyanceTypeDescription longitude latitude MB_effective_year
-                                 <char>     <num>    <num>             <int>
-1: Improved Single Property Transaction -123.2206 49.27182              2020
-2: Improved Single Property Transaction -123.2210 49.26994              1965
-3: Improved Single Property Transaction -123.2124 49.26957              2019
-4: Improved Single Property Transaction -123.2094 49.27074              2007
-5: Improved Single Property Transaction -123.2086 49.27059              1998
-6: Improved Single Property Transaction -123.2082 49.27030              1998
-   MB_total_finished_area landWidth landDepth            actualUseDescription
-                   <char>     <num>     <num>                          <char>
-1:                  26505         0      0.00          Single Family Dwelling
-2:                   3599         0      0.00 Residential Dwelling with Suite
-3:                   5685        66    165.28 Residential Dwelling with Suite
-4:                   3848        50    121.52          Single Family Dwelling
-5:                   3473         0      0.00          Single Family Dwelling
-6:                   3473         0      0.00          Single Family Dwelling
-    year structAge
-   <num>     <num>
-1:  2015         0
-2:  2015        50
-3:  2016         0
-4:  2016         9
-5:  2015        17
-6:  2015        17
 > dtSales[, MB_total_finished_area := as.numeric(MB_total_finished_area)]
 > 
 > # Now read permits and find matching single family dwelling where it exist
@@ -236,397 +200,269 @@ analysis permits after all filters: 7499
 > matched[, dist := dist]
 > matched <- matched[dist < MATCHDIST, .(PermitNumber, rollNumber, dist, MB_total_finished_area, MB_effective_year, landWidth, landDepth, landValue)]
 > dtP <- merge(dtP, matched, by = "PermitNumber")
-> print(head(dtP))
-Key: <PermitNumber>
-    PermitNumber               SpecificUseCategory             geo_point_2d
-          <char>                            <char>                   <char>
-1: BP-2019-00142             Single Detached House 49.2445792, -123.1947895
-2: BP-2019-00151 Single Detached House w/Sec Suite   49.2331193, -123.18881
-3: BP-2019-00222      Multiple Conversion Dwelling 49.2660862, -123.1774429
-4: BP-2019-00248                 Multiple Dwelling 49.2416446, -123.0388417
-5: BP-2019-00264      Multiple Conversion Dwelling 49.2554128, -123.0993344
-6: BP-2019-00315             Single Detached House 49.2353256, -123.1428625
-   PermitNumberCreatedDate            TypeOfWork ProjectValue      lat
-                    <IDat>                <char>        <num>    <num>
-1:              2019-01-11          New Building      1206000 49.24458
-2:              2019-01-11          New Building      1304572 49.23312
-3:              2019-01-17 Addition / Alteration       850000 49.26609
-4:              2019-01-21          New Building       500000 49.24164
-5:              2019-01-21          New Building      1400000 49.25541
-6:              2019-01-24 Addition / Alteration      3000000 49.23533
-         lon  year single duplex multiPlex      rollNumber      dist
-       <num> <num> <lgcl> <lgcl>    <lgcl>          <char>     <num>
-1: -123.1948  2019   TRUE  FALSE     FALSE 003725030650000 0.3784728
-2: -123.1888  2019   TRUE  FALSE     FALSE 006037750570000 0.2366640
-3: -123.1774  2019  FALSE  FALSE     FALSE 002050643940000 0.5646866
-4: -123.0388  2019  FALSE  FALSE      TRUE 023717297300000 0.1962281
-5: -123.0993  2019  FALSE  FALSE     FALSE 015691191600000 0.5613186
-6: -123.1429  2019   TRUE  FALSE     FALSE 008747122540000 0.3245629
-   MB_total_finished_area MB_effective_year landWidth landDepth landValue
-                   <char>             <int>     <num>     <num>     <int>
-1:                   4824              2019      53.0    130.00   3809000
-2:                   5191              2019      66.0    120.00   2696000
-3:                   1551              2020      40.0     90.00   1984000
-4:                                        0      33.0    112.00   1203000
-5:                   2809              2020      49.5    122.03   1996000
-6:                   7625              1995      90.0    190.00   7555000
 > print(nrow(dtP))
 [1] 5106
 > 
 > # ============================================================================
-> # Now do sales within x KM of permit
-> # ---- 2D kernel price estimates at 1250 & 2500 sqft for each permit ----------
-> # distance dims: geographic (km) and floor area (sqft). Product of Epanechnikov kernels.
+> # LOCAL LEVEL + ELASTICITY  (replaces kEst1250 / kEst2500 / kEst3000)
+> # For each permit: WLS of log(price) ~ log(sqft) on nearby SFD comps,
+> # geographically weighted by an Epanechnikov kernel at radius KM. Extract:
+> #   kLevel = fitted log(price) at reference size REF_SQFT (p20 of SFD sqft)
+> #   kElast = slope d log(price) / d log(sqft)   [local price-size elasticity]
+> # Note: kElast(price) = kElast(ppsf) + 1, so a mostly-negative ppsf slope
+> #       becomes a positive price slope (bigger homes cost more in total).
 > # ============================================================================
 > 
-> MAXAGE  <- 50                                   # A: max comp structure age at sale
-> KM      <- 1.0                                  # d: geographic radius, km
-> TARGETS <- c(1250, 2500)
+> MAXAGE   <- 50                                  # max comp structure age at sale
+> KM       <- 1.0                                 # geographic radius, km
+> REF_PCTL <- 0.20                                # reference size = p20 of SFD sqft
+> MIN_COMPS <- 8                                  # min in-window SFD comps to fit a slope
 > 
-> # ---- build ppsf and residual on dtSales, then do ALL row filtering, BEFORE
-> #      extracting any parallel vectors. sc / p / a must derive from ONE table. ----
+> # comp pool: SFD only (single detached + detached-with-suite).
+> # Row Housing and Duplex categories are intentionally excluded so the level
+> # and elasticity reflect SFD product, not a mixture of product types.
+> sfdUse <- c("Single Family Dwelling", "Residential Dwelling with Suite")
+> 
 > dtSales[, ppsf := as.numeric(conveyancePrice) / MB_total_finished_area]
 > quants  <- quantile(dtSales$ppsf, c(0.01, 0.99), na.rm = TRUE)
 > dtSales <- dtSales[ppsf > quants[1] & ppsf < quants[2]]
 > dtSales <- dtSales[!is.na(longitude) & !is.na(latitude) &
 +                    !is.na(MB_total_finished_area) & MB_total_finished_area > 0 &
 +                    !is.na(ppsf) & ppsf > 0 &
-+                    !is.na(structAge) & structAge <= MAXAGE &
-+                    !is.na(actualUseDescription)]
++                    !is.na(structAge) & structAge >= 0 & structAge <= MAXAGE &
++                    actualUseDescription %in% sfdUse]
 > 
-> dtSales[, sqftDecile := round(frank(MB_total_finished_area, na.last = "keep",
-+                                     ties.method = "first") / nrow(dtSales) * 10)]
-> dtSales[, groupMean := mean(ppsf), by = .(year, structAge, actualUseDescription, sqftDecile)]
-> dtSales[, residual  := ppsf - groupMean]
+> # demean log(price) by (year, ageBin) ONLY -- do NOT residualize out size,
+> # since the local slope on log(sqft) is exactly what we want to estimate.
+> dtSales[, price   := as.numeric(conveyancePrice)]
+> dtSales[, ageBin  := pmin(structAge %/% 5, 9)]               # 0-4,5-9,...,45-50
+> dtSales[, lprice  := log(price)]
+> dtSales[, lsqft   := log(MB_total_finished_area)]
+> dtSales[, yaMean  := mean(lprice), by = .(year, ageBin)]
+> dtSales[, lpriceAdj := lprice - yaMean]                      # time/age-adjusted log price
 > 
-> for (q in unique(dtSales[, actualUseDescription])) {
-+ 	print(q)
-+ 	print(summary(dtSales[actualUseDescription == q, .(ppsf, MB_total_finished_area, structAge)]))
-+ }
-[1] "Single Family Dwelling"
-      ppsf        MB_total_finished_area   structAge    
- Min.   : 365.5   Min.   :  804          Min.   : 0.00  
- 1st Qu.: 719.3   1st Qu.: 2481          1st Qu.: 2.00  
- Median : 870.5   Median : 2972          Median :17.00  
- Mean   : 925.9   Mean   : 3386          Mean   :17.65  
- 3rd Qu.:1109.0   3rd Qu.: 4118          3rd Qu.:28.00  
- Max.   :1837.2   Max.   :26505          Max.   :50.00  
-[1] "Residential Dwelling with Suite"
-      ppsf        MB_total_finished_area   structAge    
- Min.   : 364.7   Min.   :  713          Min.   : 0.00  
- 1st Qu.: 554.5   1st Qu.: 2128          1st Qu.: 3.00  
- Median : 691.1   Median : 2488          Median :18.00  
- Mean   : 741.5   Mean   : 2668          Mean   :18.77  
- 3rd Qu.: 872.6   3rd Qu.: 2948          3rd Qu.:31.00  
- Max.   :1837.1   Max.   :13442          Max.   :50.00  
-[1] "Strata-Lot Residence (Condominium)"
-      ppsf        MB_total_finished_area   structAge    
- Min.   : 364.9   Min.   : 329.0         Min.   : 0.00  
- 1st Qu.: 618.0   1st Qu.: 587.0         1st Qu.: 1.00  
- Median : 745.0   Median : 731.0         Median : 9.00  
- Mean   : 790.9   Mean   : 803.9         Mean   :11.85  
- 3rd Qu.: 923.8   3rd Qu.: 937.0         3rd Qu.:20.00  
- Max.   :1843.0   Max.   :6200.0         Max.   :50.00  
-[1] "Vacant Residential Less Than 2 Acres"
-      ppsf        MB_total_finished_area   structAge
- Min.   : 395.7   Min.   :2078           Min.   :0  
- 1st Qu.: 613.9   1st Qu.:2858           1st Qu.:0  
- Median : 771.7   Median :4047           Median :0  
- Mean   : 787.0   Mean   :3840           Mean   :0  
- 3rd Qu.: 872.3   3rd Qu.:4510           3rd Qu.:0  
- Max.   :1484.3   Max.   :6037           Max.   :0  
-[1] "Row Housing (Single Unit Ownership)"
-      ppsf        MB_total_finished_area   structAge   
- Min.   : 364.6   Min.   : 399           Min.   : 0.0  
- 1st Qu.: 671.9   1st Qu.:1182           1st Qu.: 4.0  
- Median : 753.3   Median :1545           Median :18.0  
- Mean   : 785.6   Mean   :1558           Mean   :20.5  
- 3rd Qu.: 880.9   3rd Qu.:1799           3rd Qu.:38.0  
- Max.   :1830.0   Max.   :7547           Max.   :46.0  
-[1] "Duplex, Strata Up / Down"
-      ppsf        MB_total_finished_area   structAge    
- Min.   : 708.0   Min.   : 869           Min.   : 1.00  
- 1st Qu.: 804.4   1st Qu.:1044           1st Qu.:10.50  
- Median : 994.8   Median :1325           Median :20.00  
- Mean   :1019.2   Mean   :1376           Mean   :19.53  
- 3rd Qu.:1082.9   3rd Qu.:1739           3rd Qu.:30.00  
- Max.   :1715.5   Max.   :2390           Max.   :33.00  
-[1] "Duplex, Strata Side by Side"
-      ppsf        MB_total_finished_area   structAge   
- Min.   : 466.6   Min.   : 943           Min.   : 0.0  
- 1st Qu.: 672.0   1st Qu.:1424           1st Qu.: 2.0  
- Median : 845.8   Median :1694           Median :11.0  
- Mean   : 881.2   Mean   :1714           Mean   :12.4  
- 3rd Qu.:1068.1   3rd Qu.:1928           3rd Qu.:20.0  
- Max.   :1642.5   Max.   :3544           Max.   :42.0  
-[1] "Duplex, Strata Front / Back"
-      ppsf        MB_total_finished_area   structAge     
- Min.   : 377.3   Min.   : 721           Min.   : 0.000  
- 1st Qu.: 682.1   1st Qu.:1194           1st Qu.: 1.000  
- Median : 823.7   Median :1344           Median : 7.000  
- Mean   : 845.0   Mean   :1392           Mean   : 9.124  
- 3rd Qu.: 978.7   3rd Qu.:1533           3rd Qu.:15.000  
- Max.   :1831.1   Max.   :3556           Max.   :38.000  
-[1] "Duplex, Non-Strata Up / Down"
-      ppsf        MB_total_finished_area   structAge    
- Min.   : 398.7   Min.   : 918           Min.   : 0.00  
- 1st Qu.: 868.7   1st Qu.:1475           1st Qu.: 4.00  
- Median :1035.1   Median :1756           Median :22.50  
- Mean   :1085.8   Mean   :1958           Mean   :19.10  
- 3rd Qu.:1206.5   3rd Qu.:2284           3rd Qu.:28.75  
- Max.   :1768.4   Max.   :3449           Max.   :41.00  
-[1] "Duplex, Non-Strata Side by Side or Front / Back"
-      ppsf        MB_total_finished_area   structAge    
- Min.   : 479.6   Min.   : 800           Min.   : 0.00  
- 1st Qu.: 901.0   1st Qu.:1208           1st Qu.: 3.75  
- Median :1232.6   Median :1540           Median :30.00  
- Mean   :1229.0   Mean   :1586           Mean   :24.00  
- 3rd Qu.:1566.7   3rd Qu.:1902           3rd Qu.:40.00  
- Max.   :1776.2   Max.   :2825           Max.   :50.00  
-[1] "Stratified Rental Apartment (Frame Construction)"
-      ppsf       MB_total_finished_area   structAge    
- Min.   :407.8   Min.   :381.0          Min.   :30.00  
- 1st Qu.:417.5   1st Qu.:503.8          1st Qu.:30.00  
- Median :560.7   Median :662.0          Median :30.00  
- Mean   :519.6   Mean   :637.4          Mean   :32.67  
- 3rd Qu.:591.3   3rd Qu.:734.8          3rd Qu.:36.00  
- Max.   :659.8   Max.   :864.0          Max.   :36.00  
-[1] "2 Acres Or More (Single Family Dwelling, Duplex)"
-      ppsf      MB_total_finished_area   structAge 
- Min.   :1802   Min.   :6103           Min.   :36  
- 1st Qu.:1802   1st Qu.:6103           1st Qu.:36  
- Median :1802   Median :6103           Median :36  
- Mean   :1802   Mean   :6103           Mean   :36  
- 3rd Qu.:1802   3rd Qu.:6103           3rd Qu.:36  
- Max.   :1802   Max.   :6103           Max.   :36  
-[1] "Multi-Family (Conversion)"
-      ppsf        MB_total_finished_area   structAge    
- Min.   : 414.1   Min.   :1325           Min.   : 0.00  
- 1st Qu.: 567.4   1st Qu.:1921           1st Qu.: 0.00  
- Median : 736.4   Median :2195           Median : 9.50  
- Mean   : 813.0   Mean   :2354           Mean   :13.75  
- 3rd Qu.: 824.3   3rd Qu.:2860           3rd Qu.:22.75  
- Max.   :1758.0   Max.   :3621           Max.   :42.00  
-[1] "Stratified Rental Townhouse"
-      ppsf       MB_total_finished_area   structAge 
- Min.   :558.6   Min.   :608            Min.   :18  
- 1st Qu.:558.6   1st Qu.:608            1st Qu.:18  
- Median :558.6   Median :608            Median :18  
- Mean   :558.6   Mean   :608            Mean   :18  
- 3rd Qu.:558.6   3rd Qu.:608            3rd Qu.:18  
- Max.   :558.6   Max.   :608            Max.   :18  
-[1] "Individual Strata Lot (Hotel/Motel)"
-      ppsf        MB_total_finished_area   structAge    
- Min.   : 554.3   Min.   :369.0          Min.   :18.00  
- 1st Qu.: 724.5   1st Qu.:421.0          1st Qu.:18.00  
- Median : 880.2   Median :445.0          Median :19.00  
- Mean   : 840.1   Mean   :499.7          Mean   :18.94  
- 3rd Qu.: 942.0   3rd Qu.:553.0          3rd Qu.:20.00  
- Max.   :1192.4   Max.   :696.0          Max.   :20.00  
+> # reference size: p20 of SFD sqft (above teardown territory, near the body)
+> REF_SQFT <- quantile(dtSales$MB_total_finished_area, REF_PCTL, na.rm = TRUE)
+> LREF     <- log(REF_SQFT)
+> cat("SFD comps for local fits:", nrow(dtSales),
++     "| REF_SQFT (p", REF_PCTL*100, " SFD): ", round(REF_SQFT), "\n", sep = "")
+SFD comps for local fits:8476| REF_SQFT (p20 SFD): 2135
 > 
-> # keep ground-oriented comps; drop luxury condo / thin exotic categories
-> dtSales <- dtSales[actualUseDescription %in% c("Single Family Dwelling",
-+                                                "Residential Dwelling with Suite",
-+                                                "Row Housing (Single Unit Ownership)") |
-+                    grepl("Duplex", actualUseDescription)]
-> dtSales <- dtSales[!is.na(residual)]
-> 
-> # bandwidth AFTER final comp pool is fixed, so it reflects the pool actually used
-> AREABW  <- sd(dtSales$MB_total_finished_area)   # size bandwidth = 1 SD of area
-> cat("area bandwidth (1 SD sqft):", round(AREABW), "\n")
-area bandwidth (1 SD sqft): 1238 
-> 
-> # geometry + parallel vectors, ALL from the final dtSales
+> # ---- geometry + parallel vectors, ALL from the final dtSales ---------------
 > sfSales <- st_transform(st_as_sf(dtSales, coords = c("longitude","latitude"), crs = 4326), 3005)
 > sfPerm  <- st_transform(st_as_sf(dtP,     coords = c("lon","lat"),           crs = 4326), 3005)
 > 
-> pc <- st_coordinates(sfPerm)
 > sc <- st_coordinates(sfSales)
-> p  <- dtSales$residual
-> a  <- dtSales$MB_total_finished_area
-> stopifnot(nrow(sc) == length(p), length(p) == length(a))   # guard against vector misalignment
+> pc <- st_coordinates(sfPerm)
+> yv <- dtSales$lpriceAdj                                      # time/age-adjusted log price
+> xv <- dtSales$lsqft                                          # log sqft
+> stopifnot(nrow(sc) == length(yv), length(yv) == length(xv)) # guard against misalignment
 > 
-> epan <- function(u) 0.75 * (1 - u*u) * (abs(u) < 1)   # zero outside [-1,1]
+> epan <- function(u) 0.75 * (1 - u*u) * (abs(u) < 1)         # zero outside [-1,1]
 > 
+> # Closed-form weighted simple regression of yv ~ xv within each permit's kernel.
+> # Level recovered at LREF from the (uncentered) intercept + slope.
 > estOne <- function(i) {
-+   dx <- sc[,1] - pc[i,1]
-+   dy <- sc[,2] - pc[i,2]
-+   dgeo <- sqrt(dx*dx + dy*dy) / 1000                  # km
-+   wgeo <- epan(dgeo / KM)                             # geo kernel
++   dx  <- sc[,1] - pc[i,1]
++   dy  <- sc[,2] - pc[i,2]
++   dkm <- sqrt(dx*dx + dy*dy) / 1000                          # km
++   w   <- epan(dkm / KM)
++   ok  <- w > 0
++   n   <- sum(ok)
++   if (n < MIN_COMPS) return(c(level = NA_real_, elast = NA_real_, n = n))
 + 
-+   out <- numeric(length(TARGETS))
-+   nn  <- integer(length(TARGETS))
-+   for (k in seq_along(TARGETS)) {
-+     warea <- epan((a - TARGETS[k]) / AREABW)          # size kernel around this target
-+     w  <- wgeo * warea
-+     ok <- w > 0
-+     nn[k]  <- sum(ok)
-+     out[k] <- if (any(ok)) weighted.mean(p[ok], w[ok], na.rm = TRUE) else NA_real_
-+   }
-+   c(out, nn)
++   xw <- xv[ok]; yw <- yv[ok]; ww <- w[ok]
++   sw   <- sum(ww)
++   xbar <- sum(ww * xw) / sw
++   ybar <- sum(ww * yw) / sw
++   sxx  <- sum(ww * (xw - xbar)^2)
++   if (sxx <= 0) return(c(level = NA_real_, elast = NA_real_, n = n))  # no local size variation
++   sxy  <- sum(ww * (xw - xbar) * (yw - ybar))
++   b1   <- sxy / sxx                                          # elasticity (price-size slope)
++   b0   <- ybar - b1 * xbar                                   # intercept (adj log price at lsqft=0)
++   level <- b0 + b1 * LREF                                    # adj log price at REF_SQFT
++   c(level = level, elast = b1, n = n)
 + }
 > 
-> res <- t(vapply(seq_len(nrow(sfPerm)), estOne, numeric(2 * length(TARGETS))))
-> dtP[, `:=`(kEst1250 = res[,1], kEst2500 = res[,2],
-+            kN1250   = as.integer(res[,3]), kN2500 = as.integer(res[,4]))]
+> res <- t(vapply(seq_len(nrow(sfPerm)), estOne, c(level = NA_real_, elast = NA_real_, n = NA_real_)))
+> dtP[, `:=`(kLevel = res[, 1],
++            kElast = res[, 2],
++            kN     = as.integer(res[, 3]))]
 > 
-> cat("permits with >=1 comp @1250:", sum(dtP$kN1250 > 0),
-+     " @2500:", sum(dtP$kN2500 > 0), "of", nrow(dtP), "\n")
-permits with >=1 comp @1250: 5106  @2500: 5106 of 5106 
-> print(summary(dtP[, .(kEst1250, kEst2500, kN1250, kN2500)]))
-    kEst1250          kEst2500           kN1250           kN2500      
- Min.   :-170.69   Min.   :-171.49   Min.   :   3.0   Min.   :  12.0  
- 1st Qu.: -74.11   1st Qu.:-121.32   1st Qu.: 124.2   1st Qu.: 222.0  
- Median : -35.96   Median : -91.96   Median : 195.0   Median : 298.0  
- Mean   :  25.73   Mean   : -17.24   Mean   : 226.2   Mean   : 321.9  
- 3rd Qu.:  88.21   3rd Qu.:  89.20   3rd Qu.: 270.0   3rd Qu.: 357.8  
- Max.   : 709.70   Max.   : 565.97   Max.   :1505.0   Max.   :1552.0  
-> # confirm every NA estimate is genuinely zero in-window comps, not misalignment
-> print(dtP[is.na(kEst2500), .N, by = .(zeroComps = kN2500 == 0)])
-Empty data.table (0 rows and 2 cols): zeroComps,N
+> cat("permits with a local fit:", sum(!is.na(dtP$kLevel)), "of", nrow(dtP), "\n")
+permits with a local fit: 5105 of 5106 
+> cat("dropped (kN <", MIN_COMPS, "):", sum(dtP$kN < MIN_COMPS), "\n")
+dropped (kN < 8 ): 1 
+> print(summary(dtP[, .(kLevel, kElast, kN)]))
+     kLevel             kElast               kN       
+ Min.   :-0.54431   Min.   :-0.09313   Min.   :  2.0  
+ 1st Qu.:-0.43445   1st Qu.: 0.20330   1st Qu.:229.0  
+ Median :-0.36923   Median : 0.35422   Median :287.0  
+ Mean   :-0.22535   Mean   : 0.37321   Mean   :311.1  
+ 3rd Qu.: 0.05363   3rd Qu.: 0.49661   3rd Qu.:363.8  
+ Max.   : 0.47088   Max.   : 1.19362   Max.   :753.0  
+ NA's   :1          NA's   :1                         
+> cat("cor(kLevel, kElast):", round(cor(dtP$kLevel, dtP$kElast, use = "complete.obs"), 3),
++     " -- if > ~0.7, evaluate level at local-mean sqft instead of REF_SQFT\n")
+cor(kLevel, kElast): 0.624  -- if > ~0.7, evaluate level at local-mean sqft instead of REF_SQFT
 > 
-> # ---- cartolight heatmap of fitted price for each target -------------------
+> # ---- cartolight heatmap of level and elasticity ----------------------------
 > dtP <- dtP[landDepth %between% c(100,150) & landWidth %between% c(30,60)]
 > dtP[, landValuePsf := landValue / (landWidth * landDepth)]
-> sfP <- st_as_sf(dtP, coords = c("lon","lat"), crs = 4326)
+> sfP <- st_as_sf(dtP[!is.na(kLevel)], coords = c("lon","lat"), crs = 4326)
 > 
-> mapOne <- function(col, ttl)
+> mapOne <- function(col, ttl, opt = "magma", dir = -1)
 +   ggplot(sfP) +
 +     annotation_map_tile(type = "cartolight", zoomin = -1, progress = "none") +
 +     geom_sf(aes(colour = .data[[col]]), size = 0.9, alpha = 0.85) +
-+     scale_colour_viridis_c(option = "magma", direction = -1, name = NULL) +
++     scale_colour_viridis_c(option = opt, direction = dir, name = NULL) +
 +     labs(title = ttl) +
 +     theme_void(base_size = 12) +
 +     theme(plot.title = element_text(face = "bold", hjust = 0.01))
 > 
-> pp <- mapOne("kEst1250", "Fitted price resid — 1250 sqft") +
-+       mapOne("kEst2500", "Fitted price resid — 2500 sqft") +
+> pp <- mapOne("kLevel", "Local log price @ p20 SFD sqft") +
++       mapOne("kElast", "Local price-size elasticity") +
 +       mapOne("landValuePsf", "Land value / sqft (BC Assessment)")
 > 
-> ggsave("text/fittedKernelPriceMaps.png", pp,
+> ggsave("text/fittedLocalLevelElastMaps.png", pp,
 +        width = 14, height = 7, dpi = 200, bg = "white")
 Loading required namespace: raster
-> print(pp)
-Warning messages:
-1: In grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x, x$y,  :
-  for 'Fitted price resid — 1250 sqft' in 'mbcsToSbcs': - substituted for — (U+2014)
-2: In grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x, x$y,  :
-  for 'Fitted price resid — 2500 sqft' in 'mbcsToSbcs': - substituted for — (U+2014)
 > 
-> # plot simple xy fitted kEst1250 vs kEst2500 (these are ppsf residuals, not $)
-> # plot simple xy fitted kEst1250 vs kEst2500 (these are ppsf residuals, not $)
-> # colour by duplex: red = duplex, blue = otherwise
-> ggplot(dtP, aes(x = kEst1250, y = kEst2500, colour = duplex)) +
-+   geom_point(size=.5, alpha = 0.5) +
-+   geom_abline(slope = 1, intercept = 0, colour = "grey40", linetype = "dashed") +
+> # ---- level vs elasticity scatter, coloured by duplex -----------------------
+> ggplot(dtP[year < 2024 & (single==1 | duplex==1)],
++        aes(x = kLevel, y = kElast, colour = duplex)) +
++   geom_point(size = .5, alpha = 0.5) +
 +   scale_colour_manual(values = c(`FALSE` = "blue", `TRUE` = "red"),
 +                       labels = c(`FALSE` = "Other", `TRUE` = "Duplex"),
 +                       name = NULL) +
-+   labs(x = "Fitted resid @1250 sqft", y = "Fitted resid @2500 sqft",
-+        title = "Kernel-fitted price residuals at two target sizes") +
++   labs(x = "Local log price @ p20 sqft", y = "Local price-size elasticity",
++        title = "Local level vs elasticity (pre-2024)") +
 +   theme_minimal(base_size = 12)
-> ggsave("text/fittedKernelPriceXY.png", width = 7, height = 7, dpi = 200, bg = "white")
+> ggsave("text/localLevelElastXY.png", width = 7, height = 7, dpi = 200, bg = "white")
 > 
-> # ---- duplex / multiplex choice vs local fitted prices ---------------------
-> print(summary(feols(duplex ~ log(kEst2500) + landWidth + landDepth + log(kEst1250),
-+                     data = dtP[year < 2024], vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
-NOTE: 1,884 observations removed because of NA values (RHS: 1,884).
+> # ---- duplex / multiplex choice vs local level + elasticity -----------------
+> print(summary(feols(duplex ~ kLevel +  landWidth + landDepth | year, data = dtP[year < 2024 & (single==1|duplex==1)], vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
 OLS estimation, Dep. Var.: duplex
-Observations: 847
+Observations: 1,757
+Fixed-effects: year: 5
 Standard-errors: Conley (2km) 
-               Estimate Std. Error  t value   Pr(>|t|)    
-(Intercept)    0.678459   0.205636  3.29932 1.0099e-03 ** 
-log(kEst2500) -0.039750   0.013183 -3.01532 2.6442e-03 ** 
-landWidth     -0.004204   0.000707 -5.94937 3.9449e-09 ***
-landDepth     -0.003132   0.002032 -1.54098 1.2370e-01    
-log(kEst1250)  0.039797   0.018206  2.18596 2.9093e-02 *  
+           Estimate Std. Error   t value   Pr(>|t|)    
+kLevel    -0.532047   0.114545 -4.644882 3.6568e-06 ***
+landWidth -0.002651   0.002199 -1.205790 2.2806e-01    
+landDepth  0.001369   0.001785  0.767108 4.4312e-01    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.324633   Adj. R2: 0.024974
-Warning messages:
-1: In log(kEst2500) : NaNs produced
-2: In log(kEst1250) : NaNs produced
-3: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
-> print(summary(feols(multiPlex ~ log(kEst2500) + landWidth + landDepth + log(kEst1250),
-+                     data = dtP[year > 2024], vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
-NOTE: 395 observations removed because of NA values (RHS: 395).
+RMSE: 0.461861     Adj. R2: 0.100584
+                 Within R2: 0.078653
+> print(summary(feols(duplex ~ kLevel + kElast + landWidth + landDepth | year, data = dtP[year < 2024 & (single==1|duplex==1)], vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
+OLS estimation, Dep. Var.: duplex
+Observations: 1,757
+Fixed-effects: year: 5
+Standard-errors: Conley (2km) 
+           Estimate Std. Error   t value   Pr(>|t|)    
+kLevel    -0.359447   0.093194 -3.856990 0.00011895 ***
+kElast    -0.327517   0.107276 -3.053024 0.00229964 ** 
+landWidth -0.002285   0.002029 -1.126437 0.26013537    
+landDepth  0.001299   0.001755  0.740598 0.45903686    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.458502     Adj. R2: 0.113111
+                 Within R2: 0.092005
+> 
+> 
+> print(summary(feols(multiPlex ~ kLevel + kElast + landWidth + landDepth | year,
++                     data = dtP[year > 2023 & (single==1|duplex==1|multiPlex==1)],
++                     vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
 OLS estimation, Dep. Var.: multiPlex
-Observations: 255
+Observations: 697
+Fixed-effects: year: 3
 Standard-errors: Conley (2km) 
-               Estimate Std. Error   t value Pr(>|t|) 
-(Intercept)    0.664557   0.488991  1.359038  0.17536 
-log(kEst2500)  0.018526   0.034497  0.537035  0.59172 
-landWidth      0.002093   0.001897  1.102881  0.27114 
-landDepth     -0.004981   0.003591 -1.386881  0.16671 
-log(kEst1250) -0.010334   0.026632 -0.388033  0.69832 
+           Estimate Std. Error   t value   Pr(>|t|)    
+kLevel    -0.414792   0.092350 -4.491505 8.2892e-06 ***
+kElast    -0.046147   0.120088 -0.384280 7.0089e-01    
+landWidth  0.012987   0.003971  3.270737 1.1260e-03 ** 
+landDepth  0.004280   0.002370  1.805930 7.1365e-02 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.378569   Adj. R2: -0.001918
-Warning messages:
-1: In log(kEst2500) : NaNs produced
-2: In log(kEst1250) : NaNs produced
+RMSE: 0.427473     Adj. R2: 0.09091 
+                 Within R2: 0.077062
 > 
-> # ---- sub-1500 comps coloured by sqft --------------------------------------
-> sfSmall <- st_as_sf(dtSales[MB_total_finished_area < 1500 &
-+                             !is.na(longitude) & !is.na(latitude) &
-+                             MB_total_finished_area > 0 & structAge <= MAXAGE],
-+                     coords = c("longitude","latitude"), crs = 4326)
+> print("table of permit choice by year")
+[1] "table of permit choice by year"
+> print(dtP[,.N,by=.(year,SpecificUseCategory)])
+     year                      SpecificUseCategory     N
+    <num>                                   <char> <int>
+ 1:  2019                    Single Detached House    79
+ 2:  2019                        Multiple Dwelling     1
+ 3:  2019             Multiple Conversion Dwelling     6
+ 4:  2019        Single Detached House w/Sec Suite   139
+ 5:  2019                                   Duplex    40
+ 6:  2019             Infill Single Detached House     5
+ 7:  2020             Multiple Conversion Dwelling     5
+ 8:  2020                    Single Detached House    44
+ 9:  2020                                   Duplex    42
+10:  2020             Infill Single Detached House     3
+11:  2020        Single Detached House w/Sec Suite   128
+12:  2020                        Multiple Dwelling     5
+13:  2020                            Dwelling Unit     1
+14:  2021                                   Duplex   144
+15:  2021             Multiple Conversion Dwelling     4
+16:  2021        Single Detached House w/Sec Suite   241
+17:  2021                    Single Detached House   102
+18:  2021                        Multiple Dwelling     3
+19:  2021                 Duplex w/Secondary Suite   122
+20:  2022                 Duplex w/Secondary Suite    24
+21:  2022                    Single Detached House    42
+22:  2022                                   Duplex    89
+23:  2022        Single Detached House w/Sec Suite   125
+24:  2022                        Multiple Dwelling     3
+25:  2022             Multiple Conversion Dwelling     3
+26:  2023             Multiple Conversion Dwelling     2
+27:  2023                        Multiple Dwelling     5
+28:  2023                    Single Detached House    48
+29:  2023        Single Detached House w/Sec Suite   113
+30:  2023             Infill Single Detached House     1
+31:  2023                            Dwelling Unit     1
+32:  2023                                   Duplex    96
+33:  2024                        Multiple Dwelling    72
+34:  2024                    Single Detached House    32
+35:  2024                                   Duplex   126
+36:  2024        Single Detached House w/Sec Suite    56
+37:  2024             Multiple Conversion Dwelling     5
+38:  2024                            Dwelling Unit     3
+39:  2025                        Multiple Dwelling   115
+40:  2025                            Dwelling Unit     3
+41:  2025             Multiple Conversion Dwelling     3
+42:  2025                                   Duplex    97
+43:  2025        Single Detached House w/Sec Suite    47
+44:  2025             Infill Single Detached House     1
+45:  2026                        Multiple Dwelling    10
+46:  2026        Single Detached House w/Sec Suite    15
+47:  2026                                   Duplex    26
+48:  2019                            Laneway House    53
+49:  2019                 Duplex w/Secondary Suite    29
+50:  2020                            Laneway House   182
+51:  2020                 Duplex w/Secondary Suite    41
+52:  2021                            Laneway House   363
+53:  2021 Duplex w/Secondary Suite,Secondary Suite     8
+54:  2021                            Dwelling Unit     1
+55:  2022                            Laneway House   207
+56:  2022 Duplex w/Secondary Suite,Secondary Suite    25
+57:  2023                            Laneway House   129
+58:  2023 Duplex w/Secondary Suite,Secondary Suite    16
+59:  2023                 Duplex w/Secondary Suite    11
+60:  2024                            Laneway House   318
+61:  2024 Duplex w/Secondary Suite,Secondary Suite    21
+62:  2024                 Duplex w/Secondary Suite     4
+63:  2025                    Single Detached House    42
+64:  2025                            Laneway House   204
+65:  2025                 Duplex w/Secondary Suite    23
+66:  2026                            Laneway House    54
+67:  2026                 Duplex w/Secondary Suite     3
+68:  2026                    Single Detached House     7
+     year                      SpecificUseCategory     N
+    <num>                                   <char> <int>
 > 
-> ggplot(sfSmall) +
-+   annotation_map_tile(type = "cartolight", zoomin = -1, progress = "none") +
-+   geom_sf(aes(colour = MB_total_finished_area), size = 0.7, alpha = 0.7) +
-+   scale_colour_viridis_c(option = "magma", direction = -1) +
-+   labs(title = "Sub-1500 sqft comps — sqft") +
-+   theme_void(base_size = 12) +
-+   theme(plot.title = element_text(face = "bold", hjust = 0.01),
-+         legend.position = "right")
-Warning message:
-In grid.Call.graphics(C_text, as.graphicsAnnot(x$label), x$x, x$y,  :
-  for 'Sub-1500 sqft comps — sqft' in 'mbcsToSbcs': - substituted for — (U+2014)
-> ggsave("text/vancouverSub1500.png")
-Saving 7 x 7 in image
-> 
-> # size distribution by use — is sub-1500 detached actually rare?
-> dtSales[, .N, by = actualUseDescription][order(-N)]
-                               actualUseDescription     N
-                                             <char> <int>
-1:                  Residential Dwelling with Suite  4672
-2:              Row Housing (Single Unit Ownership)  3890
-3:                           Single Family Dwelling  3804
-4:                      Duplex, Strata Front / Back   492
-5:                      Duplex, Strata Side by Side   260
-6:  Duplex, Non-Strata Side by Side or Front / Back    48
-7:                         Duplex, Strata Up / Down    19
-8:                     Duplex, Non-Strata Up / Down    10
-9: 2 Acres Or More (Single Family Dwelling, Duplex)     2
-> dtSales[MB_total_finished_area < 1500, .N, by = actualUseDescription][order(-N)]
-                              actualUseDescription     N
-                                            <char> <int>
-1:             Row Housing (Single Unit Ownership)  1860
-2:                     Duplex, Strata Front / Back   345
-3:                          Single Family Dwelling   104
-4:                     Duplex, Strata Side by Side    88
-5:                 Residential Dwelling with Suite    87
-6: Duplex, Non-Strata Side by Side or Front / Back    23
-7:                        Duplex, Strata Up / Down    13
-8:                    Duplex, Non-Strata Up / Down     4
-> dtSales[MB_total_finished_area < 1250, .N, by = actualUseDescription][order(-N)]
-                              actualUseDescription     N
-                                            <char> <int>
-1:             Row Housing (Single Unit Ownership)  1177
-2:                     Duplex, Strata Front / Back   205
-3:                     Duplex, Strata Side by Side    41
-4:                          Single Family Dwelling    38
-5: Duplex, Non-Strata Side by Side or Front / Back    15
-6:                        Duplex, Strata Up / Down     9
-7:                 Residential Dwelling with Suite     9
-8:                    Duplex, Non-Strata Up / Down     2
-> print(quantile(dtSales$MB_total_finished_area, seq(.05,1,.05), na.rm = TRUE))
-     5%     10%     15%     20%     25%     30%     35%     40%     45%     50% 
- 1042.0  1210.0  1370.0  1530.0  1658.0  1799.0  1896.0  2063.0  2210.2  2273.0 
-    55%     60%     65%     70%     75%     80%     85%     90%     95%    100% 
- 2355.0  2480.0  2598.0  2756.0  2886.0  3202.8  3614.6  4066.4  4688.0 26505.0 
-> q("no")
 > proc.time()
    user  system elapsed 
- 21.209   1.687  22.870 
+ 13.507   0.765  14.122 
