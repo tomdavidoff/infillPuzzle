@@ -32,6 +32,8 @@ tractShp               <- "~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e
 dtAH <- fread(assessorHistoricalPath,
               select = c("Account Number","Latitude","Longitude",
                          "Assessment Year","Assessed Value"))
+dtAH[, maxYear  := max(`Assessment Year`), by = `Account Number`]
+dtAH <- dtAH[`Assessment Year` == maxYear]
 dtAC <- fread(assessorCurrentPath,
               select = c("zoning","Account Number","year_built","Total Gross Area"))
 dtAC <- dtAC[zoning == "RS"]
@@ -40,8 +42,6 @@ dtAM <- dtAH[dtAC]
 
 dtAM[, assessed := as.numeric(gsub(",", "", gsub("\\$", "", `Assessed Value`)))]
 dtAM[, gross    := as.numeric(`Total Gross Area`)]
-dtAM[, maxYear  := max(`Assessment Year`), by = `Account Number`]
-dtAM <- dtAM[`Assessment Year` == maxYear]
 dtAM <- dtAM[!is.na(assessed) & assessed > 0 & !is.na(gross) & gross > 0 &
              !is.na(Longitude) & !is.na(Latitude)]
 dtAM[, appsf := assessed / gross]
@@ -55,9 +55,9 @@ cat("assessment comps:", nrow(dtAM), "\n")
 con <- dbConnect(duckdb())
 q <- sprintf(R"(
   SELECT "Row ID", "YEAR", "BUILDING_TYPE", "WORK_TYPE",
-         "CONSTRUCTION_VALUE", "FLOOR_AREA", "ZONING", "LATITUDE", "LONGITUDE"
+         "CONSTRUCTION_VALUE", "FLOOR_AREA", "ZONING", "LATITUDE", "LONGITUDE", "UNITS_ADDED"
   FROM read_csv_auto('%s')
-  WHERE ZONING = 'RS' OR ZONING LIKE 'RF%%'
+  WHERE ZONING = 'RS' 
 )", permitPath)
 dtP <- as.data.table(dbGetQuery(con, q))
 dbDisconnect(con, shutdown = TRUE)
@@ -70,13 +70,15 @@ dtP[, isRowHouse := grepl("^Row House", btype, ignore.case = TRUE) &
 dtP[, isDetached := grepl("^Single Detached", btype, ignore.case = TRUE)]
 
 QCRIT <- .25
-qNew  <- dtP[isRowHouse | isDetached, quantile(CONSTRUCTION_VALUE/FLOOR_AREA, QCRIT, na.rm = TRUE)]
-dtP   <- dtP[isRowHouse | isDetached | (CONSTRUCTION_VALUE/FLOOR_AREA) >= qNew]
-dtP   <- dtP[(isRowHouse | isDetached) & ZONING == "RS" &
-             !is.na(LONGITUDE) & !is.na(LATITUDE)]
+REFORMYEAR <- 2024
+qNew  <- dtP[(isRowHouse | isDetached) & WORK_TYPE=="(01) Building - New", quantile(CONSTRUCTION_VALUE/FLOOR_AREA, QCRIT, na.rm = TRUE)]
+dtP   <- dtP[(isRowHouse | isDetached ) & (CONSTRUCTION_VALUE/FLOOR_AREA) >= qNew & !is.na(LONGITUDE) & !is.na(LATITUDE)]
 dtP[, year := as.numeric(YEAR)]
 dtP[, lon  := as.numeric(LONGITUDE)]
 dtP[, lat  := as.numeric(LATITUDE)]
+dtP  <- dtP[year>=REFORMYEAR]
+dtP[is.na(UNITS_ADDED), UNITS_ADDED := 1]
+print(dtP[,quantile(UNITS_ADDED),by=isRowHouse])
 cat("analysis permits:", nrow(dtP), "\n")
 
 # ============================================================================
@@ -165,6 +167,8 @@ plotdat <- samp[year > 2023,
   by = .(valBin, rentBin)
 ]
 
+
+
 ggplot(plotdat, aes(x = valBin, y = rentBin, fill = rowShare)) +
   geom_tile() +
   scale_fill_viridis_c(option = "plasma", direction = -1) +
@@ -179,3 +183,16 @@ ggplot(samp[year > 2023], aes(x = lon, y = lat, color = rent)) +
   labs(x = "Longitude", y = "Latitude", color = "Rent") +
   theme_minimal()
 ggsave("text/edmontonRentMap.png", width=6, height=4, dpi=300)
+
+unitPlotDat <- samp[year > 2023 & isRowHouse==TRUE,
+  .(meanUnit = mean(UNITS_ADDED<5), n = .N),
+  by = .(valBin,rentBin)
+]
+ggplot(unitPlotDat, aes(x = valBin, y = rentBin, fill = meanUnit)) +
+  geom_tile() +
+  scale_fill_viridis_c(option = "plasma", direction = -1) +
+  labs(x = "Value decile", y = "Rent decile", fill = "Row house share") +
+  theme_minimal()
+ggsave("text/edmontonDecileUnitConditional.png", width=6, height=4, dpi=300)
+
+
