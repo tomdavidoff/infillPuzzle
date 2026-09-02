@@ -60,6 +60,8 @@ API key set for duration of session. To install your API key for use across sess
 > dtAH <- fread(assessorHistoricalPath,
 +               select = c("Account Number","Latitude","Longitude",
 +                          "Assessment Year","Assessed Value"))
+> dtAH[, maxYear  := max(`Assessment Year`), by = `Account Number`]
+> dtAH <- dtAH[`Assessment Year` == maxYear]
 > dtAC <- fread(assessorCurrentPath,
 +               select = c("zoning","Account Number","year_built","Total Gross Area"))
 > dtAC <- dtAC[zoning == "RS"]
@@ -68,8 +70,6 @@ API key set for duration of session. To install your API key for use across sess
 > 
 > dtAM[, assessed := as.numeric(gsub(",", "", gsub("\\$", "", `Assessed Value`)))]
 > dtAM[, gross    := as.numeric(`Total Gross Area`)]
-> dtAM[, maxYear  := max(`Assessment Year`), by = `Account Number`]
-> dtAM <- dtAM[`Assessment Year` == maxYear]
 > dtAM <- dtAM[!is.na(assessed) & assessed > 0 & !is.na(gross) & gross > 0 &
 +              !is.na(Longitude) & !is.na(Latitude)]
 > dtAM[, appsf := assessed / gross]
@@ -84,9 +84,9 @@ assessment comps: 70680
 > con <- dbConnect(duckdb())
 > q <- sprintf(R"(
 +   SELECT "Row ID", "YEAR", "BUILDING_TYPE", "WORK_TYPE",
-+          "CONSTRUCTION_VALUE", "FLOOR_AREA", "ZONING", "LATITUDE", "LONGITUDE"
++          "CONSTRUCTION_VALUE", "FLOOR_AREA", "ZONING", "LATITUDE", "LONGITUDE", "UNITS_ADDED"
 +   FROM read_csv_auto('%s')
-+   WHERE ZONING = 'RS' OR ZONING LIKE 'RF%%'
++   WHERE ZONING = 'RS' 
 + )", permitPath)
 > dtP <- as.data.table(dbGetQuery(con, q))
 > dbDisconnect(con, shutdown = TRUE)
@@ -99,15 +99,29 @@ assessment comps: 70680
 > dtP[, isDetached := grepl("^Single Detached", btype, ignore.case = TRUE)]
 > 
 > QCRIT <- .25
-> qNew  <- dtP[isRowHouse | isDetached, quantile(CONSTRUCTION_VALUE/FLOOR_AREA, QCRIT, na.rm = TRUE)]
-> dtP   <- dtP[isRowHouse | isDetached | (CONSTRUCTION_VALUE/FLOOR_AREA) >= qNew]
-> dtP   <- dtP[(isRowHouse | isDetached) & ZONING == "RS" &
-+              !is.na(LONGITUDE) & !is.na(LATITUDE)]
+> REFORMYEAR <- 2024
+> qNew  <- dtP[(isRowHouse | isDetached) & WORK_TYPE=="(01) Building - New", quantile(CONSTRUCTION_VALUE/FLOOR_AREA, QCRIT, na.rm = TRUE)]
+> dtP   <- dtP[(isRowHouse | isDetached ) & (CONSTRUCTION_VALUE/FLOOR_AREA) >= qNew & !is.na(LONGITUDE) & !is.na(LATITUDE)]
 > dtP[, year := as.numeric(YEAR)]
 > dtP[, lon  := as.numeric(LONGITUDE)]
 > dtP[, lat  := as.numeric(LATITUDE)]
+> dtP  <- dtP[year>=REFORMYEAR]
+> dtP[is.na(UNITS_ADDED), UNITS_ADDED := 1]
+> print(dtP[,quantile(UNITS_ADDED),by=isRowHouse])
+    isRowHouse    V1
+        <lgcl> <num>
+ 1:       TRUE     3
+ 2:       TRUE     7
+ 3:       TRUE     8
+ 4:       TRUE     8
+ 5:       TRUE    11
+ 6:      FALSE     0
+ 7:      FALSE     1
+ 8:      FALSE     1
+ 9:      FALSE     2
+10:      FALSE     2
 > cat("analysis permits:", nrow(dtP), "\n")
-analysis permits: 26645 
+analysis permits: 1054 
 > 
 > # ============================================================================
 > # 2. LOCAL median assessed value (finer-grained value horse; comps within 1km)
@@ -128,7 +142,7 @@ analysis permits: 26645
 > lm_res <- t(vapply(seq_len(nrow(sfPerm)), localMed, c(med = NA_real_, n = NA_real_)))
 > dtP[, medAssessedLocal := lm_res[, 1]]
 > cat("permits with local median:", sum(!is.na(dtP$medAssessedLocal)), "of", nrow(dtP), "\n")
-permits with local median: 26630 of 26645 
+permits with local median: 1054 of 1054 
 > 
 > # ============================================================================
 > # 3. CENSUS tract VALUE + RENT
@@ -185,12 +199,12 @@ tracts with rent: 314 | with value: 323 of 349
 +              !is.na(medAssessedLocal) & medAssessedLocal > 0]
 > cat("\nsample:", nrow(samp), " (row houses:", samp[, sum(isRowHouse)], ")\n")
 
-sample: 26255  (row houses: 1092 )
+sample: 1045  (row houses: 616 )
 > cat("cor(log value, log rent):",
 +     round(cor(log(samp$value), log(samp$rent)), 3),
 +     "| cor(log value, log medAssessedLocal):",
 +     round(cor(log(samp$value), log(samp$medAssessedLocal)), 3), "\n")
-cor(log value, log rent): 0.403 | cor(log value, log medAssessedLocal): 0.785 
+cor(log value, log rent): 0.488 | cor(log value, log medAssessedLocal): 0.805 
 > 
 > cat("\n=== each alone (post-2023) ===\n")
 
@@ -198,27 +212,27 @@ cor(log value, log rent): 0.403 | cor(log value, log medAssessedLocal): 0.785
 > print(summary(feols(isRowHouse ~ log(value) | year, data = samp[year>2023],
 +                     vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
 OLS estimation, Dep. Var.: isRowHouse
-Observations: 7,851
+Observations: 1,045
 Fixed-effects: year: 3
 Standard-errors: Conley (2km) 
-            Estimate Std. Error  t value Pr(>|t|)    
-log(value) -0.100113   0.057373 -1.74497  0.08103 .  
+            Estimate Std. Error  t value   Pr(>|t|)    
+log(value) -0.504667   0.143286 -3.52209 0.00044672 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.313182     Adj. R2: 0.03324 
-                 Within R2: 0.007851
+RMSE: 0.439328     Adj. R2: 0.200126
+                 Within R2: 0.111391
 > print(summary(feols(isRowHouse ~ log(rent) | year, data = samp[year>2023],
 +                     vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
 OLS estimation, Dep. Var.: isRowHouse
-Observations: 7,851
+Observations: 1,045
 Fixed-effects: year: 3
 Standard-errors: Conley (2km) 
-           Estimate Std. Error  t value   Pr(>|t|)    
-log(rent) -0.297607   0.067389 -4.41627 1.0176e-05 ***
+           Estimate Std. Error t value   Pr(>|t|)    
+log(rent) -0.543776     0.1338 -4.0641 5.1847e-05 ***
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.309627     Adj. R2: 0.055063
-                 Within R2: 0.030247
+RMSE: 0.454275     Adj. R2: 0.14477 
+                 Within R2: 0.049894
 > 
 > cat("\n=== HORSE RACE: log(value) + log(rent), post-2023 ===\n")
 
@@ -226,16 +240,16 @@ RMSE: 0.309627     Adj. R2: 0.055063
 > print(summary(feols(isRowHouse ~ log(value) + log(rent) | year, data = samp[year>2023],
 +                     vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
 OLS estimation, Dep. Var.: isRowHouse
-Observations: 7,851
+Observations: 1,045
 Fixed-effects: year: 3
 Standard-errors: Conley (2km) 
-            Estimate Std. Error   t value   Pr(>|t|)    
-log(value) -0.030107   0.051031 -0.589973 5.5523e-01    
-log(rent)  -0.280364   0.063732 -4.399080 1.1015e-05 ***
+            Estimate Std. Error  t value  Pr(>|t|)    
+log(value) -0.445964   0.151639 -2.94097 0.0033444 ** 
+log(rent)  -0.193996   0.144178 -1.34553 0.1787465    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.309529     Adj. R2: 0.055536
-                 Within R2: 0.030856
+RMSE: 0.438129     Adj. R2: 0.203721
+                 Within R2: 0.116235
 > 
 > cat("\n=== HORSE RACE: log(value) + log(rent), full period ===\n")
 
@@ -243,16 +257,16 @@ RMSE: 0.309529     Adj. R2: 0.055536
 > print(summary(feols(isRowHouse ~ log(value) + log(rent) | year, data = samp,
 +                     vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
 OLS estimation, Dep. Var.: isRowHouse
-Observations: 26,255
-Fixed-effects: year: 18
+Observations: 1,045
+Fixed-effects: year: 3
 Standard-errors: Conley (2km) 
-            Estimate Std. Error  t value   Pr(>|t|)    
-log(value) -0.023183   0.018734 -1.23749 0.21591605    
-log(rent)  -0.090211   0.022675 -3.97836 0.00006958 ***
+            Estimate Std. Error  t value  Pr(>|t|)    
+log(value) -0.445964   0.151639 -2.94097 0.0033444 ** 
+log(rent)  -0.193996   0.144178 -1.34553 0.1787465    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.189758     Adj. R2: 0.096035
-                 Within R2: 0.011212
+RMSE: 0.438129     Adj. R2: 0.203721
+                 Within R2: 0.116235
 > 
 > cat("\n=== all three value/rent measures together, post-2023 ===\n")
 
@@ -261,54 +275,56 @@ RMSE: 0.189758     Adj. R2: 0.096035
 +                     data = samp[year>2023],
 +                     vcov = vcov_conley(lat="lat", lon="lon", cutoff=2.0))))
 OLS estimation, Dep. Var.: isRowHouse
-Observations: 7,851
+Observations: 1,045
 Fixed-effects: year: 3
 Standard-errors: Conley (2km) 
-                       Estimate Std. Error  t value   Pr(>|t|)    
-log(value)            -0.108265   0.065830 -1.64462 0.10008833    
-log(medAssessedLocal)  0.083283   0.056954  1.46228 0.14370349    
-log(rent)             -0.260446   0.068365 -3.80962 0.00014024 ***
+                       Estimate Std. Error  t value Pr(>|t|)    
+log(value)            -0.254560   0.169674 -1.50029 0.133843    
+log(medAssessedLocal) -0.221647   0.195430 -1.13415 0.256993    
+log(rent)             -0.219201   0.122496 -1.78945 0.073833 .  
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.309109     Adj. R2: 0.057981
-                 Within R2: 0.033488
+RMSE: 0.436146     Adj. R2: 0.210153
+                 Within R2: 0.124217
 > 
 > # anything on value??
 > samp[, valBin := cut(value, quantile(value, 0:10/10, na.rm=TRUE), include.lowest=TRUE, labels=FALSE)]
 > samp[, rentBin := cut(rent, quantile(rent, 0:10/10, na.rm=TRUE), include.lowest=TRUE, labels=FALSE)]
 > samp[year>2023, .(rowShare=mean(isRowHouse), n=.N, nRow=sum(isRowHouse),
 +                   med_val=round(median(value))), by=valBin][order(valBin)]
-    valBin   rowShare     n  nRow med_val
-     <int>      <num> <int> <int>   <num>
- 1:      1 0.14958775   849   127  300000
- 2:      2 0.17351598   876   152  320000
- 3:      3 0.16582492  1188   197  348000
- 4:      4 0.14669421   484    71  368000
- 5:      5 0.05598244   911    51  400000
- 6:      6 0.09306261   591    55  420000
- 7:      7 0.07863850   852    67  448000
- 8:      8 0.08361204   598    50  500000
- 9:      9 0.09655938   901    87  600000
-10:     10 0.07154742   601    43  700000
+    valBin  rowShare     n  nRow med_val
+     <int>     <num> <int> <int>   <num>
+ 1:      1 0.7064220   109    77  300000
+ 2:      2 0.7518797   133   100  320000
+ 3:      3 0.8933333    75    67  332000
+ 4:      4 0.7809524   105    82  348000
+ 5:      5 0.6190476   126    78  400000
+ 6:      6 0.5772358   123    71  424000
+ 7:      7 0.4952381   105    52  500000
+ 8:      8 0.2439024    82    20  600000
+ 9:      9 0.3738318   107    40  650000
+10:     10 0.3625000    80    29  800000
 > samp[year>2023, .(rowShare=mean(isRowHouse), n=.N, nRow=sum(isRowHouse),
 +                   med_val=round(median(value))), by=rentBin][order(rentBin)]
-    rentBin   rowShare     n  nRow med_val
-      <int>      <num> <int> <int>   <num>
- 1:       1 0.23464912   912   214  368000
- 2:       2 0.19420989   829   161  348000
- 3:       3 0.10179641   835    85  412000
- 4:       4 0.10206186   970    99  400000
- 5:       5 0.12154696   543    66  400000
- 6:       6 0.11179361   814    91  400000
- 7:       7 0.07603093   776    59  392000
- 8:       8 0.06163522   795    49  400000
- 9:       9 0.07870370   864    68  600000
-10:      10 0.01559454   513     8  600000
+    rentBin  rowShare     n  nRow med_val
+      <int>     <num> <int> <int>   <num>
+ 1:       1 0.6881188   202   139  368000
+ 2:       2 0.5172414    29    15  460000
+ 3:       3 0.7983193   119    95  348000
+ 4:       4 0.5148515   101    52  332000
+ 5:       5 0.5466667    75    41  448000
+ 6:       6 0.5782313   147    85  424000
+ 7:       7 0.7187500    64    46  332000
+ 8:       8 0.5648148   108    61  400000
+ 9:       9 0.5490196   102    56  650000
+10:      10 0.2653061    98    26  695000
 > 
 > plotdat <- samp[year > 2023,
 +   .(rowShare = mean(isRowHouse), n = .N),
 +   by = .(valBin, rentBin)
 + ]
+> 
+> 
 > 
 > ggplot(plotdat, aes(x = valBin, y = rentBin, fill = rowShare)) +
 +   geom_tile() +
@@ -325,6 +341,19 @@ RMSE: 0.309109     Adj. R2: 0.057981
 +   theme_minimal()
 > ggsave("text/edmontonRentMap.png", width=6, height=4, dpi=300)
 > 
+> unitPlotDat <- samp[year > 2023 & isRowHouse==TRUE,
++   .(meanUnit = mean(UNITS_ADDED<5), n = .N),
++   by = .(valBin,rentBin)
++ ]
+> ggplot(unitPlotDat, aes(x = valBin, y = rentBin, fill = meanUnit)) +
++   geom_tile() +
++   scale_fill_viridis_c(option = "plasma", direction = -1) +
++   labs(x = "Value decile", y = "Rent decile", fill = "Row house share") +
++   theme_minimal()
+> ggsave("text/edmontonDecileUnitConditional.png", width=6, height=4, dpi=300)
+> 
+> 
+> 
 > proc.time()
    user  system elapsed 
- 33.140   4.002  35.805 
+ 11.227   0.709  10.895 
