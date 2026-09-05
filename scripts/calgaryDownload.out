@@ -1,0 +1,553 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # calgaryDownload.R
+> # Replicates the Edmonton infill pipeline for Calgary's 2024 citywide R-CG rezoning.
+> # 1. Downloads Calgary land-use (zoning) + building permits from the Socrata/SODA API
+> #    into DropboxExternal/dataRaw, paging through ALL rows (not the 1k default cap).
+> # 2. Builds census-tract gross-yield (rent/value "cap rate") gradient, as in
+> #    edmontonCapRate.R, using 2021 StatCan tracts + spatially-joined assessed values.
+> #
+> # Calgary specifics vs Edmonton:
+> #   - Projected CRS: EPSG:3780 (3TM 114W NAD83), NOT Edmonton's 3776.
+> #   - Reform: citywide R-CG blanket upzoning effective 2024-08-06. REFORMYEAR <- 2024.
+> #   - Base residential districts are the R-C* family (filter LU_CODE LIKE 'R-C%').
+> #   - No multi-year assessment PANEL is published (unlike Edmonton), so the parent-lot
+> #     linkage must lean on the land-use polygons + current assessed roll, not a
+> #     demo-permit -> assessment-legal chain. Flagged at [PARENT-LOT LIMITATION] below.
+> 
+> suppressPackageStartupMessages({
++   library(data.table)
++   library(httr)
++   library(jsonlite)
++   library(sf)
++   library(cancensus)
++ })
+> 
+> ## ----------------------------------------------------------------------------
+> ## CONFIG
+> ## ----------------------------------------------------------------------------
+> RAW      <- path.expand("~/DropboxExternal/dataRaw")   # adjust base if Dropbox root differs
+> dir.create(RAW, recursive = TRUE, showWarnings = FALSE)
+> 
+> DOMAIN   <- "https://data.calgary.ca"
+> # Land-use zoning: the Socrata view mw9j-jik5 is a map view whose /resource/ API
+> # returns EMPTY records, so we pull from the ArcGIS FeatureServer it mirrors, which
+> # serves attributes + geometry correctly.
+> ZONING_FS <- paste0("https://services.arcgis.com/xYjDUN35YwdCEcMm/ArcGIS/rest/",
++                     "services/Land_Use_Districts/FeatureServer/0")
+> PERMITS  <- "c2es-76ed"   # Building Permits (Socrata tabular API works fine)
+> PAGE     <- 50000L        # SODA page size
+> ARC_PAGE <- 2000L         # ArcGIS maxRecordCount is typically 1000-2000
+> REFORMYEAR <- 2024
+> CRS_PROJ <- 3780          # Calgary 3TM 114W NAD83
+> CACHE    <- path.expand("~/Downloads/cancensusCache")
+> dir.create(CACHE, recursive = TRUE, showWarnings = FALSE)
+> options(cancensus.cache_path = CACHE)
+> options(cancensus.api_key = "CensusMapper_4e1a1c2a1c23a336aec2ea4ce443330c")
+> 
+> APP_TOKEN <- Sys.getenv("SOCRATA_APP_TOKEN", "")
+> 
+> ## ----------------------------------------------------------------------------
+> ## ArcGIS FeatureServer reader: pages features via resultOffset -> sf
+> ## ----------------------------------------------------------------------------
+> arc_fields <- function(fs) {
++   r <- GET(fs, query = list(f = "json")); stop_for_status(r)
++   meta <- fromJSON(content(r, "text", encoding = "UTF-8"))
++   meta$fields$name
++ }
+> 
+> arc_download <- function(fs, page = ARC_PAGE) {
++   # Ask for all attributes + geometry, GeoJSON out, paged by resultOffset.
++   qurl <- paste0(fs, "/query")
++   offset <- 0L; chunks <- list(); i <- 1L
++   repeat {
++     r <- GET(qurl, query = list(
++       where = "1=1", outFields = "*", outSR = "4326",
++       f = "geojson", resultOffset = offset, resultRecordCount = page))
++     stop_for_status(r)
++     part <- tryCatch(st_read(content(r, "text", encoding = "UTF-8"), quiet = TRUE),
++                      error = function(e) NULL)
++     if (is.null(part) || nrow(part) == 0L) break
++     chunks[[i]] <- part; i <- i + 1L
++     offset <- offset + page
++     cat(sprintf("    fetched %d features\n", offset))
++     if (nrow(part) < page) break   # last page
++   }
++   out <- do.call(rbind, chunks)
++   # ArcGIS polygons occasionally arrive as GEOMETRYCOLLECTION; extract polygons.
++   suppressWarnings(st_collection_extract(out, "POLYGON"))
++ }
+> 
+> ## ----------------------------------------------------------------------------
+> ## SODA downloader: pages through the FULL dataset via $limit/$offset
+> ## ----------------------------------------------------------------------------
+> soda_headers <- function() if (nzchar(APP_TOKEN)) add_headers(`X-App-Token` = APP_TOKEN) else NULL
+> 
+> soda_count <- function(id) {
++   base <- sprintf("%s/resource/%s.json", DOMAIN, id)
++   r <- GET(base, query = list(`$select` = "count(1) as n"), soda_headers())
++   stop_for_status(r)
++   as.integer(fromJSON(content(r, "text", encoding = "UTF-8"))$n[1])
++ }
+> 
+> soda_fields <- function(id) {
++   # $limit=1 row reveals the actual field names at runtime -> no hardcoding Edmonton names
++   base <- sprintf("%s/resource/%s.json", DOMAIN, id)
++   r <- GET(base, query = list(`$limit` = 1), soda_headers())
++   stop_for_status(r)
++   names(fromJSON(content(r, "text", encoding = "UTF-8")))
++ }
+> 
+> soda_download <- function(id, dest, where = NULL) {
++   total <- soda_count(id)
++   cat(sprintf("  %s: %d rows to fetch\n", id, total))
++   offset <- 0L; parts <- list(); i <- 1L
++   base <- sprintf("%s/resource/%s.json", DOMAIN, id)
++   while (offset < total) {
++     # Pass params as a named query list so httr percent-encodes them (":id" -> "%3Aid").
++     q <- list(`$limit` = PAGE, `$offset` = offset, `$order` = ":id")
++     if (!is.null(where)) q[["$where"]] <- where
++     r <- GET(base, query = q, soda_headers()); stop_for_status(r)
++     chunk <- fromJSON(content(r, "text", encoding = "UTF-8"), flatten = TRUE)
++     if (length(chunk) == 0L || nrow(chunk) == 0L) break
++     parts[[i]] <- as.data.table(chunk); i <- i + 1L
++     offset <- offset + PAGE
++     cat(sprintf("    fetched %d / %d\n", min(offset, total), total))
++   }
++   dt <- rbindlist(parts, use.names = TRUE, fill = TRUE)
++   fwrite(dt, dest)
++   cat(sprintf("  wrote %s  (%d rows, %d cols)\n", dest, nrow(dt), ncol(dt)))
++   dt
++ }
+> 
+> ## ----------------------------------------------------------------------------
+> ## 1. DISCOVER SCHEMA, then DOWNLOAD  (all rows -> DropboxExternal/dataRaw)
+> ## ----------------------------------------------------------------------------
+> cat("=== SCHEMA DISCOVERY ===\n")
+=== SCHEMA DISCOVERY ===
+> pf <- soda_fields(PERMITS); cat("Permit fields :", paste(pf, collapse = ", "), "\n")
+Permit fields : permitnum, statuscurrent, applieddate, issueddate, completeddate, permittype, permittypemapped, permitclass, permitclassgroup, permitclassmapped, workclass, workclassgroup, workclassmapped, description, applicantname, contractorname, housingunits, estprojectcost, totalsqft, originaladdress, communitycode, communityname, latitude, longitude, locationcount, locationtypes, locationaddresses, locationswkt, locationsgeojson, point, :@computed_region_4b54_tmc4, :@computed_region_4a3i_ccfj, :@computed_region_kxmf_bzkv, :@computed_region_p8tp_5dkv, :@computed_region_qeuu_piif, :@computed_region_xxr9_iwz2 
+> # (Land-use columns are discovered after the GeoJSON read below — the tabular
+> #  $limit=1 probe returns no names for this map-type view.)
+> 
+> cat("\n=== DOWNLOAD ===\n")
+
+=== DOWNLOAD ===
+> # Cache: reuse the local land-use layer if already downloaded (skips ~12k-feature
+> # ArcGIS pull). Delete the .gpkg to force a refresh.
+> zoning_gpkg <- file.path(RAW, "calgary_landuse.gpkg")
+> if (file.exists(zoning_gpkg)) {
++   cat("  [cache] reading", zoning_gpkg, "\n")
++   zoning_sf <- st_read(zoning_gpkg, quiet = TRUE)
++ } else {
++   cat("  land-use FeatureServer fields:", paste(arc_fields(ZONING_FS), collapse = ", "), "\n")
++   zoning_sf <- arc_download(ZONING_FS)
++   st_write(zoning_sf, zoning_gpkg, delete_dsn = TRUE, quiet = TRUE)
++   fwrite(as.data.table(st_drop_geometry(zoning_sf)),
++          file.path(RAW, "calgary_landuse.csv"))
++   cat(sprintf("  wrote calgary_landuse.gpkg + .csv  (%d polygons)\n", nrow(zoning_sf)))
++ }
+  [cache] reading /Users/tdavidof/DropboxExternal/dataRaw/calgary_landuse.gpkg 
+> setDT(zoning <- as.data.table(st_drop_geometry(zoning_sf)))
+> cat("  land-use attribute columns:", paste(names(zoning), collapse = ", "), "\n")
+  land-use attribute columns: lu_bylaw, lu_code, label, descriptio, major, generalize, dc_bylaw, dc_site_no, density, height, far, Shape__Area, Shape__Length 
+> 
+> # Resolve the district column from the real attribute names.
+> lu_col <- names(zoning)[grepl("lu.?code|land.?use|district|zone|label|generaliz",
++                               names(zoning), ignore.case = TRUE)][1]
+> cat("  land-use code column resolved to:", lu_col, "\n")
+  land-use code column resolved to: lu_code 
+> 
+> # Permits: cache the same way (skips the 499k-row Socrata pull on reruns).
+> permits_csv <- file.path(RAW, "calgary_permits.csv")
+> if (file.exists(permits_csv)) {
++   cat("  [cache] reading", permits_csv, "\n")
++   permits <- fread(permits_csv)
++   .permits_from_cache <- TRUE
++ } else {
++   permits <- soda_download(PERMITS, permits_csv)
++ }
+  [cache] reading /Users/tdavidof/DropboxExternal/dataRaw/calgary_permits.csv 
+> 
+> ## ----------------------------------------------------------------------------
+> ## VERIFICATION BLOCK  (printed first, per the agreed workflow)
+> ## ----------------------------------------------------------------------------
+> cat("\n=== VERIFICATION ===\n")
+
+=== VERIFICATION ===
+> cat("[V1] zoning polygons loaded  :", nrow(zoning_sf), "( >0 :",
++     nrow(zoning_sf) > 0, ")\n")
+[V1] zoning polygons loaded  : 11826 ( >0 : TRUE )
+> if (file.exists(permits_csv) && !exists(".permits_from_cache")) {
++   cat("[V2] permit rows == API count :", nrow(permits) == soda_count(PERMITS), "\n")
++ } else {
++   cat("[V2] permit rows (from cache) :", nrow(permits), "(API count skipped)\n")
++ }
+[V2] permit rows (from cache) : 499200 (API count skipped)
+> 
+> # R-C* family present in zoning? (lu_code confirmed as the district field)
+> if (!is.na(lu_col)) {
++   rc <- zoning[grepl("^R-?C", get(lu_col), ignore.case = TRUE)]
++   cat("[V3] R-C* land-use polygons   :", nrow(rc),
++       "| distinct codes:", paste(sort(unique(rc[[lu_col]])), collapse = ", "), "\n")
++   cat("[V4] R-CG polygons specifically:",
++       nrow(zoning[grepl("^R-?CG", get(lu_col), ignore.case = TRUE)]), "\n")
++   # Area sanity: served Shape__Area vs recomputed in EPSG:3780 (true metres^2).
++   zoning_sf$area_3780 <- as.numeric(sf::st_area(sf::st_transform(zoning_sf, CRS_PROJ)))
++   if ("Shape__Area" %in% names(zoning)) {
++     rat <- median(zoning_sf$area_3780 / zoning$Shape__Area, na.rm = TRUE)
++     cat("[V4b] median area_3780 / Shape__Area :", round(rat, 3),
++         "(≈1 means served area is already true m^2; far from 1 means use area_3780)\n")
++   }
++ }
+[V3] R-C* land-use polygons   : 1772 | distinct codes: R-C1, R-C1L, R-C1Ls, R-C1N, R-C1s, R-C2, R-CG, R-CGex 
+[V4] R-CG polygons specifically: 308 
+[V4b] median area_3780 / Shape__Area : 0.396 (≈1 means served area is already true m^2; far from 1 means use area_3780)
+> 
+> # Permit date field + post-reform coverage
+> date_col <- pf[grepl("date|applied|issued", pf, ignore.case = TRUE)][1]
+> if (!is.na(date_col)) {
++   permits[, .yr := as.integer(substr(get(date_col), 1, 4))]
++   cat("[V5] permit year range        :",
++       paste(range(permits$.yr, na.rm = TRUE), collapse = "-"), "\n")
++   cat("[V6] permits in/after reform  :",
++       nrow(permits[.yr >= REFORMYEAR]), "\n")
++ }
+[V5] permit year range        : 1999-2026 
+[V6] permits in/after reform  : 67527 
+> 
+> ## ----------------------------------------------------------------------------
+> ## 2. CENSUS-TRACT PRICE/RENT GRADIENT  (mirrors edmontonCapRate.R)
+> ##    Gross yield = median rent*12 / median value, regressed on log value across
+> ##    Calgary CMA (CMA 48825) 2021 census tracts. Expect beta well below 1.
+> ## ----------------------------------------------------------------------------
+> cat("\n=== TRACT PRICE/RENT GRADIENT ===\n")
+
+=== TRACT PRICE/RENT GRADIENT ===
+> ct <- get_census(
++   dataset = "CA21", regions = list(CMA = "48825"), level = "CT",
++   vectors = c(val = "v_CA21_4312",   # median value of dwellings
++               rent = "v_CA21_4318"), # median monthly shelter cost, rented
++   geo_format = "sf", quiet = TRUE
++ )
+> setDT(ct)
+> ct <- ct[val > 0 & rent > 0]
+> ct[, caprate := (rent * 12) / val]
+> ct[, lval := log(val)]
+> 
+> m_census <- lm(log(caprate) ~ lval, data = ct)
+> cat(sprintf("[G1] OLS (census value)   beta = % .3f  (t vs 0: % .1f)\n",
++             coef(m_census)[2], summary(m_census)$coef[2, 3]))
+[G1] OLS (census value)   beta = -0.772  (t vs 0: -25.9)
+> b <- coef(m_census)[2]; se <- summary(m_census)$coef[2, 2]
+> cat(sprintf("[G2] test beta = 1        t   = % .1f  (reject flat-yield null if < -2)\n",
++             (b - 1) / se))
+[G2] test beta = 1        t   = -59.5  (reject flat-yield null if < -2)
+> 
+> # [PARENT-LOT LIMITATION] To add the assessed-value estimator (as in Edmonton's
+> # OLS-assessed and IV specs), spatially join Calgary's current assessed-value roll
+> # to these CT polygons in EPSG:3780 and aggregate a tract median, then rerun with
+> # that as the RHS (OLS) and as an instrument (IV). The roll download is a third
+> # Socrata dataset (Assessments) — add its 4-char id above and reuse soda_download().
+> # Calgary publishes no multi-year account panel, so the demo->parent-legal linkage
+> # used in Edmonton is not reconstructable here; parent-lot area must come from the
+> # land-use polygon geometry via st_area() joined to permit points.
+> 
+> cat("\nDONE with cap-rate gradient.\n")
+
+DONE with cap-rate gradient.
+> 
+> ## ----------------------------------------------------------------------------
+> ## 3. ROWHOUSE PERMIT SHARE (eligible period) ON VALUE / RENT
+> ##    Tract-level share of post-reform residential permits that are rowhouse-type,
+> ##    regressed on log value, log rent, and both. Two numerators:
+> ##      (a) built-form   : workclass/description/housingunits indicate rowhouse
+> ##      (b) R-CG spatial : permit point falls in an R-CG land-use polygon
+> ## ----------------------------------------------------------------------------
+> cat("\n=== ROWHOUSE SHARE REGRESSIONS ===\n")
+
+=== ROWHOUSE SHARE REGRESSIONS ===
+> REFORM_DATE <- as.Date("2024-08-06")   # blanket R-CG upzoning takes effect
+> REPEAL_DATE <- as.Date("2026-08-04")   # repeal takes effect; window closes here
+> 
+> # Permits -> sf on lon/lat, restricted to the ELIGIBLE WINDOW [reform, repeal).
+> # NOTE: Calgary's data contains rows geocoded to (0,0) -- these are NOT NA, so they
+> # survive an is.na() check and then wreck any bbox/spatial join. Drop them here.
+> pp <- permits[!is.na(latitude) & !is.na(longitude) &
++               latitude  >  50.5 & latitude  <  51.5 &
++               longitude > -114.5 & longitude < -113.5]
+> cat(sprintf("[R0a] dropped %d permits with bad/zero coordinates\n",
++             nrow(permits[!is.na(latitude) & !is.na(longitude)]) - nrow(pp)))
+[R0a] dropped 926 permits with bad/zero coordinates
+> pp[, issued := as.Date(substr(issueddate, 1, 10))]
+> pp <- pp[!is.na(issued) & issued >= REFORM_DATE & issued < REPEAL_DATE]
+> cat("[R0] eligible-window permits w/ coords:", nrow(pp), "\n")
+[R0] eligible-window permits w/ coords: 45819 
+> 
+> pp_sf <- st_as_sf(pp, coords = c("longitude", "latitude"), crs = 4326)
+> 
+> # Residential denominator: permitclassgroup / permittypemapped flag residential.
+> # (Field values printed in V-block; adjust the grepl if Calgary's labels differ.)
+> is_resid <- grepl("resid", pp_sf$permitclassgroup, ignore.case = TRUE) |
++             grepl("resid", pp_sf$permitclassmapped, ignore.case = TRUE)
+> pp_sf <- pp_sf[is_resid, ]
+> cat("[R1] residential eligible permits    :", nrow(pp_sf), "\n")
+[R1] residential eligible permits    : 44120 
+> 
+> # --- Print the real workclass / permittype vocabulary so the new-build match is
+> #     against actual labels, not guessed ones (as with the zoning fields). ---
+> cat("[R1a] workclass values:",
++     paste(sort(unique(na.omit(pp_sf$workclass))), collapse = " | "), "\n")
+[R1a] workclass values: Addition | Alteration | Demolition | Fire/ Security Alarm | New | Repair | Temporary 
+> cat("[R1b] permittype values:",
++     paste(sort(unique(na.omit(pp_sf$permittype))), collapse = " | "), "\n")
+[R1b] permittype values: Commercial / Multi Family Project | Demolition | Residential Improvement Project | Single Construction Permit 
+> 
+> # --- SAMPLE SCREEN (applied as a UNION at [R3c], after $/sqft is available). ---
+> # NEWBUILD flag: workclass indicates new construction. Adjust terms once [R1a] is
+> # seen; Calgary typically uses "New" / "New Construction" in workclass/workclassmapped.
+> newbuild <- grepl("new", pp_sf$workclass,        ignore.case = TRUE) |
++             grepl("new", pp_sf$workclassmapped,  ignore.case = TRUE)
+> pp_sf$is_newbuild <- newbuild
+> cat("[R1c] new-build permits              :", sum(newbuild, na.rm = TRUE), "\n")
+[R1c] new-build permits              : 22726 
+> # Do NOT subset here: the cost screen needs $/sqft (post-join), and we want
+> # newbuild OR cost>=p50, so a non-new permit with high $/sqft must survive to [R3c].
+> 
+> # (a) Built-form rowhouse numerator. Use the CODED permitclass field, not free
+> #     text: workclass has no dwelling-type category (Addition/Alteration/New/...),
+> #     and description matching is unreliable. Rowhouse = Rhs Rowhouse + Ths Townhouse.
+> form_row <- grepl("Rowhouse|Townhouse", pp_sf$permitclass, ignore.case = TRUE) &
++            !grepl("Accessory", pp_sf$permitclass, ignore.case = TRUE)
+> pp_sf$is_row_form <- form_row
+> cat("[R2] rowhouse/townhouse permits      :", sum(form_row, na.rm = TRUE), "\n")
+[R2] rowhouse/townhouse permits      : 1621 
+> 
+> # (b) Zoning numerator: permit falls in a restored low-density R-C district.
+> # NOTE: the ArcGIS layer is the POST-REPEAL (restored) snapshot, so R-C1/R-C2 are
+> # the ex-post restored low-density districts, and surviving R-CG parcels are those
+> # that redeveloped during the window (selected on outcome — see caveat in reply).
+> # We flag the full R-C* family, not R-CG alone.
+> zt   <- st_transform(zoning_sf, CRS_PROJ)
+> ppt  <- st_transform(pp_sf,   CRS_PROJ)
+> ppt$.pid <- seq_len(nrow(ppt))
+> jj   <- st_join(ppt[, ".pid"], zt[, lu_col], join = st_within)
+> jdt  <- as.data.table(st_drop_geometry(jj))
+> jdt[, rc := grepl("^R-?C", get(lu_col), ignore.case = TRUE)]   # R-C1/R-C2/R-CG/...
+> row_by_pid <- jdt[, .(is_row_zone = any(rc, na.rm = TRUE)), by = .pid]
+> ppt <- merge(ppt, row_by_pid, by = ".pid", all.x = TRUE)
+> ppt$is_row_zone[is.na(ppt$is_row_zone)] <- FALSE
+> cat("[R3] permits in restored R-C* polygons:", sum(ppt$is_row_zone, na.rm = TRUE), "\n")
+[R3] permits in restored R-C* polygons: 11038 
+> 
+> # --- SAMPLE SCREEN (UNION): keep a permit if it is a new build OR its cost/sqft is
+> #     at/above the median $/sqft of new-builds-in-R-C*. Threshold is set on the
+> #     new-build-in-R-C* set; the OR then also admits high-$/sqft non-new permits. ---
+> ppt$cost   <- suppressWarnings(as.numeric(ppt$estprojectcost))
+> ppt$sqft   <- suppressWarnings(as.numeric(ppt$totalsqft))
+> ppt$cpsf   <- ifelse(ppt$sqft > 0, ppt$cost / ppt$sqft, NA_real_)
+> rc_new     <- ppt$is_newbuild %in% TRUE & ppt$is_row_zone %in% TRUE &
++               is.finite(ppt$cpsf) & ppt$cpsf > 0
+> thr        <- as.numeric(stats::median(ppt$cpsf[rc_new], na.rm = TRUE))
+> cat(sprintf("[R3b] new-build-in-R-C* $/sqft p50 = %.1f  (n priced = %d)\n",
++             thr, sum(rc_new, na.rm = TRUE)))
+[R3b] new-build-in-R-C* $/sqft p50 = 155.5  (n priced = 1181)
+> 
+> keep <- (ppt$is_newbuild %in% TRUE) | (is.finite(ppt$cpsf) & ppt$cpsf >= thr)
+> n_pre <- nrow(ppt)
+> ppt   <- ppt[keep, ]
+> cat(sprintf("[R3c] sample after (new-build OR cost>=p50): %d  (of %d residential)\n",
++             nrow(ppt), n_pre))
+[R3c] sample after (new-build OR cost>=p50): 22726  (of 44120 residential)
+> 
+> # Join permits to census tracts, aggregate to tract shares.
+> # Guard the same one-to-many risk: a boundary point can match two tracts. Keep the
+> # first match per permit (st_within on interior points is unique; ties are rare).
+> ctp  <- st_transform(st_as_sf(ct), CRS_PROJ)          # ct has val/rent, geometry
+> tj   <- st_join(ppt, ctp["GeoUID"], join = st_within)
+> tj   <- as.data.table(st_drop_geometry(tj))
+> tj   <- tj[, .SD[1], by = .pid]                       # one row per permit
+> pdt  <- tj
+> agg  <- pdt[!is.na(GeoUID), .(
++            n         = .N,
++            share_form = mean(is_row_form, na.rm = TRUE),
++            share_zone = mean(is_row_zone, na.rm = TRUE)
++          ), by = GeoUID]
+> 
+> reg  <- merge(agg, ct[, .(GeoUID, val, rent)], by = "GeoUID")
+> reg  <- reg[val > 0 & rent > 0 & n >= 3]              # drop thin tracts
+> reg[, `:=`(lval = log(val), lrent = log(rent))]
+> cat("[R4] tracts in regression sample      :", nrow(reg), "\n")
+[R4] tracts in regression sample      : 267 
+> cat(sprintf("[R5] cor(lval, lrent) across tracts  : % .3f\n", cor(reg$lval, reg$lrent)))
+[R5] cor(lval, lrent) across tracts  :  0.391
+> cat("     (high |cor| => value/rent split in the joint spec is fragile)\n")
+     (high |cor| => value/rent split in the joint spec is fragile)
+> 
+> run3 <- function(y, lbl) {
++   m_v  <- lm(reformulate("lval",          y), data = reg)
++   m_r  <- lm(reformulate("lrent",         y), data = reg)
++   m_vr <- lm(reformulate(c("lval","lrent"), y), data = reg)
++   cat(sprintf("\n-- %s --\n", lbl))
++   cat(sprintf("  on log value        : b_val = % .3f (t % .1f)\n",
++               coef(m_v)["lval"],  summary(m_v)$coef["lval","t value"]))
++   cat(sprintf("  on log rent         : b_rent= % .3f (t % .1f)\n",
++               coef(m_r)["lrent"], summary(m_r)$coef["lrent","t value"]))
++   cat(sprintf("  on both  b_val= % .3f (t % .1f) | b_rent= % .3f (t % .1f)\n",
++               coef(m_vr)["lval"],  summary(m_vr)$coef["lval","t value"],
++               coef(m_vr)["lrent"], summary(m_vr)$coef["lrent","t value"]))
++   list(v = m_v, r = m_r, vr = m_vr)
++ }
+> fit_form <- run3("share_form", "Built-form rowhouse share")
+
+-- Built-form rowhouse share --
+  on log value        : b_val =  0.001 (t  0.1)
+  on log rent         : b_rent= -0.155 (t -4.5)
+  on both  b_val=  0.043 (t  2.0) | b_rent= -0.184 (t -5.0)
+> fit_zone <- run3("share_zone", "R-CG-polygon permit share")
+
+-- R-CG-polygon permit share --
+  on log value        : b_val = -0.022 (t -0.3)
+  on log rent         : b_rent= -0.803 (t -5.9)
+  on both  b_val=  0.190 (t  2.2) | b_rent= -0.930 (t -6.3)
+> 
+> cat("\nDONE. Raw files in", RAW, "| cache in", CACHE, "\n")
+
+DONE. Raw files in /Users/tdavidof/DropboxExternal/dataRaw | cache in /Users/tdavidof/Downloads/cancensusCache 
+> 
+> ## ----------------------------------------------------------------------------
+> ## 4. MAP: single (black) vs rowhouse (light grey) new builds, cartolight base.
+> ##    Static PNG -> text/. Uses the SCREENED sample (ppt) still in memory.
+> ## ----------------------------------------------------------------------------
+> cat("\n=== MAP ===\n")
+
+=== MAP ===
+> suppressPackageStartupMessages({
++   library(ggplot2); library(ggspatial); library(prettymapr)
++ })
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+> 
+> # CONFINE to single-family houses and rowhouses only. Use coded permitclass:
+> # "single|detach" text matching wrongly swept in Private Detached Garage (5.8k)
+> # and Two Family Semi-Detached. Single = 1106 Single Family House only.
+> mp <- st_transform(ppt, 4326)
+> mp$is_row_form[is.na(mp$is_row_form)] <- FALSE
+> is_single <- grepl("Single Family House", mp$permitclass, ignore.case = TRUE)
+> mp <- mp[mp$is_row_form %in% TRUE | is_single %in% TRUE, ]
+> mp$cls <- ifelse(mp$is_row_form %in% TRUE, "Rowhouse", "Single")
+> 
+> # Drop outlier coordinates. A single bad geocode (e.g. 0,0) blows up st_bbox and
+> # makes annotation_map_tile request a continent's worth of tiles -> render hangs.
+> CAL_BOX <- c(xmin = -114.35, xmax = -113.80, ymin = 50.80, ymax = 51.25)
+> co <- st_coordinates(mp)
+> inbox <- co[, 1] >= CAL_BOX["xmin"] & co[, 1] <= CAL_BOX["xmax"] &
++          co[, 2] >= CAL_BOX["ymin"] & co[, 2] <= CAL_BOX["ymax"]
+> cat(sprintf("  [bbox] dropped %d points outside Calgary\n", sum(!inbox)))
+  [bbox] dropped 0 points outside Calgary
+> mp <- mp[inbox, ]
+> print(st_bbox(mp))
+      xmin       ymin       xmax       ymax 
+-114.28706   50.84942 -113.88350   51.19747 
+> 
+> mp <- mp[order(mp$cls == "Rowhouse"), ]   # rowhouses drawn on top
+> cat(sprintf("  single: %d   rowhouse: %d   (total plotted %d)\n",
++             sum(mp$cls == "Single"), sum(mp$cls == "Rowhouse"), nrow(mp)))
+  single: 9369   rowhouse: 1461   (total plotted 10830)
+> 
+> outdir  <- "text"; dir.create(outdir, showWarnings = FALSE)   # relative to project dir
+> map_png <- file.path(outdir, "calgary_rowhouse_map.png")
+> 
+> # geom_sf builds a grob per feature and is very slow at this point count.
+> # Pull the lon/lat out once and use geom_point instead.
+> xy <- st_coordinates(mp)
+> pd <- data.frame(lon = xy[, 1], lat = xy[, 2], cls = mp$cls)
+> 
+> # Keyless OSM street tiles (cartolight now needs a key under rosm >= 0.3).
+> p <- ggplot() +
++   annotation_map_tile(type = "osm", zoomin = -1, progress = "none") +
++   geom_point(data = pd[pd$cls == "Single", ], aes(lon, lat, colour = cls),
++              size = 0.35, alpha = 0.35) +
++   geom_point(data = pd[pd$cls == "Rowhouse", ], aes(lon, lat, colour = cls),
++              size = 1.3, alpha = 0.95) +
++   coord_sf(xlim = st_bbox(mp)[c(1, 3)], ylim = st_bbox(mp)[c(2, 4)], crs = 4326) +
++   scale_colour_manual(values = c("Single"   = "#333333",
++                                  "Rowhouse" = "#e6194b"), name = NULL) +
++   guides(colour = guide_legend(override.aes = list(size = 3))) +
++   theme_minimal() +
++   labs(title = "Calgary eligible-window new builds: single vs rowhouse") +
++   theme(legend.position = "bottom", panel.grid = element_blank())
+> 
+> ggsave(map_png, p, width = 10, height = 8, dpi = 150)
+Loading required namespace: raster
+> cat("  wrote", map_png, "\n")
+  wrote text/calgary_rowhouse_map.png 
+> 
+> ## ----------------------------------------------------------------------------
+> ## 4b. TRACT CENTROIDS coloured by rent and by value, same basemap/extent.
+> ##     Lets you eyeball the rent vs value gradients against where rowhouses go.
+> ## ----------------------------------------------------------------------------
+> # ct is the CT sf with val/rent; take centroids, clip to the map extent.
+> ctc <- st_transform(st_as_sf(ct), 4326)
+> ctc <- ctc[!is.na(ctc$val) & !is.na(ctc$rent), ]
+> cxy <- st_coordinates(st_centroid(st_geometry(ctc)))
+> cd  <- data.frame(lon = cxy[, 1], lat = cxy[, 2],
++                   val = ctc$val, rent = ctc$rent)
+> bx  <- st_bbox(mp)
+> cd  <- cd[cd$lon >= bx[1] & cd$lon <= bx[3] &
++           cd$lat >= bx[2] & cd$lat <= bx[4], ]
+> cat(sprintf("  [centroids] %d tracts within map extent\n", nrow(cd)))
+  [centroids] 286 tracts within map extent
+> 
+> tract_map <- function(var, lbl, file) {
++   # Colour by within-city percentile rank: raw values are right-skewed, so a
++   # linear scale buries nearly every tract at the dark end of viridis.
++   v  <- cd[[var]]
++   cd$pct <- rank(v, ties.method = "average") / length(v)
++   # Label the legend with the actual values at each decile break.
++   brks <- seq(0, 1, by = 0.25)
++   labs <- format(round(quantile(v, brks, na.rm = TRUE)), big.mark = ",")
++   g <- ggplot() +
++     annotation_map_tile(type = "osm", zoomin = -1, progress = "none") +
++     geom_point(data = cd, aes(lon, lat, colour = pct), size = 2.6, alpha = 0.9) +
++     coord_sf(xlim = bx[c(1, 3)], ylim = bx[c(2, 4)], crs = 4326) +
++     scale_colour_viridis_c(name = lbl, breaks = brks, labels = labs,
++                            limits = c(0, 1)) +
++     theme_minimal() +
++     labs(title = paste("Calgary census tract centroids:", lbl),
++          subtitle = "colour = within-city percentile; legend shows value at each quartile") +
++     theme(legend.position = "bottom", panel.grid = element_blank(),
++           legend.key.width = unit(2, "cm"))
++   ggsave(file.path(outdir, file), g, width = 10, height = 8, dpi = 150)
++   cat(sprintf("  wrote %s   [%s: min %s / med %s / max %s]\n",
++               file.path(outdir, file), var,
++               format(round(min(v, na.rm = TRUE)), big.mark = ","),
++               format(round(median(v, na.rm = TRUE)), big.mark = ","),
++               format(round(max(v, na.rm = TRUE)), big.mark = ",")))
++ }
+> 
+> tract_map("rent", "Median rent ($/mo)",     "calgary_tract_rent.png")
+  wrote text/calgary_tract_rent.png   [rent: min 1,020 / med 1,502 / max 3,300]
+> tract_map("val",  "Median dwelling value",  "calgary_tract_value.png")
+  wrote text/calgary_tract_value.png   [val: min 199,800 / med 481,300 / max 1,750,000]
+> 
+> proc.time()
+   user  system elapsed 
+ 39.270   8.744  30.009 
