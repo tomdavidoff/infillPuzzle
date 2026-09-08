@@ -1,0 +1,211 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # duplexPrices.R
+> # Vancouver duplex/SFD price analysis, East/West (Ontario St), 2014-2019 (extract ends 2019)
+> #   (1) price-sqft elasticity, single/duplex x East/West
+> #   (2) duplex orientation (side-by-side vs front/back) x East/West
+> #   (3) SFD 33' vs 50' elasticity x East/West  (puzzle: WS 33s go duplex, 50s don't)
+> # Derived from vancouverMatch.R; reads prebuilt sales rds, no writes.
+> # Tom Davidoff
+> # 09/08/26
+> 
+> SALE_MINYEAR <- 2014
+> SALE_MAXYEAR <- 2025          # extract actually ends 2019; kept for label only
+> ONTARIO_LON  <- -123.1036     # lon < this = West Side
+> 
+> library(data.table)
+> library(fixest)
+> 
+> fnameSales <- "~/DropboxExternal/dataProcessed/bca19VancouverSalesDupSFD.rds"
+> dtSales <- readRDS(fnameSales)
+> 
+> sfdUse <- c("Single Family Dwelling", "Residential Dwelling with Suite")
+> dtSales[, price    := as.numeric(conveyancePrice)]
+> dtSales[, saleYear := as.numeric(substring(conveyanceDate, 1, 4))]
+> dtSales[, type := fifelse(grepl("Duplex", actualUseDescription), "duplex",
++                   fifelse(actualUseDescription %in% sfdUse,      "SFD", NA_character_))]
+> 
+> # ============================================================================
+> # (1) ELASTICITY: log(price) ~ log(sqft), by type x side
+> # ============================================================================
+> dt <- dtSales[!is.na(type) & price > 0 & !is.na(longitude) &
++               !is.na(MB_total_finished_area) & MB_total_finished_area > 0 &
++               saleYear %between% c(SALE_MINYEAR, SALE_MAXYEAR)]
+> dt[, side := fifelse(longitude < ONTARIO_LON, "West", "East")]
+> 
+> runElastTS <- function(ty, sd) {
++   d <- dt[type == ty & side == sd]
++   cat(sprintf("\n==== %s / %s : log(price) ~ log(sqft) | MB_effective_year + saleYear  (n=%d) ====\n",
++               ty, sd, nrow(d)))
++   if (nrow(d) < 10) { cat("  too few obs\n"); return(invisible()) }
++   print(summary(feols(log(price) ~ log(MB_total_finished_area) | MB_effective_year + saleYear,
++                       data = d, vcov = "hetero")))
++ }
+> for (ty in c("SFD","duplex")) for (sd in c("East","West")) runElastTS(ty, sd)
+
+==== SFD / East : log(price) ~ log(sqft) | MB_effective_year + saleYear  (n=8110) ====
+NOTE: 10/0 fixed-effect singletons were removed (10 observations).
+OLS estimation, Dep. Var.: log(price)
+Observations: 8,100
+Fixed-effects: MB_effective_year: 95,  saleYear: 6
+Standard-errors: Heteroskedasticity-robust 
+                            Estimate Std. Error t value  Pr(>|t|)    
+log(MB_total_finished_area) 0.394232   0.010615 37.1408 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.184488     Adj. R2: 0.607274
+                 Within R2: 0.200131
+
+==== SFD / West : log(price) ~ log(sqft) | MB_effective_year + saleYear  (n=8857) ====
+NOTE: 7/0 fixed-effect singletons were removed (7 observations).
+OLS estimation, Dep. Var.: log(price)
+Observations: 8,850
+Fixed-effects: MB_effective_year: 86,  saleYear: 6
+Standard-errors: Heteroskedasticity-robust 
+                            Estimate Std. Error t value  Pr(>|t|)    
+log(MB_total_finished_area) 0.917573   0.013479 68.0744 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.258847     Adj. R2: 0.639662
+                 Within R2: 0.548736
+
+==== duplex / East : log(price) ~ log(sqft) | MB_effective_year + saleYear  (n=921) ====
+NOTE: 9/0 fixed-effect singletons were removed (9 observations).
+OLS estimation, Dep. Var.: log(price)
+Observations: 912
+Fixed-effects: MB_effective_year: 39,  saleYear: 6
+Standard-errors: Heteroskedasticity-robust 
+                            Estimate Std. Error t value  Pr(>|t|)    
+log(MB_total_finished_area)  0.55445    0.02721 20.3767 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.151238     Adj. R2: 0.702861
+                 Within R2: 0.378656
+
+==== duplex / West : log(price) ~ log(sqft) | MB_effective_year + saleYear  (n=621) ====
+NOTE: 5/0 fixed-effect singletons were removed (5 observations).
+OLS estimation, Dep. Var.: log(price)
+Observations: 616
+Fixed-effects: MB_effective_year: 49,  saleYear: 6
+Standard-errors: Heteroskedasticity-robust 
+                            Estimate Std. Error t value  Pr(>|t|)    
+log(MB_total_finished_area) 0.970844   0.071389 13.5993 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.289878     Adj. R2: 0.650865
+                 Within R2: 0.485357
+> 
+> # ============================================================================
+> # (2) DUPLEX ORIENTATION: side-by-side vs front/back, by side
+> # ============================================================================
+> dtD <- dt[type == "duplex"]
+> dtD[, orient := fifelse(grepl("Side by Side", actualUseDescription), "sideBySide",
++                 fifelse(grepl("Front / Back",  actualUseDescription), "frontBack", NA_character_))]
+> 
+> cat("\n=== duplex orientation counts x side (2014-2019) ===\n")
+
+=== duplex orientation counts x side (2014-2019) ===
+> print(dtD[!is.na(orient), .N, by = .(side, orient)][order(side, orient)])
+     side     orient     N
+   <char>     <char> <int>
+1:   East  frontBack   616
+2:   East sideBySide   284
+3:   West  frontBack   273
+4:   West sideBySide   300
+> 
+> cat("\n=== duplex mean/median price by orientation x side ===\n")
+
+=== duplex mean/median price by orientation x side ===
+> print(dtD[!is.na(orient),
++           .(n = .N, mean = mean(price), p50 = median(price)),
++           by = .(side, orient)][order(side, orient)])
+     side     orient     n    mean     p50
+   <char>     <char> <int>   <num>   <num>
+1:   East  frontBack   616 1032553  985357
+2:   East sideBySide   284 1153906 1096000
+3:   West  frontBack   273 1429986 1366000
+4:   West sideBySide   300 2102279 1825000
+> 
+> cat("\n=== duplex: log(price) ~ sideBySide | MB_effective_year + saleYear, by side ===\n")
+
+=== duplex: log(price) ~ sideBySide | MB_effective_year + saleYear, by side ===
+> for (sd in c("East","West")) {
++   d <- dtD[!is.na(orient) & side == sd]
++   d[, sbs := orient == "sideBySide"]
++   cat(sprintf("\n---- %s (n=%d) ----\n", sd, nrow(d)))
++   if (nrow(d) < 10 || uniqueN(d$sbs) < 2) { cat("  too few obs / no contrast\n"); next }
++   print(summary(feols(log(price) ~ sbs | MB_effective_year + saleYear, data = d, vcov = "hetero")))
++ }
+
+---- East (n=900) ----
+NOTE: 9/0 fixed-effect singletons were removed (9 observations).
+OLS estimation, Dep. Var.: log(price)
+Observations: 891
+Fixed-effects: MB_effective_year: 38,  saleYear: 6
+Standard-errors: Heteroskedasticity-robust 
+        Estimate Std. Error t value   Pr(>|t|)    
+sbsTRUE 0.100702   0.015834 6.35967 3.3039e-10 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.182829     Adj. R2: 0.556323
+                 Within R2: 0.051877
+
+---- West (n=573) ----
+NOTE: 7/0 fixed-effect singletons were removed (7 observations).
+OLS estimation, Dep. Var.: log(price)
+Observations: 566
+Fixed-effects: MB_effective_year: 47,  saleYear: 6
+Standard-errors: Heteroskedasticity-robust 
+        Estimate Std. Error t value  Pr(>|t|)    
+sbsTRUE  0.29635   0.027071 10.9473 < 2.2e-16 ***
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.292504     Adj. R2: 0.473615
+                 Within R2: 0.177508
+> 
+> # ============================================================================
+> # (3) SFD 33' vs 50' ELASTICITY x side
+> #     Tests whether the size-elasticity gap driving duplex take-up also
+> #     separates 33' from 50' SFD lots.
+> # ============================================================================
+> # (3) SFD 33' vs 50' price distribution x side  (analogue of duplex orient table)
+> # ============================================================================
+> dtS <- dtSales[actualUseDescription %in% sfdUse & price > 0 & !is.na(longitude) &
++                !is.na(landWidth) &
++                saleYear %between% c(SALE_MINYEAR, SALE_MAXYEAR)]
+> dtS[, side       := fifelse(longitude < ONTARIO_LON, "West", "East")]
+> dtS[, widthClass := round(landWidth)]
+> dtS <- dtS[widthClass %in% c(33, 50)]
+> 
+> cat("\n=== SFD price by width x side (2014-2019) ===\n")
+
+=== SFD price by width x side (2014-2019) ===
+> print(dtS[, .(n = .N, mean = mean(price), p50 = median(price)),
++           by = .(side, widthClass)][order(side, widthClass)])# ============================================================================
+     side widthClass     n    mean     p50
+   <char>      <num> <int>   <num>   <num>
+1:   East         33  3884 1310197 1285000
+2:   East         50   335 1613011 1605000
+3:   West         33  2482 2442295 2350000
+4:   West         50  1259 3354859 3200000
+> 
+> proc.time()
+   user  system elapsed 
+  0.897   0.065   0.959 
