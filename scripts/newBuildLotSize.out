@@ -29,13 +29,26 @@ Type 'q()' to quit R.
 > # Tom Davidoff
 > # 09/08/26
 > 
-> BUILT_MINYEAR <- 2019
+> BUILT_MINYEAR <- 2019      # retained: informational only, no longer gates the sample
 > BUILT_MAXYEAR <- 2024
+> EFFYEAR_MIN   <- 2000      # vintage gate: MB_Effective_Year strictly greater than this
 > SALE_MINYEAR  <- 2022      # "recent" price overlay
 > SALE_MAXYEAR  <- 2026
 > ONTARIO_LON   <- -123.1036
 > MATCHDIST     <- 30        # m, spatial fallback gate (looser than permit-match: parcel centroids)
 > WIDTH_TOL     <- 3         # ft, agreement tolerance across methods
+> 
+> # shared lot-size bins (ft), used by BOTH the sec.7 distribution and sec.8 price tables.
+> # left-open, right-closed: (30,36]="33", (36,40]="40", (40,50]="50";
+> # anything <=30 or >50 -> "other", so nothing is silently dropped.
+> lotBin <- function(width) {
++   out <- rep("other", length(width))
++   out[width > 30 & width <= 36] <- "33"
++   out[width > 36 & width <= 40] <- "40"
++   out[width > 40 & width <= 50] <- "50"
++   out[is.na(width)] <- NA
++   factor(out, levels = c("33","40","50","other"))
++ }
 > 
 > library(data.table)
 > library(sf)
@@ -166,7 +179,7 @@ gpkg parcels: 93291 | with a 2019 rollStart width: 67730
 > dtD[, type := fifelse(grepl("Duplex", ACTUAL_USE_DESCRIPTION), "duplex",
 +               fifelse(ACTUAL_USE_DESCRIPTION %in% sfdUse,      "SFD", NA_character_))]
 > dtD[, side := fifelse(longitude < ONTARIO_LON, "West", "East")]
-> dtD[, newBuild := MB_Year_Built %between% c(BUILT_MINYEAR, BUILT_MAXYEAR)]
+> dtD[, newBuild := MB_Effective_Year > EFFYEAR_MIN]   # vintage gate: effective (reno-aware) year
 > 
 > # one row per parcel: for strata duplexes both unit-folios carry identical parcel
 > # geom/width, so median within rollStart is the parcel value (dedup, no double count)
@@ -193,11 +206,11 @@ gpkg parcels: 93291 | with a 2019 rollStart width: 67730
 > nb <- parcel[newBuild == TRUE & !is.na(type)]
 > for (m in c("wGpkgCol","wGeom","wRoll19","wSpatial","w2019"))
 +   cat(sprintf("  %-9s present: %4d / %4d\n", m, sum(!is.na(nb[[m]])), nrow(nb)))
-  wGpkgCol  present: 2257 / 3482
-  wGeom     present: 2257 / 3482
-  wRoll19   present: 2820 / 3482
-  wSpatial  present:  542 / 3482
-  w2019     present: 3362 / 3482
+  wGpkgCol  present: 17095 / 20929
+  wGeom     present: 17095 / 20929
+  wRoll19   present: 17546 / 20929
+  wSpatial  present: 2453 / 20929
+  w2019     present: 19999 / 20929
 > 
 > cat("\n=== pairwise agreement on new-build parcels (correlation; median |diff| ft) ===\n")
 
@@ -214,9 +227,9 @@ gpkg parcels: 93291 | with a 2019 rollStart width: 67730
 +               WIDTH_TOL,
 +               100*mean(abs(d[[p[1]]] - d[[p[2]]]) < WIDTH_TOL)))
 + }
-  wGpkgCol  vs wGeom      n=2257  cor=0.994  med|diff|=0.0  agree(<3ft)=100%
-  wGpkgCol  vs w2019      n=2236  cor=0.973  med|diff|=0.0  agree(<3ft)=97%
-  wGeom     vs w2019      n=2236  cor=0.971  med|diff|=0.0  agree(<3ft)=97%
+  wGpkgCol  vs wGeom      n=17095  cor=0.997  med|diff|=0.1  agree(<3ft)=100%
+  wGpkgCol  vs w2019      n=17036  cor=0.994  med|diff|=0.0  agree(<3ft)=99%
+  wGeom     vs w2019      n=17036  cor=0.991  med|diff|=0.1  agree(<3ft)=99%
   wRoll19 vs wSpatial: n<5
 > 
 > cat("\n=== where methods disagree: worst 10 new-build duplex parcels ===\n")
@@ -227,16 +240,16 @@ gpkg parcels: 93291 | with a 2019 rollStart width: 67730
 +           wRoll19 = round(wRoll19), wSpatial = round(wSpatial), MB_Year_Built)])
       rollStart   side wGpkgCol wGeom wRoll19 wSpatial MB_Year_Built
           <num> <char>    <num> <num>   <num>    <num>         <num>
- 1:  5769081520   West       66    33      NA       33          2023
- 2: 14646253720   East       49    49      NA       16          2022
- 3:  2067678520   West       61    61      NA       33          2023
- 4: 13182684040   West       61    61      NA       34          2021
- 5:  1640025760   West       60    60      NA       33          2023
- 6: 15696199150   East       50    49      NA       25          2020
- 7:  6038750360   West       26    50      50       NA          2022
- 8: 19225735830   East       33    33      NA       50          2023
- 9: 19225735950   East       33    33      NA       50          2023
-10: 21616277450   East       50    49      NA       33          2019
+ 1: 15698217380   East       99    99      NA       33          2017
+ 2:  5769081520   West       66    33      NA       33          2023
+ 3: 14646253720   East       49    49      NA       16          2022
+ 4: 13684210760   East       33    33      NA       65          1908
+ 5:  2067678520   West       61    61      NA       33          2023
+ 6:  2042634540   West       60    59      NA       33          1912
+ 7: 13182684040   West       61    61      NA       34          2021
+ 8:  1640025760   West       60    60      NA       33          2023
+ 9: 15696199150   East       50    49      NA       25          2020
+10:  6038750360   West       26    50      50       NA          2022
 > 
 > # ============================================================================
 > # 7. THE PUZZLE FOR NEW PRODUCT: lot-width distribution, duplex vs SFD x side
@@ -246,8 +259,8 @@ gpkg parcels: 93291 | with a 2019 rollStart width: 67730
 +   cat(sprintf("\n=== new-build lot width [%s]: round-width mix, duplex vs SFD x side ===\n", wcol))
 +   d <- nb[!is.na(get(wcol))]
 +   d[, wc := round(get(wcol))]
-+   # share landing on 33 vs 50 vs other, by type x side
-+   d[, wclass := fifelse(wc %in% 32:34, "33", fifelse(wc %in% 49:51, "50", "other"))]
++   # share by lot-size bin (shared taxonomy), by type x side
++   d[, wclass := lotBin(wc)]
 +   print(dcast(d, type + side ~ wclass, fun.aggregate = length, value.var = "rollStart"))
 +   cat(" median width by type x side:\n")
 +   print(d[, .(n = .N, p25 = quantile(get(wcol),.25),
@@ -258,35 +271,35 @@ gpkg parcels: 93291 | with a 2019 rollStart width: 67730
 
 === new-build lot width [wGpkgCol]: round-width mix, duplex vs SFD x side ===
 Key: <type, side>
-     type   side    33    50 other
-   <char> <char> <int> <int> <int>
-1:    SFD   East   539    68   342
-2:    SFD   West   340   208   405
-3: duplex   East   141    23    73
-4: duplex   West    55    15    48
+     type   side    33    40    50 other
+   <char> <char> <int> <int> <int> <int>
+1:    SFD   East  5500   611  2105   635
+2:    SFD   West  2735   269  2010  2581
+3: duplex   East   273    23    84    30
+4: duplex   West   119    18    50    52
  median width by type x side:
      type   side     n   p25   p50   p75
    <char> <char> <int> <num> <num> <num>
-1:    SFD   East   949    33 33.00 42.00
-2:    SFD   West   953    33 49.00 55.00
-3: duplex   East   237    33 33.00 41.99
-4: duplex   West   118    33 35.75 50.00
+1:    SFD   East  8851    33    33 41.00
+2:    SFD   West  7595    33    49 56.45
+3: duplex   East   410    33    33 40.00
+4: duplex   West   239    33    36 50.00
 
 === new-build lot width [w2019]: round-width mix, duplex vs SFD x side ===
 Key: <type, side>
-     type   side    33    50 other
-   <char> <char> <int> <int> <int>
-1:    SFD   East   587    73   380
-2:    SFD   West   348   214   441
-3: duplex   East   632    80   346
-4: duplex   West   121    41    99
+     type   side    33    40    50 other
+   <char> <char> <int> <int> <int> <int>
+1:    SFD   East  5880   654  2314   704
+2:    SFD   West  2861   289  2085  2777
+3: duplex   East  1272    96   322   172
+4: duplex   West   329    42   114    88
  median width by type x side:
-     type   side     n   p25   p50   p75
-   <char> <char> <int> <num> <num> <num>
-1:    SFD   East  1040    33  33.0  42.3
-2:    SFD   West  1003    33  49.5  58.0
-3: duplex   East  1058    33  33.0  41.0
-4: duplex   West   261    33  36.0  50.0
+     type   side     n   p25    p50   p75
+   <char> <char> <int> <num>  <num> <num>
+1:    SFD   East  9552    33 33.000    41
+2:    SFD   West  8012    33 49.485    57
+3: duplex   East  1862    33 33.000    37
+4: duplex   West   573    33 33.000    47
 > 
 > # ============================================================================
 > # 8. RECENT SALES price overlay (unit level -- both half-duplex sales count)
@@ -322,6 +335,7 @@ no simple feature geometries present: returning a data.frame or tbl_df
 > 
 > # join unit-level sale to unit-level use/vintage/side (dtD, not parcel), + parcel width
 > dtU <- merge(dtSale, dtD[, .(rollNum, type, side, newBuild, MB_Year_Built,
++                              MB_Effective_Year,
 +                              MB_Total_Finished_Area, w2019, wGpkgCol)],
 +              by = "rollNum")
 > dtUn <- dtU[newBuild == TRUE & !is.na(type)]
@@ -332,47 +346,131 @@ no simple feature geometries present: returning a data.frame or tbl_df
 > print(dtUn[, .(n = .N, p50price = median(price)), by = .(type, side)][order(type, side)])
      type   side     n p50price
    <char> <char> <int>    <num>
-1:    SFD   East   193  2275000
-2:    SFD   West   207  3800000
-3: duplex   East  1323  1625000
-4: duplex   West   259  2380000
+1:    SFD   East   972  2297500
+2:    SFD   West  1375  4050000
+3: duplex   East  1707  1615200
+4: duplex   West   429  2400000
 > 
-> cat("\n=== new-build price-sqft elasticity, duplex vs SFD (recent sales) ===\n")
+> # ---- lot-size bin (same taxonomy as sec.7) + west indicator, on the sale side ----
+> dtUn[, wUse := fifelse(!is.na(w2019), w2019, wGpkgCol)]      # best width per unit
+> dtUn[, wc   := round(wUse)]
+> dtUn[, lotSize := lotBin(wc)]
+> dtUn[, west := as.integer(side == "West")]
+> 
+> # ============================================================================
+> # 8b. THE INSIGHT: WEST vs EAST price, by product type x lot size
+> #     Unconditional means -- no FE, no area control, no logs. Just the gap.
+> # ============================================================================
+> cat("\n=== WEST vs EAST price by product type x lot size (unconditional) ===\n")
 
-=== new-build price-sqft elasticity, duplex vs SFD (recent sales) ===
-> dtUn[, wUse := fifelse(!is.na(w2019), w2019, wGpkgCol)]
-> for (ty in c("SFD","duplex")) {
-+   d <- dtUn[type == ty & !is.na(MB_Total_Finished_Area) & MB_Total_Finished_Area > 0]
-+   cat(sprintf("\n---- %s (n=%d) ----\n", ty, nrow(d)))
-+   if (nrow(d) < 10) { cat("  too few obs\n"); next }
-+   print(summary(feols(log(price) ~ log(MB_Total_Finished_Area) | MB_Year_Built + saleYear,
-+                       data = d, vcov = "hetero")))
-+ }
+=== WEST vs EAST price by product type x lot size (unconditional) ===
+> cell <- dtUn[, .(n = .N, meanP = mean(price), medP = as.numeric(median(price))),
++              by = .(type, lotSize, side)]
+> # wide: one row per type x lotSize, East vs West side by side + ratio
+> w <- dcast(cell, type + lotSize ~ side,
++            value.var = c("n","meanP","medP"))
+> setnames(w,
++   c("n_East","n_West","meanP_East","meanP_West","medP_East","medP_West"),
++   c("nE","nW","meanE","meanW","medE","medW"), skip_absent = TRUE)
+> w[, ratioMean := meanW / meanE]
+> w[, ratioMed  := medW  / medE]
+> setorder(w, type, lotSize)
+> print(w[, .(type, lotSize, nE, nW,
++             meanE = round(meanE), meanW = round(meanW), ratioMean = round(ratioMean,3),
++             medE  = round(medE),  medW  = round(medW),  ratioMed  = round(ratioMed,3))])
+Key: <type, lotSize>
+      type lotSize    nE    nW   meanE   meanW ratioMean    medE    medW
+    <char>  <fctr> <int> <int>   <num>   <num>     <num>   <num>   <num>
+ 1:    SFD    <NA>    16    50 2358812 8156150     3.458 2024000 4701250
+ 2:    SFD      33   612   531 2277776 3673840     1.613 2265000 3580000
+ 3:    SFD      40    54    43 2442681 3622442     1.483 2355000 3470000
+ 4:    SFD      50   153   314 2542845 4540174     1.785 2528000 4410000
+ 5:    SFD   other   137   437 2214925 5808587     2.622 2125000 5290000
+ 6: duplex    <NA>    59    46 1641950 2958767     1.802 1630000 2600000
+ 7: duplex      33  1128   231 1581145 2213891     1.400 1560000 2274285
+ 8: duplex      40    98    32 1738457 2668021     1.535 1697944 2600000
+ 9: duplex      50   308    74 1816453 2663916     1.467 1795000 2561904
+10: duplex   other   114    46 1662204 2635042     1.585 1635000 2540310
+    ratioMed
+       <num>
+ 1:    2.323
+ 2:    1.581
+ 3:    1.473
+ 4:    1.744
+ 5:    2.489
+ 6:    1.595
+ 7:    1.458
+ 8:    1.531
+ 9:    1.427
+10:    1.554
+> 
+> cat("\n=== same, medians only (compact) ===\n")
 
----- SFD (n=400) ----
-OLS estimation, Dep. Var.: log(price)
-Observations: 400
-Fixed-effects: MB_Year_Built: 6,  saleYear: 5
-Standard-errors: Heteroskedasticity-robust 
-                            Estimate Std. Error t value   Pr(>|t|)    
-log(MB_Total_Finished_Area) 0.983434   0.167193 5.88204 8.7403e-09 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.53472     Adj. R2: 0.389244
-                Within R2: 0.356468
+=== same, medians only (compact) ===
+> print(dcast(dtUn, type + lotSize ~ side,
++             value.var = "price", fun.aggregate = median)[order(type, lotSize)])
+      type lotSize    East    West
+    <char>  <fctr>   <num>   <num>
+ 1:    SFD      33 2265000 3580000
+ 2:    SFD      40 2355000 3470000
+ 3:    SFD      50 2528000 4410000
+ 4:    SFD   other 2125000 5290000
+ 5:    SFD    <NA> 2024000 4701250
+ 6: duplex      33 1560000 2274285
+ 7: duplex      40 1697944 2600000
+ 8: duplex      50 1795000 2561904
+ 9: duplex   other 1635000 2540310
+10: duplex    <NA> 1630000 2600000
+> 
+> # ============================================================================
+> # 8c. Lot-size DISTRIBUTION on the sales sample (is 50 even the norm off-33?)
+> #     Counts + shares by type x side, and the raw width quantiles among non-33.
+> # ============================================================================
+> cat("\n=== lot-size mix among SALES, count by type x lotSize x side ===\n")
 
----- duplex (n=1582) ----
-OLS estimation, Dep. Var.: log(price)
-Observations: 1,582
-Fixed-effects: MB_Year_Built: 6,  saleYear: 5
-Standard-errors: Heteroskedasticity-robust 
-                            Estimate Std. Error t value  Pr(>|t|)    
-log(MB_Total_Finished_Area) 0.683333   0.021266 32.1329 < 2.2e-16 ***
----
-Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.159103     Adj. R2: 0.405074
-                 Within R2: 0.396844
+=== lot-size mix among SALES, count by type x lotSize x side ===
+> print(dcast(dtUn, type + side ~ lotSize,
++             fun.aggregate = length, value.var = "price")[order(type, side)])
+Key: <type, side>
+     type   side    NA    33    40    50 other
+   <char> <char> <int> <int> <int> <int> <int>
+1:    SFD   East    16   612    54   153   137
+2:    SFD   West    50   531    43   314   437
+3: duplex   East    59  1128    98   308   114
+4: duplex   West    46   231    32    74    46
+> 
+> cat("\n=== lot-size mix among SALES, within-cell SHARE (type x side sums to 1) ===\n")
+
+=== lot-size mix among SALES, within-cell SHARE (type x side sums to 1) ===
+> shr <- dtUn[, .N, by = .(type, side, lotSize)]
+> shr[, share := N / sum(N), by = .(type, side)]
+> print(dcast(shr, type + side ~ lotSize, value.var = "share")[order(type, side)])
+Key: <type, side>
+     type   side         NA        33         40        50      other
+   <char> <char>      <num>     <num>      <num>     <num>      <num>
+1:    SFD   East 0.01646091 0.6296296 0.05555556 0.1574074 0.14094650
+2:    SFD   West 0.03636364 0.3861818 0.03127273 0.2283636 0.31781818
+3: duplex   East 0.03456356 0.6608084 0.05741066 0.1804335 0.06678383
+4: duplex   West 0.10722611 0.5384615 0.07459207 0.1724942 0.10722611
+> 
+> cat("\n=== width quantiles among NON-33 sales (what does 'other'/'50' actually contain) ===\n")
+
+=== width quantiles among NON-33 sales (what does 'other'/'50' actually contain) ===
+> print(dtUn[lotSize != "33" & !is.na(wUse),
++            .(n = .N,
++              p10 = round(quantile(wUse, .10)),
++              p25 = round(quantile(wUse, .25)),
++              p50 = round(quantile(wUse, .50)),
++              p75 = round(quantile(wUse, .75)),
++              p90 = round(quantile(wUse, .90))),
++            by = .(type, side)][order(type, side)])
+     type   side     n   p10   p25   p50   p75   p90
+   <char> <char> <int> <num> <num> <num> <num> <num>
+1:    SFD   East   344    25    30    41    47    50
+2:    SFD   West   794    40    50    50    63    75
+3: duplex   East   520    30    40    44    50    50
+4: duplex   West   152    39    40    50    52    62
 > 
 > proc.time()
    user  system elapsed 
- 27.930   2.997  36.917 
+ 28.571   2.079  31.347 

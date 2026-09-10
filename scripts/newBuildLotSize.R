@@ -10,13 +10,26 @@
 # Tom Davidoff
 # 09/08/26
 
-BUILT_MINYEAR <- 2019
+BUILT_MINYEAR <- 2019      # retained: informational only, no longer gates the sample
 BUILT_MAXYEAR <- 2024
+EFFYEAR_MIN   <- 2000      # vintage gate: MB_Effective_Year strictly greater than this
 SALE_MINYEAR  <- 2022      # "recent" price overlay
 SALE_MAXYEAR  <- 2026
 ONTARIO_LON   <- -123.1036
 MATCHDIST     <- 30        # m, spatial fallback gate (looser than permit-match: parcel centroids)
 WIDTH_TOL     <- 3         # ft, agreement tolerance across methods
+
+# shared lot-size bins (ft), used by BOTH the sec.7 distribution and sec.8 price tables.
+# left-open, right-closed: (30,36]="33", (36,40]="40", (40,50]="50";
+# anything <=30 or >50 -> "other", so nothing is silently dropped.
+lotBin <- function(width) {
+  out <- rep("other", length(width))
+  out[width > 30 & width <= 36] <- "33"
+  out[width > 36 & width <= 40] <- "40"
+  out[width > 40 & width <= 50] <- "50"
+  out[is.na(width)] <- NA
+  factor(out, levels = c("33","40","50","other"))
+}
 
 library(data.table)
 library(sf)
@@ -128,7 +141,7 @@ sfdUse <- c("Single Family Dwelling", "Residential Dwelling with Suite")
 dtD[, type := fifelse(grepl("Duplex", ACTUAL_USE_DESCRIPTION), "duplex",
               fifelse(ACTUAL_USE_DESCRIPTION %in% sfdUse,      "SFD", NA_character_))]
 dtD[, side := fifelse(longitude < ONTARIO_LON, "West", "East")]
-dtD[, newBuild := MB_Year_Built %between% c(BUILT_MINYEAR, BUILT_MAXYEAR)]
+dtD[, newBuild := MB_Effective_Year > EFFYEAR_MIN]   # vintage gate: effective (reno-aware) year
 
 # one row per parcel: for strata duplexes both unit-folios carry identical parcel
 # geom/width, so median within rollStart is the parcel value (dedup, no double count)
@@ -181,8 +194,8 @@ widthDist <- function(wcol) {
   cat(sprintf("\n=== new-build lot width [%s]: round-width mix, duplex vs SFD x side ===\n", wcol))
   d <- nb[!is.na(get(wcol))]
   d[, wc := round(get(wcol))]
-  # share landing on 33 vs 50 vs other, by type x side
-  d[, wclass := fifelse(wc %in% 32:34, "33", fifelse(wc %in% 49:51, "50", "other"))]
+  # share by lot-size bin (shared taxonomy), by type x side
+  d[, wclass := lotBin(wc)]
   print(dcast(d, type + side ~ wclass, fun.aggregate = length, value.var = "rollStart"))
   cat(" median width by type x side:\n")
   print(d[, .(n = .N, p25 = quantile(get(wcol),.25),
@@ -210,6 +223,7 @@ dtSale <- dtSale[CONVEYANCE_TYPE_DESCRIPTION == "Improved Single Property Transa
 
 # join unit-level sale to unit-level use/vintage/side (dtD, not parcel), + parcel width
 dtU <- merge(dtSale, dtD[, .(rollNum, type, side, newBuild, MB_Year_Built,
+                             MB_Effective_Year,
                              MB_Total_Finished_Area, w2019, wGpkgCol)],
              by = "rollNum")
 dtUn <- dtU[newBuild == TRUE & !is.na(type)]
@@ -217,12 +231,55 @@ cat("\n=== recent (", SALE_MINYEAR, "-", SALE_MAXYEAR,
     ") sales of new-build stock: n by type x side ===\n", sep="")
 print(dtUn[, .(n = .N, p50price = median(price)), by = .(type, side)][order(type, side)])
 
-cat("\n=== new-build price-sqft elasticity, duplex vs SFD (recent sales) ===\n")
-dtUn[, wUse := fifelse(!is.na(w2019), w2019, wGpkgCol)]
-for (ty in c("SFD","duplex")) {
-  d <- dtUn[type == ty & !is.na(MB_Total_Finished_Area) & MB_Total_Finished_Area > 0]
-  cat(sprintf("\n---- %s (n=%d) ----\n", ty, nrow(d)))
-  if (nrow(d) < 10) { cat("  too few obs\n"); next }
-  print(summary(feols(log(price) ~ log(MB_Total_Finished_Area) | MB_Year_Built + saleYear,
-                      data = d, vcov = "hetero")))
-}
+# ---- lot-size bin (same taxonomy as sec.7) + west indicator, on the sale side ----
+dtUn[, wUse := fifelse(!is.na(w2019), w2019, wGpkgCol)]      # best width per unit
+dtUn[, wc   := round(wUse)]
+dtUn[, lotSize := lotBin(wc)]
+dtUn[, west := as.integer(side == "West")]
+
+# ============================================================================
+# 8b. THE INSIGHT: WEST vs EAST price, by product type x lot size
+#     Unconditional means -- no FE, no area control, no logs. Just the gap.
+# ============================================================================
+cat("\n=== WEST vs EAST price by product type x lot size (unconditional) ===\n")
+cell <- dtUn[, .(n = .N, meanP = mean(price), medP = as.numeric(median(price))),
+             by = .(type, lotSize, side)]
+# wide: one row per type x lotSize, East vs West side by side + ratio
+w <- dcast(cell, type + lotSize ~ side,
+           value.var = c("n","meanP","medP"))
+setnames(w,
+  c("n_East","n_West","meanP_East","meanP_West","medP_East","medP_West"),
+  c("nE","nW","meanE","meanW","medE","medW"), skip_absent = TRUE)
+w[, ratioMean := meanW / meanE]
+w[, ratioMed  := medW  / medE]
+setorder(w, type, lotSize)
+print(w[, .(type, lotSize, nE, nW,
+            meanE = round(meanE), meanW = round(meanW), ratioMean = round(ratioMean,3),
+            medE  = round(medE),  medW  = round(medW),  ratioMed  = round(ratioMed,3))])
+
+cat("\n=== same, medians only (compact) ===\n")
+print(dcast(dtUn, type + lotSize ~ side,
+            value.var = "price", fun.aggregate = median)[order(type, lotSize)])
+
+# ============================================================================
+# 8c. Lot-size DISTRIBUTION on the sales sample (is 50 even the norm off-33?)
+#     Counts + shares by type x side, and the raw width quantiles among non-33.
+# ============================================================================
+cat("\n=== lot-size mix among SALES, count by type x lotSize x side ===\n")
+print(dcast(dtUn, type + side ~ lotSize,
+            fun.aggregate = length, value.var = "price")[order(type, side)])
+
+cat("\n=== lot-size mix among SALES, within-cell SHARE (type x side sums to 1) ===\n")
+shr <- dtUn[, .N, by = .(type, side, lotSize)]
+shr[, share := N / sum(N), by = .(type, side)]
+print(dcast(shr, type + side ~ lotSize, value.var = "share")[order(type, side)])
+
+cat("\n=== width quantiles among NON-33 sales (what does 'other'/'50' actually contain) ===\n")
+print(dtUn[lotSize != "33" & !is.na(wUse),
+           .(n = .N,
+             p10 = round(quantile(wUse, .10)),
+             p25 = round(quantile(wUse, .25)),
+             p50 = round(quantile(wUse, .50)),
+             p75 = round(quantile(wUse, .75)),
+             p90 = round(quantile(wUse, .90))),
+           by = .(type, side)][order(type, side)])
