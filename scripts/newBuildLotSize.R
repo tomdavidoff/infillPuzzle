@@ -222,8 +222,9 @@ dtSale <- dtSale[CONVEYANCE_TYPE_DESCRIPTION == "Improved Single Property Transa
                  price > 0 & saleYear %between% c(SALE_MINYEAR, SALE_MAXYEAR)]
 
 # join unit-level sale to unit-level use/vintage/side (dtD, not parcel), + parcel width
+# NEIGHBOURHOOD carried through for the hood-FE spec in sec.8d
 dtU <- merge(dtSale, dtD[, .(rollNum, type, side, newBuild, MB_Year_Built,
-                             MB_Effective_Year,
+                             MB_Effective_Year, NEIGHBOURHOOD,
                              MB_Total_Finished_Area, w2019, wGpkgCol)],
              by = "rollNum")
 dtUn <- dtU[newBuild == TRUE & !is.na(type)]
@@ -283,3 +284,272 @@ print(dtUn[lotSize != "33" & !is.na(wUse),
              p75 = round(quantile(wUse, .75)),
              p90 = round(quantile(wUse, .90))),
            by = .(type, side)][order(type, side)])
+
+# ============================================================================
+# 8d. 33 vs 50 PREMIUM WITHIN NEIGHBOURHOOD (absorb NEIGHBOURHOOD FE)
+#     50s sit further south -- arguably worse, certainly different locations --
+#     so let hood FE net out location and read the pure 33-vs-50 lot premium.
+#     log(price), 33 = reference; SEs clustered on NEIGHBOURHOOD.
+# ============================================================================
+dtFE <- dtUn[lotSize %in% c("33","50") & !is.na(NEIGHBOURHOOD) & price > 0]
+dtFE[, lotSize := droplevels(lotSize)]
+dtFE[, lot50   := as.integer(lotSize == "50")]      # 33 = reference category
+
+# how much identifying variation survives the FE: within-hood 33 AND 50 both present?
+cat("\n=== within-neighbourhood 33-vs-50 identifying variation (by type) ===\n")
+idvar <- dtFE[, .(n33 = sum(lot50 == 0), n50 = sum(lot50 == 1)), by = .(type, NEIGHBOURHOOD)]
+print(idvar[, .(hoods              = .N,
+                hoodsBothPresent   = sum(n33 > 0 & n50 > 0),
+                salesInBothHoods   = sum((n33 + n50)[n33 > 0 & n50 > 0])),
+            by = type])
+
+cat("\n=== 33 vs 50 log-price premium, NEIGHBOURHOOD FE, by type ===\n")
+for (ty in c("SFD","duplex")) {
+  dTy <- dtFE[type == ty]
+  m <- feols(log(price) ~ lot50 | NEIGHBOURHOOD, data = dTy, cluster = ~NEIGHBOURHOOD)
+  cat("\n---", ty, "  (n =", nrow(dTy),
+      "; hoods =", uniqueN(dTy$NEIGHBOURHOOD), ") ---\n")
+  print(summary(m))
+  cat(sprintf("  50-vs-33 premium: %+.1f%% (exp(b)-1)\n",
+              100 * (exp(coef(m)[["lot50"]]) - 1)))
+}
+
+# pooled: let the 50 premium differ by type, common hood FE
+cat("\n=== pooled: 50 premium interacted with type, NEIGHBOURHOOD FE ===\n")
+mAll <- feols(log(price) ~ i(type, lot50) | NEIGHBOURHOOD + type,
+              data = dtFE, cluster = ~NEIGHBOURHOOD)
+print(summary(mAll))
+
+# ============================================================================
+# 8e. 33 vs 50 premium, SEPARATELY by type x side (4 regressions)
+#     East SFD, West SFD, East duplex, West duplex. Hood FE, 33 = reference.
+# ============================================================================
+cat("\n=== 33 vs 50 log-price premium, NEIGHBOURHOOD FE, by type x side ===\n")
+for (ty in c("SFD","duplex")) for (sd in c("East","West")) {
+  dCell <- dtFE[type == ty & side == sd]
+  m <- feols(log(price) ~ lot50 | NEIGHBOURHOOD, data = dCell, cluster = ~NEIGHBOURHOOD)
+  cat(sprintf("\n--- %s %s  (n = %d; hoods = %d) ---\n",
+              sd, ty, nrow(dCell), uniqueN(dCell$NEIGHBOURHOOD)))
+  print(summary(m))
+  cat(sprintf("  50-vs-33 premium: %+.1f%% (exp(b)-1)\n",
+              100 * (exp(coef(m)[["lot50"]]) - 1)))
+}
+
+# ============================================================================
+# 8f. THE DOUBLE DIFFERENCE: does the 50-vs-33 frontage premium differ
+#     duplex-vs-SFD, and does THAT differ West-vs-East?
+#     lot50 x type x side, hood x type FE so each type's gradient is within-hood.
+# ============================================================================
+dtFE[, dup  := as.integer(type == "duplex")]   # SFD = reference
+# main DiD: 50-premium x product, separately by side (read the two 2-way cells)
+cat("\n=== 50-vs-33 premium x product (SFD vs duplex), by side ===\n")
+for (sd in c("East","West")) {
+  m <- feols(log(price) ~ lot50 * dup | NEIGHBOURHOOD^type,
+             data = dtFE[side == sd], cluster = ~NEIGHBOURHOOD)
+  cat(sprintf("\n--- %s (n = %d) ---\n", sd, nrow(dtFE[side==sd])))
+  print(summary(m))
+}
+
+# triple diff: is the (duplex-vs-SFD) frontage gap itself different West vs East?
+cat("\n=== TRIPLE DIFF: lot50 x dup x west ===\n")
+mDDD <- feols(log(price) ~ lot50 * dup * west | NEIGHBOURHOOD^type,
+              data = dtFE, cluster = ~NEIGHBOURHOOD)
+print(summary(mDDD))
+
+cnt <- dtFE[, .(has = uniqueN(paste(lot50, dup))), by = NEIGHBOURHOOD]
+cat("hoods with all 4 lot50xdup cells:", cnt[has == 4, .N], "of", nrow(cnt), "\n")
+
+# ============================================================================
+# 8g. PRICE DENSITY OVERLAY: duplex vs SFD, recent new-build stock (DOLLARS)
+#     Comparable unit of account: a duplex BUILDING (2 units) vs one SFD.
+#     Substitution is whole-house vs whole-duplex, so the half-duplex sale is
+#     doubled (priceCmp). Global-substitution prediction: the duplex price
+#     DISTRIBUTION is right-truncated relative to SFD -- duplex mass dies off in
+#     the price band where SFD is still thick (a whole house stays attainable).
+# ============================================================================
+TRIM_PCT <- 0.01     # drop top & bottom this fraction of price, within type x side
+dirPlot  <- "text"
+
+dtDen <- dtUn[!is.na(price) & price > 0 & type %in% c("SFD","duplex")]
+dtDen[, priceCmp := fifelse(type == "duplex", 2 * price, price)]   # 2 units vs 1 SFD
+
+# --- trim outliers within type x side (each product/side gets its own cut) ---
+dtDen[, keep := priceCmp > quantile(priceCmp, TRIM_PCT) &
+                priceCmp < quantile(priceCmp, 1 - TRIM_PCT), by = .(type, side)]
+cat(sprintf("\n=== trimmed %.0f%% each tail within type x side: dropped %d of %d ===\n",
+            100*TRIM_PCT, sum(!dtDen$keep), nrow(dtDen)))
+dtDen <- dtDen[keep == TRUE]
+
+# --- upper-tail comparison: where does each product's mass sit? ($) ---
+cat("\n=== comparable-price quantiles by type (duplex = 2 units, trimmed) ===\n")
+print(dtDen[, .(n = .N,
+                p50 = round(quantile(priceCmp, .50)),
+                p75 = round(quantile(priceCmp, .75)),
+                p90 = round(quantile(priceCmp, .90)),
+                p95 = round(quantile(priceCmp, .95))),
+            by = type][order(type)])
+
+# share above SFD median / p75 -- the "attainable whole house" thresholds
+sfdMed <- dtDen[type == "SFD", median(priceCmp)]
+sfdP75 <- dtDen[type == "SFD", quantile(priceCmp, .75)]
+cat(sprintf("\n=== share of sales above SFD median ($%s) and SFD p75 ($%s) ===\n",
+            format(round(sfdMed), big.mark=","), format(round(sfdP75), big.mark=",")))
+print(dtDen[, .(n = .N,
+                shareAboveSFDmed = round(mean(priceCmp > sfdMed), 3),
+                shareAboveSFDp75 = round(mean(priceCmp > sfdP75), 3)),
+            by = type][order(type)])
+
+cat("\n=== upper-tail share by type x side ===\n")
+print(dtDen[, .(n = .N,
+                shareAboveSFDmed = round(mean(priceCmp > sfdMed), 3)),
+            by = .(type, side)][order(type, side)])
+
+mfmt <- function(x) paste0("$", formatC(x/1e6, format="f", digits=1), "M")
+
+# --- PNG 1: pooled, two lines (duplex building vs SFD) ---
+dS <- density(dtDen[type == "SFD",    priceCmp])
+dD <- density(dtDen[type == "duplex", priceCmp])
+xlim <- range(dtDen$priceCmp)
+ylim <- c(0, max(dS$y, dD$y) * 1.05)
+
+png(file.path(dirPlot, "duplexVsSFD_priceDensity.png"),
+    width = 8, height = 5, units = "in", res = 200)
+plot(dS, xlim = xlim, ylim = ylim, lwd = 2, col = "black", xaxt = "n",
+     main = "New-build price density: SFD vs duplex (2 units)",
+     xlab = "sale price", ylab = "density")
+axis(1, at = pretty(xlim), labels = mfmt(pretty(xlim)))
+lines(dD, lwd = 2, col = "red", lty = 2)
+abline(v = sfdMed, col = "grey50", lty = 3)
+abline(v = sfdP75, col = "grey50", lty = 3)
+legend("topright", bty = "n",
+       legend = c("SFD", "duplex (2 units)", "SFD median / p75"),
+       col = c("black","red","grey50"), lwd = c(2,2,1), lty = c(1,2,3))
+dev.off()
+cat("\n  wrote", file.path(dirPlot, "duplexVsSFD_priceDensity.png"), "\n")
+
+# --- PNG 2: split East/West, two lines each ---
+png(file.path(dirPlot, "duplexVsSFD_priceDensity_bySide.png"),
+    width = 11, height = 5, units = "in", res = 200)
+par(mfrow = c(1,2))
+for (sd in c("East","West")) {
+  dSs <- density(dtDen[type=="SFD"    & side==sd, priceCmp])
+  dDs <- density(dtDen[type=="duplex" & side==sd, priceCmp])
+  xl  <- range(dtDen[side==sd, priceCmp])
+  plot(dSs, xlim = xl, ylim = c(0, max(dSs$y, dDs$y)*1.05), xaxt = "n",
+       lwd = 2, col = "black", main = paste(sd, "side"),
+       xlab = "sale price", ylab = "density")
+  axis(1, at = pretty(xl), labels = mfmt(pretty(xl)))
+  lines(dDs, lwd = 2, col = "red", lty = 2)
+  legend("topright", bty="n", legend = c("SFD","duplex (2 units)"),
+         col = c("black","red"), lwd = 2, lty = c(1,2))
+}
+dev.off()
+cat("  wrote", file.path(dirPlot, "duplexVsSFD_priceDensity_bySide.png"), "\n")
+
+# ============================================================================
+# 8h. SAME densities, split by LOT SIZE: 33 vs 50, duplex vs SFD (four lines).
+#     Duplex still doubled (priceCmp). The cap story predicts the 50-duplex
+#     spike is pinned at the base of the 50-SFD tail (esp. West); 33s overlap.
+# ============================================================================
+dt4 <- dtUn[!is.na(price) & price > 0 & type %in% c("SFD","duplex") &
+            lotSize %in% c("33","50")]
+dt4[, priceCmp := fifelse(type == "duplex", 2 * price, price)]   # 2 units vs 1 SFD
+dt4[, grp := paste0(type, " ", as.character(lotSize))]           # e.g. "duplex 33"
+
+# trim within each of the four series x side (same rule as 8g)
+dt4[, keep := priceCmp > quantile(priceCmp, TRIM_PCT) &
+              priceCmp < quantile(priceCmp, 1 - TRIM_PCT), by = .(grp, side)]
+dt4 <- dt4[keep == TRUE]
+
+cat("\n=== 33/50 x type series (duplex = 2 units): n by side ===\n")
+print(dcast(dt4, grp ~ side, fun.aggregate = length, value.var = "priceCmp"))
+
+grpLev <- c("SFD 33","SFD 50","duplex 33","duplex 50")
+grpCol <- c("black",  "grey45","red",      "orange")
+grpLty <- c(1,        1,       2,          2)
+names(grpCol) <- names(grpLty) <- grpLev
+
+drawLines <- function(dsub, xr) {
+  dens <- list(); ymax <- 0
+  for (g in grpLev) {
+    v <- dsub[grp == g, priceCmp]
+    if (length(v) < 5) next
+    dd <- density(v); dens[[g]] <- dd; ymax <- max(ymax, dd$y)
+  }
+  plot(NA, xlim = xr, ylim = c(0, ymax*1.05), xaxt = "n",
+       xlab = "sale price", ylab = "density", main = "")
+  axis(1, at = pretty(xr), labels = mfmt(pretty(xr)))
+  for (g in names(dens))
+    lines(dens[[g]], lwd = 2, col = grpCol[g], lty = grpLty[g])
+  legend("topright", bty = "n", legend = grpLev,
+         col = grpCol, lwd = 2, lty = grpLty)
+}
+
+# --- PNG 3: pooled (both sides), four lines ---
+png(file.path(dirPlot, "duplexVsSFD_priceDensity_byLot.png"),
+    width = 8, height = 5, units = "in", res = 200)
+drawLines(dt4, range(dt4$priceCmp))
+title(main = "New-build price density: 33 vs 50, duplex (2 units) vs SFD")
+dev.off()
+cat("\n  wrote", file.path(dirPlot, "duplexVsSFD_priceDensity_byLot.png"), "\n")
+
+# --- PNG 4: split East/West, four lines each ---
+png(file.path(dirPlot, "duplexVsSFD_priceDensity_byLot_bySide.png"),
+    width = 11, height = 5, units = "in", res = 200)
+par(mfrow = c(1,2))
+for (sd in c("East","West")) {
+  drawLines(dt4[side == sd], range(dt4[side == sd, priceCmp]))
+  title(main = paste(sd, "side"))
+}
+dev.off()
+cat("  wrote", file.path(dirPlot, "duplexVsSFD_priceDensity_byLot_bySide.png"), "\n")
+
+# ============================================================================
+# 8i. THE SUBSTITUTION, IN ONE PLOT: three unconditional (on lot size) densities
+#     - West duplex (raw half-duplex price -- the West buyer's actual outlay)
+#     - East SFD    (the whole-house alternative at that budget)
+#     - West SFD    (the whole house the West duplex buyer is priced out of)
+#     Global-substitution read: West duplex should sit ON TOP OF East SFD (same
+#     money, whole house vs half duplex), and well LEFT of West SFD.
+# ============================================================================
+d3 <- dtUn[!is.na(price) & price > 0 &
+           ((type == "duplex" & side == "West") |
+            (type == "SFD"    & side == "East") |
+            (type == "SFD"    & side == "West"))]
+d3[, grp := fifelse(type == "duplex", "West duplex",
+             fifelse(side == "East", "East SFD", "West SFD"))]
+
+# trim within each series (same TRIM_PCT rule; raw price, no doubling)
+d3[, keep := price > quantile(price, TRIM_PCT) &
+             price < quantile(price, 1 - TRIM_PCT), by = grp]
+d3 <- d3[keep == TRUE]
+
+cat("\n=== three-series unconditional: n and price quantiles ===\n")
+print(d3[, .(n = .N,
+             p25 = round(quantile(price,.25)),
+             p50 = round(quantile(price,.50)),
+             p75 = round(quantile(price,.75)),
+             p90 = round(quantile(price,.90))),
+         by = grp][order(grp)])
+
+grp3 <- c("West duplex","East SFD","West SFD")
+col3 <- c("red",        "black",   "grey45")
+lty3 <- c(2,            1,         1)
+names(col3) <- names(lty3) <- grp3
+
+den3 <- lapply(grp3, function(g) density(d3[grp == g, price]))
+names(den3) <- grp3
+xl3  <- range(d3$price)
+yl3  <- c(0, max(sapply(den3, function(d) max(d$y))) * 1.05)
+
+png(file.path(dirPlot, "westDuplex_vs_SFD_unconditional.png"),
+    width = 8, height = 5, units = "in", res = 200)
+plot(NA, xlim = xl3, ylim = yl3, xaxt = "n",
+     main = "West duplex vs East / West single family (unconditional)",
+     xlab = "sale price", ylab = "density")
+axis(1, at = pretty(xl3), labels = mfmt(pretty(xl3)))
+for (g in grp3) lines(den3[[g]], lwd = 2, col = col3[g], lty = lty3[g])
+legend("topright", bty = "n", legend = grp3,
+       col = col3, lwd = 2, lty = lty3)
+dev.off()
+cat("\n  wrote", file.path(dirPlot, "westDuplex_vs_SFD_unconditional.png"), "\n")
