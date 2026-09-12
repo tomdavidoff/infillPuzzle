@@ -1,0 +1,379 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # =============================================================
+> # Alternative explanation: East/West (and neighbourhood) PRICE convergence
+> # CoV single-detached sales hedonic from BCA .gpkg SALES + DESCRIPTIONS + A09.
+> #
+> #   (1) ln(P) ~ ln(lot) + ln(sqft), MB_Effective_Year FE, run PER SALE-YEAR;
+> #       plot the East/West premium coefficient over sale years.
+> #   (2) Same hedonic with NEIGHBOURHOOD dummies instead of E/W, per year;
+> #       box-and-whisker the distribution of neighbourhood coefficients by year.
+> #
+> # If the E/W price premium is itself converging, the building-mix convergence
+> # may track relative prices rather than a distinct policy/preference shift.
+> #
+> # Performance: SALES read is filtered in SQL (price + year) so GDAL returns only
+> # kept rows; make_valid runs on that small set. DESCRIPTIONS read WITHOUT geom
+> # (attributes only) so no polygons are parsed. Centroids planar (s2 off).
+> # Keys: ROLL_NUMBER across gpkg + A09 inventory via numeric coercion.
+> # =============================================================
+> 
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(fixest)
+> library(ggplot2)
+> 
+> gpkg     <- "~/bigFiles/latestSpatialBCA/2026-04-08_bca_folios.gpkg"
+> inv_path <- "~/DropboxExternal/dataRaw/Residential_inventory_202601/20260101_A09_Residential_Inventory_Extract.txt"
+> out_dir  <- "text"; dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+> 
+> ONT       <- -123.101
+> YR_MIN    <- 2011                 # ~15-year window; widen/narrow after seeing coverage
+> sales_tbl <- "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_SALES_SV"
+> desc_tbl  <- "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV"
+> 
+> # Arm's-length improved conveyance types — EDIT after the printed counts below.
+> ARMS_LENGTH <- c("Improved Single Property Transaction")
+> 
+> roll_key <- function(x) suppressWarnings(as.numeric(gsub("[^0-9]", "", x)))
+> numify   <- function(x) suppressWarnings(as.numeric(gsub("[^0-9.\\-]", "", x)))
+> 
+> # ---- 1. SALES: SQL-filtered read (price + year in SQLite, not R) ----
+> q_sales <- sprintf(
++   'SELECT ROLL_NUMBER, CONVEYANCE_PRICE, CONVEYANCE_DATE,
++           CONVEYANCE_TYPE_DESCRIPTION, geom
++    FROM "%s"
++    WHERE CONVEYANCE_PRICE > 100000
++      AND CAST(substr(CONVEYANCE_DATE,1,4) AS INTEGER) >= %d', sales_tbl, YR_MIN)
+> sales <- as.data.table(st_read(gpkg, query = q_sales, quiet = TRUE))
+> sales[, sale_year := as.integer(substr(as.character(CONVEYANCE_DATE), 1, 4))]
+> 
+> cat("CONVEYANCE_TYPE_DESCRIPTION counts (edit ARMS_LENGTH to match):\n")
+CONVEYANCE_TYPE_DESCRIPTION counts (edit ARMS_LENGTH to match):
+> print(sales[, .N, by = CONVEYANCE_TYPE_DESCRIPTION][order(-N)])
+                CONVEYANCE_TYPE_DESCRIPTION       N
+                                     <char>   <int>
+1:     Improved Single Property Transaction 1500927
+2: Reject - Not Suitable for Sales Analysis  570790
+3:       Vacant Single Property Transaction   74029
+4:            Multiple Property Transaction   17313
+> 
+> sales <- sales[CONVEYANCE_TYPE_DESCRIPTION %in% ARMS_LENGTH]
+> sales[, roll := roll_key(ROLL_NUMBER)]
+> 
+> # ---- 2. East/West from sale geometry (validate small set, planar centroid) ----
+> sales_sf <- st_transform(st_make_valid(st_as_sf(sales)), 4326)
+> sf_use_s2(FALSE)
+Spherical geometry (s2) switched off
+> sales[, lon := st_coordinates(st_centroid(st_geometry(sales_sf)))[, 1]]
+Warning message:
+In st_centroid.sfc(st_geometry(sales_sf)) :
+  st_centroid does not give correct centroids for longitude/latitude data
+> sf_use_s2(TRUE)
+Spherical geometry (s2) switched on
+> sales[, side := fifelse(lon < ONT, "West", "East")]
+> 
+> # ---- 3. DESCRIPTIONS: attributes only, NO geom (fast), SFD, one row/roll ----
+> desc <- as.data.table(st_read(gpkg, quiet = TRUE, query = sprintf(
++   'SELECT ROLL_NUMBER, LAND_SIZE, NEIGHBOURHOOD_CODE, ACTUAL_USE_DESCRIPTION
++    FROM "%s"', desc_tbl)))
+> desc <- desc[grepl("single", ACTUAL_USE_DESCRIPTION, ignore.case = TRUE)]
+> desc[, roll := roll_key(ROLL_NUMBER)]
+> desc_keep <- unique(desc[, .(roll, lot_sqft = as.numeric(LAND_SIZE),
++                              nbhd = NEIGHBOURHOOD_CODE)], by = "roll")
+> 
+> # ---- 4. A09 inventory: finished sqft + effective year, one row/roll ----
+> inv <- fread(inv_path, colClasses = "character")
+> inv[, `:=`(roll = roll_key(Roll_Number),
++            sqft = numify(MB_Total_Finished_Area),
++            eff_year = numify(MB_Effective_Year))]
+> inv_keep <- unique(inv[is.finite(roll), .(roll, sqft, eff_year)], by = "roll")
+> 
+> # ---- 5. Assemble hedonic frame ----
+> h <- merge(sales[, .(roll, price = CONVEYANCE_PRICE, sale_year, side)], desc_keep, by = "roll")
+> h <- merge(h, inv_keep, by = "roll")
+> h <- h[is.finite(lot_sqft) & lot_sqft > 0 & is.finite(sqft) & sqft > 0]
+> h[, `:=`(lnP = log(price), ln_lot = log(lot_sqft), ln_sqft = log(sqft))]
+> 
+> cat("\nassembled sales:", nrow(h), "| by side:\n"); print(h[, .N, by = side])
+
+assembled sales: 9311 | by side:
+     side     N
+   <char> <int>
+1:   East  5293
+2:   West  4018
+> cat("price / lot / sqft  5-50-95 pctiles (sanity — check lot units):\n")
+price / lot / sqft  5-50-95 pctiles (sanity — check lot units):
+> print(h[, .(pctile = c("p05","p50","p95"),
++             price = round(quantile(price, c(.05,.5,.95))),
++             lot   = round(quantile(lot_sqft, c(.05,.5,.95))),
++             sqft  = round(quantile(sqft, c(.05,.5,.95))))])
+   pctile   price   lot  sqft
+   <char>   <num> <num> <num>
+1:    p05  149949     0  1014
+2:    p50  435000     6  3765
+3:    p95 4800000 12206  8557
+> 
+> # ---- 6. (1) East/West premium per sale-year ----
+> yrs <- sort(unique(h[side %in% c("East","West"), sale_year]))
+> ew <- rbindlist(lapply(yrs, function(y) {
++   d <- h[sale_year == y & is.finite(eff_year)]
++   if (d[, uniqueN(side)] < 2 || nrow(d) < 40) return(NULL)
++   m  <- feols(lnP ~ ln_lot + ln_sqft + i(side, ref = "East") | eff_year, data = d)
++   ct <- coeftable(m); r <- grep("^side", rownames(ct))
++   data.table(sale_year = y, premium = ct[r, 1], se = ct[r, 2], n = nrow(d))
++ }), fill = TRUE)
+NOTE: 10 fixed-effect singletons were removed (10 observations).
+NOTE: 9 fixed-effect singletons were removed (9 observations).
+NOTE: 9 fixed-effect singletons were removed (9 observations).
+NOTE: 8 fixed-effect singletons were removed (8 observations).
+NOTE: 8 fixed-effect singletons were removed (8 observations).
+NOTE: 9 fixed-effect singletons were removed (9 observations).
+NOTE: 5 fixed-effect singletons were removed (5 observations).
+NOTE: 9 fixed-effect singletons were removed (9 observations).
+NOTE: 8 fixed-effect singletons were removed (8 observations).
+NOTE: 5 fixed-effect singletons were removed (5 observations).
+NOTE: 8 fixed-effect singletons were removed (8 observations).
+NOTE: 8 fixed-effect singletons were removed (8 observations).
+NOTE: 11 fixed-effect singletons were removed (11 observations).
+NOTE: 15 fixed-effect singletons were removed (15 observations).
+NOTE: 18 fixed-effect singletons were removed (18 observations).
+NOTE: 22 fixed-effect singletons were removed (22 observations).
+> 
+> pW <- ggplot(ew, aes(sale_year, premium)) +
++   geom_hline(yintercept = 0, linewidth = 0.3, color = "grey60") +
++   geom_ribbon(aes(ymin = premium - 1.96*se, ymax = premium + 1.96*se), alpha = 0.15) +
++   geom_line(linewidth = 0.9, color = "#1f78b4") + geom_point(aes(size = n)) +
++   scale_size_area(max_size = 4, guide = "none") + theme_minimal() +
++   labs(title = "West vs East price premium, CoV single-detached (hedonic)",
++        subtitle = "ln(P) ~ ln(lot) + ln(sqft) | effective-year FE, per sale year. + = West premium.",
++        y = "West premium (log points)", x = NULL)
+> ggsave(file.path(out_dir, "hedonic_ew_premium.png"), pW, width = 9, height = 5, dpi = 150)
+> 
+> # ---- 7. (2) Neighbourhood-coefficient distribution per sale-year ----
+> nb <- rbindlist(lapply(yrs, function(y) {
++   d <- h[sale_year == y & is.finite(eff_year) & !is.na(nbhd)]
++   if (d[, uniqueN(nbhd)] < 5 || nrow(d) < 80) return(NULL)
++   m  <- feols(lnP ~ ln_lot + ln_sqft + i(nbhd) | eff_year, data = d)
++   ct <- coeftable(m)
++   co <- ct[grep("^nbhd::", rownames(ct)), 1]
++   data.table(sale_year = y, nbhd_coef = as.numeric(co))
++ }), fill = TRUE)
+NOTE: 10 fixed-effect singletons were removed (10 observations).
+The variable 'nbhd::717600' has been removed because of collinearity (see
+$collin.var).
+NOTE: 9 fixed-effect singletons were removed (9 observations).
+The variables 'nbhd::717600' and 'nbhd::732111' have been removed because of
+collinearity (see $collin.var).
+NOTE: 9 fixed-effect singletons were removed (9 observations).
+The variable 'nbhd::414100' has been removed because of collinearity (see
+$collin.var).
+NOTE: 8 fixed-effect singletons were removed (8 observations).
+The variable 'nbhd::414100' has been removed because of collinearity (see
+$collin.var).
+NOTE: 8 fixed-effect singletons were removed (8 observations).
+The variable 'nbhd::715311' has been removed because of collinearity (see
+$collin.var).
+NOTE: 9 fixed-effect singletons were removed (9 observations).
+The variable 'nbhd::562102' has been removed because of collinearity (see
+$collin.var).
+NOTE: 5 fixed-effect singletons were removed (5 observations).
+NOTE: 9 fixed-effect singletons were removed (9 observations).
+NOTE: 8 fixed-effect singletons were removed (8 observations).
+The variables 'nbhd::414100' and 'nbhd::717600' have been removed because of
+collinearity (see $collin.var).
+NOTE: 5 fixed-effect singletons were removed (5 observations).
+The variable 'nbhd::732111' has been removed because of collinearity (see
+$collin.var).
+NOTE: 8 fixed-effect singletons were removed (8 observations).
+NOTE: 8 fixed-effect singletons were removed (8 observations).
+The variable 'nbhd::732111' has been removed because of collinearity (see
+$collin.var).
+NOTE: 11 fixed-effect singletons were removed (11 observations).
+The variables 'nbhd::519519' and 'nbhd::768250' have been removed because of
+collinearity (see $collin.var).
+NOTE: 15 fixed-effect singletons were removed (15 observations).
+The variable 'nbhd::414100' has been removed because of collinearity (see
+$collin.var).
+NOTE: 18 fixed-effect singletons were removed (18 observations).
+The variables 'nbhd::414100', 'nbhd::519519' and 'nbhd::556040' have been
+removed because of collinearity (see $collin.var).
+NOTE: 22 fixed-effect singletons were removed (22 observations).
+The variables 'nbhd::205151', 'nbhd::210302', 'nbhd::304001', 'nbhd::330004',
+'nbhd::519519', 'nbhd::525780' and 5 others have been removed because of
+collinearity (see $collin.var).
+> 
+> pN <- ggplot(nb, aes(factor(sale_year), nbhd_coef)) +
++   geom_boxplot(outlier.size = 0.6, fill = "#a6cee3") + theme_minimal() +
++   labs(title = "Neighbourhood price-level dispersion by sale year, CoV SFD",
++        subtitle = "Distribution of neighbourhood dummy coefficients from per-year hedonic.\nNarrowing boxes = neighbourhoods converging in price level.",
++        y = "Neighbourhood coefficient (log points, vs base)", x = NULL) +
++   theme(axis.text.x = element_text(angle = 45, hjust = 1))
+> ggsave(file.path(out_dir, "hedonic_nbhd_dispersion.png"), pN, width = 10, height = 5, dpi = 150)
+> 
+> # ---- 8. Print series ----
+> cat("\nEast/West premium series:\n"); print(ew[order(sale_year)])
+
+East/West premium series:
+    sale_year   premium         se     n
+        <int>     <num>      <num> <int>
+ 1:      2011 0.7142991 0.09279794   506
+ 2:      2012 0.8368140 0.10174140   487
+ 3:      2013 1.0251354 0.09623343   497
+ 4:      2014 0.8044381 0.08784871   595
+ 5:      2015 0.8017089 0.08004373   702
+ 6:      2016 0.7527577 0.08482606   776
+ 7:      2017 0.7305572 0.07855669   701
+ 8:      2018 0.6209221 0.07914068   599
+ 9:      2019 0.4158821 0.07400686   569
+10:      2020 0.6410325 0.07469028   623
+11:      2021 0.3428628 0.06467200   906
+12:      2022 0.5581768 0.07391241   655
+13:      2023 0.5787836 0.08749838   503
+14:      2024 0.6952397 0.08552661   561
+15:      2025 0.5879782 0.07622232   532
+16:      2026 0.3805556 0.21989868    99
+> cat("\nNbhd-coef dispersion by year:\n")
+
+Nbhd-coef dispersion by year:
+> print(nb[, .(n_nbhd = .N, iqr = round(IQR(nbhd_coef),3),
++              sd = round(sd(nbhd_coef),3)), by = sale_year][order(sale_year)])
+    sale_year n_nbhd   iqr    sd
+        <int>  <int> <num> <num>
+ 1:      2011    117 1.169 0.963
+ 2:      2012    121 0.972 1.000
+ 3:      2013    121 1.177 0.980
+ 4:      2014    132 0.954 0.973
+ 5:      2015    138 1.022 0.842
+ 6:      2016    144 0.917 0.993
+ 7:      2017    140 0.967 0.940
+ 8:      2018    132 0.996 1.000
+ 9:      2019    133 0.772 0.721
+10:      2020    135 0.667 0.765
+11:      2021    145 0.702 0.812
+12:      2022    138 0.842 0.927
+13:      2023    128 0.947 0.835
+14:      2024    133 0.827 0.860
+15:      2025    126 0.834 0.740
+16:      2026     37 4.411 3.555
+> 
+> # =============================================================
+> # ADDENDUM: hedonic premia by lot WIDTH x side, over sale years.
+> # Two questions:
+> #   (a) the 50-vs-33 width premium (does wide-lot price advantage erode?)
+> #   (b) the West-vs-East premium computed SEPARATELY within 33 and within 50
+> #       -> conjecture: (W-E on 50) falls faster than (W-E on 33).
+> #
+> # Needs the assembled hedonic frame `h` from r1_sales_hedonic.R (roll, price,
+> # sale_year, side, lot_sqft, nbhd, sqft, eff_year, lnP, ln_lot, ln_sqft).
+> # Width bucket here comes from LOT WIDTH; sales lack it, so derive width from
+> # lot_sqft/depth is unreliable -> instead pull Land_Width from the A09 inventory
+> # we already loaded (inv_keep2 below), joined on roll.
+> # =============================================================
+> 
+> library(data.table); library(fixest); library(ggplot2)
+> out_dir <- "text"; dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+> W33 <- 32:34; W50 <- 49:51
+> 
+> # ---- 0. Attach lot WIDTH to the hedonic frame from A09 inventory ----
+> # (h already has roll; re-read width from inventory, numeric, metric-aware)
+> inv <- fread(inv_path, colClasses = "character")
+> numify <- function(x) suppressWarnings(as.numeric(gsub("[^0-9.\\-]", "", x)))
+> roll_key <- function(x) suppressWarnings(as.numeric(gsub("[^0-9]", "", x)))
+> inv[, `:=`(roll = roll_key(Roll_Number), w = numify(Land_Width_Width),
++            metric = trimws(Land_Metric_Flag))]
+> inv[metric %in% c("Y","1","M","T","X") & is.finite(w), w := w/0.3048]
+> wkey <- unique(inv[is.finite(roll) & is.finite(w), .(roll, width_ft = w)], by = "roll")
+> 
+> hw <- merge(h, wkey, by = "roll")
+> hw[, width_bucket := fifelse(round(width_ft) %in% W33, "33",
++                      fifelse(round(width_ft) %in% W50, "50", NA_character_))]
+> hw <- hw[!is.na(width_bucket)]
+> cat("hedonic sales with 33/50 width:", nrow(hw), "\n")
+hedonic sales with 33/50 width: 301 
+> print(hw[, .N, by = .(width_bucket, side)][order(width_bucket, side)])
+   width_bucket   side     N
+         <char> <char> <int>
+1:           33   East   124
+2:           33   West    87
+3:           50   East    32
+4:           50   West    58
+> 
+> yrs <- sort(unique(hw$sale_year))
+> 
+> # ---- (a) 50-vs-33 WIDTH premium per year, separately by side ----
+> # ln(P) ~ ln(sqft) + i(width 50 vs 33) | eff_year, within each side x year.
+> # (lot size dropped as a regressor here since width IS the treatment; keep sqft.)
+> wp <- rbindlist(lapply(yrs, function(y) rbindlist(lapply(c("East","West"), function(s) {
++   d <- hw[sale_year == y & side == s & is.finite(eff_year)]
++   if (d[, uniqueN(width_bucket)] < 2 || nrow(d) < 40) return(NULL)
++   m  <- feols(lnP ~ ln_sqft + i(width_bucket, ref = "33") | eff_year, data = d)
++   ct <- coeftable(m); r <- grep("width_bucket::50", rownames(ct))
++   data.table(sale_year = y, side = s, prem50 = ct[r,1], se = ct[r,2], n = nrow(d))
++ }))), fill = TRUE)
+> 
+> pA <- ggplot(wp, aes(sale_year, prem50, color = side, group = side)) +
++   geom_hline(yintercept = 0, linewidth = 0.3, color = "grey60") +
++   geom_ribbon(aes(ymin = prem50-1.96*se, ymax = prem50+1.96*se, fill = side),
++               alpha = 0.12, color = NA) +
++   geom_line(linewidth = 0.9) + geom_point(aes(size = n)) +
++   scale_size_area(max_size = 3.5, guide = "none") +
++   scale_color_manual(values = c(East = "#e31a1c", West = "#1f78b4")) +
++   scale_fill_manual(values = c(East = "#e31a1c", West = "#1f78b4"), guide = "none") +
++   theme_minimal() +
++   labs(title = "50ft vs 33ft lot price premium, by side",
++        subtitle = "ln(P) ~ ln(sqft) + I(50) | eff-year FE, within side x year. + = 50ft dearer.",
++        y = "50ft premium (log points)", x = NULL, color = NULL)
+> ggsave(file.path(out_dir, "premium_50v33_byside.png"), pA, width = 9, height = 5, dpi = 150)
+Error in `geom_ribbon()`:
+! Problem while computing aesthetics.
+ℹ Error occurred in the 2nd layer.
+Caused by error:
+! object 'prem50' not found
+Backtrace:
+     ▆
+  1. ├─ggplot2::ggsave(...)
+  2. │ └─base::lapply(plot, grid.draw)
+  3. │   ├─grid (local) FUN(X[[i]], ...)
+  4. │   └─ggplot2 (local) `grid.draw.ggplot2::ggplot`(X[[i]], ...)
+  5. │     ├─base::print(x)
+  6. │     └─ggplot2 (local) `print.ggplot2::ggplot`(x)
+  7. │       ├─ggplot2::ggplot_build(x)
+  8. │       └─ggplot2 (local) `ggplot_build.ggplot2::ggplot`(x)
+  9. │         └─ggplot2:::by_layer(...)
+ 10. │           ├─rlang::try_fetch(...)
+ 11. │           │ ├─base::tryCatch(...)
+ 12. │           │ │ └─base (local) tryCatchList(expr, classes, parentenv, handlers)
+ 13. │           │ │   └─base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 14. │           │ │     └─base (local) doTryCatch(return(expr), name, parentenv, handler)
+ 15. │           │ └─base::withCallingHandlers(...)
+ 16. │           └─ggplot2 (local) f(l = layers[[i]], d = data[[i]])
+ 17. │             └─l$compute_aesthetics(d, plot)
+ 18. │               └─ggplot2 (local) compute_aesthetics(..., self = self)
+ 19. │                 └─ggplot2:::eval_aesthetics(aesthetics, data)
+ 20. │                   └─base::lapply(aesthetics, eval_tidy, data = data, env = env)
+ 21. │                     └─rlang (local) FUN(X[[i]], ...)
+ 22. └─base::.handleSimpleError(...)
+ 23.   └─rlang (local) h(simpleError(msg, call))
+ 24.     └─handlers[[1L]](cnd)
+ 25.       └─cli::cli_abort(...)
+ 26.         └─rlang::abort(...)
+Execution halted

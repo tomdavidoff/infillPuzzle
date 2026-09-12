@@ -1,0 +1,121 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # =============================================================
+> # R1-1 infill: East/West CONVERGENCE across three eras x lot width
+> #
+> # Three eras by permit year:
+> #   pre-duplex   <=2018        (little duplex; suite/laneway/Plain-Jane world)
+> #   duplex era   2019-2023     (duplex normalized, pre-R1-1)
+> #   multiplex era 2025-2026    (R1-1; multiplex arrives; 2024 dropped)
+> #
+> # Question: is East/West CONVERGING, and which product drives it?
+> # Convergence = the East and West type-composition getting more alike over time.
+> # Measured per era x width with a dissimilarity index over the use mix, plus
+> # a decomposition of which type closes the most East-West gap.
+> #
+> # Plain-Jane (bare Single Detached House) = un-infilled baseline; cost floor
+> # gates Plain-Jane only. Width from gpkg folio (BC Albers) w/ inventory fallback.
+> # =============================================================
+> 
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> dir_path <- "~/DropboxExternal/dataRaw"
+> gpkg     <- "~/bigFiles/latestSpatialBCA/2026-04-08_bca_folios.gpkg"
+> inv_path <- file.path(dir_path, "Residential_inventory_202601",
++                       "20260101_A09_Residential_Inventory_Extract.txt")
+> out_dir  <- "text"; dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+> 
+> CRITVAL  <- 0.25; RADIUS <- 6; ONT <- -123.101
+> desc_tbl <- "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV"
+> W33 <- 32:34; W50 <- 49:51
+> 
+> numify   <- function(x) suppressWarnings(as.numeric(gsub("[^0-9.\\-]", "", x)))
+> roll_key <- function(x) suppressWarnings(as.numeric(gsub("[^0-9]", "", x)))
+> 
+> # ---- 1-4. permits -> zoning -> R1-1 -> use/value cols (as established) ----
+> permits_dt <- fread(file.path(dir_path, "issued-building-permitsDwellingUses.csv"))
+> permits_dt <- permits_dt[!is.na(geo_point_2d) & geo_point_2d != ""]
+> permits_dt[, c("lat","lon") := tstrsplit(geo_point_2d, ",\\s*", type.convert = FALSE)]
+> permits_dt[, `:=`(lat = as.numeric(lat), lon = as.numeric(lon))]
+> permits_dt <- permits_dt[is.finite(lat) & is.finite(lon) &
++                          lat %between% c(49.0,49.4) & lon %between% c(-123.3,-123.0)]
+> permits_sf <- st_as_sf(permits_dt, coords = c("lon","lat"), crs = 4326)
+> 
+> zoning_sf <- st_read(file.path(dir_path, "vancouver_zoning.geojson"), quiet = TRUE)
+> zoning_sf <- st_make_valid(st_transform(zoning_sf, st_crs(permits_sf)))["zoning_district"]
+> 
+> dt <- as.data.table(st_join(permits_sf, zoning_sf, join = st_intersects))
+> id_col <- grep("permit.*number|permitnumber|^id$", names(dt), ignore.case = TRUE, value = TRUE)[1]
+> dt[, is_r1 := grepl("^R1-1", zoning_district, ignore.case = TRUE)]
+> setorderv(dt, c(id_col, "is_r1"), c(1, -1))
+> dt <- unique(dt, by = id_col)[grepl("^R1-1", zoning_district, ignore.case = TRUE)]
+> 
+> use_col <- grep("specific.*use|specificuse", names(dt), ignore.case = TRUE, value = TRUE)
+> setnames(dt, use_col, "specific_use")
+> tow_col <- grep("type.*of.*work|typeofwork", names(dt), ignore.case = TRUE, value = TRUE)[1]
+> val_col <- grep("project.*value|projectvalue|construction.*value|^value$",
++                 names(dt), ignore.case = TRUE, value = TRUE)[1]
+> setnames(dt, c(tow_col, val_col), c("type_of_work", "project_value"))
+> if (!is.numeric(dt$project_value))
++   dt[, project_value := as.numeric(gsub("[$,]", "", project_value))]
+> 
+> # ---- 5. Year + THREE eras ----
+> yr_col <- grep("issue.*year|permit.*year|^year$", names(dt), ignore.case = TRUE, value = TRUE)[1]
+> if (is.na(yr_col)) {
++   dt_col <- grep("issue.*date|permit.*date|applied.*date|date",
++                  names(dt), ignore.case = TRUE, value = TRUE)[1]
++   dt[, year := as.integer(substr(as.character(get(dt_col)), 1, 4))]
++ } else dt[, year := as.integer(get(yr_col))]
+> dt[, era := fifelse(year <= 2018, "1_pre-duplex",
++             fifelse(year %in% 2019:2023, "2_duplex",
++             fifelse(year %in% 2025:2026, "3_multiplex", NA_character_)))]
+> 
+> # ---- 6. Classify use, most-intensive-first ----
+> su <- dt$specific_use
+> dt[, use_class := fifelse(grepl("Multiple|Multiplex|Conversion", su, ignore.case = TRUE), "Multiplex",
++                  fifelse(grepl("Duplex|Two-Family",             su, ignore.case = TRUE), "Duplex",
++                  fifelse(grepl("Laneway",                       su, ignore.case = TRUE), "Laneway",
++                  fifelse(grepl("Sec Suite|Secondary Suite|Family Suite", su, ignore.case = TRUE), "SFD+suite",
++                  fifelse(grepl("^Infill|Dwelling Unit",         su, ignore.case = TRUE), "Infill-other",
++                  fifelse(su == "Single Detached House",         "Plain-Jane", NA_character_))))))]
+> 
+> # ---- 7. Cost floor on Plain-Jane only ----
+> is_new   <- grepl("New Building|New Construction", dt$type_of_work, ignore.case = TRUE)
+> minSpend <- quantile(dt[is_new & use_class == "Plain-Jane", project_value], CRITVAL, na.rm = TRUE)
+> keep <- dt[!is.na(use_class) & !is.na(era) &
++            (use_class != "Plain-Jane" | project_value > minSpend)]
+> xy <- st_coordinates(st_as_sf(keep)); keep[, `:=`(lon = xy[,1], lat = xy[,2])]
+> 
+> # ---- 8-11. BCA width (native-CRS bbox) + inventory fallback ----
+> keep_sf <- st_as_sf(keep, coords = c("lon","lat"), crs = 4326, remove = FALSE)
+> probe   <- st_read(gpkg, layer = desc_tbl, quiet = TRUE,
++                    query = sprintf('SELECT * FROM "%s" LIMIT 1', desc_tbl))
+Warning message:
+In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
+  argument layer is ignored when query is specified
+> bb <- st_bbox(st_transform(keep_sf, st_crs(probe)))
+> bb["xmin"] <- bb["xmin"]-300; bb["xmax"] <- bb["xmax"]+300
+> bb["ymin"] <- bb["ymin"]-300; bb["ymax"] <- bb["ymax"]+300
+> folio_sf <- st_read(gpkg, layer = desc_tbl, quiet = TRUE,
++                     wkt_filter = st_as_text(st_as_sfc(bb)))
+
+Execution halted
