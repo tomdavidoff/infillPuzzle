@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -89,8 +89,13 @@ Key: <side>
    <char> <int>  <int>
 1:   East  4194    515
 2:   West  2450    226
+NOTE: 13/0 fixed-effect singletons were removed (13 observations).
+NOTE: 13/0 fixed-effect singletons were removed (13 observations).
   East 33 (n=4709,dup=515):  premium +25.9%  | area-ctrl -12.0%
+NOTE: 12/0 fixed-effect singletons were removed (12 observations).
+NOTE: 12/0 fixed-effect singletons were removed (12 observations).
   West 33 (n=2676,dup=226):  premium +3.7%  | area-ctrl -19.9%
+NOTE: 8/0 fixed-effect singletons were removed (8 observations).
 
   [33] dup:west interaction = -0.1878 (t=-9.39)  <0 => West premium lower
 
@@ -101,10 +106,15 @@ Key: <side>
    <char> <int>  <int>
 1:   East   410     72
 2:   West  1289    146
+NOTE: 16/0 fixed-effect singletons were removed (16 observations).
+NOTE: 16/0 fixed-effect singletons were removed (16 observations).
   East 50 (n=482,dup=72):  premium +34.8%  | area-ctrl -9.1%
+NOTE: 12/0 fixed-effect singletons were removed (12 observations).
+NOTE: 12/0 fixed-effect singletons were removed (12 observations).
   West 50 (n=1435,dup=146):  premium +5.8%  | area-ctrl -28.1%
+NOTE: 9/0 fixed-effect singletons were removed (9 observations).
 
-  [50] dup:west interaction = -0.2170 (t=-4.80)  <0 => West premium lower
+  [50] dup:west interaction = -0.2170 (t=-4.81)  <0 => West premium lower
 > 
 > # ---- triple: is the (West premium shortfall) itself bigger on 50 than 33? ----
 > cat("\n======== TRIPLE: dup x west x lot50 ========\n")
@@ -112,22 +122,176 @@ Key: <side>
 ======== TRIPLE: dup x west x lot50 ========
 > pre[, lot50 := as.integer(wbin=="50")]
 > mT <- feols(log(ppsf) ~ dup*west*lot50 | effYear + saleYear, pre, vcov="hetero")
+NOTE: 8/0 fixed-effect singletons were removed (8 observations).
 > print(summary(mT))
 OLS estimation, Dep. Var.: log(ppsf)
-Observations: 9,302
-Fixed-effects: effYear: 97,  saleYear: 5
+Observations: 9,294
+Fixed-effects: effYear: 89,  saleYear: 5
 Standard-errors: Heteroskedasticity-robust 
                 Estimate Std. Error   t value   Pr(>|t|)    
-dup             0.226156   0.010751 21.035200  < 2.2e-16 ***
-west            0.487343   0.005920 82.315318  < 2.2e-16 ***
-lot50          -0.074088   0.012957 -5.718105 1.1108e-08 ***
-dup:west       -0.190414   0.019921 -9.558563  < 2.2e-16 ***
-dup:lot50       0.014142   0.038792  0.364553 7.1545e-01    
-west:lot50      0.073747   0.015279  4.826655 1.4108e-06 ***
-dup:west:lot50 -0.042620   0.048867 -0.872166 3.8314e-01    
+dup             0.226156   0.010747 21.044251  < 2.2e-16 ***
+west            0.487343   0.005918 82.350738  < 2.2e-16 ***
+lot50          -0.074088   0.012951 -5.720565 1.0949e-08 ***
+dup:west       -0.190414   0.019912 -9.562676  < 2.2e-16 ***
+dup:lot50       0.014142   0.038775  0.364710 7.1534e-01    
+west:lot50      0.073747   0.015273  4.828732 1.3962e-06 ***
+dup:west:lot50 -0.042620   0.048846 -0.872541 3.8294e-01    
 ---
 Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
-RMSE: 0.224189     Adj. R2: 0.681342
+RMSE: 0.224285     Adj. R2: 0.681289
+                 Within R2: 0.518998
+> cat("  dup:west:lot50 < 0 => West duplex-premium collapse is WORSE on 50s (the puzzle)\n")
+  dup:west:lot50 < 0 => West duplex-premium collapse is WORSE on 50s (the puzzle)
+> 
+> # ---- PNG: premium by width x side, 95% CI ----
+> cm <- rbindlist(res)
+> png(file.path(dirPlot,"preReform_duplexPremium_33_50.png"),
++     width=7.5, height=5, units="in", res=200)
+> cm[, y := .I]
+> xr <- range(c(cm$lo, cm$hi, 0))
+> plot(NA, xlim=xr, ylim=c(0.5, nrow(cm)+0.5), yaxt="n",
++      xlab="duplex-vs-SFD ppsf premium (%), vintage-controlled", ylab="",
++      main=sprintf("Pre-reform (%d-%d) duplex premium, 33 vs 50", SALE_MINYEAR, PREYEAR_MAX))
+> axis(2, at=cm$y, labels=paste(cm$side, cm$w), las=1)
+> abline(v=0, col="grey70", lty=2)
+> cm[, col := fifelse(side=="West","firebrick","grey30")]
+> for (i in cm$y) {
++   segments(cm$lo[i], i, cm$hi[i], i, col=cm$col[i], lwd=2)
++   points(cm$pct[i], i, pch=19, col=cm$col[i], cex=1.3)
++ }
+> dev.off()
+null device 
+          1 
+> cat("\n  wrote", file.path(dirPlot,"preReform_duplexPremium_33_50.png"), "\n")
+
+  wrote text/preReform_duplexPremium_33_50.png 
+> cat("\n=== done (rev 2). ===\n")
+
+=== done (rev 2). ===
+> 
+> 
+> # duplexPremium3350.R
+> # Duplex-vs-SFD ppsf premium, vintage-controlled, at BOTH 33 and 50, by side.
+> # Fills the gap: rev2 ran the premium on 33s only. The 50-ft premium E/W is the
+> # on-point one for the puzzle -- prediction: West duplex premium collapses toward
+> # zero (or below) MORE on 50s than on 33s, because the West 50-SFD ceiling is
+> # highest exactly there (Test 2: West ppsf flat in width).
+> #
+> # Reads bca19VancouverSalesDupSFD.rds (~2018 snapshot). land_width; effYear control.
+> # READ-ONLY except PNG.  Tom Davidoff 09/13/26
+> 
+> SALE_MINYEAR <- 2014
+> PREYEAR_MAX  <- 2018
+> ONTARIO_LON  <- -123.1036
+> W33 <- 32:34; W50 <- 49:51
+> dirPlot <- "text"
+> 
+> library(data.table); library(fixest)
+> d <- as.data.table(readRDS("~/DropboxExternal/dataProcessed/bca19VancouverSalesDupSFD.rds"))
+> dir.create(dirPlot, showWarnings = FALSE, recursive = TRUE)
+> 
+> sfdUse <- c("Single Family Dwelling", "Residential Dwelling with Suite")
+> d[, price := as.numeric(conveyancePrice)]
+> d[, saleYear := as.numeric(substring(conveyanceDate,1,4))]
+> d[, effYear := as.numeric(MB_effective_year)]
+> d[, finArea := as.numeric(MB_total_finished_area)]
+> d[, type := fifelse(grepl("Duplex", actualUseDescription), "duplex",
++             fifelse(actualUseDescription %in% sfdUse, "SFD", NA_character_))]
+> d[, side := fifelse(longitude < ONTARIO_LON, "West", "East")]
+> d[, ppsf := fifelse(!is.na(finArea) & finArea > 0, price/finArea, NA_real_)]
+> d[, wc := round(as.numeric(land_width))]
+> d[, wbin := fifelse(wc %in% W33, "33", fifelse(wc %in% W50, "50", "other"))]
+> 
+> pre <- d[!is.na(type) & price>0 & !is.na(longitude) & !is.na(ppsf) & ppsf>0 &
++          is.finite(effYear) & effYear>1900 &
++          saleYear %between% c(SALE_MINYEAR, PREYEAR_MAX) & wbin %in% c("33","50")]
+> pre[, dup := as.integer(type=="duplex")]
+> pre[, west := as.integer(side=="West")]
+> 
+> # ---- premium by width x side, plus dup x west interaction within each width ----
+> res <- list()
+> for (w in c("33","50")) {
++   cat(sprintf("\n======== %s-ft ========\n", w))
++   dw <- pre[wbin==w]
++   cat("cells (n):\n"); print(dcast(dw, side~type, fun.aggregate=length, value.var="price"))
++ 
++   # area-controlled? report BOTH: raw vintage-only, and + log(finArea) to kill the
++   # "smaller unit => higher ppsf" mechanical size effect (referee-proofing T1).
++   for (sd in c("East","West")) {
++     dd <- dw[side==sd]
++     if (uniqueN(dd$dup) < 2 || sum(dd$dup) < 10) { cat(sprintf("  %s %s: too thin (dup=%d)\n", sd, w, sum(dd$dup))); next }
++     m0 <- feols(log(ppsf) ~ dup | effYear + saleYear, dd, vcov="hetero")
++     mA <- feols(log(ppsf) ~ dup + log(finArea) | effYear + saleYear, dd, vcov="hetero")
++     cat(sprintf("  %s %s (n=%d,dup=%d):  premium %+.1f%%  | area-ctrl %+.1f%%\n",
++                 sd, w, nrow(dd), sum(dd$dup),
++                 100*(exp(coef(m0)[["dup"]])-1), 100*(exp(coef(mA)[["dup"]])-1)))
++     b<-coef(m0)[["dup"]]; s<-se(m0)[["dup"]]
++     res[[paste(w,sd)]] <- data.table(w=w, side=sd,
++         pct=100*(exp(b)-1), lo=100*(exp(b-1.96*s)-1), hi=100*(exp(b+1.96*s)-1))
++   }
++   # interaction: does the duplex premium differ W vs E at THIS width?
++   mI <- feols(log(ppsf) ~ dup*west | effYear + saleYear, dw, vcov="hetero")
++   cat(sprintf("\n  [%s] dup:west interaction = %+.4f (t=%.2f)  <0 => West premium lower\n",
++               w, coef(mI)[["dup:west"]], coef(mI)[["dup:west"]]/se(mI)[["dup:west"]]))
++ }
+
+======== 33-ft ========
+cells (n):
+Key: <side>
+     side   SFD duplex
+   <char> <int>  <int>
+1:   East  4194    515
+2:   West  2450    226
+NOTE: 13/0 fixed-effect singletons were removed (13 observations).
+NOTE: 13/0 fixed-effect singletons were removed (13 observations).
+  East 33 (n=4709,dup=515):  premium +25.9%  | area-ctrl -12.0%
+NOTE: 12/0 fixed-effect singletons were removed (12 observations).
+NOTE: 12/0 fixed-effect singletons were removed (12 observations).
+  West 33 (n=2676,dup=226):  premium +3.7%  | area-ctrl -19.9%
+NOTE: 8/0 fixed-effect singletons were removed (8 observations).
+
+  [33] dup:west interaction = -0.1878 (t=-9.39)  <0 => West premium lower
+
+======== 50-ft ========
+cells (n):
+Key: <side>
+     side   SFD duplex
+   <char> <int>  <int>
+1:   East   410     72
+2:   West  1289    146
+NOTE: 16/0 fixed-effect singletons were removed (16 observations).
+NOTE: 16/0 fixed-effect singletons were removed (16 observations).
+  East 50 (n=482,dup=72):  premium +34.8%  | area-ctrl -9.1%
+NOTE: 12/0 fixed-effect singletons were removed (12 observations).
+NOTE: 12/0 fixed-effect singletons were removed (12 observations).
+  West 50 (n=1435,dup=146):  premium +5.8%  | area-ctrl -28.1%
+NOTE: 9/0 fixed-effect singletons were removed (9 observations).
+
+  [50] dup:west interaction = -0.2170 (t=-4.81)  <0 => West premium lower
+> 
+> # ---- triple: is the (West premium shortfall) itself bigger on 50 than 33? ----
+> cat("\n======== TRIPLE: dup x west x lot50 ========\n")
+
+======== TRIPLE: dup x west x lot50 ========
+> pre[, lot50 := as.integer(wbin=="50")]
+> mT <- feols(log(ppsf) ~ dup*west*lot50 | effYear + saleYear, pre, vcov="hetero")
+NOTE: 8/0 fixed-effect singletons were removed (8 observations).
+> print(summary(mT))
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 9,294
+Fixed-effects: effYear: 89,  saleYear: 5
+Standard-errors: Heteroskedasticity-robust 
+                Estimate Std. Error   t value   Pr(>|t|)    
+dup             0.226156   0.010747 21.044251  < 2.2e-16 ***
+west            0.487343   0.005918 82.350738  < 2.2e-16 ***
+lot50          -0.074088   0.012951 -5.720565 1.0949e-08 ***
+dup:west       -0.190414   0.019912 -9.562676  < 2.2e-16 ***
+dup:lot50       0.014142   0.038775  0.364710 7.1534e-01    
+west:lot50      0.073747   0.015273  4.828732 1.3962e-06 ***
+dup:west:lot50 -0.042620   0.048846 -0.872541 3.8294e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.224285     Adj. R2: 0.681289
                  Within R2: 0.518998
 > cat("  dup:west:lot50 < 0 => West duplex-premium collapse is WORSE on 50s (the puzzle)\n")
   dup:west:lot50 < 0 => West duplex-premium collapse is WORSE on 50s (the puzzle)
@@ -239,16 +403,557 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +                  fifelse(grepl("^Infill|Dwelling Unit",         su, ignore.case = TRUE), "Infill-other",
 +                  fifelse(su == "Single Detached House",         "Plain-Jane", NA_character_))))))]
 > 
-> # ---- 7. Cost floor on Plain-Jane only ----
-> is_new   <- grepl("New Building|New Construction", dt$type_of_work, ignore.case = TRUE)
-> minSpend <- quantile(dt[is_new & use_class == "Plain-Jane", project_value], CRITVAL, na.rm = TRUE)
-> keep <- dt[!is.na(use_class) & !is.na(era) &
-+            (use_class != "Plain-Jane" | project_value > minSpend)]
+> # ---- 7. Cost floor, applied SYMMETRICALLY to single AND duplex new-build ----
+> # Old behaviour gated Plain-Jane only, trimming ~25% of singles while letting every
+> # duplex through -> mechanically inflated duplex share. Fix: one floor from the POOLED
+> # single+duplex new-build value distribution, applied to BOTH principal types. Laneway
+> # and other non-principal types are dropped outright (not a house-vs-duplex choice).
+> #
+> # PRINCIPAL_TYPES = the two things that compete for the redevelopment of a lot.
+> # "single" = Plain-Jane (+ SFD+suite, a single principal building with a suite).
+> PRINCIPAL_SINGLE <- c("Plain-Jane", "SFD+suite")
+> PRINCIPAL_DUPLEX <- c("Duplex")
+> 
+> is_new <- grepl("New Building|New Construction", dt$type_of_work, ignore.case = TRUE)
+> dt[, principalType := fifelse(use_class %in% PRINCIPAL_DUPLEX, "duplex",
++                       fifelse(use_class %in% PRINCIPAL_SINGLE, "single", NA_character_))]
+> 
+> # pooled cutoff: 25th pctile of new-build project_value across single+duplex together
+> minSpendPool <- quantile(dt[is_new & !is.na(principalType), project_value],
++                          CRITVAL, na.rm = TRUE)
+> # for comparison only: the old single-only cutoff
+> minSpendSingle <- quantile(dt[is_new & principalType == "single", project_value],
++                            CRITVAL, na.rm = TRUE)
+> cat(sprintf("\n=== cost floors (CRITVAL=%.2f): pooled=%s  single-only=%s ===\n",
++             CRITVAL, format(round(minSpendPool), big.mark=","),
++             format(round(minSpendSingle), big.mark=",")))
+
+=== cost floors (CRITVAL=0.25): pooled=7e+05  single-only=694,000 ===
+> 
+> FLOOR <- minSpendPool          # <- switch to minSpendSingle for the single-only gate
+> # keep ONLY principal single/duplex, new-build, above the shared floor.
+> keep <- dt[!is.na(era) & !is.na(principalType) &
++            is_new & project_value > FLOOR]
+> 
+> # report how many of each type the floor drops, so the trim is auditable
+> cat("=== new-build single/duplex dropped by the shared floor (pre-width) ===\n")
+=== new-build single/duplex dropped by the shared floor (pre-width) ===
+> print(dt[!is.na(principalType) & is_new,
++          .(n = .N, kept = sum(project_value > FLOOR, na.rm = TRUE),
++            dropShare = round(mean(!(project_value > FLOOR) | is.na(project_value), na.rm = TRUE), 3)),
++          by = principalType])
+   principalType     n  kept dropShare
+          <char> <int> <int>     <num>
+1:        single  3445  2508     0.272
+2:        duplex  1295  1030     0.205
+> 
 > xy <- st_coordinates(st_as_sf(keep)); keep[, `:=`(lon = xy[,1], lat = xy[,2])]
 > 
 > # ---- 8-11. BCA width (native-CRS bbox) + inventory fallback ----
 > keep_sf <- st_as_sf(keep, coords = c("lon","lat"), crs = 4326, remove = FALSE)
 > probe   <- st_read(gpkg, layer = desc_tbl, quiet = TRUE,
 +                    query = sprintf('SELECT * FROM "%s" LIMIT 1', desc_tbl))
-Error: Cannot open "~/bigFiles/latestSpatialBCA/2026-04-08_bca_folios.gpkg"; The file doesn't seem to exist.
-Execution halted
+Warning message:
+In CPL_read_ogr(dsn, layer, query, as.character(options), quiet,  :
+  argument layer is ignored when query is specified
+> bb <- st_bbox(st_transform(keep_sf, st_crs(probe)))
+> bb["xmin"] <- bb["xmin"]-300; bb["xmax"] <- bb["xmax"]+300
+> bb["ymin"] <- bb["ymin"]-300; bb["ymax"] <- bb["ymax"]+300
+> folio_sf <- st_read(gpkg, layer = desc_tbl, quiet = TRUE,
++                     wkt_filter = st_as_text(st_as_sfc(bb)))
+> stopifnot(nrow(folio_sf) > 0)
+> folio_keep <- folio_sf[, c("ROLL_NUMBER","LAND_WIDTH","LAND_UNITS")]
+> 
+> keep_sf <- st_transform(keep_sf, st_crs(folio_keep))
+> kj <- unique(as.data.table(st_join(keep_sf, folio_keep, join = st_intersects)), by = id_col)
+> kj[, roll := roll_key(ROLL_NUMBER)]
+> 
+> inv <- fread(inv_path, colClasses = "character")
+> inv[, `:=`(roll = roll_key(Roll_Number), inv_width = numify(Land_Width_Width),
++            metric = trimws(Land_Metric_Flag))]
+> inv[metric %in% c("Y","1","M","T","X") & is.finite(inv_width), inv_width := inv_width/0.3048]
+> kj <- merge(kj, unique(inv[is.finite(roll), .(roll, inv_width)], by = "roll"), by = "roll", all.x = TRUE)
+> 
+> kj[, gpkg_width := numify(LAND_WIDTH)]
+> kj[grepl("metre|meter|^m$", LAND_UNITS, ignore.case = TRUE) & is.finite(gpkg_width),
++    gpkg_width := gpkg_width/0.3048]
+> kj[, width_ft := fifelse(is.finite(gpkg_width) & gpkg_width > 0, gpkg_width, as.numeric(inv_width))]
+> kj[, `:=`(width_bucket = fifelse(round(width_ft) %in% W33, "33",
++                           fifelse(round(width_ft) %in% W50, "50", NA_character_)),
++           side = fifelse(lon < ONT, "West", "East"))]
+> 
+> # ============================================================
+> # 12. CONVERGENCE ENGINE
+> # For each era x width: composition share of each use_class within East and
+> # within West; the East-West gap per type; the dissimilarity index
+> # D = 0.5 * sum|East_share - West_share| (0 = identical mix, 1 = disjoint);
+> # and which type contributes most to D (and the sign of its gap).
+> # ============================================================
+> K <- kj[!is.na(width_bucket) & !is.na(era)]
+> types <- c("Plain-Jane","SFD+suite","Laneway","Duplex","Multiplex","Infill-other")
+> 
+> comp <- K[, .N, by = .(era, width_bucket, side, use_class)]
+> comp[, share := N / sum(N), by = .(era, width_bucket, side)]
+> 
+> wide <- dcast(comp, era + width_bucket + use_class ~ side, value.var = "share", fill = 0)
+> wide[, gap := West - East]                       # + = more West, - = more East
+> 
+> # dissimilarity index per era x width
+> D <- wide[, .(dissimilarity = round(0.5 * sum(abs(gap)), 3)), by = .(era, width_bucket)]
+> 
+> # largest gap-closing / gap-driving type per cell
+> lead <- wide[, .SD[which.max(abs(gap))], by = .(era, width_bucket),
++              .SDcols = c("use_class","gap","East","West")]
+> setnames(lead, c("East","West"), c("East_sh","West_sh"))
+> 
+> cat("\n===== East-West DISSIMILARITY by era x width (0=identical mix) =====\n")
+
+===== East-West DISSIMILARITY by era x width (0=identical mix) =====
+> print(dcast(D, width_bucket ~ era, value.var = "dissimilarity"))
+Key: <width_bucket>
+   width_bucket 1_pre-duplex 2_duplex 3_multiplex
+         <char>        <num>    <num>       <num>
+1:           33        0.470    0.247       0.080
+2:           50        0.573    0.455       0.283
+> 
+> cat("\n===== Biggest East-West gap driver per era x width =====\n")
+
+===== Biggest East-West gap driver per era x width =====
+> print(lead[order(width_bucket, era)][, .(era, width_bucket, use_class,
++         gap = round(gap,3), East_sh = round(East_sh,3), West_sh = round(West_sh,3))])
+            era width_bucket  use_class    gap East_sh West_sh
+         <char>       <char>     <char>  <num>   <num>   <num>
+1: 1_pre-duplex           33 Plain-Jane  0.470   0.110   0.580
+2:     2_duplex           33     Duplex -0.247   0.455   0.208
+3:  3_multiplex           33  SFD+suite -0.080   0.238   0.159
+4: 1_pre-duplex           50  SFD+suite -0.573   0.811   0.238
+5:     2_duplex           50 Plain-Jane  0.455   0.053   0.509
+6:  3_multiplex           50 Plain-Jane  0.283   0.167   0.450
+> 
+> cat("\n===== Full composition gap table (share West - East) =====\n")
+
+===== Full composition gap table (share West - East) =====
+> gt <- dcast(wide, width_bucket + use_class ~ era, value.var = "gap", fill = 0)
+> print(gt[order(width_bucket, use_class)])
+Key: <width_bucket, use_class>
+   width_bucket  use_class 1_pre-duplex    2_duplex  3_multiplex
+         <char>     <char>        <num>       <num>        <num>
+1:           33     Duplex -0.006896552 -0.24685468  0.004645761
+2:           33 Plain-Jane  0.470012315  0.21833351  0.074912892
+3:           33  SFD+suite -0.463115764  0.02852116 -0.079558653
+4:           50     Duplex  0.000000000 -0.31871848 -0.141666667
+5:           50 Plain-Jane  0.572715573  0.45547903  0.283333333
+6:           50  SFD+suite -0.572715573 -0.13676055 -0.141666667
+> 
+> # ---- 13. Convergence figure: dissimilarity trend by width ----
+> library(ggplot2)
+> Dp <- copy(D); Dp[, era := factor(era, levels = c("1_pre-duplex","2_duplex","3_multiplex"))]
+> p <- ggplot(Dp, aes(era, dissimilarity, group = width_bucket, color = width_bucket)) +
++   geom_line(linewidth = 1) + geom_point(size = 2.5) +
++   ylim(0, NA) + theme_minimal() +
++   labs(title = "East-West divergence in R1-1 build mix, by lot width",
++        subtitle = "Dissimilarity index over use-type composition (0 = East and West build alike)",
++        y = "Dissimilarity index", x = NULL, color = "Lot width (ft)")
+> ggsave(file.path(out_dir, "ew_convergence.png"), p, width = 8, height = 5, dpi = 150)
+> 
+> # dissimilarity per YEAR x width
+> comp <- K[, .N, by = .(year, width_bucket, side, use_class)]
+> comp[, share := N / sum(N), by = .(year, width_bucket, side)]
+> 
+> wide <- dcast(comp, year + width_bucket + use_class ~ side, value.var = "share", fill = 0)
+> wide[, gap := West - East]
+> 
+> # per-year x width count, computed on K directly (not from the reshaped table)
+> nby <- K[!is.na(width_bucket), .(n = .N), by = .(year, width_bucket)]
+> 
+> Dy <- wide[, .(D = 0.5 * sum(abs(gap))), by = .(year, width_bucket)]
+> Dy <- merge(Dy, nby, by = c("year", "width_bucket"))
+> print(Dy[order(width_bucket, year)])
+     year width_bucket         D     n
+    <int>       <char>     <num> <int>
+ 1:  2017           33 0.5391667   123
+ 2:  2018           33 0.4169643   134
+ 3:  2019           33 0.4049708    93
+ 4:  2020           33 0.3284884    83
+ 5:  2021           33 0.4107143    84
+ 6:  2022           33 0.1529126   179
+ 7:  2023           33 0.3725432   119
+ 8:  2025           33 0.1149123   117
+ 9:  2026           33 0.2542088    49
+10:  2017           50 0.6165414    78
+11:  2018           50 0.5208333    64
+12:  2019           50 0.6450428    62
+13:  2020           50 0.3500000    44
+14:  2021           50 0.5517241    38
+15:  2022           50 0.3720930    73
+16:  2023           50 0.4485294    50
+17:  2025           50 0.2797619    31
+18:  2026           50 0.3500000    21
+> 
+> # =============================================================
+> # ADDENDUM: 50ft-lot substitution test — suite vs multiplex convergence
+> # Append after the convergence pipeline (needs K: kj filtered to
+> # non-NA width_bucket/era, with year, side, use_class). Run r1_infill_
+> # convergence.R first, or reuse `kj` from it.
+> #
+> # Question: on 50ft lots, does the West-East gap converge via SUITES early
+> # and hand off to MULTIPLEX post-reform (substitution), or does multiplex
+> # ADD convergence beyond the pre-existing suite trend?
+> # Gap = West_share - East_share within year (50ft only). Gap -> 0 = converged.
+> # =============================================================
+> 
+> library(data.table)
+> library(ggplot2)
+> 
+> out_dir <- "text"; dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+> 
+> # ---- 0. Identifying-assumption check: duplex ~absent on 50s ----
+> cat("50ft Duplex raw counts (identifying assumption = ~0):\n")
+50ft Duplex raw counts (identifying assumption = ~0):
+> print(kj[width_bucket == "50" & use_class == "Duplex", .N, by = .(year, side)][order(year)])
+     year   side     N
+    <int> <char> <int>
+ 1:  2019   West     2
+ 2:  2019   East     4
+ 3:  2020   West     1
+ 4:  2020   East     6
+ 5:  2021   West     4
+ 6:  2021   East     6
+ 7:  2022   West    11
+ 8:  2022   East    17
+ 9:  2023   West     6
+10:  2023   East    10
+11:  2025   West     7
+12:  2025   East     4
+13:  2026   West     4
+14:  2026   East     1
+> 
+> # ---- 1. 50ft annual composition shares within each side ----
+> f50 <- kj[width_bucket == "50" & !is.na(year)]
+> comp <- f50[, .N, by = .(year, side, use_class)]
+> comp[, share := N / sum(N), by = .(year, side)]
+> nby  <- f50[, .(n = .N), by = year]            # annual denominator (both sides)
+> 
+> # ---- 2. West - East gap per year per type ----
+> wide <- dcast(comp, year + use_class ~ side, value.var = "share", fill = 0)
+> wide[, gap := West - East]
+> wide <- merge(wide, nby, by = "year")
+> 
+> # focus types for the substitution story
+> foc <- wide[use_class %in% c("SFD+suite", "Multiplex", "Plain-Jane", "Laneway")]
+> 
+> # ---- 3. Plot: annual W-E gap by type on 50ft lots ----
+> foc[, use_class := factor(use_class,
++       levels = c("Plain-Jane", "SFD+suite", "Multiplex", "Laneway"))]
+> reform_yr <- 2024
+> 
+> p <- ggplot(foc, aes(year, gap, color = use_class, group = use_class)) +
++   geom_hline(yintercept = 0, linewidth = 0.3, color = "grey50") +
++   geom_vline(xintercept = reform_yr, linetype = "dashed", linewidth = 0.3, color = "grey40") +
++   annotate("text", x = reform_yr, y = Inf, label = "R1-1", vjust = 1.4, hjust = -0.1,
++            size = 3, color = "grey40") +
++   geom_line(linewidth = 0.9) +
++   geom_point(aes(size = n)) +
++   scale_size_area(max_size = 4, guide = "none") +
++   scale_color_manual(values = c("Plain-Jane" = "#9e9e9e", "SFD+suite" = "#1f78b4",
++                                 "Multiplex" = "#ff7f00", "Laneway" = "#e31a1c")) +
++   theme_minimal() +
++   labs(title = "50ft R1-1 lots: West-East gap by build type",
++        subtitle = paste0("Gap = West share - East share within year. Toward 0 = sides converge.\n",
++                          "Substitution signature: suite gap and multiplex gap cross near reform."),
++        y = "West - East share", x = NULL, color = "Build type")
+> ggsave(file.path(out_dir, "ew_50ft_substitution.png"), p, width = 9, height = 5.5, dpi = 150)
+> 
+> # ---- 4. Print the gap series that the plot draws ----
+> cat("\n50ft annual West-East gap by type:\n")
+
+50ft annual West-East gap by type:
+> print(dcast(foc, year + n ~ use_class, value.var = "gap", fill = 0)[order(year)])
+Key: <year, n>
+    year     n Plain-Jane    SFD+suite
+   <int> <int>      <num>        <num>
+1:  2017    78  0.6165414 -0.616541353
+2:  2018    64  0.5208333 -0.520833333
+3:  2019    62  0.6450428 -0.481028152
+4:  2020    44  0.3500000 -0.091666667
+5:  2021    38  0.5517241 -0.022988506
+6:  2022    73  0.3720930 -0.061240310
+7:  2023    50  0.3492647  0.099264706
+8:  2025    31  0.2738095  0.005952381
+9:  2026    21  0.3000000 -0.350000000
+> # =============================================================
+> # ADDENDUM: substitution test, BOTH lot widths, duplex included
+> # 33ft and 50ft side by side. Needs `kj` (from r1_infill_convergence.R)
+> # with year, side, use_class, width_bucket.
+> #
+> # Gap = West_share - East_share within year x width. Toward 0 = sides converge.
+> # 33ft: duplex IS a wide part of the mix (the narrow-lot infill vehicle).
+> # 50ft: duplex ~absent (identifying assumption) -> convergence via suite/multiplex.
+> # =============================================================
+> 
+> library(data.table)
+> library(ggplot2)
+> 
+> out_dir <- "text"; dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+> reform_yr <- 2024
+> 
+> # ---- 0. Duplex-by-width check (contrast 33 vs 50) ----
+> cat("Duplex raw counts by width x year (50 should be ~0, 33 substantial):\n")
+Duplex raw counts by width x year (50 should be ~0, 33 substantial):
+> print(dcast(kj[use_class == "Duplex" & !is.na(width_bucket) & !is.na(year),
++                .N, by = .(width_bucket, year)],
++             year ~ width_bucket, value.var = "N", fill = 0)[order(year)])
+Key: <year>
+    year    33    50
+   <int> <int> <int>
+1:  2017     1     0
+2:  2019     7     6
+3:  2020    23     7
+4:  2021    35    10
+5:  2022    67    28
+6:  2023    66    16
+7:  2025    84    11
+8:  2026    31     5
+> 
+> # ---- 1. Annual within-side composition shares, per width ----
+> K <- kj[!is.na(width_bucket) & !is.na(year)]
+> comp <- K[, .N, by = .(width_bucket, year, side, use_class)]
+> comp[, share := N / sum(N), by = .(width_bucket, year, side)]
+> nby  <- K[, .(n = .N), by = .(width_bucket, year)]
+> 
+> wide <- dcast(comp, width_bucket + year + use_class ~ side, value.var = "share", fill = 0)
+> wide[, gap := West - East]
+> wide <- merge(wide, nby, by = c("width_bucket", "year"))
+> 
+> # five infill types now (duplex included)
+> foc_types <- c("Plain-Jane", "SFD+suite", "Duplex", "Multiplex", "Laneway")
+> foc <- wide[use_class %in% foc_types]
+> foc[, use_class := factor(use_class, levels = foc_types)]
+> foc[, width_lab := factor(paste0(width_bucket, "ft lots"),
++                           levels = c("33ft lots", "50ft lots"))]
+> 
+> pal <- c("Plain-Jane" = "#9e9e9e", "SFD+suite" = "#1f78b4",
++          "Duplex" = "#33a02c", "Multiplex" = "#ff7f00", "Laneway" = "#e31a1c")
+> 
+> # ---- 2. Parallel plot: 33ft and 50ft facets ----
+> p <- ggplot(foc, aes(year, gap, color = use_class, group = use_class)) +
++   geom_hline(yintercept = 0, linewidth = 0.3, color = "grey60") +
++   geom_vline(xintercept = reform_yr, linetype = "dashed", linewidth = 0.3, color = "grey40") +
++   geom_line(linewidth = 0.9) +
++   geom_point(aes(size = n)) +
++   scale_size_area(max_size = 4, guide = "none") +
++   scale_color_manual(values = pal) +
++   facet_wrap(~ width_lab, nrow = 1) +
++   theme_minimal() +
++   theme(legend.position = "bottom") +
++   labs(title = "West-East gap by build type, R1-1 lots (33ft vs 50ft)",
++        subtitle = paste0("Gap = West share - East share within year. Toward 0 = sides converge. ",
++                          "Dashed = R1-1 reform (2024).\n",
++                          "50ft: duplex ~absent, so convergence runs through suite/multiplex. ",
++                          "33ft: duplex is the narrow-lot vehicle."),
++        y = "West - East share", x = NULL, color = "Build type")
+> ggsave(file.path(out_dir, "ew_substitution_33_50.png"), p, width = 12, height = 5.5, dpi = 150)
+> 
+> # ---- 3. Print both gap series ----
+> for (w in c("33", "50")) {
++   cat("\n", w, "ft annual West-East gap by type:\n", sep = "")
++   print(dcast(foc[width_bucket == w], year + n ~ use_class, value.var = "gap", fill = 0)[order(year)])
++ }
+
+33ft annual West-East gap by type:
+Key: <year, n>
+    year     n  Plain-Jane    SFD+suite      Duplex
+   <int> <int>       <num>        <num>       <num>
+1:  2017   123  0.53916667 -0.525833333 -0.01333333
+2:  2018   134  0.41696429 -0.416964286  0.00000000
+3:  2019    93  0.40497076 -0.282163743 -0.12280702
+4:  2020    83  0.32848837 -0.034883721 -0.29360465
+5:  2021    84  0.16071429  0.250000000 -0.41071429
+6:  2022   179  0.15291262 -0.028359734 -0.12455289
+7:  2023   119  0.11107802  0.261465158 -0.37254318
+8:  2025   117  0.11491228 -0.009649123 -0.10526316
+9:  2026    49 -0.01178451 -0.242424242  0.25420875
+
+50ft annual West-East gap by type:
+Key: <year, n>
+    year     n Plain-Jane    SFD+suite     Duplex
+   <int> <int>      <num>        <num>      <num>
+1:  2017    78  0.6165414 -0.616541353  0.0000000
+2:  2018    64  0.5208333 -0.520833333  0.0000000
+3:  2019    62  0.6450428 -0.481028152 -0.1640147
+4:  2020    44  0.3500000 -0.091666667 -0.2583333
+5:  2021    38  0.5517241 -0.022988506 -0.5287356
+6:  2022    73  0.3720930 -0.061240310 -0.3108527
+7:  2023    50  0.3492647  0.099264706 -0.4485294
+8:  2025    31  0.2738095  0.005952381 -0.2797619
+9:  2026    21  0.3000000 -0.350000000  0.0500000
+> 
+> 
+> 
+> # ============================================================================
+> # ============================================================================
+> # APPENDED: duplex propensity by FINE width bin, 2019-2023, duplex/(duplex+single)
+> # (reuses kj built above; no re-library, no guard)
+> # ============================================================================
+> DUP_ERA <- 2019:2023
+> CUTS <- c(30,34,40,45,49,51,80)
+> LABS <- c("33","34-40","40-45","45-49","50","50+")
+> 
+> K <- as.data.table(copy(kj))
+> K <- K[!is.na(width_ft) & width_ft > 30 & width_ft <= 80 & year %in% DUP_ERA]
+> K[, wbin := cut(width_ft, breaks = CUTS, labels = LABS, right = TRUE)]
+> 
+> # principal single/duplex was already set upstream as `principalType` (section 7),
+> # where the symmetric new-build cost floor + Laneway/other drop happened. Reuse it.
+> # `otherShare` here is now structurally 0 (keep excludes non-principal types); the
+> # real trim audit is the section-7 drop-share table above.
+> K[, principal := principalType]
+> 
+> cat("=== 2019-2023 single/duplex: per-bin mix (otherShare structurally 0 now) ===\n")
+=== 2019-2023 single/duplex: per-bin mix (otherShare structurally 0 now) ===
+> mix <- K[, .(n = .N,
++              single = sum(principal=="single", na.rm=TRUE),
++              duplex = sum(principal=="duplex", na.rm=TRUE),
++              other  = sum(is.na(principal))), by = wbin]
+> mix[, otherShare := round(other/n, 3)]
+> setorder(mix, wbin); print(mix[])
+     wbin     n single duplex other otherShare
+   <fctr> <int>  <int>  <int> <int>      <num>
+1:     33   561    362    199     0          0
+2:  34-40   122     69     53     0          0
+3:  40-45   236    139     97     0          0
+4:  45-49   126     86     40     0          0
+5:     50   243    187     56     0          0
+6:    50+   289    229     60     0          0
+> 
+> # --- duplex share of (duplex+single), by bin x side ---
+> P <- K[!is.na(principal)]
+> sh <- P[, .(nDup = sum(principal=="duplex"), n = .N), by = .(side, wbin)]
+> sh[, dupShare := nDup / n]
+> setorder(sh, side, wbin)
+> cat("\n=== duplex share of (duplex+single), 2019-2023, by width bin x side ===\n")
+
+=== duplex share of (duplex+single), 2019-2023, by width bin x side ===
+> print(dcast(sh, wbin ~ side, value.var = "dupShare"))
+Key: <wbin>
+     wbin      East      West
+   <fctr>     <num>     <num>
+1:     33 0.4550898 0.2070485
+2:  34-40 0.4803922 0.2000000
+3:  40-45 0.4640884 0.2363636
+4:  45-49 0.3956044 0.1142857
+5:     50 0.4303797 0.1341463
+6:    50+ 0.5090909 0.1367521
+> cat("\n=== underlying n (duplex+single) by bin x side ===\n")
+
+=== underlying n (duplex+single) by bin x side ===
+> print(dcast(sh, wbin ~ side, value.var = "n", fill = 0))
+Key: <wbin>
+     wbin  East  West
+   <fctr> <int> <int>
+1:     33   334   227
+2:  34-40   102    20
+3:  40-45   181    55
+4:  45-49    91    35
+5:     50    79   164
+6:    50+    55   234
+> 
+> # --- pooled share (both sides) for the headline monotonicity read ---
+> shP <- P[, .(dupShare = mean(principal=="duplex"), n = .N), by = wbin]
+> setorder(shP, wbin)
+> cat("\n=== pooled duplex share by width bin (monotonicity check) ===\n")
+
+=== pooled duplex share by width bin (monotonicity check) ===
+> print(shP[])
+     wbin  dupShare     n
+   <fctr>     <num> <int>
+1:     33 0.3547237   561
+2:  34-40 0.4344262   122
+3:  40-45 0.4110169   236
+4:  45-49 0.3174603   126
+5:     50 0.2304527   243
+6:    50+ 0.2076125   289
+> 
+> # --- PNG: duplex share vs width bin, East vs West ---
+> sh[, wbin := factor(wbin, levels = LABS)]
+> p <- ggplot(sh, aes(wbin, dupShare, color = side, group = side)) +
++   geom_line(linewidth = 1) + geom_point(aes(size = n)) +
++   scale_size_area(max_size = 5, guide = "none") +
++   scale_color_manual(values = c(East = "grey30", West = "firebrick")) +
++   ylim(0, NA) + theme_minimal() +
++   labs(title = "Duplex propensity by lot width, R1 permits 2019-2023",
++        subtitle = "Duplex / (duplex + single) principal-building permits. Point size ~ n.",
++        x = "lot width (ft)", y = "duplex share", color = NULL)
+> ggsave(file.path(out_dir, "permit_duplexShare_byWidthBin.png"), p,
++        width = 8, height = 5, dpi = 150)
+> cat("\n  wrote", file.path(out_dir, "permit_duplexShare_byWidthBin.png"), "\n")
+
+  wrote text/permit_duplexShare_byWidthBin.png 
+> 
+> # ============================================================================
+> # APPENDED 2: is the width fade West-SPECIFIC? (wide x west interaction)
+> #   By-side table shows East flat-to-rising in width, West stepping down above ~45ft.
+> #   Test it: permit-level P(duplex) on wide(=width>45) x west, and a smooth version.
+> #   Denominator = single/duplex principal new-build (already filtered upstream).
+> # ============================================================================
+> Q <- as.data.table(copy(kj))[!is.na(width_ft) & width_ft > 30 & width_ft <= 80 &
++                              year %in% DUP_ERA & !is.na(principalType)]
+> Q[, dup  := as.integer(principalType == "duplex")]
+> Q[, west := as.integer(side == "West")]
+> Q[, wide := as.integer(width_ft > 45)]
+> Q[, w10  := (width_ft - 33) / 10]          # width in 10-ft units, centred at 33
+> 
+> cat("\n=== P(duplex): wide x west (LPM, threshold at 45ft) ===\n")
+
+=== P(duplex): wide x west (LPM, threshold at 45ft) ===
+> mW <- feols(dup ~ wide * west, data = Q, vcov = "hetero")
+> print(summary(mW))
+OLS estimation, Dep. Var.: dup
+Observations: 1,577
+Standard-errors: Heteroskedasticity-robust 
+             Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)  0.461912   0.020096 22.984999  < 2.2e-16 ***
+wide        -0.026357   0.038721 -0.680694 4.9617e-01    
+west        -0.249992   0.030956 -8.075694 1.3217e-15 ***
+wide:west   -0.051614   0.048190 -1.071054 2.8431e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.442895   Adj. R2: 0.097168
+> cat("  wide       = East width effect (expect ~0: East flat)\n")
+  wide       = East width effect (expect ~0: East flat)
+> cat("  wide:west  = EXTRA West width effect (expect <0: West-specific fade)\n")
+  wide:west  = EXTRA West width effect (expect <0: West-specific fade)
+> 
+> cat("\n=== P(duplex): continuous width x west (LPM, per +10ft) ===\n")
+
+=== P(duplex): continuous width x west (LPM, per +10ft) ===
+> mC <- feols(dup ~ w10 * west, data = Q, vcov = "hetero")
+> print(summary(mC))
+OLS estimation, Dep. Var.: dup
+Observations: 1,577
+Standard-errors: Heteroskedasticity-robust 
+             Estimate Std. Error   t value   Pr(>|t|)    
+(Intercept)  0.447835   0.023943 18.704562  < 2.2e-16 ***
+w10          0.009357   0.022198  0.421546 6.7341e-01    
+west        -0.243082   0.032670 -7.440495 1.6425e-13 ***
+w10:west    -0.035490   0.024486 -1.449385 1.4743e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.443136   Adj. R2: 0.096188
+> cat("  w10:west = differential West slope per 10ft (expect <0)\n")
+  w10:west = differential West slope per 10ft (expect <0)
+> 
+> # cell counts behind the interaction, so the reader sees it isn't thin
+> cat("\n=== n behind wide x west cells ===\n")
+
+=== n behind wide x west cells ===
+> print(dcast(Q[, .N, by = .(west, wide)], west ~ wide, value.var = "N"))
+Key: <west>
+    west     0     1
+   <int> <int> <int>
+1:     0   617   225
+2:     1   302   433
+> 
+> proc.time()
+   user  system elapsed 
+ 13.413   0.824  13.535 

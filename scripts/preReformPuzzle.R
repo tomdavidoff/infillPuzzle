@@ -90,6 +90,99 @@ dev.off()
 cat("\n  wrote", file.path(dirPlot,"preReform_duplexPremium_33_50.png"), "\n")
 cat("\n=== done (rev 2). ===\n")
 
+
+# duplexPremium3350.R
+# Duplex-vs-SFD ppsf premium, vintage-controlled, at BOTH 33 and 50, by side.
+# Fills the gap: rev2 ran the premium on 33s only. The 50-ft premium E/W is the
+# on-point one for the puzzle -- prediction: West duplex premium collapses toward
+# zero (or below) MORE on 50s than on 33s, because the West 50-SFD ceiling is
+# highest exactly there (Test 2: West ppsf flat in width).
+#
+# Reads bca19VancouverSalesDupSFD.rds (~2018 snapshot). land_width; effYear control.
+# READ-ONLY except PNG.  Tom Davidoff 09/13/26
+
+SALE_MINYEAR <- 2014
+PREYEAR_MAX  <- 2018
+ONTARIO_LON  <- -123.1036
+W33 <- 32:34; W50 <- 49:51
+dirPlot <- "text"
+
+library(data.table); library(fixest)
+d <- as.data.table(readRDS("~/DropboxExternal/dataProcessed/bca19VancouverSalesDupSFD.rds"))
+dir.create(dirPlot, showWarnings = FALSE, recursive = TRUE)
+
+sfdUse <- c("Single Family Dwelling", "Residential Dwelling with Suite")
+d[, price := as.numeric(conveyancePrice)]
+d[, saleYear := as.numeric(substring(conveyanceDate,1,4))]
+d[, effYear := as.numeric(MB_effective_year)]
+d[, finArea := as.numeric(MB_total_finished_area)]
+d[, type := fifelse(grepl("Duplex", actualUseDescription), "duplex",
+            fifelse(actualUseDescription %in% sfdUse, "SFD", NA_character_))]
+d[, side := fifelse(longitude < ONTARIO_LON, "West", "East")]
+d[, ppsf := fifelse(!is.na(finArea) & finArea > 0, price/finArea, NA_real_)]
+d[, wc := round(as.numeric(land_width))]
+d[, wbin := fifelse(wc %in% W33, "33", fifelse(wc %in% W50, "50", "other"))]
+
+pre <- d[!is.na(type) & price>0 & !is.na(longitude) & !is.na(ppsf) & ppsf>0 &
+         is.finite(effYear) & effYear>1900 &
+         saleYear %between% c(SALE_MINYEAR, PREYEAR_MAX) & wbin %in% c("33","50")]
+pre[, dup := as.integer(type=="duplex")]
+pre[, west := as.integer(side=="West")]
+
+# ---- premium by width x side, plus dup x west interaction within each width ----
+res <- list()
+for (w in c("33","50")) {
+  cat(sprintf("\n======== %s-ft ========\n", w))
+  dw <- pre[wbin==w]
+  cat("cells (n):\n"); print(dcast(dw, side~type, fun.aggregate=length, value.var="price"))
+
+  # area-controlled? report BOTH: raw vintage-only, and + log(finArea) to kill the
+  # "smaller unit => higher ppsf" mechanical size effect (referee-proofing T1).
+  for (sd in c("East","West")) {
+    dd <- dw[side==sd]
+    if (uniqueN(dd$dup) < 2 || sum(dd$dup) < 10) { cat(sprintf("  %s %s: too thin (dup=%d)\n", sd, w, sum(dd$dup))); next }
+    m0 <- feols(log(ppsf) ~ dup | effYear + saleYear, dd, vcov="hetero")
+    mA <- feols(log(ppsf) ~ dup + log(finArea) | effYear + saleYear, dd, vcov="hetero")
+    cat(sprintf("  %s %s (n=%d,dup=%d):  premium %+.1f%%  | area-ctrl %+.1f%%\n",
+                sd, w, nrow(dd), sum(dd$dup),
+                100*(exp(coef(m0)[["dup"]])-1), 100*(exp(coef(mA)[["dup"]])-1)))
+    b<-coef(m0)[["dup"]]; s<-se(m0)[["dup"]]
+    res[[paste(w,sd)]] <- data.table(w=w, side=sd,
+        pct=100*(exp(b)-1), lo=100*(exp(b-1.96*s)-1), hi=100*(exp(b+1.96*s)-1))
+  }
+  # interaction: does the duplex premium differ W vs E at THIS width?
+  mI <- feols(log(ppsf) ~ dup*west | effYear + saleYear, dw, vcov="hetero")
+  cat(sprintf("\n  [%s] dup:west interaction = %+.4f (t=%.2f)  <0 => West premium lower\n",
+              w, coef(mI)[["dup:west"]], coef(mI)[["dup:west"]]/se(mI)[["dup:west"]]))
+}
+
+# ---- triple: is the (West premium shortfall) itself bigger on 50 than 33? ----
+cat("\n======== TRIPLE: dup x west x lot50 ========\n")
+pre[, lot50 := as.integer(wbin=="50")]
+mT <- feols(log(ppsf) ~ dup*west*lot50 | effYear + saleYear, pre, vcov="hetero")
+print(summary(mT))
+cat("  dup:west:lot50 < 0 => West duplex-premium collapse is WORSE on 50s (the puzzle)\n")
+
+# ---- PNG: premium by width x side, 95% CI ----
+cm <- rbindlist(res)
+png(file.path(dirPlot,"preReform_duplexPremium_33_50.png"),
+    width=7.5, height=5, units="in", res=200)
+cm[, y := .I]
+xr <- range(c(cm$lo, cm$hi, 0))
+plot(NA, xlim=xr, ylim=c(0.5, nrow(cm)+0.5), yaxt="n",
+     xlab="duplex-vs-SFD ppsf premium (%), vintage-controlled", ylab="",
+     main=sprintf("Pre-reform (%d-%d) duplex premium, 33 vs 50", SALE_MINYEAR, PREYEAR_MAX))
+axis(2, at=cm$y, labels=paste(cm$side, cm$w), las=1)
+abline(v=0, col="grey70", lty=2)
+cm[, col := fifelse(side=="West","firebrick","grey30")]
+for (i in cm$y) {
+  segments(cm$lo[i], i, cm$hi[i], i, col=cm$col[i], lwd=2)
+  points(cm$pct[i], i, pch=19, col=cm$col[i], cex=1.3)
+}
+dev.off()
+cat("\n  wrote", file.path(dirPlot,"preReform_duplexPremium_33_50.png"), "\n")
+cat("\n=== done (rev 2). ===\n")
+
 # =============================================================
 # R1-1 infill: East/West CONVERGENCE across three eras x lot width
 #
@@ -170,11 +263,43 @@ dt[, use_class := fifelse(grepl("Multiple|Multiplex|Conversion", su, ignore.case
                  fifelse(grepl("^Infill|Dwelling Unit",         su, ignore.case = TRUE), "Infill-other",
                  fifelse(su == "Single Detached House",         "Plain-Jane", NA_character_))))))]
 
-# ---- 7. Cost floor on Plain-Jane only ----
-is_new   <- grepl("New Building|New Construction", dt$type_of_work, ignore.case = TRUE)
-minSpend <- quantile(dt[is_new & use_class == "Plain-Jane", project_value], CRITVAL, na.rm = TRUE)
-keep <- dt[!is.na(use_class) & !is.na(era) &
-           (use_class != "Plain-Jane" | project_value > minSpend)]
+# ---- 7. Cost floor, applied SYMMETRICALLY to single AND duplex new-build ----
+# Old behaviour gated Plain-Jane only, trimming ~25% of singles while letting every
+# duplex through -> mechanically inflated duplex share. Fix: one floor from the POOLED
+# single+duplex new-build value distribution, applied to BOTH principal types. Laneway
+# and other non-principal types are dropped outright (not a house-vs-duplex choice).
+#
+# PRINCIPAL_TYPES = the two things that compete for the redevelopment of a lot.
+# "single" = Plain-Jane (+ SFD+suite, a single principal building with a suite).
+PRINCIPAL_SINGLE <- c("Plain-Jane", "SFD+suite")
+PRINCIPAL_DUPLEX <- c("Duplex")
+
+is_new <- grepl("New Building|New Construction", dt$type_of_work, ignore.case = TRUE)
+dt[, principalType := fifelse(use_class %in% PRINCIPAL_DUPLEX, "duplex",
+                      fifelse(use_class %in% PRINCIPAL_SINGLE, "single", NA_character_))]
+
+# pooled cutoff: 25th pctile of new-build project_value across single+duplex together
+minSpendPool <- quantile(dt[is_new & !is.na(principalType), project_value],
+                         CRITVAL, na.rm = TRUE)
+# for comparison only: the old single-only cutoff
+minSpendSingle <- quantile(dt[is_new & principalType == "single", project_value],
+                           CRITVAL, na.rm = TRUE)
+cat(sprintf("\n=== cost floors (CRITVAL=%.2f): pooled=%s  single-only=%s ===\n",
+            CRITVAL, format(round(minSpendPool), big.mark=","),
+            format(round(minSpendSingle), big.mark=",")))
+
+FLOOR <- minSpendPool          # <- switch to minSpendSingle for the single-only gate
+# keep ONLY principal single/duplex, new-build, above the shared floor.
+keep <- dt[!is.na(era) & !is.na(principalType) &
+           is_new & project_value > FLOOR]
+
+# report how many of each type the floor drops, so the trim is auditable
+cat("=== new-build single/duplex dropped by the shared floor (pre-width) ===\n")
+print(dt[!is.na(principalType) & is_new,
+         .(n = .N, kept = sum(project_value > FLOOR, na.rm = TRUE),
+           dropShare = round(mean(!(project_value > FLOOR) | is.na(project_value), na.rm = TRUE), 3)),
+         by = principalType])
+
 xy <- st_coordinates(st_as_sf(keep)); keep[, `:=`(lon = xy[,1], lat = xy[,2])]
 
 # ---- 8-11. BCA width (native-CRS bbox) + inventory fallback ----
@@ -409,13 +534,13 @@ K <- as.data.table(copy(kj))
 K <- K[!is.na(width_ft) & width_ft > 30 & width_ft <= 80 & year %in% DUP_ERA]
 K[, wbin := cut(width_ft, breaks = CUTS, labels = LABS, right = TRUE)]
 
-# principal-building single vs duplex. "single" = Plain-Jane (bare detached);
-# SFD+suite is a single with a suite -> still a single principal building, INCLUDE.
-K[, principal := fifelse(use_class == "Duplex", "duplex",
-                 fifelse(use_class %in% c("Plain-Jane","SFD+suite"), "single", NA_character_))]
+# principal single/duplex was already set upstream as `principalType` (section 7),
+# where the symmetric new-build cost floor + Laneway/other drop happened. Reuse it.
+# `otherShare` here is now structurally 0 (keep excludes non-principal types); the
+# real trim audit is the section-7 drop-share table above.
+K[, principal := principalType]
 
-# --- denominator honesty: what share of permits in each bin is NEITHER? ---
-cat("=== 2019-2023 R1: per-bin permit mix, and dropped (non single/duplex) share ===\n")
+cat("=== 2019-2023 single/duplex: per-bin mix (otherShare structurally 0 now) ===\n")
 mix <- K[, .(n = .N,
              single = sum(principal=="single", na.rm=TRUE),
              duplex = sum(principal=="duplex", na.rm=TRUE),
@@ -452,3 +577,31 @@ p <- ggplot(sh, aes(wbin, dupShare, color = side, group = side)) +
 ggsave(file.path(out_dir, "permit_duplexShare_byWidthBin.png"), p,
        width = 8, height = 5, dpi = 150)
 cat("\n  wrote", file.path(out_dir, "permit_duplexShare_byWidthBin.png"), "\n")
+
+# ============================================================================
+# APPENDED 2: is the width fade West-SPECIFIC? (wide x west interaction)
+#   By-side table shows East flat-to-rising in width, West stepping down above ~45ft.
+#   Test it: permit-level P(duplex) on wide(=width>45) x west, and a smooth version.
+#   Denominator = single/duplex principal new-build (already filtered upstream).
+# ============================================================================
+Q <- as.data.table(copy(kj))[!is.na(width_ft) & width_ft > 30 & width_ft <= 80 &
+                             year %in% DUP_ERA & !is.na(principalType)]
+Q[, dup  := as.integer(principalType == "duplex")]
+Q[, west := as.integer(side == "West")]
+Q[, wide := as.integer(width_ft > 45)]
+Q[, w10  := (width_ft - 33) / 10]          # width in 10-ft units, centred at 33
+
+cat("\n=== P(duplex): wide x west (LPM, threshold at 45ft) ===\n")
+mW <- feols(dup ~ wide * west, data = Q, vcov = "hetero")
+print(summary(mW))
+cat("  wide       = East width effect (expect ~0: East flat)\n")
+cat("  wide:west  = EXTRA West width effect (expect <0: West-specific fade)\n")
+
+cat("\n=== P(duplex): continuous width x west (LPM, per +10ft) ===\n")
+mC <- feols(dup ~ w10 * west, data = Q, vcov = "hetero")
+print(summary(mC))
+cat("  w10:west = differential West slope per 10ft (expect <0)\n")
+
+# cell counts behind the interaction, so the reader sees it isn't thin
+cat("\n=== n behind wide x west cells ===\n")
+print(dcast(Q[, .N, by = .(west, wide)], west ~ wide, value.var = "N"))
