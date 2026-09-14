@@ -1,0 +1,43 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # permitShareByWidth.R  --  ADDENDUM to categorizeVancouverSingle.R
+> # Run categorizeVancouverSingle.R FIRST; this reuses `kj` (permits joined to
+> # BCA width, with width_ft, use_class, side, year, zoning already built).
+> #
+> # Duplex propensity by FINE width bin, 2019-2023 (duplex-era R1), duplex/(duplex+SFD).
+> # In R1 2019-2023 the principal-building choice set is ~duplex vs single, so this
+> # two-way share ~ the whole redevelopment decision. We PRINT the dropped share per
+> # bin to verify duplex+single really is ~everything.
+> #
+> # Bins (contiguous, left-open/right-closed) -- edit CUTS to taste:
+> #   (30,34]  "33"      (the narrow standard lot)
+> #   (34,40]  "34-40"
+> #   (40,45]  "40-45"
+> #   (45,49]  "45-49"
+> #   (49,51]  "50"      (the standard wide lot, +/-1)
+> #   (51,80]  "50+"
+> # Tom Davidoff 09/13/26
+> 
+> library(data.table); library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+> stopifnot(exists("kj"))     # from categorizeVancouverSingle.R
+Error: exists("kj") is not TRUE
+Execution halted

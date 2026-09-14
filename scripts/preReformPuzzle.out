@@ -1,0 +1,254 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # duplexPremium3350.R
+> # Duplex-vs-SFD ppsf premium, vintage-controlled, at BOTH 33 and 50, by side.
+> # Fills the gap: rev2 ran the premium on 33s only. The 50-ft premium E/W is the
+> # on-point one for the puzzle -- prediction: West duplex premium collapses toward
+> # zero (or below) MORE on 50s than on 33s, because the West 50-SFD ceiling is
+> # highest exactly there (Test 2: West ppsf flat in width).
+> #
+> # Reads bca19VancouverSalesDupSFD.rds (~2018 snapshot). land_width; effYear control.
+> # READ-ONLY except PNG.  Tom Davidoff 09/13/26
+> 
+> SALE_MINYEAR <- 2014
+> PREYEAR_MAX  <- 2018
+> ONTARIO_LON  <- -123.1036
+> W33 <- 32:34; W50 <- 49:51
+> dirPlot <- "text"
+> 
+> library(data.table); library(fixest)
+> d <- as.data.table(readRDS("~/DropboxExternal/dataProcessed/bca19VancouverSalesDupSFD.rds"))
+> dir.create(dirPlot, showWarnings = FALSE, recursive = TRUE)
+> 
+> sfdUse <- c("Single Family Dwelling", "Residential Dwelling with Suite")
+> d[, price := as.numeric(conveyancePrice)]
+> d[, saleYear := as.numeric(substring(conveyanceDate,1,4))]
+> d[, effYear := as.numeric(MB_effective_year)]
+> d[, finArea := as.numeric(MB_total_finished_area)]
+> d[, type := fifelse(grepl("Duplex", actualUseDescription), "duplex",
++             fifelse(actualUseDescription %in% sfdUse, "SFD", NA_character_))]
+> d[, side := fifelse(longitude < ONTARIO_LON, "West", "East")]
+> d[, ppsf := fifelse(!is.na(finArea) & finArea > 0, price/finArea, NA_real_)]
+> d[, wc := round(as.numeric(land_width))]
+> d[, wbin := fifelse(wc %in% W33, "33", fifelse(wc %in% W50, "50", "other"))]
+> 
+> pre <- d[!is.na(type) & price>0 & !is.na(longitude) & !is.na(ppsf) & ppsf>0 &
++          is.finite(effYear) & effYear>1900 &
++          saleYear %between% c(SALE_MINYEAR, PREYEAR_MAX) & wbin %in% c("33","50")]
+> pre[, dup := as.integer(type=="duplex")]
+> pre[, west := as.integer(side=="West")]
+> 
+> # ---- premium by width x side, plus dup x west interaction within each width ----
+> res <- list()
+> for (w in c("33","50")) {
++   cat(sprintf("\n======== %s-ft ========\n", w))
++   dw <- pre[wbin==w]
++   cat("cells (n):\n"); print(dcast(dw, side~type, fun.aggregate=length, value.var="price"))
++ 
++   # area-controlled? report BOTH: raw vintage-only, and + log(finArea) to kill the
++   # "smaller unit => higher ppsf" mechanical size effect (referee-proofing T1).
++   for (sd in c("East","West")) {
++     dd <- dw[side==sd]
++     if (uniqueN(dd$dup) < 2 || sum(dd$dup) < 10) { cat(sprintf("  %s %s: too thin (dup=%d)\n", sd, w, sum(dd$dup))); next }
++     m0 <- feols(log(ppsf) ~ dup | effYear + saleYear, dd, vcov="hetero")
++     mA <- feols(log(ppsf) ~ dup + log(finArea) | effYear + saleYear, dd, vcov="hetero")
++     cat(sprintf("  %s %s (n=%d,dup=%d):  premium %+.1f%%  | area-ctrl %+.1f%%\n",
++                 sd, w, nrow(dd), sum(dd$dup),
++                 100*(exp(coef(m0)[["dup"]])-1), 100*(exp(coef(mA)[["dup"]])-1)))
++     b<-coef(m0)[["dup"]]; s<-se(m0)[["dup"]]
++     res[[paste(w,sd)]] <- data.table(w=w, side=sd,
++         pct=100*(exp(b)-1), lo=100*(exp(b-1.96*s)-1), hi=100*(exp(b+1.96*s)-1))
++   }
++   # interaction: does the duplex premium differ W vs E at THIS width?
++   mI <- feols(log(ppsf) ~ dup*west | effYear + saleYear, dw, vcov="hetero")
++   cat(sprintf("\n  [%s] dup:west interaction = %+.4f (t=%.2f)  <0 => West premium lower\n",
++               w, coef(mI)[["dup:west"]], coef(mI)[["dup:west"]]/se(mI)[["dup:west"]]))
++ }
+
+======== 33-ft ========
+cells (n):
+Key: <side>
+     side   SFD duplex
+   <char> <int>  <int>
+1:   East  4194    515
+2:   West  2450    226
+  East 33 (n=4709,dup=515):  premium +25.9%  | area-ctrl -12.0%
+  West 33 (n=2676,dup=226):  premium +3.7%  | area-ctrl -19.9%
+
+  [33] dup:west interaction = -0.1878 (t=-9.39)  <0 => West premium lower
+
+======== 50-ft ========
+cells (n):
+Key: <side>
+     side   SFD duplex
+   <char> <int>  <int>
+1:   East   410     72
+2:   West  1289    146
+  East 50 (n=482,dup=72):  premium +34.8%  | area-ctrl -9.1%
+  West 50 (n=1435,dup=146):  premium +5.8%  | area-ctrl -28.1%
+
+  [50] dup:west interaction = -0.2170 (t=-4.80)  <0 => West premium lower
+> 
+> # ---- triple: is the (West premium shortfall) itself bigger on 50 than 33? ----
+> cat("\n======== TRIPLE: dup x west x lot50 ========\n")
+
+======== TRIPLE: dup x west x lot50 ========
+> pre[, lot50 := as.integer(wbin=="50")]
+> mT <- feols(log(ppsf) ~ dup*west*lot50 | effYear + saleYear, pre, vcov="hetero")
+> print(summary(mT))
+OLS estimation, Dep. Var.: log(ppsf)
+Observations: 9,302
+Fixed-effects: effYear: 97,  saleYear: 5
+Standard-errors: Heteroskedasticity-robust 
+                Estimate Std. Error   t value   Pr(>|t|)    
+dup             0.226156   0.010751 21.035200  < 2.2e-16 ***
+west            0.487343   0.005920 82.315318  < 2.2e-16 ***
+lot50          -0.074088   0.012957 -5.718105 1.1108e-08 ***
+dup:west       -0.190414   0.019921 -9.558563  < 2.2e-16 ***
+dup:lot50       0.014142   0.038792  0.364553 7.1545e-01    
+west:lot50      0.073747   0.015279  4.826655 1.4108e-06 ***
+dup:west:lot50 -0.042620   0.048867 -0.872166 3.8314e-01    
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.224189     Adj. R2: 0.681342
+                 Within R2: 0.518998
+> cat("  dup:west:lot50 < 0 => West duplex-premium collapse is WORSE on 50s (the puzzle)\n")
+  dup:west:lot50 < 0 => West duplex-premium collapse is WORSE on 50s (the puzzle)
+> 
+> # ---- PNG: premium by width x side, 95% CI ----
+> cm <- rbindlist(res)
+> png(file.path(dirPlot,"preReform_duplexPremium_33_50.png"),
++     width=7.5, height=5, units="in", res=200)
+> cm[, y := .I]
+> xr <- range(c(cm$lo, cm$hi, 0))
+> plot(NA, xlim=xr, ylim=c(0.5, nrow(cm)+0.5), yaxt="n",
++      xlab="duplex-vs-SFD ppsf premium (%), vintage-controlled", ylab="",
++      main=sprintf("Pre-reform (%d-%d) duplex premium, 33 vs 50", SALE_MINYEAR, PREYEAR_MAX))
+> axis(2, at=cm$y, labels=paste(cm$side, cm$w), las=1)
+> abline(v=0, col="grey70", lty=2)
+> cm[, col := fifelse(side=="West","firebrick","grey30")]
+> for (i in cm$y) {
++   segments(cm$lo[i], i, cm$hi[i], i, col=cm$col[i], lwd=2)
++   points(cm$pct[i], i, pch=19, col=cm$col[i], cex=1.3)
++ }
+> dev.off()
+null device 
+          1 
+> cat("\n  wrote", file.path(dirPlot,"preReform_duplexPremium_33_50.png"), "\n")
+
+  wrote text/preReform_duplexPremium_33_50.png 
+> cat("\n=== done (rev 2). ===\n")
+
+=== done (rev 2). ===
+> 
+> # =============================================================
+> # R1-1 infill: East/West CONVERGENCE across three eras x lot width
+> #
+> # Three eras by permit year:
+> #   pre-duplex   <=2018        (little duplex; suite/laneway/Plain-Jane world)
+> #   duplex era   2019-2023     (duplex normalized, pre-R1-1)
+> #   multiplex era 2025-2026    (R1-1; multiplex arrives; 2024 dropped)
+> #
+> # Question: is East/West CONVERGING, and which product drives it?
+> # Convergence = the East and West type-composition getting more alike over time.
+> # Measured per era x width with a dissimilarity index over the use mix, plus
+> # a decomposition of which type closes the most East-West gap.
+> #
+> # Plain-Jane (bare Single Detached House) = un-infilled baseline; cost floor
+> # gates Plain-Jane only. Width from gpkg folio (BC Albers) w/ inventory fallback.
+> # =============================================================
+> 
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> 
+> dir_path <- "~/DropboxExternal/dataRaw"
+> gpkg     <- "~/bigFiles/latestSpatialBCA/2026-04-08_bca_folios.gpkg"
+> inv_path <- file.path(dir_path, "Residential_inventory_202601",
++                       "20260101_A09_Residential_Inventory_Extract.txt")
+> out_dir  <- "text"; dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
+> 
+> CRITVAL  <- 0.25; RADIUS <- 6; ONT <- -123.101
+> desc_tbl <- "WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV"
+> W33 <- 32:34; W50 <- 49:51
+> 
+> numify   <- function(x) suppressWarnings(as.numeric(gsub("[^0-9.\\-]", "", x)))
+> roll_key <- function(x) suppressWarnings(as.numeric(gsub("[^0-9]", "", x)))
+> 
+> # ---- 1-4. permits -> zoning -> R1-1 -> use/value cols (as established) ----
+> permits_dt <- fread(file.path(dir_path, "issued-building-permitsDwellingUses.csv"))
+> permits_dt <- permits_dt[!is.na(geo_point_2d) & geo_point_2d != ""]
+> permits_dt[, c("lat","lon") := tstrsplit(geo_point_2d, ",\\s*", type.convert = FALSE)]
+> permits_dt[, `:=`(lat = as.numeric(lat), lon = as.numeric(lon))]
+> permits_dt <- permits_dt[is.finite(lat) & is.finite(lon) &
++                          lat %between% c(49.0,49.4) & lon %between% c(-123.3,-123.0)]
+> permits_sf <- st_as_sf(permits_dt, coords = c("lon","lat"), crs = 4326)
+> 
+> zoning_sf <- st_read(file.path(dir_path, "vancouver_zoning.geojson"), quiet = TRUE)
+> zoning_sf <- st_make_valid(st_transform(zoning_sf, st_crs(permits_sf)))["zoning_district"]
+> 
+> dt <- as.data.table(st_join(permits_sf, zoning_sf, join = st_intersects))
+> id_col <- grep("permit.*number|permitnumber|^id$", names(dt), ignore.case = TRUE, value = TRUE)[1]
+> dt[, is_r1 := grepl("^R1-1", zoning_district, ignore.case = TRUE)]
+> setorderv(dt, c(id_col, "is_r1"), c(1, -1))
+> dt <- unique(dt, by = id_col)[grepl("^R1-1", zoning_district, ignore.case = TRUE)]
+> 
+> use_col <- grep("specific.*use|specificuse", names(dt), ignore.case = TRUE, value = TRUE)
+> setnames(dt, use_col, "specific_use")
+> tow_col <- grep("type.*of.*work|typeofwork", names(dt), ignore.case = TRUE, value = TRUE)[1]
+> val_col <- grep("project.*value|projectvalue|construction.*value|^value$",
++                 names(dt), ignore.case = TRUE, value = TRUE)[1]
+> setnames(dt, c(tow_col, val_col), c("type_of_work", "project_value"))
+> if (!is.numeric(dt$project_value))
++   dt[, project_value := as.numeric(gsub("[$,]", "", project_value))]
+> 
+> # ---- 5. Year + THREE eras ----
+> yr_col <- grep("issue.*year|permit.*year|^year$", names(dt), ignore.case = TRUE, value = TRUE)[1]
+> if (is.na(yr_col)) {
++   dt_col <- grep("issue.*date|permit.*date|applied.*date|date",
++                  names(dt), ignore.case = TRUE, value = TRUE)[1]
++   dt[, year := as.integer(substr(as.character(get(dt_col)), 1, 4))]
++ } else dt[, year := as.integer(get(yr_col))]
+> dt[, era := fifelse(year <= 2018, "1_pre-duplex",
++             fifelse(year %in% 2019:2023, "2_duplex",
++             fifelse(year %in% 2025:2026, "3_multiplex", NA_character_)))]
+> 
+> # ---- 6. Classify use, most-intensive-first ----
+> su <- dt$specific_use
+> dt[, use_class := fifelse(grepl("Multiple|Multiplex|Conversion", su, ignore.case = TRUE), "Multiplex",
++                  fifelse(grepl("Duplex|Two-Family",             su, ignore.case = TRUE), "Duplex",
++                  fifelse(grepl("Laneway",                       su, ignore.case = TRUE), "Laneway",
++                  fifelse(grepl("Sec Suite|Secondary Suite|Family Suite", su, ignore.case = TRUE), "SFD+suite",
++                  fifelse(grepl("^Infill|Dwelling Unit",         su, ignore.case = TRUE), "Infill-other",
++                  fifelse(su == "Single Detached House",         "Plain-Jane", NA_character_))))))]
+> 
+> # ---- 7. Cost floor on Plain-Jane only ----
+> is_new   <- grepl("New Building|New Construction", dt$type_of_work, ignore.case = TRUE)
+> minSpend <- quantile(dt[is_new & use_class == "Plain-Jane", project_value], CRITVAL, na.rm = TRUE)
+> keep <- dt[!is.na(use_class) & !is.na(era) &
++            (use_class != "Plain-Jane" | project_value > minSpend)]
+> xy <- st_coordinates(st_as_sf(keep)); keep[, `:=`(lon = xy[,1], lat = xy[,2])]
+> 
+> # ---- 8-11. BCA width (native-CRS bbox) + inventory fallback ----
+> keep_sf <- st_as_sf(keep, coords = c("lon","lat"), crs = 4326, remove = FALSE)
+> probe   <- st_read(gpkg, layer = desc_tbl, quiet = TRUE,
++                    query = sprintf('SELECT * FROM "%s" LIMIT 1', desc_tbl))
+Error: Cannot open "~/bigFiles/latestSpatialBCA/2026-04-08_bca_folios.gpkg"; The file doesn't seem to exist.
+Execution halted
