@@ -1,0 +1,707 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # vancouverR1FSRDate.R
+> # Realized FSR on 2018-vintage R1-1 single-family lots, by permitted product
+> # (single / duplex / multiplex) and permit application / issue date.
+> #   denominator: 2019-roll (mid-2018) SFD lot area, one folio per rollStart
+> #   numerator:   sum of 2026 MB_total_finished_area over all folios on that rollStart
+> #   dates/type:  New Building permits, read live from City of Vancouver open data,
+> #                matched to the 2018 SFD centroid within MATCHDIST
+> # Unit-scaling rule: a single-folio duplex (non-strata side-by-side/front-back,
+> # or strata with only one folio on the stem) records ONE unit's area in the MB
+> # fields; x2 reproduces the strata-duplex FSR distribution year by year (validated
+> # below). Single-folio multiplexes and other single-folio duplex uses are dropped
+> # from FSR tables (unit count unknown).
+> # Tom Davidoff
+> # 09/30/26
+> 
+> MATCHDIST <- 5       # m, permit point to 2018 SFD parcel centroid
+> BUILT_MIN <- 2019    # realized new build: max MB_year_built on rollStart >= this
+> 
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(RSQLite)
+> 
+> sf_use_s2(TRUE)
+> rollKey <- function(x) as.numeric(gsub("[^0-9]", "", x))
+> 
+> dirGpkg   <- "~/bigFiles/latestSpatialBCA/"
+> gpkgFiles <- list.files(dirGpkg, pattern = "\\.gpkg$", full.names = TRUE)
+> stopifnot(length(gpkgFiles) == 1)
+> fileGpkg  <- gpkgFiles
+> 
+> fInvTxt      <- "~/DropboxExternal/dataRaw/Residential_inventory_202601/20260101_A09_Residential_Inventory_Extract.txt"
+> fGeo         <- "~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds"
+> fnameSingles <- "~/DropboxExternal/dataProcessed/bca19VancouverSingles.rds"
+> fZoning      <- "~/DropboxExternal/dataRaw/vancouver_zoning.geojson"
+> urlP         <- "https://opendata.vancouver.ca/api/explore/v2.1/catalog/datasets/issued-building-permits/exports/csv?delimiter=%2C"
+> 
+> # ============================================================================
+> # 1. 2019-roll (mid-2018) SFD inventory
+> # Source: vancouverMatch.R (08/13/26), same build, with one fix: that script
+> # deduped 2026 centroids via frank(rollStart) by rollStart, which averages
+> # ties, so any rollStart with >1 distinct 2026 centroid was dropped -- i.e.
+> # exactly the SFD -> strata duplex/multiplex conversions. If the rds predates
+> # this fix, delete it once so this block rebuilds it (see nFolio26 > 1 check).
+> # ============================================================================
+> if (!file.exists(fnameSingles)) {
++   if (!file.exists(fGeo)) {
++     dfG <- st_read(fileGpkg, query =
++       "SELECT ROLL_NUMBER, geom
++        FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
++        WHERE JURISDICTION_CODE = '200'")
++     dfG <- st_transform(st_make_valid(dfG), 4326)
++     ctr <- st_coordinates(st_centroid(st_geometry(dfG)))
++     dtGeo <- as.data.table(st_drop_geometry(dfG))
++     dtGeo[, `:=`(longitude = ctr[, 1], latitude = ctr[, 2])]
++     dtGeo[, rollStart := floor(as.numeric(ROLL_NUMBER) / 1000)]
++     dtGeo <- unique(dtGeo[, .(rollStart, longitude, latitude)])
++     saveRDS(dtGeo, fGeo)
++   }
++   dtGeo <- readRDS(fGeo)
++   dtGeo <- dtGeo[, .(longitude = mean(longitude), latitude = mean(latitude)), by = rollStart]
++ 
++   con <- dbConnect(SQLite(), "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3")
++   dtBCA19 <- data.table(dbGetQuery(con, "
++     SELECT d.folioID, f.rollNumber, i.MB_effective_year, i.MB_total_finished_area,
++        CAST(i.land_width AS NUMERIC) AS land_width, CAST(i.land_depth AS NUMERIC) AS land_depth,
++        d.actualUseDescription,
++        CAST(d.landWidth AS NUMERIC) AS landWidth, CAST(d.landDepth AS NUMERIC) AS landDepth,
++        CAST(v.landValue AS NUMERIC) AS landValue
++     FROM folio f
++     JOIN residentialInventory i ON i.roll_number = f.rollNumber
++     JOIN folioDescription d      ON d.folioID     = f.folioID
++     JOIN valuation v             ON v.folioID     = f.folioID
++     WHERE f.jurisdictionCode = '200'
++   "))
++   dbDisconnect(con)
++   dtBCA19[, rollStart := floor(as.numeric(rollNumber) / 1000)]
++   dtBCA19[is.na(landWidth), landWidth := land_width]
++   dtBCA19[is.na(landDepth), landDepth := land_depth]
++   dtBCA19 <- merge(dtBCA19, dtGeo, by = "rollStart", all.x = TRUE)
++   dtSingles <- dtBCA19[actualUseDescription %in%
++                          c("Single Family Dwelling", "Residential Dwelling with Suite"),
++                        .(landWidth, landDepth, MB_total_finished_area, MB_effective_year,
++                          rollNumber, folioID, longitude, latitude, landValue)]
++   dtSingles <- dtSingles[!is.na(longitude) & !is.na(latitude)]
++   saveRDS(dtSingles, fnameSingles)
++ }
+> 
+> dtS <- readRDS(fnameSingles)
+> dtS[, rollStart := floor(rollKey(rollNumber) / 1000)]
+> dtS[, c("landWidth", "landDepth", "MB_total_finished_area") :=
++         lapply(.SD, as.numeric), .SDcols = c("landWidth", "landDepth", "MB_total_finished_area")]
+> dtS <- dtS[, if (.N == 1) .SD, by = rollStart]            # drop multi-folio 2019 rollStarts
+> dtS <- dtS[landWidth > 0 & landDepth > 0]
+> dtS[, lotArea := landWidth * landDepth]                    # sqft
+> 
+> # ---- R1-1 gate on the 2018 lot centroid ------------------------------------
+> dgZ <- st_read(fZoning, quiet = TRUE)
+> dgZ <- st_transform(st_make_valid(dgZ[dgZ$zoning_district == "R1-1", ]), 3005)
+> sfS <- st_transform(st_as_sf(dtS, coords = c("longitude", "latitude"), crs = 4326, remove = FALSE), 3005)
+> inR1 <- lengths(st_intersects(sfS, dgZ)) > 0
+> dtS <- dtS[inR1]
+> sfS <- sfS[inR1, ]
+> 
+> # ============================================================================
+> # 2. 2026 folios on each rollStart (gpkg attributes via sqlite, no geometry)
+> #    + 2026 residential inventory for finished area and year built
+> # ============================================================================
+> con <- dbConnect(SQLite(), fileGpkg)
+> dt26 <- as.data.table(dbGetQuery(con,
++   "SELECT ROLL_NUMBER, ACTUAL_USE_DESCRIPTION
++    FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
++    WHERE JURISDICTION_CODE = '200'"))
+> dbDisconnect(con)
+> dt26[, roll := rollKey(ROLL_NUMBER)]
+> dt26 <- unique(dt26, by = "roll")
+> dt26[, rollStart := floor(roll / 1000)]
+> dt26 <- dt26[rollStart %in% dtS$rollStart]
+> 
+> dtI <- fread(fInvTxt)
+> setnames(dtI, tolower(names(dtI)))
+> invCols <- c("roll_number", "jurisdiction", "mb_year_built", "mb_effective_year", "mb_total_finished_area")
+> if (!all(invCols %in% names(dtI))) { print(names(dtI)); stop("inventory column names differ") }
+> dtI <- dtI[as.numeric(jurisdiction) == 200]
+> dtI[, roll := rollKey(roll_number)]                        # one row per roll (verified)
+> dtI[, (invCols[-(1:2)]) := lapply(.SD, as.numeric), .SDcols = invCols[-(1:2)]]
+> 
+> dt26 <- merge(dt26, dtI[, .(roll, mb_year_built, mb_effective_year, mb_total_finished_area)],
++               by = "roll", all.x = TRUE)
+> 
+> dtR <- dt26[, .(nFolio26 = .N,
++                 nArea26  = sum(!is.na(mb_total_finished_area)),
++                 area26   = sum(mb_total_finished_area, na.rm = TRUE),
++                 yb26     = if (all(is.na(mb_year_built))) NA_real_ else max(mb_year_built, na.rm = TRUE),
++                 use26    = paste(sort(unique(ACTUAL_USE_DESCRIPTION)), collapse = "; ")),
++             by = rollStart]
+> 
+> # ============================================================================
+> # 3. Permits, live. New Building only; principal product + laneway flag.
+> # ============================================================================
+> dtP <- fread(urlP)
+> setnames(dtP, tolower(names(dtP)))
+> dtP <- dtP[typeofwork == "New Building" & !is.na(geo_point_2d) & geo_point_2d != ""]
+> dtP[, c("lat", "lon") := tstrsplit(geo_point_2d, ",\\s*", type.convert = TRUE)]
+> dtP[, product := fcase(grepl("Multiple Dwelling", specificusecategory), "multiplex",
++                        grepl("Duplex",            specificusecategory), "duplex",
++                        grepl("Single",            specificusecategory), "single",
++                        default = NA_character_)]
+> dtP[, laneway := grepl("Laneway", specificusecategory)]
+> dtP <- dtP[!is.na(product) | laneway]
+> dtP[, applied := as.IDate(permitnumbercreateddate)]
+> dtP[, issued  := as.IDate(issuedate)]
+> 
+> sfP <- st_transform(st_as_sf(dtP, coords = c("lon", "lat"), crs = 4326), 3005)
+> nn  <- st_nearest_feature(sfP, sfS)
+> dtP[, dist := as.numeric(st_distance(sfP, sfS[nn, ], by_element = TRUE))]
+> dtP[, rollStart := dtS$rollStart[nn]]
+> dtP <- dtP[dist <= MATCHDIST]
+> 
+> dtPP   <- dtP[!is.na(product)][order(rollStart, -issued)][, .SD[1], by = rollStart]  # latest issued
+> dtLane <- unique(dtP[laneway == TRUE, .(rollStart, laneway)])
+> 
+> # ============================================================================
+> # 4. Assemble lot-level file; unit scaling
+> # ============================================================================
+> dt <- merge(dtS[, .(rollStart, landWidth, landDepth, lotArea, longitude, latitude,
++                     area18 = MB_total_finished_area)],
++             dtR, by = "rollStart", all.x = TRUE)
+> dt <- merge(dt, dtPP[, .(rollStart, permitnumber, product, specificusecategory,
++                          applied, issued, projectvalue, dist)],
++             by = "rollStart", all.x = TRUE)
+> dt <- merge(dt, dtLane, by = "rollStart", all.x = TRUE)
+> dt[is.na(laneway), laneway := FALSE]
+> 
+> dt[, fsr18 := area18 / lotArea]
+> dt[, fsr26 := area26 / lotArea]
+> dt[, built := !is.na(yb26) & yb26 >= BUILT_MIN & nArea26 == nFolio26]
+> dt[, completed := built & !is.na(issued) & yb26 >= year(issued)]   # 2025 issues: design area, provisional
+> dt[, `:=`(applyYear = year(applied), issueYear = year(issued))]
+> dt[, widthBin := fcase(landWidth > 30 & landWidth <= 36, "33",
++                        landWidth > 36 & landWidth <= 40, "40",
++                        landWidth > 41 & landWidth <= 50, "50",
++                        default = "other")]
+> 
+> halfUse <- c("Duplex, Non-Strata Side by Side or Front / Back",
++              "Duplex, Strata Front / Back", "Duplex, Strata Side by Side")
+> dt[, oneFolioMulti := completed & product %in% c("duplex", "multiplex") & nFolio26 == 1]
+> dt[, unitScale := fifelse(oneFolioMulti & product == "duplex" & use26 %in% halfUse, 2, 1)]
+> dt[, fsrAdj := fsr26 * unitScale]
+> dt[, fsrOK := completed & !(oneFolioMulti & unitScale == 1)]
+> 
+> # ============================================================================
+> # 5. Checks
+> # ============================================================================
+> cat("\n=== sample flow ===\n")
+
+=== sample flow ===
+> cat("2018 R1-1 SFD lots:", nrow(dt),
++     "| with principal permit:", dt[!is.na(product), .N],
++     "| permit + completed:", dt[completed == TRUE, .N],
++     "| in FSR tables:", dt[fsrOK == TRUE, .N], "\n")
+2018 R1-1 SFD lots: 57985 | with principal permit: 3970 | permit + completed: 2536 | in FSR tables: 2484 
+> cat("rollStarts with >1 folio in 2026:", dt[nFolio26 > 1, .N],
++     " <- near zero means the singles rds predates the dedup fix; delete and rerun\n")
+rollStarts with >1 folio in 2026: 798  <- near zero means the singles rds predates the dedup fix; delete and rerun
+> 
+> cat("\n=== single-folio duplex/multiplex by 2026 use (scaled x2 / dropped) ===\n")
+
+=== single-folio duplex/multiplex by 2026 use (scaled x2 / dropped) ===
+> print(dt[oneFolioMulti == TRUE, .(N = .N, p50raw = round(median(fsr26), 3), scale = unitScale[1]),
++          keyby = .(product, use26)])
+Key: <product, use26>
+      product                                           use26     N p50raw
+       <char>                                          <char> <int>  <num>
+ 1:    duplex Duplex, Non-Strata Side by Side or Front / Back   226  0.361
+ 2:    duplex                    Duplex, Non-Strata Up / Down     4  0.498
+ 3:    duplex                     Duplex, Strata Front / Back     1  0.393
+ 4:    duplex                     Duplex, Strata Side by Side     1  0.467
+ 5:    duplex                 Residential Dwelling with Suite     5  0.714
+ 6:    duplex                          Single Family Dwelling     3  0.393
+ 7: multiplex Duplex, Non-Strata Side by Side or Front / Back    27  0.384
+ 8: multiplex                    Duplex, Non-Strata Up / Down     2  0.624
+ 9: multiplex             Row Housing (Single Unit Ownership)     2  0.294
+10: multiplex                          Single Family Dwelling     1  0.348
+11: multiplex                                         Triplex     8  0.351
+    scale
+    <num>
+ 1:     2
+ 2:     1
+ 3:     2
+ 4:     2
+ 5:     1
+ 6:     1
+ 7:     1
+ 8:     1
+ 9:     1
+10:     1
+11:     1
+> 
+> cat("\n=== x2 validation: scaled single-folio vs multi-folio duplex, median FSR ===\n")
+
+=== x2 validation: scaled single-folio vs multi-folio duplex, median FSR ===
+> print(dcast(dt[fsrOK == TRUE & product == "duplex",
++                .(N = .N, p50 = round(median(fsrAdj), 3)),
++                by = .(issueYear, grp = fifelse(nFolio26 >= 2, "multiFolio", "scaledX2"))],
++             issueYear ~ grp, value.var = c("p50", "N")))
+Key: <issueYear>
+   issueYear p50_multiFolio p50_scaledX2 N_multiFolio N_scaledX2
+       <int>          <num>        <num>        <int>      <int>
+1:      2019          0.717        0.710           11          1
+2:      2020          0.714        0.721           61          8
+3:      2021          0.713        0.713          112         12
+4:      2022          0.714        0.714          183         21
+5:      2023          0.730        0.711          142         24
+6:      2024          0.735        0.735          103         64
+7:      2025          0.741        0.741            6         98
+> 
+> cat("\n=== completion coverage by issue year (truncation) ===\n")
+
+=== completion coverage by issue year (truncation) ===
+> print(dcast(dt[!is.na(product)], issueYear ~ product,
++             value.var = "completed", fun.aggregate = function(x) round(mean(x), 2)))
+Key: <issueYear>
+    issueYear duplex multiplex single
+        <int>  <num>     <num>  <num>
+ 1:      2017   0.00       NaN   0.02
+ 2:      2018    NaN       NaN   0.19
+ 3:      2019   1.00       NaN   0.96
+ 4:      2020   1.00      1.00   0.97
+ 5:      2021   0.99       NaN   0.96
+ 6:      2022   0.99       NaN   0.96
+ 7:      2023   0.98       NaN   0.93
+ 8:      2024   0.98      0.54   0.99
+ 9:      2025   0.71      0.26   0.78
+10:      2026   0.00      0.00   0.00
+> 
+> # ============================================================================
+> # 6. Results
+> # ============================================================================
+> summFSR <- function(x) list(N = length(x), mean = round(mean(x), 3),
++                             p25 = round(quantile(x, .25), 3), p50 = round(median(x), 3),
++                             p75 = round(quantile(x, .75), 3))
+> 
+> cat("\n=== realized FSR by product x issue year ===\n")
+
+=== realized FSR by product x issue year ===
+> print(dt[fsrOK == TRUE, summFSR(fsrAdj), keyby = .(product, issueYear)])
+Key: <product, issueYear>
+      product issueYear     N  mean   p25   p50   p75
+       <char>     <int> <int> <num> <num> <num> <num>
+ 1:    duplex      2019    12 0.718 0.707 0.715 0.720
+ 2:    duplex      2020    69 0.722 0.712 0.714 0.724
+ 3:    duplex      2021   124 0.717 0.703 0.713 0.718
+ 4:    duplex      2022   204 0.729 0.711 0.714 0.747
+ 5:    duplex      2023   166 0.731 0.712 0.722 0.757
+ 6:    duplex      2024   167 0.741 0.714 0.735 0.776
+ 7:    duplex      2025   104 0.755 0.714 0.741 0.774
+ 8: multiplex      2020     1 0.807 0.807 0.807 0.807
+ 9: multiplex      2024     8 1.042 1.013 1.037 1.090
+10: multiplex      2025     2 1.024 1.016 1.024 1.033
+11:    single      2017     9 0.571 0.444 0.639 0.660
+12:    single      2018    86 0.641 0.603 0.680 0.700
+13:    single      2019   319 0.675 0.664 0.699 0.713
+14:    single      2020   248 0.676 0.666 0.702 0.713
+15:    single      2021   186 0.674 0.671 0.700 0.713
+16:    single      2022   320 0.676 0.668 0.701 0.714
+17:    single      2023   192 0.677 0.672 0.706 0.713
+18:    single      2024   174 0.662 0.612 0.698 0.712
+19:    single      2025    93 0.619 0.608 0.612 0.617
+> 
+> cat("\n=== realized FSR by product x application year ===\n")
+
+=== realized FSR by product x application year ===
+> print(dt[fsrOK == TRUE, summFSR(fsrAdj), keyby = .(product, applyYear)])
+Key: <product, applyYear>
+      product applyYear     N  mean   p25   p50   p75
+       <char>     <int> <int> <num> <num> <num> <num>
+ 1:    duplex      2018     6 0.711 0.704 0.718 0.721
+ 2:    duplex      2019    46 0.722 0.712 0.717 0.732
+ 3:    duplex      2020    77 0.721 0.711 0.714 0.718
+ 4:    duplex      2021   267 0.721 0.706 0.714 0.728
+ 5:    duplex      2022   146 0.735 0.713 0.721 0.755
+ 6:    duplex      2023   123 0.740 0.713 0.739 0.773
+ 7:    duplex      2024   136 0.754 0.714 0.754 0.782
+ 8:    duplex      2025    45 0.742 0.713 0.723 0.754
+ 9: multiplex      2019     1 0.807 0.807 0.807 0.807
+10: multiplex      2024    10 1.039 1.010 1.033 1.078
+11:    single      2016    12 0.586 0.468 0.645 0.692
+12:    single      2017    43 0.629 0.600 0.658 0.691
+13:    single      2018   263 0.671 0.650 0.697 0.712
+14:    single      2019   255 0.679 0.670 0.702 0.713
+15:    single      2020   184 0.676 0.661 0.700 0.713
+16:    single      2021   376 0.674 0.668 0.700 0.713
+17:    single      2022   176 0.681 0.679 0.708 0.714
+18:    single      2023   176 0.674 0.667 0.706 0.713
+19:    single      2024   103 0.618 0.608 0.612 0.615
+20:    single      2025    39 0.625 0.608 0.612 0.648
+      product applyYear     N  mean   p25   p50   p75
+> 
+> cat("\n=== median FSR, duplex minus single, by issue year ===\n")
+
+=== median FSR, duplex minus single, by issue year ===
+> gap <- dcast(dt[fsrOK == TRUE & product %in% c("single", "duplex"),
++                 .(p50 = median(fsrAdj)), by = .(issueYear, product)],
++              issueYear ~ product, value.var = "p50")
+> gap[, gap := round(duplex - single, 3)]
+> print(gap)
+Key: <issueYear>
+   issueYear    duplex    single   gap
+       <int>     <num>     <num> <num>
+1:      2017        NA 0.6387631    NA
+2:      2018        NA 0.6797759    NA
+3:      2019 0.7151305 0.6991076 0.016
+4:      2020 0.7143626 0.7023145 0.012
+5:      2021 0.7133418 0.6995423 0.014
+6:      2022 0.7142591 0.7012667 0.013
+7:      2023 0.7218221 0.7061155 0.016
+8:      2024 0.7347243 0.6983527 0.036
+9:      2025 0.7411846 0.6115070 0.130
+> 
+> cat("\n=== realized FSR by product x width bin x laneway ===\n")
+
+=== realized FSR by product x width bin x laneway ===
+> print(dt[fsrOK == TRUE, summFSR(fsrAdj), keyby = .(product, widthBin, laneway)])
+Key: <product, widthBin, laneway>
+      product widthBin laneway     N  mean   p25   p50   p75
+       <char>   <char>  <lgcl> <int> <num> <num> <num> <num>
+ 1:    duplex       33   FALSE   488 0.742 0.713 0.735 0.768
+ 2:    duplex       33    TRUE     1 0.726 0.726 0.726 0.726
+ 3:    duplex       40   FALSE    51 0.729 0.713 0.715 0.745
+ 4:    duplex       50   FALSE   206 0.718 0.710 0.714 0.719
+ 5:    duplex    other   FALSE   100 0.721 0.700 0.713 0.722
+ 6: multiplex       33   FALSE     7 1.052 1.033 1.050 1.094
+ 7: multiplex       50   FALSE     3 0.944 0.907 1.007 1.013
+ 8: multiplex    other   FALSE     1 0.998 0.998 0.998 0.998
+ 9:    single       33   FALSE   423 0.695 0.696 0.708 0.714
+10:    single       33    TRUE   338 0.695 0.696 0.711 0.714
+11:    single       40   FALSE    44 0.691 0.684 0.702 0.714
+12:    single       40    TRUE    27 0.701 0.701 0.713 0.714
+13:    single       50   FALSE   259 0.669 0.643 0.689 0.710
+14:    single       50    TRUE   194 0.660 0.628 0.687 0.710
+15:    single    other   FALSE   249 0.602 0.564 0.613 0.673
+16:    single    other    TRUE    93 0.626 0.606 0.642 0.694
+> 
+> cat("\n=== 2018 FSR of the replaced SFD, by later product ===\n")
+
+=== 2018 FSR of the replaced SFD, by later product ===
+> print(dt[fsrOK == TRUE & !is.na(fsr18), summFSR(fsr18), keyby = product])
+Key: <product>
+     product     N  mean   p25   p50   p75
+      <char> <int> <num> <num> <num> <num>
+1:    duplex   841 0.423 0.354 0.416 0.491
+2: multiplex    11 0.435 0.393 0.435 0.467
+3:    single  1599 0.509 0.398 0.505 0.648
+> 
+> cat("\n=== single FSR by application month, 2023-2024 ===\n")
+
+=== single FSR by application month, 2023-2024 ===
+> sm <- dt[product == "single" & applied %between% as.IDate(c("2023-01-01", "2024-12-31"))]
+> sm[, applyMonth := format(applied, "%Y-%m")]
+> cov <- sm[, .(nPermit = .N, cover = round(mean(fsrOK), 2)), keyby = applyMonth]
+> res <- sm[fsrOK == TRUE, .(N = .N,
++                            p25 = round(quantile(fsrAdj, .25), 3),
++                            p50 = round(median(fsrAdj), 3),
++                            p75 = round(quantile(fsrAdj, .75), 3),
++                            shareNew = round(mean(fsrAdj <= 0.63), 2)),
++           keyby = applyMonth]
+> print(merge(cov, res, by = "applyMonth", all.x = TRUE))
+Key: <applyMonth>
+    applyMonth nPermit cover     N   p25   p50   p75 shareNew
+        <char>   <int> <num> <int> <num> <num> <num>    <num>
+ 1:    2023-01      16  1.00    16 0.657 0.699 0.709     0.19
+ 2:    2023-02      13  0.92    12 0.689 0.700 0.709     0.17
+ 3:    2023-03      19  1.00    19 0.633 0.706 0.712     0.21
+ 4:    2023-04      11  0.91    10 0.684 0.698 0.713     0.00
+ 5:    2023-05      20  1.00    20 0.637 0.703 0.713     0.20
+ 6:    2023-06       8  1.00     8 0.672 0.693 0.715     0.12
+ 7:    2023-07      11  0.91    10 0.677 0.702 0.712     0.10
+ 8:    2023-08      18  1.00    18 0.662 0.705 0.715     0.17
+ 9:    2023-09      27  1.00    27 0.687 0.712 0.713     0.11
+10:    2023-10      30  0.93    28 0.705 0.711 0.713     0.11
+11:    2023-11       5  1.00     5 0.599 0.634 0.684     0.40
+12:    2023-12       3  1.00     3 0.593 0.593 0.602     1.00
+13:    2024-01       6  1.00     6 0.611 0.612 0.612     0.83
+14:    2024-02       9  1.00     9 0.611 0.613 0.669     0.67
+15:    2024-03       6  0.83     5 0.573 0.612 0.612     1.00
+16:    2024-04      14  0.93    13 0.608 0.612 0.665     0.69
+17:    2024-05      10  0.90     9 0.610 0.612 0.674     0.67
+18:    2024-06       8  1.00     8 0.607 0.611 0.613     0.88
+19:    2024-07      14  1.00    14 0.600 0.610 0.614     0.79
+20:    2024-08      10  0.90     9 0.608 0.611 0.611     0.89
+21:    2024-09       7  1.00     7 0.610 0.612 0.638     0.71
+22:    2024-10       6  1.00     6 0.613 0.614 0.616     0.83
+23:    2024-11      10  0.70     7 0.586 0.611 0.613     0.86
+24:    2024-12      10  1.00    10 0.601 0.610 0.631     0.70
+    applyMonth nPermit cover     N   p25   p50   p75 shareNew
+> 
+> cat("\n=== duplex & multiplex FSR by application month, 2023-2024 ===\n")
+
+=== duplex & multiplex FSR by application month, 2023-2024 ===
+> pm <- dt[product %in% c("duplex", "multiplex") &
++          applied %between% as.IDate(c("2022-01-01", "2024-12-31"))]
+> pm[, applyMonth := format(applied, "%Y-%m")]
+> cov <- pm[, .(nPermit = .N, cover = round(mean(fsrOK), 2)), keyby = .(product, applyMonth)]
+> res <- pm[fsrOK == TRUE, .(N = .N,
++                            p25 = round(quantile(fsrAdj, .25), 3),
++                            p50 = round(median(fsrAdj), 3),
++                            p75 = round(quantile(fsrAdj, .75), 3),
++                            shareHi = round(mean(fsrAdj > 0.725), 2)),
++           keyby = .(product, applyMonth)]
+> print(merge(cov, res, by = c("product", "applyMonth"), all.x = TRUE))
+Key: <product, applyMonth>
+      product applyMonth nPermit cover     N   p25   p50   p75 shareHi
+       <char>     <char>   <int> <num> <int> <num> <num> <num>   <num>
+ 1:    duplex    2022-01       8  0.88     7 0.714 0.734 0.754    0.57
+ 2:    duplex    2022-02      35  0.97    34 0.713 0.718 0.747    0.41
+ 3:    duplex    2022-03       4  1.00     4 0.695 0.721 0.746    0.50
+ 4:    duplex    2022-04      14  0.86    12 0.714 0.744 0.772    0.67
+ 5:    duplex    2022-05      20  1.00    20 0.713 0.714 0.731    0.35
+ 6:    duplex    2022-06      18  0.94    17 0.715 0.722 0.738    0.47
+ 7:    duplex    2022-07      13  1.00    13 0.713 0.717 0.726    0.31
+ 8:    duplex    2022-08      12  1.00    12 0.700 0.721 0.760    0.42
+ 9:    duplex    2022-09      13  1.00    13 0.714 0.751 0.801    0.62
+10:    duplex    2022-10       4  1.00     4 0.712 0.724 0.743    0.50
+11:    duplex    2022-11       2  1.00     2 0.747 0.757 0.767    1.00
+12:    duplex    2022-12       8  1.00     8 0.745 0.776 0.792    0.75
+13:    duplex    2023-01      14  1.00    14 0.714 0.750 0.771    0.57
+14:    duplex    2023-02       7  1.00     7 0.704 0.722 0.798    0.43
+15:    duplex    2023-03       9  1.00     9 0.737 0.739 0.763    0.78
+16:    duplex    2023-04       3  1.00     3 0.689 0.701 0.730    0.33
+17:    duplex    2023-05      11  1.00    11 0.699 0.737 0.765    0.55
+18:    duplex    2023-06      13  1.00    13 0.722 0.759 0.786    0.62
+19:    duplex    2023-07      12  1.00    12 0.711 0.742 0.765    0.58
+20:    duplex    2023-08      13  0.92    12 0.714 0.728 0.762    0.50
+21:    duplex    2023-09      13  1.00    13 0.714 0.717 0.751    0.46
+22:    duplex    2023-10       9  1.00     9 0.726 0.756 0.784    0.78
+23:    duplex    2023-11      10  0.90     9 0.714 0.719 0.773    0.44
+24:    duplex    2023-12      11  1.00    11 0.726 0.750 0.781    0.73
+25:    duplex    2024-01       5  1.00     5 0.754 0.769 0.770    0.80
+26:    duplex    2024-02      15  1.00    15 0.706 0.713 0.724    0.27
+27:    duplex    2024-03       7  0.86     6 0.731 0.752 0.791    0.83
+28:    duplex    2024-04      16  1.00    16 0.723 0.769 0.786    0.75
+29:    duplex    2024-05      10  1.00    10 0.715 0.745 0.789    0.60
+30:    duplex    2024-06       9  1.00     9 0.714 0.776 0.786    0.67
+31:    duplex    2024-07      14  1.00    14 0.735 0.758 0.774    0.79
+32:    duplex    2024-08      13  0.69     9 0.702 0.732 0.760    0.56
+33:    duplex    2024-09      10  1.00    10 0.723 0.759 0.771    0.70
+34:    duplex    2024-10      16  0.88    14 0.713 0.747 0.795    0.57
+35:    duplex    2024-11      14  0.79    11 0.718 0.766 0.784    0.64
+36:    duplex    2024-12      17  1.00    17 0.735 0.761 0.797    0.76
+37: multiplex    2024-03       1  1.00     1 1.050 1.050 1.050    1.00
+38: multiplex    2024-04       2  0.50     1 1.087 1.087 1.087    1.00
+39: multiplex    2024-05      11  0.36     4 1.005 1.013 1.024    1.00
+40: multiplex    2024-06       4  0.25     1 1.023 1.023 1.023    1.00
+41: multiplex    2024-07       8  0.12     1 0.956 0.956 0.956    1.00
+42: multiplex    2024-08       9  0.11     1 1.100 1.100 1.100    1.00
+43: multiplex    2024-09      18  0.06     1 1.103 1.103 1.103    1.00
+44: multiplex    2024-10      14  0.00    NA    NA    NA    NA      NA
+45: multiplex    2024-11       7  0.00    NA    NA    NA    NA      NA
+46: multiplex    2024-12      15  0.00    NA    NA    NA    NA      NA
+      product applyMonth nPermit cover     N   p25   p50   p75 shareHi
+> 
+> cat("\n=== permit mix by application month (all permits on 2018 R1-1 SFD lots) ===\n")
+
+=== permit mix by application month (all permits on 2018 R1-1 SFD lots) ===
+> mix <- dcast(dt[!is.na(product) & applied %between% as.IDate(c("2022-01-01", "2024-12-31"))
++                ][, applyMonth := format(applied, "%Y-%m")],
++              applyMonth ~ product, fun.aggregate = length, value.var = "permitnumber")
+> mix[, dupShare := round(duplex / (single + duplex), 2)]
+> print(mix)
+Key: <applyMonth>
+    applyMonth duplex multiplex single dupShare
+        <char>  <int>     <int>  <int>    <num>
+ 1:    2022-01      8         0      2     0.80
+ 2:    2022-02     35         0     58     0.38
+ 3:    2022-03      4         0     11     0.27
+ 4:    2022-04     14         0     17     0.45
+ 5:    2022-05     20         0     11     0.65
+ 6:    2022-06     18         0     18     0.50
+ 7:    2022-07     13         0     13     0.50
+ 8:    2022-08     12         0     15     0.44
+ 9:    2022-09     13         0      9     0.59
+10:    2022-10      4         0      6     0.40
+11:    2022-11      2         0     19     0.10
+12:    2022-12      8         0     10     0.44
+13:    2023-01     14         0     16     0.47
+14:    2023-02      7         0     13     0.35
+15:    2023-03      9         0     19     0.32
+16:    2023-04      3         0     11     0.21
+17:    2023-05     11         0     20     0.35
+18:    2023-06     13         0      8     0.62
+19:    2023-07     12         0     11     0.52
+20:    2023-08     13         0     18     0.42
+21:    2023-09     13         0     27     0.32
+22:    2023-10      9         0     30     0.23
+23:    2023-11     10         0      5     0.67
+24:    2023-12     11         0      3     0.79
+25:    2024-01      5         0      6     0.45
+26:    2024-02     15         0      9     0.62
+27:    2024-03      7         1      6     0.54
+28:    2024-04     16         2     14     0.53
+29:    2024-05     10        11     10     0.50
+30:    2024-06      9         4      8     0.53
+31:    2024-07     14         8     14     0.50
+32:    2024-08     13         9     10     0.57
+33:    2024-09     10        18      7     0.59
+34:    2024-10     16        14      6     0.73
+35:    2024-11     14         7     10     0.58
+36:    2024-12     17        15     10     0.63
+    applyMonth duplex multiplex single dupShare
+> 
+> library(fixest)
+> 
+> ONTARIO_LON <- -123.1036
+> CUT <- 2023L * 12L + 10L                      # month index of Nov 2023 (first full R1-1 month)
+> 
+> pp <- dt[!is.na(product) & !is.na(applied)]
+> pp[, side := fifelse(longitude < ONTARIO_LON, "West", "East")]
+> pp[, ym := year(applied) * 12L + month(applied) - 1L]
+> 
+> mc <- pp[, .(dup = sum(product == "duplex"), mx = sum(product == "multiplex"),
++              sgl = sum(product == "single")), keyby = .(side, ym)]
+> mc <- mc[CJ(side = c("East", "West"), ym = (CUT - 14L):(CUT + 11L)), on = .(side, ym)]
+> for (v in c("dup", "mx", "sgl")) set(mc, which(is.na(mc[[v]])), v, 0L)
+> 
+> prePost <- function(sd, k, donut, incMx) {
++   m <- mc[side == sd]
++   pre  <- if (donut) setdiff((CUT - k - 2L):(CUT - 1L), CUT - 1:2) else (CUT - k):(CUT - 1L)
++   post <- CUT:(CUT + k - 1L)
++   m[, num := dup + incMx * mx]
++   m[, den := dup + sgl + incMx * mx]
++   a <- m[ym %in% pre]; b <- m[ym %in% post]
++   p1 <- sum(a$num) / sum(a$den); p2 <- sum(b$num) / sum(b$den)
++   p  <- (sum(a$num) + sum(b$num)) / (sum(a$den) + sum(b$den))
++   z  <- (p2 - p1) / sqrt(p * (1 - p) * (1 / sum(a$den) + 1 / sum(b$den)))
++   s1 <- a[den > 0, num / den]; s2 <- b[den > 0, num / den]   # empty months dropped
++   tm <- (mean(s2) - mean(s1)) / sqrt(var(s1) / length(s1) + var(s2) / length(s2))
++   data.table(side = sd, k, donut, incMx,
++              pre = round(p1, 3), nPre = sum(a$den), post = round(p2, 3), nPost = sum(b$den),
++              diff = round(p2 - p1, 3), z = round(z, 2), tMonthly = round(tm, 2),
++              sglPre = round(mean(a$sgl), 1), sglPost = round(mean(b$sgl), 1),
++              dupPre = round(mean(a$dup), 1), dupPost = round(mean(b$dup), 1))
++ }
+> 
+> cat("\n=== pre/post duplex share around Oct 17 2023, by side ===\n")
+
+=== pre/post duplex share around Oct 17 2023, by side ===
+> specs <- CJ(side = c("West", "East"), k = c(6L, 12L), donut = c(FALSE, TRUE), incMx = c(FALSE, TRUE))
+> print(rbindlist(Map(prePost, specs$side, specs$k, specs$donut, specs$incMx)))
+      side     k  donut  incMx   pre  nPre  post nPost  diff     z tMonthly
+    <char> <int> <lgcl> <lgcl> <num> <int> <num> <int> <num> <num>    <num>
+ 1:   East     6  FALSE  FALSE 0.477   111 0.667    51 0.189  2.24     1.35
+ 2:   East     6  FALSE   TRUE 0.477   111 0.679    53 0.202  2.43     1.47
+ 3:   East     6   TRUE  FALSE 0.571    84 0.667    51 0.095  1.10     1.05
+ 4:   East     6   TRUE   TRUE 0.571    84 0.679    53 0.108  1.26     1.19
+ 5:   East    12  FALSE  FALSE 0.472   176 0.647   119 0.175  2.97     2.36
+ 6:   East    12  FALSE   TRUE 0.472   176 0.744   164 0.272  5.13     3.59
+ 7:   East    12   TRUE  FALSE 0.557   149 0.647   119 0.090  1.49     1.67
+ 8:   East    12   TRUE   TRUE 0.557   149 0.744   164 0.187  3.47     2.95
+ 9:   West     6  FALSE  FALSE 0.243    74 0.536    56 0.292  3.42     3.61
+10:   West     6  FALSE   TRUE 0.243    74 0.544    57 0.301  3.53     3.70
+11:   West     6   TRUE  FALSE 0.203    64 0.536    56 0.333  3.79     3.86
+12:   West     6   TRUE   TRUE 0.203    64 0.544    57 0.341  3.89     3.95
+13:   West    12  FALSE  FALSE 0.221   140 0.513   115 0.292  4.85     5.46
+14:   West    12  FALSE   TRUE 0.221   140 0.591   137 0.370  6.27     6.24
+15:   West    12   TRUE  FALSE 0.217   120 0.513   115 0.296  4.73     5.41
+16:   West    12   TRUE   TRUE 0.217   120 0.591   137 0.375  6.08     6.19
+    sglPre sglPost dupPre dupPost
+     <num>   <num>  <num>   <num>
+ 1:    9.7     2.8    8.8     5.7
+ 2:    9.7     2.8    8.8     5.7
+ 3:    6.0     2.8    8.0     5.7
+ 4:    6.0     2.8    8.0     5.7
+ 5:    7.8     3.5    6.9     6.4
+ 6:    7.8     3.5    6.9     6.4
+ 7:    5.5     3.5    6.9     6.4
+ 8:    5.5     3.5    6.9     6.4
+ 9:    9.3     4.3    3.0     5.0
+10:    9.3     4.3    3.0     5.0
+11:    8.5     4.3    2.2     5.0
+12:    8.5     4.3    2.2     5.0
+13:    9.1     4.7    2.6     4.9
+14:    9.1     4.7    2.6     4.9
+15:    7.8     4.7    2.2     4.9
+16:    7.8     4.7    2.2     4.9
+> 
+> cat("\n=== diff-in-diff LPM: duplex vs single, post x West, month-clustered ===\n")
+
+=== diff-in-diff LPM: duplex vs single, post x West, month-clustered ===
+> w <- pp[product %in% c("single", "duplex") & ym %between% c(CUT - 12L, CUT + 11L)]
+> w[, `:=`(y = as.integer(product == "duplex"), post = as.integer(ym >= CUT),
++          west = as.integer(side == "West"))]
+> print(etable(feols(y ~ post * west, w, cluster = ~ym),
++              feols(y ~ post * west, w[!ym %in% (CUT - 1:2)], cluster = ~ym),
++              feols(y ~ post * west, w[ym %between% c(CUT - 6L, CUT + 5L)], cluster = ~ym),
++              headers = c("12mo", "12mo donut", "6mo")))
+                feols(y ~ post * .. feols(y ~ post * ...1 feols(y ~ post *..
+                               12mo            12mo donut                6mo
+Dependent Var.:                   y                     y                  y
+                                                                            
+Constant         0.4716*** (0.0560)    0.5397*** (0.0562) 0.4775*** (0.0825)
+post               0.1755* (0.0628)       0.1074 (0.0630)   0.1892. (0.1005)
+west            -0.2502*** (0.0594)   -0.3235*** (0.0582)  -0.2342* (0.0950)
+post x west        0.1161. (0.0677)     0.1895** (0.0667)    0.1033 (0.1171)
+_______________ ___________________   ___________________ __________________
+S.E.: Clustered              by: ym                by: ym             by: ym
+Observations                    550                   471                292
+R2                          0.09140               0.09871            0.08278
+Adj. R2                     0.08640               0.09292            0.07322
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> cat("\n=== diff-in-diff LPM, 33-ft lots only ===\n")
+
+=== diff-in-diff LPM, 33-ft lots only ===
+> w33 <- w[widthBin == "33"]
+> print(etable(feols(y ~ post * west, w33, cluster = ~ym),
++              feols(y ~ post * west, w33[!ym %in% (CUT - 1:2)], cluster = ~ym),
++              feols(y ~ post * west, w33[ym %between% c(CUT - 6L, CUT + 5L)], cluster = ~ym),
++              headers = c("12mo", "12mo donut", "6mo")))
+                feols(y ~ post *.. feols(y ~ post *...1 feols(y ~ post *...2
+                              12mo           12mo donut                  6mo
+Dependent Var.:                  y                    y                    y
+                                                                            
+Constant        0.4909*** (0.0567)   0.5513*** (0.0624)   0.5278*** (0.0793)
+post              0.2164* (0.0780)     0.1560. (0.0824)     0.2369* (0.0956)
+west             -0.2052* (0.0807)    -0.2747* (0.0976)     -0.2135 (0.1244)
+post x west       0.3022* (0.1109)    0.3717** (0.1238)      0.2488 (0.1486)
+_______________ __________________   __________________   __________________
+S.E.: Clustered             by: ym               by: ym               by: ym
+Observations                   301                  253                  166
+R2                         0.13158              0.13081              0.12373
+Adj. R2                    0.12281              0.12034              0.10751
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> cat("N by side x post (33 ft):\n"); print(w33[, .N, keyby = .(west, post)])
+N by side x post (33 ft):
+Key: <west, post>
+    west  post     N
+   <int> <int> <int>
+1:     0     0   110
+2:     0     1    82
+3:     1     0    63
+4:     1     1    46
+> 
+> proc.time()
+   user  system elapsed 
+ 12.789   5.292  59.665 
