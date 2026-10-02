@@ -102,59 +102,40 @@ kj[, `:=`(width_bucket = fifelse(round(width_ft) %in% W33, "33",
           side = fifelse(lon < ONT, "West", "East"))]
 
 # ============================================================
-# THE TEST: duplex propensity, 33 vs 50 and W vs E, 2019-2025, with an
-# explicit POST-2024 shift. Pooling all years into one cross-section would
-# average pre- and post-reform worlds; instead we interact with post=(year>=2024)
-# so the coefficients test whether the 33-50 and W-E gaps CHANGED at 2024.
-# 2026 dropped (partial year). DUP_ERA test retained below as the pre-reform read.
+# THE TEST: West-side duplex propensity, 33 vs 50, duplex era
 # ============================================================
-S <- kj[!is.na(width_bucket) & !is.na(principalType) & year %in% 2019:2025]
-S[, `:=`(dup   = as.integer(principalType == "duplex"),
-         lot50 = as.integer(width_bucket == "50"),
-         west  = as.integer(side == "West"),
-         post  = as.integer(year >= 2024))]
+S <- kj[!is.na(width_bucket) & !is.na(principalType) & year %in% DUP_ERA]
+S[, dup   := as.integer(principalType == "duplex")]
+S[, lot50 := as.integer(width_bucket == "50")]
 
-cat("=== cell counts (dup / total), by side x width x period ===\n")
+cat("=== cell counts (dup / total), by side x width ===\n")
 print(S[, .(n = .N, dup = sum(dup), dupShare = round(mean(dup), 3)),
-        by = .(side, width_bucket, period = fifelse(post==1,"post24","pre24"))
-       ][order(side, width_bucket, period)])
+        by = .(side, width_bucket)][order(side, width_bucket)])
 
 W <- S[side == "West"]
 
-# 1. WEST 33 vs 50, pre vs post 2x2 + Fisher, each period
-for (p in c(0,1)) {
-  lab <- if (p) "POST-2024 (2024-25)" else "PRE-2024 (2019-23)"
-  cat(sprintf("\n=== WEST 33 vs 50, %s: 2x2 + Fisher ===\n", lab))
-  tb <- table(width = W[post==p]$width_bucket, dup = W[post==p]$dup)
-  print(tb)
-  if (all(dim(tb) == c(2,2))) {
-    ft <- fisher.test(tb)
-    cat(sprintf("Fisher: OR=%.3f  p=%.4f  95%% CI [%.3f, %.3f]\n",
-                ft$estimate, ft$p.value, ft$conf.int[1], ft$conf.int[2]))
-  }
-}
+# 1. Fisher exact (small-n honest) on the West 2x2: 33/50 x single/duplex
+cat("\n=== WEST 33 vs 50: 2x2 and Fisher exact ===\n")
+tab <- table(width = W$width_bucket, dup = W$dup)
+print(tab)
+ft <- fisher.test(tab)
+cat(sprintf("Fisher exact: OR=%.3f  p=%.4f  95%% CI [%.3f, %.3f]\n",
+            ft$estimate, ft$p.value, ft$conf.int[1], ft$conf.int[2]))
 
-# 2. WEST: did the 33-50 gap CHANGE at 2024?  dup ~ lot50 * post
-cat("\n=== WEST: dup ~ lot50 * post (2019-2025, hetero SE) ===\n")
-mWp <- feols(dup ~ lot50 * post, data = W, vcov = "hetero")
-print(summary(mWp))
-cat("  lot50       = West 50-vs-33 gap PRE-2024\n")
-cat("  lot50:post  = CHANGE in that gap post-2024 (this is the 2024 story)\n")
+# 2. LPM with heteroskedastic SE (the number you'd report), West only
+cat("\n=== WEST 33 vs 50: LPM P(duplex) ~ lot50, hetero SE ===\n")
+mW <- feols(dup ~ lot50, data = W, vcov = "hetero")
+print(summary(mW))
+cat(sprintf("  West 50-minus-33 duplex-share gap = %+.3f (p=%.4f)\n",
+            coef(mW)[["lot50"]], pvalue(mW)[["lot50"]]))
 
-# 3. FULL triple: dup ~ lot50 * west * post
-#    lot50:west:post = did the West-specific 33-50 gap move at 2024?
-cat("\n=== TRIPLE: dup ~ lot50 * west * post (2019-2025, hetero SE) ===\n")
-mT <- feols(dup ~ lot50 * west * post, data = S, vcov = "hetero")
-print(summary(mT))
-cat("  west:post        = W-vs-E gap change at 2024 (pooled over width)\n")
-cat("  lot50:west:post  = change in the West-specific 33-50 gap at 2024\n")
-
-# 4. Cleanest read: W-vs-E gap by width, pre vs post, side by side
-cat("\n=== West-minus-East duplex-share gap, by width x period ===\n")
-gap <- S[, .(dupShare = mean(dup), n = .N), by = .(width_bucket, side, post)]
-gapW <- dcast(gap, width_bucket + post ~ side, value.var = "dupShare")
-gapW[, WminusE := round(West - East, 3)]
-print(gapW[order(width_bucket, post)])
+# 3. Is the West gap distinguishable from the East gap? (triple-ish interaction)
+cat("\n=== Pooled: dup ~ lot50 * west  (is the 33-50 gap West-specific?) ===\n")
+S[, west := as.integer(side == "West")]
+mI <- feols(dup ~ lot50 * west, data = S, vcov = "hetero")
+print(summary(mI))
+cat("  lot50:west < 0 & sig  => the West 50-lot duplex fade is real and West-specific\n")
+cat("  lot50:west n.s.       => 33-vs-50 split not a main course; write it off\n")
 
 # ============================================================
 # 4. Raw single/duplex counts by side x width x year, from 2018.
