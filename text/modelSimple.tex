@@ -1,0 +1,45 @@
+\documentclass[12pt]{article}
+
+\usepackage{amsmath}
+\usepackage[style=authoryear,backend=biber]{biblatex}
+\addbibresource{infillPuzzle}
+
+
+\begin{document}
+
+Locations in a city are vertically differentiated by quality $\theta$. $\theta$
+can be determined by multiple characteristics, but there is agreement on the
+ranking. At a location with quality $\theta$, price per square foot of a home
+in an Nplex (a collection of $N$ homes), each of which has square footage
+$s(N)$ is $p(N,\theta)s(N)$. We assume that builders are always at a corner
+solution of building up to $s(N)$ square feet per unit. The function
+$p(N,\theta)$ includes the relationship between size and number of units
+implicitly in $N$. The cost per square foot of an Nplex is $c(N)$, with $c'\geq
+0$ because of relatively fixed plumbing and utility costs and fire separation.
+
+The profit from building an Nplex at location $\theta$ is thus:
+
+\begin{equation}
+	\pi(N,\theta) = \left[p(N,\theta)-c(N)\right]s(N)
+\end{equation}
+
+Treating the number of units as continuous:
+
+\begin{equation}
+	\frac{\partial \pi(N,\theta)}{\partial N} = \left[p(N,\theta)-c(N)\right]s'(N) + \left[\frac{\partial p(N,\theta)}{\partial N}-c'(N)\right]s(N).
+\end{equation}
+
+Differentiating with respect to $\theta$:
+
+\begin{equation}
+	\frac{\partial^{2} \pi(N,\theta)}{\partial N \partial \theta} = \underbrace{\frac{\partial^{2} p(N,\theta)}{\partial N \partial \theta}s(N)}_{\text{division effect}} + \underbrace{\frac{\partial p(N,\theta)}{\partial \theta}s'(N)}_{\text{addition effect}}
+\end{equation}
+
+The sign of the first, the ``division effect'' term depends on income sorting at home size $N$. If higher income households live in better locations at $N$ units per lot, then we would expect $\frac{\partial^{2}\pi}{\partial N\partial \theta}<0$, as sharing space and smaller spaces are inferior goods. The second term, the ``addition effect'' is positive if $s'(N)>0$, that is, if choosing a larger number of units allows more square feet to be built. 
+
+\section{The division effect in pre-reform Vancouver}
+Prior to the 2018 Vancouver infill reform, duplex sales were concentrated \dots
+
+
+
+\end{document}
