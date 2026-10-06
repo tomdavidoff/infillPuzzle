@@ -23,7 +23,18 @@ The profit from building an Nplex at location $\theta$ is thus:
 	\pi(N,\theta) = \left[p(N,\theta)-c(N)\right]s(N)
 \end{equation}
 
-Treating the number of units as continuous:
+Defining $\Delta(n,\theta)$ as the difference in profit from developing $n+1$ instead of $n$ units, $\Delta(n,\theta) \equiv \pi(n+1,\theta)-\pi(n,\theta)$, we can identify the effect of location on that gain in profits as an effect on dividing the same amount of space into more units and the effect on location on the benefit to adding more square footage:
+
+\begin{equation}
+	\label{eq:dDelta}
+	\begin{split}
+		\frac{\partial \Delta(n,\theta)}{\partial \theta} = \underbrace{\frac{\partial\left[p\left(n+1,\theta\right)-p\left(n,\theta\right)\right]}{\partial \theta}s(n)}_{\text{division effect}} \\ + \underbrace{\frac{\partial p\left(n+1,\theta\right)}{\partial \theta}\left[s(n+1)-s(n)\right]}_{\text{addition effect}}.
+	\end{split}
+\end{equation}
+
+Assuming positive sorting by income into neighbourhoods where $n$ or $n+1$ units are allowed, the first term may be negative. When location is better ($\theta$ greater), higher income households' elasticity of willingness to pay for homes with respect to space will be greater, so the percentage difference in price $p(n+1,\theta)/p(n,\theta)$ will be smaller. This does not unambiguously sign the division effect as negative, however, because the absolute difference could be larger given a higher base willingness to pay for better locations. Also, given higher income households' greater demand for larger and for single family homes, there can be ranges of $\theta$ over which there is negative income sorting: lower income households living in large Nplexes may outbid high income households who prefer single family homes.
+
+
 
 \begin{equation}
 	\frac{\partial \pi(N,\theta)}{\partial N} = \left[p(N,\theta)-c(N)\right]s'(N) + \left[\frac{\partial p(N,\theta)}{\partial N}-c'(N)\right]s(N).
