@@ -1,0 +1,73 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # vancouverTractPlexCor.R
+> # 2018 tract price levels and size elasticities (RS single-family), and monthly
+> # cross-tract correlations with the duplex share of new RS/R1-1 permits.
+> #   mlppsf : tract median log(assessed total / finished sqft), 2019 roll (July 2018 values)
+> #   hres   : tract mean residual, pooled 2015-18 sales hedonic (no tract terms)
+> #   elastA : tract cov/var slope of log assessed value on log sqft (assessments)
+> #   elastS : tract cov/var slope of log price (demeaned by sale month) on log sqft (sales)
+> # Elasticities never come from the hedonic regression that produces hres.
+> 
+> library(data.table)
+> library(sf)
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+> library(DBI)
+> library(RSQLite)
+> library(fixest)
+> library(ggplot2)
+> 
+> bca19     <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
+> gpkg      <- "~/bigFiles/latestSpatialBCA/2026-04-08_bca_folios.gpkg"
+> fTract    <- "~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
+> fZone     <- "~/DropboxExternal/dataRaw/vancouver_zoning.geojson"
+> fGeo      <- "~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds"
+> permitURL <- "https://opendata.vancouver.ca/api/explore/v2.1/catalog/datasets/issued-building-permits/exports/csv?delimiter=%2C"
+> outDir    <- "text"; dir.create(outDir, showWarnings = FALSE)
+> 
+> MIN_OBS   <- 30
+> SALE_YRS  <- c(2015, 2018)
+> DATE_COL  <- "issuedate"
+> MONTH_MIN <- as.IDate("2018-01-01")
+> EVENTS    <- as.IDate(c("2018-09-01", "2023-10-01"))
+> 
+> rollKey <- function(x) suppressWarnings(as.numeric(gsub("[^0-9]", "", x)))
+> cc <- function(x, y) {
++   ok <- complete.cases(x, y)
++   if (sum(ok) < 5 || sd(x[ok]) == 0 || sd(y[ok]) == 0) NA_real_ else cor(x[ok], y[ok])
++ }
+> 
+> # ---- tracts and folio -> tract ----
+> ct <- st_read(fTract, quiet = TRUE)
+> ct <- st_transform(st_make_valid(ct[ct$PRUID == "59", "CTNAME"]), 3005)
+> 
+> if (file.exists(fGeo)) {
++   geo <- as.data.table(readRDS(fGeo))[, .(ROLL_NUMBER, CTNAME)]
++ } else {
++   g <- st_read(gpkg, quiet = TRUE, query =
++     "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
++      WHERE JURISDICTION_CODE = '200'")
++   g <- st_centroid(st_transform(st_make_valid(g), 3005))
++   geo <- as.data.table(st_drop_geometry(st_join(g, ct, join = st_within)))
++ }
+Error in eval(jsub, SDenv, parent.frame()) : 
+  object 'ROLL_NUMBER' not found
+Calls: [ -> [.data.table -> eval -> eval
+Execution halted
