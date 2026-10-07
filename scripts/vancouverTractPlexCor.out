@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -33,6 +33,8 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(RSQLite)
 > library(fixest)
 > library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
 > 
 > bca19     <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 > gpkg      <- "~/bigFiles/latestSpatialBCA/2026-04-08_bca_folios.gpkg"
@@ -67,7 +69,5 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 +   g <- st_centroid(st_transform(st_make_valid(g), 3005))
 +   geo <- as.data.table(st_drop_geometry(st_join(g, ct, join = st_within)))
 + }
-Error in eval(jsub, SDenv, parent.frame()) : 
-  object 'ROLL_NUMBER' not found
-Calls: [ -> [.data.table -> eval -> eval
+Error: Cannot open "~/bigFiles/latestSpatialBCA/2026-04-08_bca_folios.gpkg"; The file doesn't seem to exist.
 Execution halted

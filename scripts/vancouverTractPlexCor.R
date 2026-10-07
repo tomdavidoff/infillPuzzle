@@ -90,6 +90,8 @@ h <- merge(s[year %between% SALE_YRS & price > 1e5],
 h <- h[w > 0 & dep > 0 & !is.na(effYr)]
 h[, age := pmax(year - effYr, 0)]
 
+#regH <- feols(log(price) ~ log(sqft) + log(w * dep) + poly(age, 3) | ym, data = h)
+# unconditional probably more sensible than Claude's conditional
 regH <- feols(log(price) ~ log(sqft) + log(w * dep) + poly(age, 3) | ym, data = h)
 print(etable(regH))
 h[, res := NA_real_]
@@ -113,22 +115,26 @@ p <- p[typeofwork == "New Building" &
        grepl("Single Detached|Duplex", specificusecategory) &
        !grepl("Multiple", specificusecategory)]
 p[, isDuplex := grepl("Duplex", specificusecategory)]
+p[, isSingle := grepl("Single Detached", specificusecategory)]
 p[, c("lat", "lon") := tstrsplit(geo_point_2d, ",\\s*", type.convert = TRUE)]
 p[, month := as.IDate(paste0(substr(as.character(get(DATE_COL)), 1, 7), "-01"))]
 p <- p[!is.na(lat) & month >= MONTH_MIN]
 
 z  <- st_read(fZone, quiet = TRUE)
 z  <- st_transform(st_make_valid(z[grepl("^(R1-1|RS)", z$zoning_district), ]), 3005)
-sp <- st_transform(st_as_sf(p[, .(permitnumber, isDuplex, month, lon, lat)],
+sp <- st_transform(st_as_sf(p[, .(permitnumber, isDuplex, isSingle,month, lon, lat)],
                             coords = c("lon", "lat"), crs = 4326), 3005)
 sp <- sp[lengths(st_intersects(sp, z)) > 0, ]
 sp <- st_join(sp, ct, join = st_within)
 pm <- as.data.table(st_drop_geometry(sp))[!is.na(CTNAME)]
 print(pm[, .(N = .N, duplexShare = mean(isDuplex)), by = year(month)][order(year)])
+print(pm[, .(N = .N, singeShare = mean(isSingle)), by = year(month)][order(year)])
 
 # ---- monthly cross-tract correlations ----
 m  <- merge(pm[, .(nP = .N, share = mean(isDuplex)), by = .(CTNAME, month)], tr, by = "CTNAME")
+m  <- merge(pm[, .(nP = .N, share = mean(isDuplex), shareSingle=mean(isSingle)), by = .(CTNAME, month)], tr, by = "CTNAME")
 cm <- m[, c(list(nTract = .N), lapply(.SD, function(v) cc(share, v))), by = month, .SDcols = MEAS]
+cms <- m[, c(list(nTract = .N), lapply(.SD, function(v) cc(shareSingle, v))), by = month, .SDcols = MEAS]
 setorder(cm, month)
 print(cm)
 
@@ -142,3 +148,15 @@ ggplot(cl, aes(month, cor)) +
   labs(x = NULL, y = "cross-tract cor(duplex share of permits, 2018 measure)", size = "tracts") +
   theme_bw()
 ggsave(file.path(outDir, "tractPlexCorMonthly.png"), width = 10, height = 7)
+
+cl <- melt(cm, id.vars = c("month", "nTract"), variable.name = "measure", value.name = "cor")
+ggplot(cl, aes(month, cor)) +
+  geom_hline(yintercept = 0) +
+  geom_vline(xintercept = EVENTS, linetype = 2, colour = "grey50") +
+  geom_point(aes(size = nTract), alpha = .4) +
+  geom_smooth(method = "loess", span = .3, se = FALSE) +
+  facet_wrap(~measure) +
+  labs(x = NULL, y = "cross-tract cor(single share of permits, 2018 measure)", size = "tracts") +
+  theme_bw()
+ggsave(file.path(outDir, "tractPlexSingleCorMonthly.png"), width = 10, height = 7)
+
