@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -19,9 +19,11 @@ Type 'q()' to quit R.
 
 > # vancouverTractPlexCor.R
 > # 2018 tract price levels and size elasticities (RS single-family), and monthly
-> # cross-tract correlations with the duplex share of new RS/R1-1 permits.
+> # cross-tract correlations with the product shares (single / duplex / multiplex) of
+> # new RS/R1-1 permits. Run on all lots and on round(lot width) == 33 only.
 > #   mlppsf : tract median log(assessed total / finished sqft), 2019 roll (July 2018 values)
-> #   hres   : tract mean residual, pooled 2015-18 sales hedonic (no tract terms)
+> #   hres   : tract mean residual, pooled 2015-18 sales hedonic on log sqft + age, unconditional
+> #            on lot size (no tract terms)
 > #   elastA : tract cov/var slope of log assessed value on log sqft (assessments)
 > #   elastS : tract cov/var slope of log price (demeaned by sale month) on log sqft (sales)
 > # Elasticities never come from the hedonic regression that produces hres.
@@ -33,14 +35,11 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(RSQLite)
 > library(fixest)
 > library(ggplot2)
-Warning message:
-package ‘ggplot2’ was built under R version 4.5.2 
 > 
 > bca19     <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 > gpkg      <- "~/bigFiles/latestSpatialBCA/2026-04-08_bca_folios.gpkg"
 > fTract    <- "~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
 > fZone     <- "~/DropboxExternal/dataRaw/vancouver_zoning.geojson"
-> fGeo      <- "~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds"
 > permitURL <- "https://opendata.vancouver.ca/api/explore/v2.1/catalog/datasets/issued-building-permits/exports/csv?delimiter=%2C"
 > outDir    <- "text"; dir.create(outDir, showWarnings = FALSE)
 > 
@@ -49,6 +48,8 @@ package ‘ggplot2’ was built under R version 4.5.2
 > DATE_COL  <- "issuedate"
 > MONTH_MIN <- as.IDate("2018-01-01")
 > EVENTS    <- as.IDate(c("2018-09-01", "2023-10-01"))
+> MEAS      <- c("mlppsf", "hres", "elastA", "elastS")
+> SHARES    <- c(single = "isSingle", duplex = "isDuplex", multi = "isMulti")
 > 
 > rollKey <- function(x) suppressWarnings(as.numeric(gsub("[^0-9]", "", x)))
 > cc <- function(x, y) {
@@ -56,18 +57,253 @@ package ‘ggplot2’ was built under R version 4.5.2
 +   if (sum(ok) < 5 || sd(x[ok]) == 0 || sd(y[ok]) == 0) NA_real_ else cor(x[ok], y[ok])
 + }
 > 
-> # ---- tracts and folio -> tract ----
+> # ---- tracts; 2026 parcels -> tract (centroid) ----
 > ct <- st_read(fTract, quiet = TRUE)
 > ct <- st_transform(st_make_valid(ct[ct$PRUID == "59", "CTNAME"]), 3005)
 > 
-> if (file.exists(fGeo)) {
-+   geo <- as.data.table(readRDS(fGeo))[, .(ROLL_NUMBER, CTNAME)]
-+ } else {
-+   g <- st_read(gpkg, quiet = TRUE, query =
-+     "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
-+      WHERE JURISDICTION_CODE = '200'")
-+   g <- st_centroid(st_transform(st_make_valid(g), 3005))
-+   geo <- as.data.table(st_drop_geometry(st_join(g, ct, join = st_within)))
+> g <- st_read(gpkg, quiet = TRUE, query =
++   "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
++    WHERE JURISDICTION_CODE = '200'")
+> g <- st_transform(st_make_valid(g), 3005)
+> g$rollStart <- floor(rollKey(g$ROLL_NUMBER) / 1000)
+> geo <- as.data.table(st_drop_geometry(st_join(st_centroid(g), ct, join = st_within)))
+Warning message:
+st_centroid assumes attributes are constant over geometries 
+> geo <- unique(geo[!is.na(CTNAME), .(rollStart, CTNAME)], by = "rollStart")
+> 
+> # ---- 2019-roll RS single-family folios and pre-reform sales ----
+> con <- dbConnect(SQLite(), bca19)
+> b <- data.table(dbGetQuery(con, "
++   SELECT f.folioID, f.rollNumber,
++          CAST(i.MB_total_finished_area AS REAL) AS sqft,
++          CAST(i.MB_effective_year AS REAL)      AS effYr,
++          CAST(COALESCE(NULLIF(d.landWidth, ''), i.land_width) AS REAL) AS w,
++          CAST(COALESCE(NULLIF(d.landDepth, ''), i.land_depth) AS REAL) AS dep,
++          v.totalValue
++   FROM folio f
++   JOIN folioDescription d     ON d.folioID = f.folioID
++   JOIN residentialInventory i ON i.roll_number = f.rollNumber
++   JOIN (SELECT folioID, SUM(CAST(landValue AS REAL) + CAST(improvementValue AS REAL)) AS totalValue
++         FROM valuation GROUP BY folioID) v ON v.folioID = f.folioID
++   WHERE f.jurisdictionCode = '200'
++     AND d.actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
++     AND i.zoning LIKE 'RS%'"))
+> s <- data.table(dbGetQuery(con, "
++   SELECT folioID, conveyanceDate, CAST(conveyancePrice AS REAL) AS price
++   FROM sales WHERE conveyanceTypeDescription = 'Improved Single Property Transaction'"))
+> dbDisconnect(con)
+> 
+> b <- b[, if (.N == 1) .SD, by = folioID]
+> b[, rollStart := floor(rollKey(rollNumber) / 1000)]
+> b <- merge(b, geo, by = "rollStart")
+> b <- b[sqft > 0 & totalValue > 0]
+> 
+> s[, `:=`(year = as.integer(substr(conveyanceDate, 1, 4)), ym = substr(conveyanceDate, 1, 7))]
+> h <- merge(s[year %between% SALE_YRS & price > 1e5],
++            b[, .(folioID, CTNAME, sqft, effYr, w, dep)], by = "folioID")
+> h <- h[!is.na(effYr)]
+> h[, age := pmax(year - effYr, 0)]
+> 
+> # ---- tract measures from a folio/sales sample ----
+> tractMeasures <- function(bb, hh, minObs = MIN_OBS) {
++   tA <- bb[, .(nA = .N,
++                mlppsf = median(log(totalValue / sqft)),
++                elastA = cov(log(totalValue), log(sqft)) / var(log(sqft))),
++            by = CTNAME][nA >= minObs]
++   hh <- copy(hh)
++   r <- feols(log(price) ~ log(sqft) + poly(age, 3) | ym, data = hh)
++   hh[, res := NA_real_]
++   hh[obs(r), res := resid(r)]
++   hh[, lpDm := log(price) - mean(log(price)), by = ym]
++   tS <- hh[, .(nS = .N,
++                hres = mean(res, na.rm = TRUE),
++                elastS = cov(lpDm, log(sqft)) / var(log(sqft))),
++            by = CTNAME][nS >= minObs]
++   merge(tA, tS, by = "CTNAME", all = TRUE)
 + }
-Error: Cannot open "~/bigFiles/latestSpatialBCA/2026-04-08_bca_folios.gpkg"; The file doesn't seem to exist.
-Execution halted
+> 
+> # levels from one random half of folios, elasticities from the other (both directions)
+> splitCheck <- function(bb, hh) {
++   set.seed(20181)
++   ids <- unique(bb$folioID)
++   h1  <- ids[sample(c(TRUE, FALSE), length(ids), replace = TRUE)]
++   t1  <- tractMeasures(bb[folioID %in% h1],  hh[folioID %in% h1],  MIN_OBS / 2)
++   t2  <- tractMeasures(bb[!folioID %in% h1], hh[!folioID %in% h1], MIN_OBS / 2)
++   x <- rbind(merge(t1[, .(CTNAME, mlppsf, hres)], t2[, .(CTNAME, elastA, elastS)], by = "CTNAME"),
++              merge(t2[, .(CTNAME, mlppsf, hres)], t1[, .(CTNAME, elastA, elastS)], by = "CTNAME"))
++   round(cor(x[, .(mlppsf, hres)], x[, .(elastA, elastS)], use = "pairwise.complete.obs"), 3)
++ }
+> 
+> # ---- permits (live): RS/R1-1 new single / duplex / multiplex ----
+> p <- fread(permitURL)
+> setnames(p, tolower(names(p)))
+> p <- p[typeofwork == "New Building" &
++        grepl("Single Detached|Duplex|Multiple Dwelling|Multiplex", specificusecategory)]
+> p[, isMulti  := grepl("Multiple Dwelling|Multiplex", specificusecategory)]
+> p[, isDuplex := !isMulti & grepl("Duplex", specificusecategory)]
+> p[, isSingle := !isMulti & !isDuplex]
+> p[, c("lat", "lon") := tstrsplit(geo_point_2d, ",\\s*", type.convert = TRUE)]
+> p[, month := as.IDate(paste0(substr(as.character(get(DATE_COL)), 1, 7), "-01"))]
+> p <- p[!is.na(lat) & month >= MONTH_MIN]
+> 
+> z  <- st_read(fZone, quiet = TRUE)
+> z  <- st_transform(st_make_valid(z[grepl("^(R1-1|RS)", z$zoning_district), ]), 3005)
+> sp <- st_transform(st_as_sf(p[, .(permitnumber, specificusecategory, isSingle, isDuplex, isMulti,
++                                   month, lon, lat)],
++                             coords = c("lon", "lat"), crs = 4326), 3005)
+> sp <- sp[lengths(st_intersects(sp, z)) > 0, ]
+> sp <- st_join(sp, ct, join = st_within)
+> sp <- st_join(sp, g[, "rollStart"], join = st_intersects)
+> pm <- unique(as.data.table(st_drop_geometry(sp))[!is.na(CTNAME)], by = "permitnumber")
+> pm <- merge(pm, unique(b[, .(rollStart, w19 = round(w))], by = "rollStart"),
++             by = "rollStart", all.x = TRUE)
+> 
+> print(pm[, .N, by = .(specificusecategory, isSingle, isDuplex, isMulti)][order(-N)])
+                                                                     specificusecategory
+                                                                                  <char>
+ 1:                                                    Single Detached House w/Sec Suite
+ 2:                                                                Single Detached House
+ 3:                                                                               Duplex
+ 4:                                                                    Multiple Dwelling
+ 5:                                                             Duplex w/Secondary Suite
+ 6:                                             Duplex w/Secondary Suite,Secondary Suite
+ 7:                                                         Infill Single Detached House
+ 8:                                             Secondary Suite,Duplex w/Secondary Suite
+ 9:                                                                Duplex,Lock -off Unit
+10:                                                                Lock -off Unit,Duplex
+11:                                              Lock -off Unit,Duplex w/Secondary Suite
+12:                                                                        Infill Duplex
+13:                                                     Multiple Dwelling,Parking Garage
+14:                                                             Infill Multiple Dwelling
+15:                                              Duplex w/Secondary Suite,Lock -off Unit
+16:                                                     Parking Garage,Multiple Dwelling
+17:                   Parking Garage,Multiple Dwelling,Retail Store,Restaurant - Class 1
+18:                            Infill,Multiple Conversion Dwelling,Single Detached House
+19: Parking Garage,Child Day Care Facility,Retail Store,General Office,Multiple Dwelling
+20:                                 Multiple Dwelling,Community Ctr./Neighbourhood House
+21:      Single Detached House,Infill Single Detached House,Multiple Conversion Dwelling
+22:                                        Multiple Dwelling,Parking Garage,Retail Store
+23:                                   Infill Single Detached House,Single Detached House
+24:                                        Retail Store,Multiple Dwelling,Parking Garage
+25:                                                 Parking Garage,Single Detached House
+26:                                                Duplex,Lock -off Unit,Secondary Suite
+27:                              Single Detached House w/Sec Suite,Single Detached House
+28:                                          Parking Garage,Infill Single Detached House
+29:                                                         Single Detached House,Duplex
+30:                                                      Dwelling Unit,Multiple Dwelling
+31:                                   Single Detached House,Infill Single Detached House
+32:                                    Secondary Suite,Single Detached House w/Sec Suite
+                                                                     specificusecategory
+                                                                                  <char>
+    isSingle isDuplex isMulti     N
+      <lgcl>   <lgcl>  <lgcl> <int>
+ 1:     TRUE    FALSE   FALSE  1774
+ 2:     TRUE    FALSE   FALSE  1018
+ 3:    FALSE     TRUE   FALSE   734
+ 4:    FALSE    FALSE    TRUE   589
+ 5:    FALSE     TRUE   FALSE   380
+ 6:    FALSE     TRUE   FALSE   115
+ 7:     TRUE    FALSE   FALSE    67
+ 8:    FALSE     TRUE   FALSE    45
+ 9:    FALSE     TRUE   FALSE    20
+10:    FALSE     TRUE   FALSE     9
+11:    FALSE     TRUE   FALSE     6
+12:    FALSE     TRUE   FALSE     5
+13:    FALSE    FALSE    TRUE     3
+14:    FALSE    FALSE    TRUE     3
+15:    FALSE     TRUE   FALSE     3
+16:    FALSE    FALSE    TRUE     2
+17:    FALSE    FALSE    TRUE     1
+18:     TRUE    FALSE   FALSE     1
+19:    FALSE    FALSE    TRUE     1
+20:    FALSE    FALSE    TRUE     1
+21:     TRUE    FALSE   FALSE     1
+22:    FALSE    FALSE    TRUE     1
+23:     TRUE    FALSE   FALSE     1
+24:    FALSE    FALSE    TRUE     1
+25:     TRUE    FALSE   FALSE     1
+26:    FALSE     TRUE   FALSE     1
+27:     TRUE    FALSE   FALSE     1
+28:     TRUE    FALSE   FALSE     1
+29:    FALSE     TRUE   FALSE     1
+30:    FALSE    FALSE    TRUE     1
+31:     TRUE    FALSE   FALSE     1
+32:     TRUE    FALSE   FALSE     1
+    isSingle isDuplex isMulti     N
+      <lgcl>   <lgcl>  <lgcl> <int>
+> print(pm[, .(N = .N, single = mean(isSingle), duplex = mean(isDuplex), multi = mean(isMulti),
++              matched2019SF = mean(!is.na(w19)), w33 = mean(w19 == 33, na.rm = TRUE)),
++          by = year(month)][order(year)])
+    year     N    single      duplex       multi matched2019SF       w33
+   <int> <int>     <num>       <num>       <num>         <num>     <num>
+1:  2018   655 0.9923664 0.001526718 0.006106870     0.7557252 0.4020202
+2:  2019   517 0.9032882 0.090909091 0.005802708     0.6866538 0.3746479
+3:  2020   423 0.7825059 0.210401891 0.007092199     0.8037825 0.3529412
+4:  2021   420 0.6119048 0.371428571 0.016666667     0.8119048 0.4164223
+5:  2022   695 0.6086331 0.384172662 0.007194245     0.8561151 0.4302521
+6:  2023   531 0.5141243 0.470809793 0.015065913     0.7871940 0.4090909
+7:  2024   490 0.4367347 0.442857143 0.120408163     0.7775510 0.4409449
+8:  2025   657 0.2313546 0.290715373 0.477929985     0.6727549 0.3981900
+9:  2026   401 0.2493766 0.251870324 0.498753117     0.6533666 0.3969466
+> 
+> # ---- one specification: measures, monthly correlations, plot ----
+> runSpec <- function(tag, bb, hh, pp) {
++   tr <- tractMeasures(bb, hh)
++   cat("\n==== spec:", tag, "| tracts:", nrow(tr), "| with all four:",
++       nrow(na.omit(tr[, ..MEAS])), "| permits:", nrow(pp), "====\n")
++   print(round(cor(tr[, ..MEAS], use = "pairwise.complete.obs"), 3))
++   cat("split-sample (levels x elasticities, disjoint folios):\n")
++   print(splitCheck(bb, hh))
++ 
++   m <- merge(pp[, c(list(nP = .N), lapply(.SD, mean)), by = .(CTNAME, month), .SDcols = SHARES],
++              tr, by = "CTNAME")
++   cm <- rbindlist(lapply(names(SHARES), function(k)
++     m[, c(list(share = k, nTract = .N), lapply(.SD, function(v) cc(get(SHARES[k]), v))),
++       by = month, .SDcols = MEAS]))
++   setorder(cm, share, month)
++ 
++   cl <- melt(cm, id.vars = c("share", "month", "nTract"), variable.name = "measure", value.name = "cor")
++   cl[, share := factor(share, levels = names(SHARES))]
++   ggplot(cl[!is.na(cor)], aes(month, cor)) +
++     geom_hline(yintercept = 0) +
++     geom_vline(xintercept = EVENTS, linetype = 2, colour = "grey50") +
++     geom_point(aes(size = nTract), alpha = .4) +
++     geom_smooth(method = "loess", span = .3, se = FALSE) +
++     facet_grid(share ~ measure) +
++     labs(x = NULL, y = "cross-tract cor(product share of permits, 2018 measure)",
++          size = "tracts", title = tag) +
++     theme_bw()
++   ggsave(file.path(outDir, paste0("tractPlexCorMonthly_", tag, ".png")), width = 12, height = 9)
++   invisible(cm)
++ }
+> 
+> cmAll <- runSpec("allLots", b, h, pm)
+
+==== spec: allLots | tracts: 76 | with all four: 69 | permits: 4789 ====
+       mlppsf  hres elastA elastS
+mlppsf  1.000 0.992  0.784  0.747
+hres    0.992 1.000  0.770  0.732
+elastA  0.784 0.770  1.000  0.879
+elastS  0.747 0.732  0.879  1.000
+split-sample (levels x elasticities, disjoint folios):
+       elastA elastS
+mlppsf  0.772  0.643
+hres    0.740  0.619
+`geom_smooth()` using formula = 'y ~ x'
+> cm33  <- runSpec("lot33", b[round(w) == 33], h[round(w) == 33], pm[w19 == 33])
+
+==== spec: lot33 | tracts: 64 | with all four: 50 | permits: 1469 ====
+       mlppsf  hres elastA elastS
+mlppsf  1.000 0.986  0.504  0.477
+hres    0.986 1.000  0.649  0.513
+elastA  0.504 0.649  1.000  0.792
+elastS  0.477 0.513  0.792  1.000
+split-sample (levels x elasticities, disjoint folios):
+       elastA elastS
+mlppsf  0.408  0.375
+hres    0.637  0.428
+`geom_smooth()` using formula = 'y ~ x'
+> 
+> proc.time()
+   user  system elapsed 
+ 25.747   3.477  40.539 
