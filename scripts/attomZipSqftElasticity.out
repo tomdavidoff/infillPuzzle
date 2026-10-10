@@ -1,0 +1,189 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(data.table)
+> library(httr2)
+Warning message:
+package ‘httr2’ was built under R version 4.5.2 
+> library(haven)
+> library(arrow)
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+Warning message:
+package ‘arrow’ was built under R version 4.5.2 
+> library(fixest)
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+> 
+> download <- FALSE  # TRUE to fetch/slim; delete attomSlim/*.parquet first to re-slim with new columns
+> rankLo <- 20       # CBSAs ranked by file size
+> rankHi <- 50
+> yrs    <- 2015:2019
+> minN   <- 50       # sales per ZIP
+> minZip <- 10       # ZIPs per CBSA for a correlation
+> 
+> slimDir <- path.expand("~/DropboxExternal/dataProcessed/attomSlim")
+> keep <- c("ATTOM_ID", "TransactDate", "ValidTransact", "InvalidPrice", "TransferAmount",
++           "PropertyType_chars", "UnitsCount", "AreaBuilding", "AreaLotSF", "YearBuilt_Gen",
++           "PropertyAddressZIP", "CBSACode", "TaxMarketValueLand", "TaxMarketValueTotal")
+> 
+> # ---- download and slim ----
+> if (download) {
++   lnk <- "https://www.dropbox.com/scl/fo/ha6138r8xb4u0a0s0jvhg/AAo_esxOG3OtkthvprNk28o?rlkey=69yad6m2gd0kdcbdv7ndb9sdj"
++   readRenviron("~/.Renviron")
++   tok <- Sys.getenv("DROPBOX_TOKEN")
++   if (!nzchar(tok)) stop("DROPBOX_TOKEN not set")
++   dir.create(slimDir, showWarnings = FALSE, recursive = TRUE)
++ 
++   dbx <- function(ep, body) request(paste0("https://api.dropboxapi.com/2/", ep)) |>
++     req_auth_bearer_token(tok) |> req_body_json(body) |>
++     req_error(body = \(resp) resp_body_string(resp)) |> req_perform() |> resp_body_json()
++ 
++   lsDbx <- function(path = "") {
++     r <- dbx("files/list_folder", list(path = path, shared_link = list(url = lnk)))
++     e <- r$entries
++     while (isTRUE(r$has_more)) {
++       r <- dbx("files/list_folder/continue", list(cursor = r$cursor))
++       e <- c(e, r$entries)
++     }
++     rbindlist(lapply(e, \(x) if (x$.tag == "folder") lsDbx(paste0(path, "/", x$name))
++                              else list(path = paste0(path, "/", x$name), size = x$size)))
++   }
++ 
++   files <- lsDbx()[grepl("_cbsa_\\d+\\.dta$", path)][, cbsa := sub(".*_cbsa_(\\d+)\\.dta$", "\\1", path)][order(-size)]
++   sel <- files[rankLo:min(rankHi, .N)]
++ 
++   for (i in seq_len(nrow(sel))) {
++     out <- file.path(slimDir, sprintf("cbsa_%s.parquet", sel$cbsa[i]))
++     if (file.exists(out)) next
++     tmp <- path.expand(sprintf("~/Downloads/cbsa_%s.dta", sel$cbsa[i]))
++     request("https://content.dropboxapi.com/2/sharing/get_shared_link_file") |>
++       req_auth_bearer_token(tok) |> req_method("POST") |>
++       req_headers(`Dropbox-API-Arg` = jsonlite::toJSON(list(url = lnk, path = sel$path[i]), auto_unbox = TRUE)) |>
++       req_error(body = \(resp) resp_body_string(resp)) |> req_timeout(3600) |> req_perform(path = tmp)
++     write_parquet(zap_labels(read_dta(tmp, col_select = tidyselect::any_of(keep))), out)
++     unlink(tmp)
++   }
++ }
+> 
+> # ---- estimation ----
+> d <- rbindlist(lapply(list.files(slimDir, full.names = TRUE), read_parquet), fill = TRUE)
+> hasLot <- "AreaLotSF" %in% names(d)
+> d <- d[ValidTransact == 1 & InvalidPrice == 0 & TransferAmount > 0 & PropertyType_chars == "SFR" &
++        (is.na(UnitsCount) | UnitsCount <= 1) & year(TransactDate) %in% yrs &
++        between(AreaBuilding, 500, 8000) & YearBuilt_Gen > 1800 & !is.na(PropertyAddressZIP)]
+> if (hasLot) d <- d[AreaLotSF > 0][, llot := log(AreaLotSF)]
+> d[, `:=`(zip = as.character(PropertyAddressZIP), yr = year(TransactDate),
++          yb10 = pmax(10 * (YearBuilt_Gen %/% 10), 1900),
++          lp = log(TransferAmount), ls = log(AreaBuilding), lppsf = log(TransferAmount / AreaBuilding))]
+> print(quantile(exp(d$ls)))
+  0%  25%  50%  75% 100% 
+ 500 1391 1913 2638 8000 
+> d[, `:=`(lo = quantile(lppsf, .01), hi = quantile(lppsf, .99)), by = CBSACode]
+> d <- d[between(lppsf, lo, hi)]
+> d[, `:=`(lo = quantile(ls, .2), hi = quantile(ls, .9))]#, by = CBSACode]
+> d <- d[between(ls, lo, hi)]
+> d <- d[, if (.N >= minN) .SD, by = .(CBSACode, zip)]
+> 
+> # level: ZIP FE from pooled CBSA hedonic, common slopes
+> print(hasLot)
+[1] FALSE
+> f1 <- if (hasLot) lp ~ ls + llot | zip + YearBuilt_Gen + yr else lp ~ ls | zip + YearBuilt_Gen + yr
+> lev <- d[, {fe <- fixef(feols(f1, .SD))$zip; .(zip = names(fe), lev = unname(fe))}, by = CBSACode]
+> 
+> # elasticity: separate ZIP regressions (ZIP-specific vintage and sale-year effects)
+> el <- d[, {b <- coef(feols(lp ~ i(zip, ls) | zip^yb10 + zip^yr, .SD))
++            .(zip = sub("^zip::(.*):ls$", "\\1", names(b)), elast = unname(b))}, by = CBSACode]
+> 
+> z <- lev[el, on = .(CBSACode, zip), nomatch = 0][d[, .(n = .N), by = .(CBSACode, zip)], on = .(CBSACode, zip), nomatch = 0]
+> 
+> res <- z[, if (.N >= minZip) .(nZip = .N, pearson = cor(lev, elast),
++                                spearman = cor(lev, elast, method = "spearman")), by = CBSACode]
+> res[, .(cbsas = .N, medPearson = median(pearson), wtdPearson = weighted.mean(pearson, nZip),
++         medSpearman = median(spearman), sharePos = mean(pearson > 0))]
+   cbsas  medPearson wtdPearson medSpearman sharePos
+   <int>       <num>      <num>       <num>    <num>
+1:    26 0.005254711 0.07374444  0.06741588      0.5
+> 
+> etable(feols(elast ~ lev | CBSACode, z, cluster = ~CBSACode),
++        feols(elast ~ lev | CBSACode, z, weights = ~n, cluster = ~CBSACode))
+                feols(elast ~.. feols(elast ~ ..
+Dependent Var.:           elast            elast
+                                                
+lev             0.0321 (0.0329) 0.0781* (0.0368)
+Fixed-Effects:  --------------- ----------------
+CBSACode                    Yes              Yes
+_______________ _______________ ________________
+S.E.: Clustered    by: CBSACode     by: CBSACode
+Observations              2,114            2,114
+R2                      0.20775          0.28838
+Within R2               0.00174          0.01121
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> # binscatter, level demeaned within CBSA
+> z[, levd := lev - mean(lev), by = CBSACode][, bin := cut(levd, quantile(levd, 0:20 / 20), include.lowest = TRUE)]
+> ggplot(z[, .(levd = mean(levd), elast = mean(elast)), by = bin], aes(levd, elast)) + geom_point() +
++   labs(x = "ZIP price level (FE, demeaned within CBSA)", y = "mean ZIP size elasticity")
+> ggsave("text/attomZipLevElastBin.pdf", width = 6, height = 4)
+> 
+> ggplot(res, aes(pearson)) + geom_histogram(bins = 30) + geom_vline(xintercept = 0, linetype = 2) +
++   labs(x = "within-CBSA ZIP cor(price level, size elasticity)", y = "CBSAs")
+> ggsave("text/attomZipPpsfElast.pdf", width = 6, height = 4)
+> 
+> print(res)
+    CBSACode  nZip     pearson    spearman
+      <char> <int>       <num>       <num>
+ 1:    12540    29  0.03086661  0.11330049
+ 2:    12580   126 -0.02035718  0.05859168
+ 3:    13820    78  0.07093450  0.03635605
+ 4:    15980    33 -0.25291823 -0.14237968
+ 5:    16740    93  0.12021808  0.09437200
+ 6:    17140   131  0.17346885  0.17306892
+ 7:    17460    91 -0.28808435 -0.18533206
+ 8:    18140    92 -0.02457667 -0.05079913
+ 9:    26900    90  0.18612535  0.21832325
+10:    27260    56  0.04252184  0.07771702
+11:    28140    13 -0.74338892 -0.76373626
+12:    28940    59  0.25958707  0.25908825
+13:    32820    48 -0.02163983 -0.04494138
+14:    33460   182  0.28144816  0.24101078
+15:    34980   101 -0.11654748 -0.12620850
+16:    35840    41 -0.03330883  0.08501742
+17:    36420    86 -0.10697067 -0.06772961
+18:    36740    87 -0.02629788 -0.02181599
+19:    38300   171  0.17122196  0.14084767
+20:    39580    47 -0.10126209 -0.02382054
+21:    40900    96  0.35772275  0.43570266
+22:    41180   115 -0.08251493  0.02502959
+23:    41740    86  0.40069797  0.41904807
+24:    41940    52  0.15969535  0.07624008
+25:    46060    36  0.48123954  0.54594595
+26:    47260    68 -0.07897579  0.03634004
+    CBSACode  nZip     pearson    spearman
+> 
+> proc.time()
+   user  system elapsed 
+ 57.631   7.494  56.119 

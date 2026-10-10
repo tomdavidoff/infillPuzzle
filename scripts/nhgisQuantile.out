@@ -1,0 +1,91 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> library(data.table)
+> library(fixest)
+> library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+> 
+> minSfd    <- 0.95   # share of aggregate owner value in 1-unit detached (B25080)
+> minTracts <- 20
+> topCode   <- 2e6    # ACS value top-code; UQ at/above it is censored
+> 
+> f <- "~/DropboxExternal/dataRaw/ipums/nhgis0079_csv/nhgis0079_ds249_20205_tract.csv"
+> 
+> # NHGIS CSVs may carry a second, descriptive header row
+> twoHdr <- grepl("GIS Join Match Code", readLines(f, n = 2)[2])
+> dt <- if (twoHdr) fread(f, skip = 2, header = FALSE, col.names = names(fread(f, nrows = 0))) else fread(f)
+> 
+> # CBSAA is blank at tract level; assign from county via 2020 delineation file
+> xw <- "~/Downloads/list1_2020.xls"
+> if (!file.exists(xw)) download.file("https://www2.census.gov/programs-surveys/metro-micro/geographies/reference-files/2020/delineation-files/list1_2020.xls", xw, mode = "wb")
+trying URL 'https://www2.census.gov/programs-surveys/metro-micro/geographies/reference-files/2020/delineation-files/list1_2020.xls'
+Content type 'application/vnd.ms-excel' length 454656 bytes (444 KB)
+==================================================
+downloaded 444 KB
+
+> cbsa <- setDT(readxl::read_excel(xw, skip = 2))[!is.na(`FIPS County Code`),
++   .(CBSAA = as.integer(`CBSA Code`), cbsaName = `CBSA Title`, metro = `Metropolitan/Micropolitan Statistical Area`,
++     STATEA = as.integer(`FIPS State Code`), COUNTYA = as.integer(`FIPS County Code`))]
+> dt[, CBSAA := NULL][, `:=`(STATEA = as.integer(STATEA), COUNTYA = as.integer(COUNTYA))]
+> dt <- cbsa[metro == "Metropolitan Statistical Area"][dt, on = .(STATEA, COUNTYA)]
+> 
+> d <- dt[!is.na(CBSAA) & AMWAE001 > 0 & !is.na(AMWBE001) & AMWCE001 < topCode & AMWEE001 > 0,
++         .(CBSAA, cbsaName, GISJOIN, med = AMWBE001, ratio = AMWCE001 / AMWAE001, sfd = AMWEE002 / AMWEE001)]
+> 
+> cbsaCor <- function(x) x[, if (.N >= minTracts) .(n = .N,
++                            pearson  = cor(med, ratio),
++                            spearman = cor(med, ratio, method = "spearman")), by = .(CBSAA, cbsaName)]
+> res <- rbind(cbsaCor(d[sfd >= minSfd])[, sample := "sfd"],
++              cbsaCor(d)[, sample := "all"])
+> 
+> res[, .(cbsas = .N, medPearson = median(pearson), wtdPearson = weighted.mean(pearson, n),
++         medSpearman = median(spearman), sharePos = mean(pearson > 0)), by = sample]
+   sample cbsas   medPearson   wtdPearson  medSpearman  sharePos
+   <char> <int>        <num>        <num>        <num>     <num>
+1:    sfd   104 -0.003296496 -0.001314854 -0.001493829 0.4903846
+2:    all   179 -0.116681515 -0.095559953 -0.083260490 0.2793296
+> 
+> etable(feols(log(ratio) ~ log(med) | CBSAA, d[sfd >= minSfd], cluster = ~CBSAA),
++        feols(log(ratio) ~ log(med) | CBSAA, d, cluster = ~CBSAA),
++        headers = c("sfd", "all"))
+                feols(log(ratio).. feols(log(ratio) ..
+                               sfd                 all
+Dependent Var.:         log(ratio)          log(ratio)
+                                                      
+log(med)        -0.0352** (0.0126) -0.1128*** (0.0121)
+Fixed-Effects:  ------------------ -------------------
+CBSAA                          Yes                 Yes
+_______________ __________________ ___________________
+S.E.: Clustered          by: CBSAA           by: CBSAA
+Observations                 9,687              19,464
+R2                         0.19365             0.16543
+Within R2                  0.00526             0.03336
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> ggplot(res, aes(pearson)) + geom_histogram(bins = 40) + facet_wrap(~sample, ncol = 1) +
++   geom_vline(xintercept = 0, linetype = 2) +
++   labs(x = "within-CBSA tract cor(median value, UQ/LQ)", y = "CBSAs")
+> ggsave("text/cbsaTractValueCor.pdf", width = 6, height = 5)
+> 
+> proc.time()
+   user  system elapsed 
+  3.873   1.179   2.473 
