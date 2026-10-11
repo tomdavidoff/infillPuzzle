@@ -22,9 +22,8 @@ keep <- c("ATTOM_ID", "TransactDate", "ValidTransact", "InvalidPrice", "Transfer
 # ---- download and slim ----
 if (download) {
   lnk <- "https://www.dropbox.com/scl/fo/ha6138r8xb4u0a0s0jvhg/AAo_esxOG3OtkthvprNk28o?rlkey=69yad6m2gd0kdcbdv7ndb9sdj"
-  readRenviron("~/.Renviron")
-  tok <- Sys.getenv("DROPBOX_TOKEN")
-  if (!nzchar(tok)) stop("DROPBOX_TOKEN not set")
+  tok <- gsub("\\s", "", paste(readLines("~/.dropboxToken", warn = FALSE), collapse = ""))
+  if (!startsWith(tok, "sl.") || nchar(tok) > 2000) stop("~/.dropboxToken should hold exactly one token")
   dir.create(slimDir, showWarnings = FALSE, recursive = TRUE)
 
   dbx <- function(ep, body) request(paste0("https://api.dropboxapi.com/2/", ep)) |>
