@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -19,6 +19,8 @@ Type 'q()' to quit R.
 
 > library(data.table)
 > library(httr2)
+Warning message:
+package ‘httr2’ was built under R version 4.5.2 
 > library(haven)
 > library(arrow)
 
@@ -28,10 +30,15 @@ The following object is masked from ‘package:utils’:
 
     timestamp
 
+Warning message:
+package ‘arrow’ was built under R version 4.5.2 
 > library(fixest)
 > library(ggplot2)
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+> setFixest_notes(FALSE)
 > 
-> download  <- TRUE   # fetch/slim; existing parquets lacking AreaLotSF are re-slimmed
+> download  <- FALSE  # TRUE to fetch/slim (needs fresh token); parquets lacking AreaLotSF are re-slimmed
 > rankLo    <- 10     # CBSAs ranked by file size
 > rankHi    <- 80
 > yrs       <- 2015:2019
@@ -95,25 +102,6 @@ The following object is masked from ‘package:utils’:
 +   zf <- download_extract(ext, download_dir = path.expand("~/Downloads"), overwrite = TRUE)
 +   fwrite(as.data.table(read_ipums_agg(zf)), zctaFile)
 + }
-Successfully submitted IPUMS NHGIS extract number 81
-Checking extract status...
-Waiting 10 seconds...
-Checking extract status...
-Waiting 20 seconds...
-Checking extract status...
-IPUMS NHGIS extract 81 is ready to download.
-  |                                                                              |                                                                      |   0%  |                                                                              |=                                                                     |   1%  |                                                                              |==                                                                    |   2%  |                                                                              |===                                                                   |   4%  |                                                                              |===                                                                   |   5%  |                                                                              |====                                                                  |   6%  |                                                                              |======                                                                |   8%  |                                                                              |=======                                                               |  10%  |                                                                              |========                                                              |  11%  |                                                                              |========                                                              |  12%  |                                                                              |=========                                                             |  13%  |                                                                              |==========                                                            |  14%  |                                                                              |===========                                                           |  16%  |                                                                              |============                                                          |  17%  |                                                                              |=============                                                         |  18%  |                                                                              |=============                                                         |  19%  |                                                                              |==============                                                        |  20%  |                                                                              |===============                                                       |  22%  |                                                                              |================                                                      |  23%  |                                                                              |=================                                                     |  24%  |                                                                              |==================                                                    |  25%  |                                                                              |==================                                                    |  26%  |                                                                              |===================                                                   |  28%  |                                                                              |====================                                                  |  29%  |                                                                              |=====================                                                 |  30%  |                                                                              |======================                                                |  31%  |                                                                              |=======================                                               |  32%  |                                                                              |========================                                              |  34%  |                                                                              |========================                                              |  35%  |                                                                              |=========================                                             |  36%  |                                                                              |==========================                                            |  37%  |                                                                              |===========================                                           |  38%  |                                                                              |============================                                          |  40%  |                                                                              |=============================                                         |  41%  |                                                                              |=============================                                         |  42%  |                                                                              |==============================                                        |  43%  |                                                                              |===============================                                       |  44%  |                                                                              |================================                                      |  46%  |                                                                              |=================================                                     |  47%  |                                                                              |==================================                                    |  48%  |                                                                              |==================================                                    |  49%  |                                                                              |===================================                                   |  50%  |                                                                              |====================================                                  |  52%  |                                                                              |=====================================                                 |  53%  |                                                                              |======================================                                |  54%  |                                                                              |=======================================                               |  55%  |                                                                              |========================================                              |  56%  |                                                                              |========================================                              |  58%  |                                                                              |=========================================                             |  59%  |                                                                              |==========================================                            |  60%  |                                                                              |===========================================                           |  61%  |                                                                              |============================================                          |  62%  |                                                                              |=============================================                         |  64%  |                                                                              |=============================================                         |  65%  |                                                                              |==============================================                        |  66%  |                                                                              |===============================================                       |  67%  |                                                                              |================================================                      |  68%  |                                                                              |=================================================                     |  70%  |                                                                              |==================================================                    |  71%  |                                                                              |==================================================                    |  72%  |                                                                              |===================================================                   |  73%  |                                                                              |====================================================                  |  74%  |                                                                              |=====================================================                 |  76%  |                                                                              |======================================================                |  77%  |                                                                              |=======================================================               |  78%  |                                                                              |=======================================================               |  79%  |                                                                              |========================================================              |  80%  |                                                                              |=========================================================             |  82%  |                                                                              |==========================================================            |  83%  |                                                                              |===========================================================           |  84%  |                                                                              |============================================================          |  85%  |                                                                              |=============================================================         |  86%  |                                                                              |=============================================================         |  88%  |                                                                              |==============================================================        |  89%  |                                                                              |===============================================================       |  90%  |                                                                              |================================================================      |  91%  |                                                                              |=================================================================     |  92%  |                                                                              |==================================================================    |  94%  |                                                                              |==================================================================    |  95%  |                                                                              |===================================================================   |  96%  |                                                                              |====================================================================  |  97%  |                                                                              |===================================================================== |  99%  |                                                                              |======================================================================| 100%
-Data file saved to /Users/davidoff/Downloads/nhgis0081_csv.zip
-Use of data from IPUMS NHGIS is subject to conditions including that users should cite the data appropriately. Use command `ipums_conditions()` for more details.
-Rows: 33120 Columns: 62
-── Column specification ────────────────────────────────────────────────────────
-Delimiter: ","
-chr  (7): GISJOIN, YEAR, STUSAB, ZCTA5A, GEOID, NAME_E, NAME_M
-dbl (22): AL0AE001, AL0AE002, AL0AE003, AL0AE004, AL0AE005, AL0AE006, AL0AE0...
-lgl (33): REGIONA, DIVISIONA, STATEA, COUNTYA, COUSUBA, PLACEA, TRACTA, BLKG...
-
-ℹ Use `spec()` to retrieve the full column specification for this data.
-ℹ Specify the column types or set `show_col_types = FALSE` to quiet this message.
 > zc  <- fread(zctaFile)
 > tot <- grep("E001$", names(zc), value = TRUE)
 > det <- grep("E002$", names(zc), value = TRUE)
@@ -138,1455 +126,478 @@ lgl (33): REGIONA, DIVISIONA, STATEA, COUNTYA, COUSUBA, PLACEA, TRACTA, BLKG...
 +   x <- x[, if (.N >= minN) .SD, by = .(CBSACode, zip)]
 +   f1 <- if (lot) lp ~ ls + llot | zip + YearBuilt_Gen + yr else lp ~ ls | zip + YearBuilt_Gen + yr
 +   lev <- x[, {fe <- fixef(feols(f1, .SD))$zip; .(zip = names(fe), lev = unname(fe))}, by = CBSACode]
-+   el  <- x[, {b <- coef(feols(lp ~ i(zip, ls) | zip^yb10 + zip^yr, .SD))
-+               .(zip = sub("^zip::(.*):ls$", "\\1", names(b)), elast = unname(b))}, by = CBSACode]
-+   lev[el, on = .(CBSACode, zip), nomatch = 0][x[, .(n = .N), by = .(CBSACode, zip)], on = .(CBSACode, zip),
++   el  <- x[, {m <- feols(lp ~ i(zip, ls) | zip^yb10 + zip^yr, .SD, vcov = "hetero")
++               .(zip = sub("^zip::(.*):ls$", "\\1", names(coef(m))), elast = unname(coef(m)),
++                 seEl = unname(se(m)))}, by = CBSACode]
++   lev[el, on = .(CBSACode, zip), nomatch = 0][x[, .(n = .N, levP = median(lppsf)), by = .(CBSACode, zip)], on = .(CBSACode, zip),
 +       nomatch = 0][, `:=`(thr = thr, lot = lot)]
 + }
 > zz <- rbindlist(lapply(c(FALSE, TRUE), \(l) rbindlist(lapply(thrs, est, lot = l))))
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/19/1 fixed-effect singletons were removed (20 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 21/8 fixed-effect singletons were removed (29 observations).
-NOTE: 28/0 fixed-effect singletons were removed (28 observations).
-NOTE: 17/3 fixed-effect singletons were removed (20 observations).
-NOTE: 27/1 fixed-effect singletons were removed (28 observations).
-NOTE: 89/0 fixed-effect singletons were removed (89 observations).
-NOTE: 90/1 fixed-effect singletons were removed (91 observations).
-NOTE: 138/1 fixed-effect singletons were removed (139 observations).
-NOTE: 27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 63/0 fixed-effect singletons were removed (63 observations).
-NOTE: 23/1 fixed-effect singletons were removed (24 observations).
-NOTE: 33/0 fixed-effect singletons were removed (33 observations).
-NOTE: 128/0 fixed-effect singletons were removed (128 observations).
-NOTE: 112/0 fixed-effect singletons were removed (112 observations).
-NOTE: 51/0 fixed-effect singletons were removed (51 observations).
-NOTE: 43/1 fixed-effect singletons were removed (44 observations).
-NOTE: 25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 72/1 fixed-effect singletons were removed (73 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 91/0 fixed-effect singletons were removed (91 observations).
-NOTE: 123/0 fixed-effect singletons were removed (123 observations).
-NOTE: 35/0 fixed-effect singletons were removed (35 observations).
-NOTE: 28/3 fixed-effect singletons were removed (31 observations).
-NOTE: 44/0 fixed-effect singletons were removed (44 observations).
-NOTE: 49/0 fixed-effect singletons were removed (49 observations).
-NOTE: 101/3 fixed-effect singletons were removed (104 observations).
-NOTE: 52/0 fixed-effect singletons were removed (52 observations).
-NOTE: 61/5 fixed-effect singletons were removed (66 observations).
-NOTE: 71/0 fixed-effect singletons were removed (71 observations).
-NOTE: 25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 40/0 fixed-effect singletons were removed (40 observations).
-NOTE: 54/2 fixed-effect singletons were removed (56 observations).
-NOTE: 48/0 fixed-effect singletons were removed (48 observations).
-NOTE: 35/1 fixed-effect singletons were removed (36 observations).
-NOTE: 132/5 fixed-effect singletons were removed (137 observations).
-NOTE: 20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 112/0 fixed-effect singletons were removed (112 observations).
-NOTE: 19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 33/0 fixed-effect singletons were removed (33 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 1/1 fixed-effect singletons were removed (2 observations).
-NOTE: 98/1 fixed-effect singletons were removed (99 observations).
-NOTE: 99/4 fixed-effect singletons were removed (103 observations).
-NOTE: 66/0 fixed-effect singletons were removed (66 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 148/0 fixed-effect singletons were removed (148 observations).
-NOTE: 237/2 fixed-effect singletons were removed (239 observations).
-NOTE: 71/0 fixed-effect singletons were removed (71 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 45/1 fixed-effect singletons were removed (46 observations).
-NOTE: 54/0 fixed-effect singletons were removed (54 observations).
-NOTE: 16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 55/0 fixed-effect singletons were removed (55 observations).
-NOTE: 92/0 fixed-effect singletons were removed (92 observations).
-NOTE: 144/1 fixed-effect singletons were removed (145 observations).
-NOTE: 43/0 fixed-effect singletons were removed (43 observations).
-NOTE: 117/0 fixed-effect singletons were removed (117 observations).
-NOTE: 33/0 fixed-effect singletons were removed (33 observations).
-NOTE: 118/0 fixed-effect singletons were removed (118 observations).
-NOTE: 56/1 fixed-effect singletons were removed (56 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 100/0 fixed-effect singletons were removed (100 observations).
-NOTE: 27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 69/0 fixed-effect singletons were removed (69 observations).
-NOTE: 67/0 fixed-effect singletons were removed (67 observations).
-NOTE: 260/0 fixed-effect singletons were removed (260 observations).
-NOTE: 51/0 fixed-effect singletons were removed (51 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/19/1 fixed-effect singletons were removed (20 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 16/8 fixed-effect singletons were removed (24 observations).
-NOTE: 25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 17/3 fixed-effect singletons were removed (20 observations).
-NOTE: 23/1 fixed-effect singletons were removed (24 observations).
-NOTE: 60/0 fixed-effect singletons were removed (60 observations).
-NOTE: 87/1 fixed-effect singletons were removed (88 observations).
-NOTE: 92/0 fixed-effect singletons were removed (92 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 44/0 fixed-effect singletons were removed (44 observations).
-NOTE: 11/1 fixed-effect singletons were removed (12 observations).
-NOTE: 23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 118/0 fixed-effect singletons were removed (118 observations).
-NOTE: 93/0 fixed-effect singletons were removed (93 observations).
-NOTE: 43/0 fixed-effect singletons were removed (43 observations).
-NOTE: 43/1 fixed-effect singletons were removed (44 observations).
-NOTE: 22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 66/1 fixed-effect singletons were removed (67 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 74/0 fixed-effect singletons were removed (74 observations).
-NOTE: 107/0 fixed-effect singletons were removed (107 observations).
-NOTE: 29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 28/3 fixed-effect singletons were removed (31 observations).
-NOTE: 42/0 fixed-effect singletons were removed (42 observations).
-NOTE: 40/0 fixed-effect singletons were removed (40 observations).
-NOTE: 93/3 fixed-effect singletons were removed (96 observations).
-NOTE: 45/0 fixed-effect singletons were removed (45 observations).
-NOTE: 61/5 fixed-effect singletons were removed (66 observations).
-NOTE: 67/0 fixed-effect singletons were removed (67 observations).
-NOTE: 21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 50/2 fixed-effect singletons were removed (52 observations).
-NOTE: 47/0 fixed-effect singletons were removed (47 observations).
-NOTE: 15/1 fixed-effect singletons were removed (16 observations).
-NOTE: 114/5 fixed-effect singletons were removed (119 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 101/0 fixed-effect singletons were removed (101 observations).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 1/1 fixed-effect singletons were removed (2 observations).
-NOTE: 92/1 fixed-effect singletons were removed (93 observations).
-NOTE: 98/4 fixed-effect singletons were removed (102 observations).
-NOTE: 53/0 fixed-effect singletons were removed (53 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 98/0 fixed-effect singletons were removed (98 observations).
-NOTE: 209/1 fixed-effect singletons were removed (210 observations).
-NOTE: 61/0 fixed-effect singletons were removed (61 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 41/1 fixed-effect singletons were removed (42 observations).
-NOTE: 46/0 fixed-effect singletons were removed (46 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 52/0 fixed-effect singletons were removed (52 observations).
-NOTE: 82/0 fixed-effect singletons were removed (82 observations).
-NOTE: 129/1 fixed-effect singletons were removed (130 observations).
-NOTE: 32/0 fixed-effect singletons were removed (32 observations).
-NOTE: 76/0 fixed-effect singletons were removed (76 observations).
-NOTE: 21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 98/0 fixed-effect singletons were removed (98 observations).
-NOTE: 49/1 fixed-effect singletons were removed (49 observations).
-NOTE: 20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 66/0 fixed-effect singletons were removed (66 observations).
-NOTE: 21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 60/0 fixed-effect singletons were removed (60 observations).
-NOTE: 57/0 fixed-effect singletons were removed (57 observations).
-NOTE: 189/0 fixed-effect singletons were removed (189 observations).
-NOTE: 47/0 fixed-effect singletons were removed (47 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/15/1 fixed-effect singletons were removed (16 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/30/0 fixed-effect singletons were removed (30 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/19/1 fixed-effect singletons were removed (20 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/28/0 fixed-effect singletons were removed (28 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/28/0 fixed-effect singletons were removed (28 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 7/3 fixed-effect singletons were removed (10 observations).
-NOTE: 20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 43/0 fixed-effect singletons were removed (43 observations).
-NOTE: 58/0 fixed-effect singletons were removed (58 observations).
-NOTE: 75/0 fixed-effect singletons were removed (75 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 59/0 fixed-effect singletons were removed (59 observations).
-NOTE: 58/0 fixed-effect singletons were removed (58 observations).
-NOTE: 23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 36/1 fixed-effect singletons were removed (37 observations).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 52/1 fixed-effect singletons were removed (53 observations).
-NOTE: 19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 48/0 fixed-effect singletons were removed (48 observations).
-NOTE: 73/0 fixed-effect singletons were removed (73 observations).
-NOTE: 17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 27/3 fixed-effect singletons were removed (30 observations).
-NOTE: 21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 38/0 fixed-effect singletons were removed (38 observations).
-NOTE: 78/3 fixed-effect singletons were removed (81 observations).
-NOTE: 21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 34/3 fixed-effect singletons were removed (37 observations).
-NOTE: 40/0 fixed-effect singletons were removed (40 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 42/2 fixed-effect singletons were removed (44 observations).
-NOTE: 43/0 fixed-effect singletons were removed (43 observations).
-NOTE: 7/1 fixed-effect singletons were removed (8 observations).
-NOTE: 78/5 fixed-effect singletons were removed (83 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 70/0 fixed-effect singletons were removed (70 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 1/1 fixed-effect singletons were removed (2 observations).
-NOTE: 67/0 fixed-effect singletons were removed (67 observations).
-NOTE: 96/4 fixed-effect singletons were removed (100 observations).
-NOTE: 17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 64/0 fixed-effect singletons were removed (64 observations).
-NOTE: 156/1 fixed-effect singletons were removed (157 observations).
-NOTE: 41/0 fixed-effect singletons were removed (41 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 31/1 fixed-effect singletons were removed (32 observations).
-NOTE: 17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 48/0 fixed-effect singletons were removed (48 observations).
-NOTE: 64/0 fixed-effect singletons were removed (64 observations).
-NOTE: 112/1 fixed-effect singletons were removed (113 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 55/0 fixed-effect singletons were removed (55 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 70/0 fixed-effect singletons were removed (70 observations).
-NOTE: 39/0 fixed-effect singletons were removed (39 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 42/0 fixed-effect singletons were removed (42 observations).
-NOTE: 34/0 fixed-effect singletons were removed (34 observations).
-NOTE: 153/0 fixed-effect singletons were removed (153 observations).
-NOTE: 33/0 fixed-effect singletons were removed (33 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 0/24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/36/0 fixed-effect singletons were removed (36 observations).
-NOTE: 1/2 fixed-effect singletons were removed (3 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 39/0 fixed-effect singletons were removed (39 observations).
-NOTE: 29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 40/0 fixed-effect singletons were removed (40 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 33/0 fixed-effect singletons were removed (33 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 20/1 fixed-effect singletons were removed (21 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 41/1 fixed-effect singletons were removed (42 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 35/0 fixed-effect singletons were removed (35 observations).
-NOTE: 47/0 fixed-effect singletons were removed (47 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 16/1 fixed-effect singletons were removed (17 observations).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 62/3 fixed-effect singletons were removed (65 observations).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 21/1 fixed-effect singletons were removed (22 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 25/2 fixed-effect singletons were removed (27 observations).
-NOTE: 17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 7/1 fixed-effect singletons were removed (8 observations).
-NOTE: 47/4 fixed-effect singletons were removed (51 observations).
-NOTE: 40/0 fixed-effect singletons were removed (40 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 43/0 fixed-effect singletons were removed (43 observations).
-NOTE: 84/4 fixed-effect singletons were removed (88 observations).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 45/0 fixed-effect singletons were removed (45 observations).
-NOTE: 85/1 fixed-effect singletons were removed (86 observations).
-NOTE: 22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 23/1 fixed-effect singletons were removed (24 observations).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 34/0 fixed-effect singletons were removed (34 observations).
-NOTE: 49/0 fixed-effect singletons were removed (49 observations).
-NOTE: 64/1 fixed-effect singletons were removed (65 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 37/0 fixed-effect singletons were removed (37 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 34/0 fixed-effect singletons were removed (34 observations).
-NOTE: 34/0 fixed-effect singletons were removed (34 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 131/0 fixed-effect singletons were removed (131 observations).
-NOTE: 26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/32/0 fixed-effect singletons were removed (32 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/38/0 fixed-effect singletons were removed (38 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/4/1 fixed-effect singletons were removed (5 observations).
-NOTE: 0/32/0 fixed-effect singletons were removed (32 observations).
-NOTE: 0/23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 0/31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 13/1 fixed-effect singletons were removed (14 observations).
-NOTE: 24/1 fixed-effect singletons were removed (25 observations).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 20/1 fixed-effect singletons were removed (21 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 10/1 fixed-effect singletons were removed (11 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 4/1 fixed-effect singletons were removed (5 observations).
-NOTE: 22/1 fixed-effect singletons were removed (23 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 49/3 fixed-effect singletons were removed (52 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 28/0 fixed-effect singletons were removed (28 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 87/0 fixed-effect singletons were removed (87 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/19/1 fixed-effect singletons were removed (20 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 21/8 fixed-effect singletons were removed (29 observations).
-NOTE: 28/0 fixed-effect singletons were removed (28 observations).
-NOTE: 17/4 fixed-effect singletons were removed (21 observations).
-NOTE: 27/1 fixed-effect singletons were removed (28 observations).
-NOTE: 89/0 fixed-effect singletons were removed (89 observations).
-NOTE: 89/3 fixed-effect singletons were removed (92 observations).
-NOTE: 138/1 fixed-effect singletons were removed (139 observations).
-NOTE: 27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 62/0 fixed-effect singletons were removed (62 observations).
-NOTE: 23/1 fixed-effect singletons were removed (24 observations).
-NOTE: 27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 130/0 fixed-effect singletons were removed (130 observations).
-NOTE: 112/1 fixed-effect singletons were removed (113 observations).
-NOTE: 52/0 fixed-effect singletons were removed (52 observations).
-NOTE: 43/1 fixed-effect singletons were removed (44 observations).
-NOTE: 22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 72/1 fixed-effect singletons were removed (73 observations).
-NOTE: 26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 93/0 fixed-effect singletons were removed (93 observations).
-NOTE: 123/0 fixed-effect singletons were removed (123 observations).
-NOTE: 35/0 fixed-effect singletons were removed (35 observations).
-NOTE: 30/3 fixed-effect singletons were removed (33 observations).
-NOTE: 45/0 fixed-effect singletons were removed (45 observations).
-NOTE: 49/0 fixed-effect singletons were removed (49 observations).
-NOTE: 101/3 fixed-effect singletons were removed (104 observations).
-NOTE: 52/0 fixed-effect singletons were removed (52 observations).
-NOTE: 61/5 fixed-effect singletons were removed (66 observations).
-NOTE: 71/0 fixed-effect singletons were removed (71 observations).
-NOTE: 25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 40/0 fixed-effect singletons were removed (40 observations).
-NOTE: 53/2 fixed-effect singletons were removed (55 observations).
-NOTE: 49/0 fixed-effect singletons were removed (49 observations).
-NOTE: 35/1 fixed-effect singletons were removed (36 observations).
-NOTE: 131/5 fixed-effect singletons were removed (136 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 112/0 fixed-effect singletons were removed (112 observations).
-NOTE: 19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 33/0 fixed-effect singletons were removed (33 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 1/1 fixed-effect singletons were removed (2 observations).
-NOTE: 99/2 fixed-effect singletons were removed (101 observations).
-NOTE: 99/4 fixed-effect singletons were removed (103 observations).
-NOTE: 63/0 fixed-effect singletons were removed (63 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 149/0 fixed-effect singletons were removed (149 observations).
-NOTE: 236/2 fixed-effect singletons were removed (238 observations).
-NOTE: 72/0 fixed-effect singletons were removed (72 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 45/1 fixed-effect singletons were removed (46 observations).
-NOTE: 54/0 fixed-effect singletons were removed (54 observations).
-NOTE: 16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 53/0 fixed-effect singletons were removed (53 observations).
-NOTE: 92/0 fixed-effect singletons were removed (92 observations).
-NOTE: 137/1 fixed-effect singletons were removed (138 observations).
-NOTE: 42/0 fixed-effect singletons were removed (42 observations).
-NOTE: 118/0 fixed-effect singletons were removed (118 observations).
-NOTE: 33/0 fixed-effect singletons were removed (33 observations).
-NOTE: 119/0 fixed-effect singletons were removed (119 observations).
-NOTE: 56/1 fixed-effect singletons were removed (56 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 100/0 fixed-effect singletons were removed (100 observations).
-NOTE: 22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 63/0 fixed-effect singletons were removed (63 observations).
-NOTE: 66/0 fixed-effect singletons were removed (66 observations).
-NOTE: 261/0 fixed-effect singletons were removed (261 observations).
-NOTE: 51/0 fixed-effect singletons were removed (51 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/19/1 fixed-effect singletons were removed (20 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/28/0 fixed-effect singletons were removed (28 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 16/8 fixed-effect singletons were removed (24 observations).
-NOTE: 25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 17/4 fixed-effect singletons were removed (21 observations).
-NOTE: 23/1 fixed-effect singletons were removed (24 observations).
-NOTE: 60/0 fixed-effect singletons were removed (60 observations).
-NOTE: 86/3 fixed-effect singletons were removed (89 observations).
-NOTE: 92/0 fixed-effect singletons were removed (92 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 44/0 fixed-effect singletons were removed (44 observations).
-NOTE: 11/1 fixed-effect singletons were removed (12 observations).
-NOTE: 20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 119/0 fixed-effect singletons were removed (119 observations).
-NOTE: 93/1 fixed-effect singletons were removed (94 observations).
-NOTE: 44/0 fixed-effect singletons were removed (44 observations).
-NOTE: 43/1 fixed-effect singletons were removed (44 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 66/1 fixed-effect singletons were removed (67 observations).
-NOTE: 26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 74/0 fixed-effect singletons were removed (74 observations).
-NOTE: 107/0 fixed-effect singletons were removed (107 observations).
-NOTE: 29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 30/3 fixed-effect singletons were removed (33 observations).
-NOTE: 43/0 fixed-effect singletons were removed (43 observations).
-NOTE: 40/0 fixed-effect singletons were removed (40 observations).
-NOTE: 93/3 fixed-effect singletons were removed (96 observations).
-NOTE: 45/0 fixed-effect singletons were removed (45 observations).
-NOTE: 61/5 fixed-effect singletons were removed (66 observations).
-NOTE: 67/0 fixed-effect singletons were removed (67 observations).
-NOTE: 21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 49/2 fixed-effect singletons were removed (51 observations).
-NOTE: 48/0 fixed-effect singletons were removed (48 observations).
-NOTE: 15/1 fixed-effect singletons were removed (16 observations).
-NOTE: 113/5 fixed-effect singletons were removed (118 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 102/0 fixed-effect singletons were removed (102 observations).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 1/1 fixed-effect singletons were removed (2 observations).
-NOTE: 93/2 fixed-effect singletons were removed (95 observations).
-NOTE: 98/4 fixed-effect singletons were removed (102 observations).
-NOTE: 50/0 fixed-effect singletons were removed (50 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 99/0 fixed-effect singletons were removed (99 observations).
-NOTE: 208/1 fixed-effect singletons were removed (209 observations).
-NOTE: 62/0 fixed-effect singletons were removed (62 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 41/1 fixed-effect singletons were removed (42 observations).
-NOTE: 46/0 fixed-effect singletons were removed (46 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 50/0 fixed-effect singletons were removed (50 observations).
-NOTE: 82/0 fixed-effect singletons were removed (82 observations).
-NOTE: 123/1 fixed-effect singletons were removed (124 observations).
-NOTE: 31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 76/0 fixed-effect singletons were removed (76 observations).
-NOTE: 21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 99/0 fixed-effect singletons were removed (99 observations).
-NOTE: 49/1 fixed-effect singletons were removed (49 observations).
-NOTE: 20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 66/0 fixed-effect singletons were removed (66 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 54/0 fixed-effect singletons were removed (54 observations).
-NOTE: 56/0 fixed-effect singletons were removed (56 observations).
-NOTE: 190/0 fixed-effect singletons were removed (190 observations).
-NOTE: 47/0 fixed-effect singletons were removed (47 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/15/1 fixed-effect singletons were removed (16 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/30/0 fixed-effect singletons were removed (30 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/19/1 fixed-effect singletons were removed (20 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/28/0 fixed-effect singletons were removed (28 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 0/28/0 fixed-effect singletons were removed (28 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 7/3 fixed-effect singletons were removed (10 observations).
-NOTE: 20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 43/0 fixed-effect singletons were removed (43 observations).
-NOTE: 55/1 fixed-effect singletons were removed (56 observations).
-NOTE: 75/0 fixed-effect singletons were removed (75 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 60/0 fixed-effect singletons were removed (60 observations).
-NOTE: 57/0 fixed-effect singletons were removed (57 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 36/1 fixed-effect singletons were removed (37 observations).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 52/1 fixed-effect singletons were removed (53 observations).
-NOTE: 20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 48/0 fixed-effect singletons were removed (48 observations).
-NOTE: 73/0 fixed-effect singletons were removed (73 observations).
-NOTE: 17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 29/3 fixed-effect singletons were removed (32 observations).
-NOTE: 22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 38/0 fixed-effect singletons were removed (38 observations).
-NOTE: 78/3 fixed-effect singletons were removed (81 observations).
-NOTE: 21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 34/3 fixed-effect singletons were removed (37 observations).
-NOTE: 40/0 fixed-effect singletons were removed (40 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 41/2 fixed-effect singletons were removed (43 observations).
-NOTE: 44/0 fixed-effect singletons were removed (44 observations).
-NOTE: 7/1 fixed-effect singletons were removed (8 observations).
-NOTE: 81/5 fixed-effect singletons were removed (86 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 71/0 fixed-effect singletons were removed (71 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 1/1 fixed-effect singletons were removed (2 observations).
-NOTE: 67/1 fixed-effect singletons were removed (68 observations).
-NOTE: 96/4 fixed-effect singletons were removed (100 observations).
-NOTE: 16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 65/0 fixed-effect singletons were removed (65 observations).
-NOTE: 155/1 fixed-effect singletons were removed (156 observations).
-NOTE: 41/0 fixed-effect singletons were removed (41 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 31/1 fixed-effect singletons were removed (32 observations).
-NOTE: 17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 46/0 fixed-effect singletons were removed (46 observations).
-NOTE: 64/0 fixed-effect singletons were removed (64 observations).
-NOTE: 106/1 fixed-effect singletons were removed (107 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 55/0 fixed-effect singletons were removed (55 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 71/0 fixed-effect singletons were removed (71 observations).
-NOTE: 39/0 fixed-effect singletons were removed (39 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 37/0 fixed-effect singletons were removed (37 observations).
-NOTE: 34/0 fixed-effect singletons were removed (34 observations).
-NOTE: 154/0 fixed-effect singletons were removed (154 observations).
-NOTE: 33/0 fixed-effect singletons were removed (33 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 0/24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/28/0 fixed-effect singletons were removed (28 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 0/36/0 fixed-effect singletons were removed (36 observations).
-NOTE: 1/2 fixed-effect singletons were removed (3 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 39/0 fixed-effect singletons were removed (39 observations).
-NOTE: 27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 40/0 fixed-effect singletons were removed (40 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 32/0 fixed-effect singletons were removed (32 observations).
-NOTE: 16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 20/1 fixed-effect singletons were removed (21 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 41/1 fixed-effect singletons were removed (42 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 35/0 fixed-effect singletons were removed (35 observations).
-NOTE: 47/0 fixed-effect singletons were removed (47 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 16/1 fixed-effect singletons were removed (17 observations).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 62/3 fixed-effect singletons were removed (65 observations).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 21/1 fixed-effect singletons were removed (22 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 20/2 fixed-effect singletons were removed (22 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 7/1 fixed-effect singletons were removed (8 observations).
-NOTE: 46/4 fixed-effect singletons were removed (50 observations).
-NOTE: 40/0 fixed-effect singletons were removed (40 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 42/1 fixed-effect singletons were removed (43 observations).
-NOTE: 84/4 fixed-effect singletons were removed (88 observations).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 45/0 fixed-effect singletons were removed (45 observations).
-NOTE: 85/1 fixed-effect singletons were removed (86 observations).
-NOTE: 22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 23/1 fixed-effect singletons were removed (24 observations).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 32/0 fixed-effect singletons were removed (32 observations).
-NOTE: 49/0 fixed-effect singletons were removed (49 observations).
-NOTE: 61/1 fixed-effect singletons were removed (62 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 37/0 fixed-effect singletons were removed (37 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 34/0 fixed-effect singletons were removed (34 observations).
-NOTE: 34/0 fixed-effect singletons were removed (34 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 132/0 fixed-effect singletons were removed (132 observations).
-NOTE: 26/0 fixed-effect singletons were removed (26 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/32/0 fixed-effect singletons were removed (32 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/38/0 fixed-effect singletons were removed (38 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 0/17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 0/19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 0/31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/15/0 fixed-effect singletons were removed (15 observations).
-NOTE: 0/4/1 fixed-effect singletons were removed (5 observations).
-NOTE: 0/32/0 fixed-effect singletons were removed (32 observations).
-NOTE: 0/23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/20/0 fixed-effect singletons were removed (20 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/24/0 fixed-effect singletons were removed (24 observations).
-NOTE: 0/18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 0/27/0 fixed-effect singletons were removed (27 observations).
-NOTE: 0/2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 0/21/0 fixed-effect singletons were removed (21 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 0/7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 0/4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 0/10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 0/13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 0/9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 0/16/0 fixed-effect singletons were removed (16 observations).
-NOTE: 0/14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 0/22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 0/31/0 fixed-effect singletons were removed (31 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 7/0 fixed-effect singletons were removed (7 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 13/1 fixed-effect singletons were removed (14 observations).
-NOTE: 24/1 fixed-effect singletons were removed (25 observations).
-NOTE: 8/0 fixed-effect singletons were removed (8 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 23/0 fixed-effect singletons were removed (23 observations).
-NOTE: 19/0 fixed-effect singletons were removed (19 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 13/0 fixed-effect singletons were removed (13 observations).
-NOTE: 20/1 fixed-effect singletons were removed (21 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 5/0 fixed-effect singletons were removed (5 observations).
-NOTE: 6/1 fixed-effect singletons were removed (7 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 4/1 fixed-effect singletons were removed (5 observations).
-NOTE: 22/1 fixed-effect singletons were removed (23 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 10/0 fixed-effect singletons were removed (10 observations).
-NOTE: 49/3 fixed-effect singletons were removed (52 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 25/0 fixed-effect singletons were removed (25 observations).
-NOTE: 28/0 fixed-effect singletons were removed (28 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 11/0 fixed-effect singletons were removed (11 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 22/0 fixed-effect singletons were removed (22 observations).
-NOTE: 29/0 fixed-effect singletons were removed (29 observations).
-NOTE: 17/0 fixed-effect singletons were removed (17 observations).
-NOTE: 4/0 fixed-effect singletons were removed (4 observations).
-NOTE: 18/0 fixed-effect singletons were removed (18 observations).
-NOTE: 1/0 fixed-effect singleton was removed (1 observation).
-NOTE: 9/0 fixed-effect singletons were removed (9 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 6/0 fixed-effect singletons were removed (6 observations).
-NOTE: 3/0 fixed-effect singletons were removed (3 observations).
-NOTE: 2/0 fixed-effect singletons were removed (2 observations).
-NOTE: 12/0 fixed-effect singletons were removed (12 observations).
-NOTE: 87/0 fixed-effect singletons were removed (87 observations).
-NOTE: 14/0 fixed-effect singletons were removed (14 observations).
+> zz <- zz[is.finite(seEl) & seEl > 0]
+> 
+> # true cross-ZIP variance of elasticity (within CBSA), method of moments; weights
+> zz[, tau2 := max(0, var(elast - ave(elast, CBSACode)) - mean(seEl^2)), by = .(lot, thr)]
+> zz[, `:=`(wIv = 1 / seEl^2, wRe = 1 / (seEl^2 + tau2))]
+> 
+> # distribution of ZIP elasticities and their precision; rel = signal share of cross-ZIP variance
+> zz[, c(as.list(quantile(elast, c(.01, .1, .25, .5, .75, .9, .99))),
++        .(medSe = median(seEl), shareOut = mean(elast < 0 | elast > 1.5),
++          tau = sqrt(tau2[1]), rel = tau2[1] / (tau2[1] + mean(seEl^2)))), keyby = .(lot, thr)]
+Key: <lot, thr>
+       lot   thr         1%       10%       25%       50%       75%       90%
+    <lgcl> <num>      <num>     <num>     <num>     <num>     <num>     <num>
+ 1:  FALSE   0.0 0.22770502 0.4539658 0.5908770 0.7451730 0.9139706 1.0821384
+ 2:  FALSE   0.5 0.22669717 0.4697029 0.6003285 0.7471866 0.9050122 1.0674853
+ 3:  FALSE   0.7 0.19327509 0.4804074 0.6007550 0.7356618 0.8891124 1.0442403
+ 4:  FALSE   0.8 0.15658520 0.4714794 0.5922174 0.7245085 0.8797704 1.0232477
+ 5:  FALSE   0.9 0.07392371 0.4615212 0.5625069 0.6938620 0.8400827 0.9799179
+ 6:   TRUE   0.0 0.22763688 0.4524116 0.5888684 0.7450556 0.9124807 1.0793288
+ 7:   TRUE   0.5 0.22662962 0.4683011 0.5991616 0.7461348 0.9036085 1.0651578
+ 8:   TRUE   0.7 0.20796462 0.4775627 0.6004621 0.7367636 0.8872501 1.0433819
+ 9:   TRUE   0.8 0.15532948 0.4698105 0.5897922 0.7261216 0.8740623 1.0219209
+10:   TRUE   0.9 0.07370946 0.4585451 0.5636072 0.6973529 0.8377830 0.9807975
+         99%      medSe    shareOut       tau       rel
+       <num>      <num>       <num>     <num>     <num>
+ 1: 1.494975 0.04276947 0.012413512 0.1914200 0.7684918
+ 2: 1.410767 0.04335207 0.008910891 0.1744621 0.7270425
+ 3: 1.378523 0.05312142 0.008810573 0.1630833 0.6527303
+ 4: 1.368557 0.06219240 0.009776536 0.1546333 0.5908936
+ 5: 1.280333 0.07458287 0.005484461 0.1352130 0.5012331
+ 6: 1.512071 0.04332342 0.013276144 0.1919022 0.7660954
+ 7: 1.404189 0.04406292 0.009691849 0.1745899 0.7232334
+ 8: 1.373275 0.05384470 0.008450704 0.1620839 0.6483613
+ 9: 1.343184 0.06272355 0.009129213 0.1532797 0.5850437
+10: 1.280739 0.07476779 0.005514706 0.1357532 0.5026829
+> 
+> ggplot(zz[lot == TRUE], aes(elast)) + geom_histogram(bins = 60) + facet_wrap(~thr, scales = "free_y") +
++   coord_cartesian(xlim = c(-0.5, 2)) + labs(x = "ZIP size elasticity", y = "ZIPs")
+> ggsave("text/attomZipElastHist.pdf", width = 8, height = 5)
+> 
+> # two level measures: hedonic ZIP FE (size-adjusted) vs median log ppsf (Vancouver definition)
+> zl <- melt(zz, measure.vars = c("lev", "levP"), variable.name = "meas", value.name = "lv")
+> zl[, meas := fifelse(meas == "lev", "hedonic FE", "median ppsf")]
 > 
 > # within-CBSA correlations
-> res <- zz[, if (.N >= minZip) .(nZip = .N, pearson = cor(lev, elast),
-+                                 spearman = cor(lev, elast, method = "spearman")), by = .(thr, lot, CBSACode)]
+> res <- zl[, if (.N >= minZip) .(nZip = .N, pearson = cor(lv, elast),
++                                 spearman = cor(lv, elast, method = "spearman")), by = .(meas, thr, lot, CBSACode)]
 > res[, .(cbsas = .N, zips = sum(nZip), medPearson = median(pearson), medSpearman = median(spearman),
-+         sharePos = mean(spearman > 0)), keyby = .(lot, thr)]
-Key: <lot, thr>
-       lot   thr cbsas  zips   medPearson medSpearman  sharePos
-    <lgcl> <num> <int> <int>        <num>       <num>     <num>
- 1:  FALSE   0.0    60  4902 -0.007172916  0.05983720 0.6500000
- 2:  FALSE   0.5    59  4023  0.029658891  0.06538462 0.5762712
- 3:  FALSE   0.7    52  2445  0.041050312  0.08755500 0.6923077
- 4:  FALSE   0.8    39  1323  0.041874176  0.08074534 0.6666667
- 5:  FALSE   0.9    19   421  0.019252178  0.11515152 0.5789474
- 6:   TRUE   0.0    60  4884  0.010920531  0.04938902 0.6166667
- 7:   TRUE   0.5    59  4007  0.004719176  0.04898374 0.5423729
- 8:   TRUE   0.7    52  2434  0.048512901  0.03829910 0.5576923
- 9:   TRUE   0.8    39  1316  0.059878825  0.04805195 0.6410256
-10:   TRUE   0.9    19   420  0.009740559  0.11515152 0.5789474
++         sharePos = mean(spearman > 0)), keyby = .(meas, lot, thr)]
+Key: <meas, lot, thr>
+           meas    lot   thr cbsas  zips   medPearson medSpearman  sharePos
+         <char> <lgcl> <num> <int> <int>        <num>       <num>     <num>
+ 1:  hedonic FE  FALSE   0.0    60  4902 -0.007172927  0.05983720 0.6500000
+ 2:  hedonic FE  FALSE   0.5    59  4023  0.029658890  0.06538462 0.5762712
+ 3:  hedonic FE  FALSE   0.7    52  2445  0.041050321  0.08755500 0.6923077
+ 4:  hedonic FE  FALSE   0.8    39  1323  0.041874135  0.08074534 0.6666667
+ 5:  hedonic FE  FALSE   0.9    19   421  0.019251851  0.11515152 0.5789474
+ 6:  hedonic FE   TRUE   0.0    60  4884  0.010920543  0.04938902 0.6166667
+ 7:  hedonic FE   TRUE   0.5    59  4007  0.004719181  0.04898374 0.5423729
+ 8:  hedonic FE   TRUE   0.7    52  2434  0.048512914  0.03829910 0.5576923
+ 9:  hedonic FE   TRUE   0.8    39  1316  0.059878940  0.04805195 0.6410256
+10:  hedonic FE   TRUE   0.9    19   420  0.009740511  0.11515152 0.5789474
+11: median ppsf  FALSE   0.0    60  4902 -0.042130871  0.01679674 0.5666667
+12: median ppsf  FALSE   0.5    59  4023 -0.027289187  0.01069519 0.5084746
+13: median ppsf  FALSE   0.7    52  2445  0.006677008  0.06195118 0.6346154
+14: median ppsf  FALSE   0.8    39  1323  0.066204288  0.10784867 0.5641026
+15: median ppsf  FALSE   0.9    19   421  0.044650985  0.06816938 0.5789474
+16: median ppsf   TRUE   0.0    60  4884 -0.034812262  0.01668452 0.5666667
+17: median ppsf   TRUE   0.5    59  4007 -0.002378130  0.01069519 0.5084746
+18: median ppsf   TRUE   0.7    52  2434  0.029222194  0.06375959 0.6538462
+19: median ppsf   TRUE   0.8    39  1316  0.074074532  0.09870130 0.5641026
+20: median ppsf   TRUE   0.9    19   420  0.070402020  0.07714192 0.5789474
+           meas    lot   thr cbsas  zips   medPearson medSpearman  sharePos
+> 
+> # ---- heterogeneity by CBSA size and CBSA price level ----
+> cb <- d[, .(lnN = log(.N), cbsaPpsf = median(lppsf)), by = CBSACode]  # size proxy: 2015-19 SFR sales
+> r2 <- res[cb, on = "CBSACode", nomatch = 0][nZip > 3][, `:=`(z = atanh(spearman), wz = nZip - 3)]
+> 
+> # meta-regression of Fisher-z within-CBSA correlations
+> het <- r2[, {m <- feols(z ~ lnN + cbsaPpsf, .SD, weights = ~wz, vcov = "hetero")
++              .(term = names(coef(m)), b = coef(m), se = se(m), cbsas = .N)}, keyby = .(meas, lot, thr)]
+> het
+Key: <meas, lot, thr>
+           meas    lot   thr        term            b         se cbsas
+         <char> <lgcl> <num>      <char>        <num>      <num> <int>
+ 1:  hedonic FE  FALSE   0.0 (Intercept) -0.619293014 0.64067013    60
+ 2:  hedonic FE  FALSE   0.0         lnN -0.063447300 0.05040961    60
+ 3:  hedonic FE  FALSE   0.0    cbsaPpsf  0.298286592 0.07937911    60
+ 4:  hedonic FE  FALSE   0.5 (Intercept) -0.668726637 0.80838648    59
+ 5:  hedonic FE  FALSE   0.5         lnN -0.041942046 0.05838093    59
+ 6:  hedonic FE  FALSE   0.5    cbsaPpsf  0.253071040 0.09236830    59
+ 7:  hedonic FE  FALSE   0.7 (Intercept) -0.769751511 0.99177547    52
+ 8:  hedonic FE  FALSE   0.7         lnN -0.004044695 0.07413082    52
+ 9:  hedonic FE  FALSE   0.7    cbsaPpsf  0.179405785 0.14596920    52
+10:  hedonic FE  FALSE   0.8 (Intercept) -0.661506213 1.27027813    39
+11:  hedonic FE  FALSE   0.8         lnN -0.034850018 0.09993162    39
+12:  hedonic FE  FALSE   0.8    cbsaPpsf  0.236648219 0.15826984    39
+13:  hedonic FE  FALSE   0.9 (Intercept)  0.218219780 2.89999120    19
+14:  hedonic FE  FALSE   0.9         lnN -0.131964318 0.24177661    19
+15:  hedonic FE  FALSE   0.9    cbsaPpsf  0.279677109 0.26551109    19
+16:  hedonic FE   TRUE   0.0 (Intercept) -0.593682557 0.64990731    60
+17:  hedonic FE   TRUE   0.0         lnN -0.052537624 0.05198835    60
+18:  hedonic FE   TRUE   0.0    cbsaPpsf  0.262301434 0.07837519    60
+19:  hedonic FE   TRUE   0.5 (Intercept) -0.618827032 0.84008612    59
+20:  hedonic FE   TRUE   0.5         lnN -0.030653121 0.06285660    59
+21:  hedonic FE   TRUE   0.5    cbsaPpsf  0.210841023 0.09273078    59
+22:  hedonic FE   TRUE   0.7 (Intercept) -0.946175152 1.04378983    52
+23:  hedonic FE   TRUE   0.7         lnN  0.023396634 0.07930342    52
+24:  hedonic FE   TRUE   0.7    cbsaPpsf  0.144413010 0.14307423    52
+25:  hedonic FE   TRUE   0.8 (Intercept) -1.008487253 1.34825962    39
+26:  hedonic FE   TRUE   0.8         lnN  0.012554976 0.10870927    39
+27:  hedonic FE   TRUE   0.8    cbsaPpsf  0.187680749 0.16348909    39
+28:  hedonic FE   TRUE   0.9 (Intercept) -0.816714101 3.07386104    19
+29:  hedonic FE   TRUE   0.9         lnN -0.047050180 0.25190005    19
+30:  hedonic FE   TRUE   0.9    cbsaPpsf  0.277480463 0.25754475    19
+31: median ppsf  FALSE   0.0 (Intercept) -0.285839449 0.55036649    60
+32: median ppsf  FALSE   0.0         lnN -0.072410662 0.04376477    60
+33: median ppsf  FALSE   0.0    cbsaPpsf  0.241744150 0.07719255    60
+34: median ppsf  FALSE   0.5 (Intercept) -0.349028377 0.67191584    59
+35: median ppsf  FALSE   0.5         lnN -0.050536086 0.05028135    59
+36: median ppsf  FALSE   0.5    cbsaPpsf  0.200586385 0.09062736    59
+37: median ppsf  FALSE   0.7 (Intercept) -0.383150185 0.69149837    52
+38: median ppsf  FALSE   0.7         lnN -0.016154518 0.05790357    52
+39: median ppsf  FALSE   0.7    cbsaPpsf  0.125883385 0.12972165    52
+40: median ppsf  FALSE   0.8 (Intercept) -0.506694027 0.92432010    39
+41: median ppsf  FALSE   0.8         lnN -0.034788952 0.08152757    39
+42: median ppsf  FALSE   0.8    cbsaPpsf  0.204900540 0.13402130    39
+43: median ppsf  FALSE   0.9 (Intercept) -0.463458893 1.96204970    19
+44: median ppsf  FALSE   0.9         lnN -0.086210943 0.16213706    19
+45: median ppsf  FALSE   0.9    cbsaPpsf  0.312662923 0.18152513    19
+46: median ppsf   TRUE   0.0 (Intercept) -0.273153538 0.55364525    60
+47: median ppsf   TRUE   0.0         lnN -0.073441104 0.04400921    60
+48: median ppsf   TRUE   0.0    cbsaPpsf  0.241380942 0.07748778    60
+49: median ppsf   TRUE   0.5 (Intercept) -0.296334981 0.67503269    59
+50: median ppsf   TRUE   0.5         lnN -0.054833692 0.05060188    59
+51: median ppsf   TRUE   0.5    cbsaPpsf  0.200265809 0.09079811    59
+52: median ppsf   TRUE   0.7 (Intercept) -0.308236966 0.69397415    52
+53: median ppsf   TRUE   0.7         lnN -0.023292051 0.05881087    52
+54: median ppsf   TRUE   0.7    cbsaPpsf  0.128512412 0.12931453    52
+55: median ppsf   TRUE   0.8 (Intercept) -0.422556561 0.95294544    39
+56: median ppsf   TRUE   0.8         lnN -0.044063722 0.08435923    39
+57: median ppsf   TRUE   0.8    cbsaPpsf  0.212083437 0.13117675    39
+58: median ppsf   TRUE   0.9 (Intercept) -0.053091073 2.15540230    19
+59: median ppsf   TRUE   0.9         lnN -0.124596119 0.18103417    19
+60: median ppsf   TRUE   0.9    cbsaPpsf  0.323856961 0.18532085    19
+           meas    lot   thr        term            b         se cbsas
+> 
+> # median correlation by CBSA price and size terciles (lot spec)
+> r2[lot == TRUE, `:=`(ppsfT = cut(cbsaPpsf, quantile(cbsaPpsf, 0:3 / 3), labels = c("cheap", "mid", "expensive"), include.lowest = TRUE),
++                     sizeT = cut(lnN, quantile(lnN, 0:3 / 3), labels = c("small", "mid", "big"), include.lowest = TRUE)),
++    by = .(meas, thr)]
+> dcast(r2[lot == TRUE, .(medSp = round(median(spearman), 3)), by = .(meas, thr, ppsfT)], meas + thr ~ ppsfT, value.var = "medSp")
+Key: <meas, thr>
+           meas   thr  cheap    mid expensive
+         <char> <num>  <num>  <num>     <num>
+ 1:  hedonic FE   0.0  0.015  0.031     0.223
+ 2:  hedonic FE   0.5 -0.040 -0.003     0.221
+ 3:  hedonic FE   0.7  0.028  0.004     0.097
+ 4:  hedonic FE   0.8  0.013  0.043     0.231
+ 5:  hedonic FE   0.9 -0.108  0.121     0.184
+ 6: median ppsf   0.0  0.001 -0.036     0.181
+ 7: median ppsf   0.5 -0.010 -0.031     0.145
+ 8: median ppsf   0.7  0.083  0.047     0.069
+ 9: median ppsf   0.8 -0.035  0.097     0.292
+10: median ppsf   0.9 -0.014  0.139     0.098
+> dcast(r2[lot == TRUE, .(medSp = round(median(spearman), 3)), by = .(meas, thr, sizeT)], meas + thr ~ sizeT, value.var = "medSp")
+Key: <meas, thr>
+           meas   thr  small    mid   big
+         <char> <num>  <num>  <num> <num>
+ 1:  hedonic FE   0.0  0.029  0.025 0.070
+ 2:  hedonic FE   0.5 -0.024  0.049 0.110
+ 3:  hedonic FE   0.7 -0.020  0.011 0.118
+ 4:  hedonic FE   0.8  0.051 -0.083 0.211
+ 5:  hedonic FE   0.9 -0.108  0.176 0.137
+ 6: median ppsf   0.0  0.012  0.029 0.013
+ 7: median ppsf   0.5 -0.029  0.039 0.013
+ 8: median ppsf   0.7  0.087  0.022 0.112
+ 9: median ppsf   0.8  0.109 -0.064 0.097
+10: median ppsf   0.9 -0.014  0.315 0.090
+> 
+> # pooled: level slope varying with CBSA ppsf and size (centred), CBSA FE, RE weights
+> zl <- zl[cb, on = "CBSACode", nomatch = 0][, `:=`(ppsfC = cbsaPpsf - mean(cbsaPpsf), lnNC = lnN - mean(lnN)), by = .(meas, lot, thr)]
+> hetP <- zl[, {m <- feols(elast ~ lv + lv:ppsfC + lv:lnNC | CBSACode, .SD, weights = ~wRe, cluster = ~CBSACode)
++               .(term = names(coef(m)), b = coef(m), se = se(m))}, keyby = .(meas, lot, thr)]
+> hetP
+Key: <meas, lot, thr>
+           meas    lot   thr     term            b         se
+         <char> <lgcl> <num>   <char>        <num>      <num>
+ 1:  hedonic FE  FALSE   0.0       lv  0.022922618 0.01693708
+ 2:  hedonic FE  FALSE   0.0 lv:ppsfC  0.130580136 0.03235884
+ 3:  hedonic FE  FALSE   0.0  lv:lnNC -0.040926656 0.02623442
+ 4:  hedonic FE  FALSE   0.5       lv  0.013032186 0.01725739
+ 5:  hedonic FE  FALSE   0.5 lv:ppsfC  0.092490747 0.03473371
+ 6:  hedonic FE  FALSE   0.5  lv:lnNC -0.015686139 0.02591029
+ 7:  hedonic FE  FALSE   0.7       lv  0.008269925 0.02067492
+ 8:  hedonic FE  FALSE   0.7 lv:ppsfC  0.077453451 0.04767074
+ 9:  hedonic FE  FALSE   0.7  lv:lnNC -0.003350530 0.03100653
+10:  hedonic FE  FALSE   0.8       lv  0.024941631 0.02647669
+11:  hedonic FE  FALSE   0.8 lv:ppsfC  0.104527102 0.04015594
+12:  hedonic FE  FALSE   0.8  lv:lnNC -0.016874743 0.03751954
+13:  hedonic FE  FALSE   0.9       lv  0.025423020 0.03859602
+14:  hedonic FE  FALSE   0.9 lv:ppsfC  0.137669508 0.06336596
+15:  hedonic FE  FALSE   0.9  lv:lnNC -0.039881347 0.08225366
+16:  hedonic FE   TRUE   0.0       lv  0.025696388 0.01800572
+17:  hedonic FE   TRUE   0.0 lv:ppsfC  0.107305711 0.03132113
+18:  hedonic FE   TRUE   0.0  lv:lnNC -0.036188866 0.02671711
+19:  hedonic FE   TRUE   0.5       lv  0.010272226 0.01804078
+20:  hedonic FE   TRUE   0.5 lv:ppsfC  0.075074642 0.03513324
+21:  hedonic FE   TRUE   0.5  lv:lnNC -0.011382521 0.02799423
+22:  hedonic FE   TRUE   0.7       lv  0.005224947 0.02096511
+23:  hedonic FE   TRUE   0.7 lv:ppsfC  0.064863372 0.04661877
+24:  hedonic FE   TRUE   0.7  lv:lnNC  0.004825908 0.03410907
+25:  hedonic FE   TRUE   0.8       lv  0.021865815 0.02835651
+26:  hedonic FE   TRUE   0.8 lv:ppsfC  0.086167558 0.04446633
+27:  hedonic FE   TRUE   0.8  lv:lnNC -0.005386711 0.04395147
+28:  hedonic FE   TRUE   0.9       lv  0.028432361 0.04092568
+29:  hedonic FE   TRUE   0.9 lv:ppsfC  0.120209746 0.06850508
+30:  hedonic FE   TRUE   0.9  lv:lnNC -0.024312443 0.09186273
+31: median ppsf  FALSE   0.0       lv -0.010401166 0.01435946
+32: median ppsf  FALSE   0.0 lv:ppsfC  0.125339008 0.03601433
+33: median ppsf  FALSE   0.0  lv:lnNC -0.038070862 0.02387390
+34: median ppsf  FALSE   0.5       lv -0.011248842 0.01511391
+35: median ppsf  FALSE   0.5 lv:ppsfC  0.086618870 0.04013585
+36: median ppsf  FALSE   0.5  lv:lnNC -0.018390860 0.01976352
+37: median ppsf  FALSE   0.7       lv -0.005844440 0.01864152
+38: median ppsf  FALSE   0.7 lv:ppsfC  0.071360042 0.04825046
+39: median ppsf  FALSE   0.7  lv:lnNC -0.004275825 0.02447728
+40: median ppsf  FALSE   0.8       lv  0.015608834 0.02259985
+41: median ppsf  FALSE   0.8 lv:ppsfC  0.112216599 0.03631553
+42: median ppsf  FALSE   0.8  lv:lnNC -0.007569563 0.03251158
+43: median ppsf  FALSE   0.9       lv  0.024934681 0.03351696
+44: median ppsf  FALSE   0.9 lv:ppsfC  0.164784695 0.05982420
+45: median ppsf  FALSE   0.9  lv:lnNC -0.042640137 0.06782522
+46: median ppsf   TRUE   0.0       lv -0.011500944 0.01472040
+47: median ppsf   TRUE   0.0 lv:ppsfC  0.125154620 0.03621337
+48: median ppsf   TRUE   0.0  lv:lnNC -0.038254171 0.02417996
+49: median ppsf   TRUE   0.5       lv -0.011651768 0.01552553
+50: median ppsf   TRUE   0.5 lv:ppsfC  0.086190909 0.04051455
+51: median ppsf   TRUE   0.5  lv:lnNC -0.018887755 0.02025665
+52: median ppsf   TRUE   0.7       lv -0.003108351 0.01881314
+53: median ppsf   TRUE   0.7 lv:ppsfC  0.070837500 0.04814542
+54: median ppsf   TRUE   0.7  lv:lnNC -0.005590866 0.02479379
+55: median ppsf   TRUE   0.8       lv  0.020064983 0.02300479
+56: median ppsf   TRUE   0.8 lv:ppsfC  0.111062476 0.03613242
+57: median ppsf   TRUE   0.8  lv:lnNC -0.010751959 0.03315665
+58: median ppsf   TRUE   0.9       lv  0.028490397 0.03562278
+59: median ppsf   TRUE   0.9 lv:ppsfC  0.163674209 0.06165877
+60: median ppsf   TRUE   0.9  lv:lnNC -0.050571028 0.07353431
+           meas    lot   thr     term            b         se
+> 
+> ggplot(r2[lot == TRUE & thr == 0], aes(cbsaPpsf, spearman, size = nZip)) +
++   geom_hline(yintercept = 0, linetype = 2) + geom_point(alpha = 0.6) +
++   geom_smooth(method = "lm", mapping = aes(weight = wz), se = FALSE, show.legend = FALSE) +
++   facet_wrap(~meas) + labs(x = "CBSA median log ppsf", y = "within-CBSA Spearman(level, elasticity)", size = "ZIPs")
+`geom_smooth()` using formula = 'y ~ x'
+Warning messages:
+1: Using `size` aesthetic for lines was deprecated in ggplot2 3.4.0.
+ℹ Please use `linewidth` instead. 
+2: The following aesthetics were dropped during statistical transformation: size.
+ℹ This can happen when ggplot fails to infer the correct grouping structure in
+  the data.
+ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
+  variable into a factor? 
+3: The following aesthetics were dropped during statistical transformation: size.
+ℹ This can happen when ggplot fails to infer the correct grouping structure in
+  the data.
+ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
+  variable into a factor? 
+> ggsave("text/attomCbsaHet.pdf", width = 8, height = 4)
+`geom_smooth()` using formula = 'y ~ x'
+Warning messages:
+1: The following aesthetics were dropped during statistical transformation: size.
+ℹ This can happen when ggplot fails to infer the correct grouping structure in
+  the data.
+ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
+  variable into a factor? 
+2: The following aesthetics were dropped during statistical transformation: size.
+ℹ This can happen when ggplot fails to infer the correct grouping structure in
+  the data.
+ℹ Did you forget to specify a `group` aesthetic or to convert a numerical
+  variable into a factor? 
 > 
 > # pooled slope of elasticity on level, CBSA FE
-> path <- zz[, {m0 <- feols(elast ~ lev | CBSACode, .SD, cluster = ~CBSACode)
-+               m1 <- feols(elast ~ lev | CBSACode, .SD, weights = ~n, cluster = ~CBSACode)
-+               .(wt = c("unweighted", "sales-weighted"), b = c(coef(m0), coef(m1)), se = c(se(m0), se(m1)),
-+                 cbsas = uniqueN(CBSACode), zips = .N)}, keyby = .(lot, thr)]
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 3 fixed-effect singletons were removed (3 observations).
-NOTE: 3 fixed-effect singletons were removed (3 observations).
-NOTE: 8 fixed-effect singletons were removed (8 observations).
-NOTE: 8 fixed-effect singletons were removed (8 observations).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 1 fixed-effect singleton was removed (1 observation).
-NOTE: 4 fixed-effect singletons were removed (4 observations).
-NOTE: 4 fixed-effect singletons were removed (4 observations).
-NOTE: 9 fixed-effect singletons were removed (9 observations).
-NOTE: 9 fixed-effect singletons were removed (9 observations).
+> path <- zl[, {ms <- lapply(list(NULL, ~n, ~wIv, ~wRe), \(w)
++                 feols(elast ~ lv | CBSACode, .SD, weights = w, cluster = ~CBSACode))
++               .(wt = c("unweighted", "sales", "inverse variance", "random effects"),
++                 b = sapply(ms, coef), se = sapply(ms, se), cbsas = uniqueN(CBSACode), zips = .N)},
++            keyby = .(meas, lot, thr)]
 > path[, spec := fifelse(lot, "with log lot", "no lot")]
 > path
-Key: <lot, thr>
-       lot   thr             wt            b         se cbsas  zips
-    <lgcl> <num>         <char>        <num>      <num> <int> <int>
- 1:  FALSE   0.0     unweighted  0.006622265 0.02117276    63  4914
- 2:  FALSE   0.0 sales-weighted  0.051599221 0.02419759    63  4914
- 3:  FALSE   0.5     unweighted -0.006693606 0.01993726    63  4040
- 4:  FALSE   0.5 sales-weighted  0.053280266 0.02425014    63  4040
- 5:  FALSE   0.7     unweighted -0.016501811 0.02531870    63  2497
- 6:  FALSE   0.7 sales-weighted  0.039215544 0.02847854    63  2497
- 7:  FALSE   0.8     unweighted -0.017561357 0.03601649    62  1432
- 8:  FALSE   0.8 sales-weighted  0.066188954 0.03089389    62  1432
- 9:  FALSE   0.9     unweighted -0.038041576 0.05740187    54   547
-10:  FALSE   0.9 sales-weighted  0.080783172 0.04245787    54   547
-11:   TRUE   0.0     unweighted  0.014263226 0.02130533    63  4896
-12:   TRUE   0.0 sales-weighted  0.053782418 0.02258341    63  4896
-13:   TRUE   0.5     unweighted -0.004560638 0.02045760    63  4024
-14:   TRUE   0.5 sales-weighted  0.051905124 0.02307442    63  4024
-15:   TRUE   0.7     unweighted -0.013895958 0.02549476    63  2485
-16:   TRUE   0.7 sales-weighted  0.038871451 0.02691572    63  2485
-17:   TRUE   0.8     unweighted -0.013302797 0.03699726    62  1424
-18:   TRUE   0.8 sales-weighted  0.065351628 0.03029188    62  1424
-19:   TRUE   0.9     unweighted -0.026246771 0.05558066    54   544
-20:   TRUE   0.9 sales-weighted  0.084745210 0.03595081    54   544
-       lot   thr             wt            b         se cbsas  zips
-    <lgcl> <num>         <char>        <num>      <num> <int> <int>
-            spec
-          <char>
- 1:       no lot
- 2:       no lot
- 3:       no lot
- 4:       no lot
- 5:       no lot
- 6:       no lot
- 7:       no lot
- 8:       no lot
- 9:       no lot
-10:       no lot
-11: with log lot
-12: with log lot
-13: with log lot
-14: with log lot
-15: with log lot
-16: with log lot
-17: with log lot
-18: with log lot
-19: with log lot
-20: with log lot
-            spec
-          <char>
+Key: <meas, lot, thr>
+           meas    lot   thr               wt            b         se cbsas
+         <char> <lgcl> <num>           <char>        <num>      <num> <int>
+ 1:  hedonic FE  FALSE   0.0       unweighted  0.006622268 0.02117000    63
+ 2:  hedonic FE  FALSE   0.0            sales  0.051599224 0.02419444    63
+ 3:  hedonic FE  FALSE   0.0 inverse variance  0.133335253 0.03614981    63
+ 4:  hedonic FE  FALSE   0.0   random effects  0.023821628 0.02264642    63
+ 5:  hedonic FE  FALSE   0.5       unweighted -0.006693591 0.01993467    63
+ 6:  hedonic FE  FALSE   0.5            sales  0.053280290 0.02424699    63
+ 7:  hedonic FE  FALSE   0.5 inverse variance  0.131202785 0.04250027    63
+ 8:  hedonic FE  FALSE   0.5   random effects  0.014785010 0.02169727    63
+ 9:  hedonic FE  FALSE   0.7       unweighted -0.016501797 0.02531541    63
+10:  hedonic FE  FALSE   0.7            sales  0.039215544 0.02847484    63
+11:  hedonic FE  FALSE   0.7 inverse variance  0.123360081 0.04617717    63
+12:  hedonic FE  FALSE   0.7   random effects  0.012414864 0.02467038    63
+13:  hedonic FE  FALSE   0.8       unweighted -0.017561350 0.03600145    62
+14:  hedonic FE  FALSE   0.8            sales  0.066188969 0.03088099    62
+15:  hedonic FE  FALSE   0.8 inverse variance  0.161365103 0.05661654    62
+16:  hedonic FE  FALSE   0.8   random effects  0.029620614 0.03102417    62
+17:  hedonic FE  FALSE   0.9       unweighted -0.038041587 0.05730683    54
+18:  hedonic FE  FALSE   0.9            sales  0.080783207 0.04238758    54
+19:  hedonic FE  FALSE   0.9 inverse variance  0.162270865 0.05715057    54
+20:  hedonic FE  FALSE   0.9   random effects  0.042921053 0.04924836    54
+21:  hedonic FE   TRUE   0.0       unweighted  0.014263221 0.02130256    63
+22:  hedonic FE   TRUE   0.0            sales  0.053782395 0.02258047    63
+23:  hedonic FE   TRUE   0.0 inverse variance  0.122777433 0.03431507    63
+24:  hedonic FE   TRUE   0.0   random effects  0.027890855 0.02230314    63
+25:  hedonic FE   TRUE   0.5       unweighted -0.004560633 0.02045493    63
+26:  hedonic FE   TRUE   0.5            sales  0.051905125 0.02307142    63
+27:  hedonic FE   TRUE   0.5 inverse variance  0.118646217 0.04098062    63
+28:  hedonic FE   TRUE   0.5   random effects  0.013206713 0.02217145    63
+29:  hedonic FE   TRUE   0.7       unweighted -0.013895944 0.02549144    63
+30:  hedonic FE   TRUE   0.7            sales  0.038871450 0.02691222    63
+31:  hedonic FE   TRUE   0.7 inverse variance  0.111580120 0.04363306    63
+32:  hedonic FE   TRUE   0.7   random effects  0.011213782 0.02517070    63
+33:  hedonic FE   TRUE   0.8       unweighted -0.013302803 0.03697630    62
+34:  hedonic FE   TRUE   0.8            sales  0.065351633 0.03027473    62
+35:  hedonic FE   TRUE   0.8 inverse variance  0.147086561 0.05480999    62
+36:  hedonic FE   TRUE   0.8   random effects  0.028802896 0.03318425    62
+37:  hedonic FE   TRUE   0.9       unweighted -0.026246776 0.05547484    54
+38:  hedonic FE   TRUE   0.9            sales  0.084745227 0.03588236    54
+39:  hedonic FE   TRUE   0.9 inverse variance  0.151816139 0.05149936    54
+40:  hedonic FE   TRUE   0.9   random effects  0.043806695 0.04949430    54
+41: median ppsf  FALSE   0.0       unweighted -0.032084240 0.01661580    63
+42: median ppsf  FALSE   0.0            sales  0.005156332 0.01983272    63
+43: median ppsf  FALSE   0.0 inverse variance  0.084066782 0.03032714    63
+44: median ppsf  FALSE   0.0   random effects -0.015987303 0.01803528    63
+45: median ppsf  FALSE   0.5       unweighted -0.035626711 0.01566157    63
+46: median ppsf  FALSE   0.5            sales  0.012667999 0.01921169    63
+47: median ppsf  FALSE   0.5 inverse variance  0.084347316 0.03694656    63
+48: median ppsf  FALSE   0.5   random effects -0.015658960 0.01615889    63
+49: median ppsf  FALSE   0.7       unweighted -0.037718299 0.02160529    63
+50: median ppsf  FALSE   0.7            sales  0.009749536 0.02579286    63
+51: median ppsf  FALSE   0.7 inverse variance  0.082785038 0.03766280    63
+52: median ppsf  FALSE   0.7   random effects -0.007799312 0.01960171    63
+53: median ppsf  FALSE   0.8       unweighted -0.037120458 0.03055138    62
+54: median ppsf  FALSE   0.8            sales  0.041211790 0.03047221    62
+55: median ppsf  FALSE   0.8 inverse variance  0.131888373 0.04847685    62
+56: median ppsf  FALSE   0.8   random effects  0.013381346 0.02538265    62
+57: median ppsf  FALSE   0.9       unweighted -0.056755344 0.05548322    54
+58: median ppsf  FALSE   0.9            sales  0.075287394 0.03803934    54
+59: median ppsf  FALSE   0.9 inverse variance  0.159426669 0.05591851    54
+60: median ppsf  FALSE   0.9   random effects  0.038031293 0.04198200    54
+61: median ppsf   TRUE   0.0       unweighted -0.032564117 0.01690552    63
+62: median ppsf   TRUE   0.0            sales  0.003502094 0.02015023    63
+63: median ppsf   TRUE   0.0 inverse variance  0.082285719 0.03052192    63
+64: median ppsf   TRUE   0.0   random effects -0.017177982 0.01838570    63
+65: median ppsf   TRUE   0.5       unweighted -0.034825300 0.01594857    63
+66: median ppsf   TRUE   0.5            sales  0.011604531 0.01962912    63
+67: median ppsf   TRUE   0.5 inverse variance  0.082876565 0.03723764    63
+68: median ppsf   TRUE   0.5   random effects -0.016106057 0.01658263    63
+69: median ppsf   TRUE   0.7       unweighted -0.034259707 0.02143724    63
+70: median ppsf   TRUE   0.7            sales  0.012051710 0.02614871    63
+71: median ppsf   TRUE   0.7 inverse variance  0.085444354 0.03785112    63
+72: median ppsf   TRUE   0.7   random effects -0.005143326 0.01976091    63
+73: median ppsf   TRUE   0.8       unweighted -0.029607279 0.02988877    62
+74: median ppsf   TRUE   0.8            sales  0.043862526 0.03041335    62
+75: median ppsf   TRUE   0.8 inverse variance  0.134981961 0.04891075    62
+76: median ppsf   TRUE   0.8   random effects  0.017530407 0.02554165    62
+77: median ppsf   TRUE   0.9       unweighted -0.053721465 0.05657770    54
+78: median ppsf   TRUE   0.9            sales  0.083255971 0.03584297    54
+79: median ppsf   TRUE   0.9 inverse variance  0.163700862 0.05441157    54
+80: median ppsf   TRUE   0.9   random effects  0.040911940 0.04337793    54
+           meas    lot   thr               wt            b         se cbsas
+     zips         spec
+    <int>       <char>
+ 1:  4914       no lot
+ 2:  4914       no lot
+ 3:  4914       no lot
+ 4:  4914       no lot
+ 5:  4040       no lot
+ 6:  4040       no lot
+ 7:  4040       no lot
+ 8:  4040       no lot
+ 9:  2497       no lot
+10:  2497       no lot
+11:  2497       no lot
+12:  2497       no lot
+13:  1432       no lot
+14:  1432       no lot
+15:  1432       no lot
+16:  1432       no lot
+17:   547       no lot
+18:   547       no lot
+19:   547       no lot
+20:   547       no lot
+21:  4896 with log lot
+22:  4896 with log lot
+23:  4896 with log lot
+24:  4896 with log lot
+25:  4024 with log lot
+26:  4024 with log lot
+27:  4024 with log lot
+28:  4024 with log lot
+29:  2485 with log lot
+30:  2485 with log lot
+31:  2485 with log lot
+32:  2485 with log lot
+33:  1424 with log lot
+34:  1424 with log lot
+35:  1424 with log lot
+36:  1424 with log lot
+37:   544 with log lot
+38:   544 with log lot
+39:   544 with log lot
+40:   544 with log lot
+41:  4914       no lot
+42:  4914       no lot
+43:  4914       no lot
+44:  4914       no lot
+45:  4040       no lot
+46:  4040       no lot
+47:  4040       no lot
+48:  4040       no lot
+49:  2497       no lot
+50:  2497       no lot
+51:  2497       no lot
+52:  2497       no lot
+53:  1432       no lot
+54:  1432       no lot
+55:  1432       no lot
+56:  1432       no lot
+57:   547       no lot
+58:   547       no lot
+59:   547       no lot
+60:   547       no lot
+61:  4896 with log lot
+62:  4896 with log lot
+63:  4896 with log lot
+64:  4896 with log lot
+65:  4024 with log lot
+66:  4024 with log lot
+67:  4024 with log lot
+68:  4024 with log lot
+69:  2485 with log lot
+70:  2485 with log lot
+71:  2485 with log lot
+72:  2485 with log lot
+73:  1424 with log lot
+74:  1424 with log lot
+75:  1424 with log lot
+76:  1424 with log lot
+77:   544 with log lot
+78:   544 with log lot
+79:   544 with log lot
+80:   544 with log lot
+     zips         spec
 > 
 > ggplot(path, aes(thr, b, colour = wt)) +
 +   geom_hline(yintercept = 0, linetype = 2) +
 +   geom_pointrange(aes(ymin = b - 1.96 * se, ymax = b + 1.96 * se), position = position_dodge(0.03)) +
 +   geom_line(position = position_dodge(0.03)) +
-+   facet_wrap(~spec) +
++   facet_grid(meas ~ spec) +
 +   labs(x = "minimum ZCTA share of units single detached", y = "d elasticity / d ZIP price level", colour = NULL)
-> ggsave("text/attomZipLevElastPath.pdf", width = 8, height = 4)
+> ggsave("text/attomZipLevElastPath.pdf", width = 8, height = 7)
 > 
 > # binscatter at the main threshold, with lot
 > z <- zz[thr == minSfdZip & lot == TRUE]
@@ -1597,4 +608,4 @@ Key: <lot, thr>
 > 
 > proc.time()
    user  system elapsed 
-266.942  31.671 329.928 
+577.109  50.795 588.701 
