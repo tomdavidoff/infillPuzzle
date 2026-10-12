@@ -77,7 +77,8 @@ getZcta <- function(tab) {
 }
 zc  <- getZcta("B25024")  # units in structure
 zi  <- getZcta("B19013")  # median household income
-inc <- zi[, .(zip = as.integer(ZCTA5A), linc = log(get(grep("E001$", names(zi), value = TRUE))))][is.finite(linc)]
+incV <- grep("E001$", names(zi), value = TRUE)  # text when top/bottom-coded ("250,000+", "2,500-")
+inc <- zi[, .(zip = as.integer(ZCTA5A), linc = log(as.numeric(gsub("[^0-9.]", "", get(incV)))))][is.finite(linc)]
 tot <- grep("E001$", names(zc), value = TRUE)
 det <- grep("E002$", names(zc), value = TRUE)
 sfdZip <- zc[get(tot) > 0, .(zip = as.integer(ZCTA5A), sfdShare = get(det) / get(tot))]
