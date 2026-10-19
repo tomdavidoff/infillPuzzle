@@ -174,3 +174,59 @@ runSpec <- function(tag, bb, hh, pp) {
 
 cmAll <- runSpec("allLots", b, h, pm)
 cm33  <- runSpec("lot33", b[round(w) == 33], h[round(w) == 33], pm[w19 == 33])
+# ---- 2019-roll land value onto folios, then onto permits (append-only; pm already has w19) ----
+con <- dbConnect(SQLite(), bca19)
+lv  <- data.table(dbGetQuery(con, "
+  SELECT folioID, SUM(CAST(landValue AS REAL)) AS landValue FROM valuation GROUP BY folioID"))
+dbDisconnect(con)
+b  <- merge(b, lv, by = "folioID", all.x = TRUE)
+pm <- merge(pm, unique(b[, .(rollStart, lv19 = landValue, lot19 = w * dep)], by = "rollStart"),
+            by = "rollStart", all.x = TRUE)
+
+# ---- NEW: lot-level cut, own 2019 assessed land value vs P(new permit is single) ----
+# 33s: log land value (lots near-uniform depth, so level ~ per sqft)
+# 50s: log land value per sqft of lot (depth varies more)
+# z is standardized within each width group, so coefficients are dP(single) per 1 SD.
+# Monthly slopes come from one pooled LPM with month-specific slopes; SEs clustered by tract.
+PERIODS <- function(m) factor(fifelse(m < EVENTS[1], "pre", fifelse(m < EVENTS[2], "mid", "post")),
+                              levels = c("pre", "mid", "post"))
+
+landCut <- function(tag, d) {
+  d <- d[is.finite(lx) & !is.na(CTNAME)]
+  d[, z := (lx - mean(lx)) / sd(lx)]
+  d[, mf := factor(as.character(month))]
+  d[, per := PERIODS(month)]
+
+  fits <- list(noFE    = feols(isSingle ~ i(mf, z) | mf,          d, cluster = ~CTNAME),
+               tractFE = feols(isSingle ~ i(mf, z) | mf + CTNAME, d, cluster = ~CTNAME))
+  cf <- rbindlist(lapply(names(fits), function(k) {
+    ct <- coeftable(fits[[k]])
+    data.table(spec = k, month = as.IDate(sub("^mf::(.*):z$", "\\1", rownames(ct))),
+               b = ct[, 1], se = ct[, 2])
+  }))
+  cf <- merge(cf, d[, .(n = .N, pSingle = mean(isSingle)), by = month], by = "month")
+
+  cat("\n==== land cut:", tag, "| permits:", nrow(d), "| tracts:", uniqueN(d$CTNAME), "====\n")
+  cat("pooled by period (pre / 2018-09 to 2023-10 / post):\n")
+  etable(feols(isSingle ~ i(per, z) | per,          d, cluster = ~CTNAME),
+         feols(isSingle ~ i(per, z) | per + CTNAME, d, cluster = ~CTNAME),
+         headers = c("noFE", "tractFE")) |> print()
+
+  ggplot(cf, aes(month, b)) +
+    geom_hline(yintercept = 0) +
+    geom_vline(xintercept = EVENTS, linetype = 2, colour = "grey50") +
+    geom_linerange(aes(ymin = b - 1.96 * se, ymax = b + 1.96 * se), alpha = .2) +
+    geom_point(aes(size = n), alpha = .4) +
+    geom_smooth(method = "loess", span = .3, se = FALSE) +
+    facet_wrap(~spec, ncol = 1) +
+    labs(x = NULL, y = "monthly coef: dP(single) per 1 SD of 2019 log land value",
+         size = "permits", title = tag) +
+    theme_bw()
+  ggsave(file.path(outDir, paste0("landCutMonthly_", tag, ".png")), width = 10, height = 8)
+  invisible(cf)
+}
+
+cut33 <- landCut("lot33_landValue",
+                 pm[w19 == 33, .(month, CTNAME, isSingle, lx = log(lv19))])
+cut50 <- landCut("lot50_landValuePsf",
+                 pm[w19 == 50 & lot19 > 0, .(month, CTNAME, isSingle, lx = log(lv19 / lot19))])

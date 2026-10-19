@@ -177,31 +177,31 @@ st_centroid assumes attributes are constant over geometries
 14:                                                             Infill Multiple Dwelling
 15:                                              Duplex w/Secondary Suite,Lock -off Unit
 16:                                                     Parking Garage,Multiple Dwelling
-17:                   Parking Garage,Multiple Dwelling,Retail Store,Restaurant - Class 1
-18:                            Infill,Multiple Conversion Dwelling,Single Detached House
-19: Parking Garage,Child Day Care Facility,Retail Store,General Office,Multiple Dwelling
-20:                                 Multiple Dwelling,Community Ctr./Neighbourhood House
-21:      Single Detached House,Infill Single Detached House,Multiple Conversion Dwelling
-22:                                        Multiple Dwelling,Parking Garage,Retail Store
-23:                                   Infill Single Detached House,Single Detached House
-24:                                        Retail Store,Multiple Dwelling,Parking Garage
-25:                                                 Parking Garage,Single Detached House
-26:                                                Duplex,Lock -off Unit,Secondary Suite
-27:                              Single Detached House w/Sec Suite,Single Detached House
-28:                                          Parking Garage,Infill Single Detached House
-29:                                                         Single Detached House,Duplex
-30:                                                      Dwelling Unit,Multiple Dwelling
+17:                                                      Dwelling Unit,Multiple Dwelling
+18:                                        Multiple Dwelling,Parking Garage,Retail Store
+19:                            Infill,Multiple Conversion Dwelling,Single Detached House
+20: Parking Garage,Child Day Care Facility,Retail Store,General Office,Multiple Dwelling
+21:                   Parking Garage,Multiple Dwelling,Retail Store,Restaurant - Class 1
+22:                                 Multiple Dwelling,Community Ctr./Neighbourhood House
+23:      Single Detached House,Infill Single Detached House,Multiple Conversion Dwelling
+24:                                   Infill Single Detached House,Single Detached House
+25:                                        Retail Store,Multiple Dwelling,Parking Garage
+26:                                                 Parking Garage,Single Detached House
+27:                                                Duplex,Lock -off Unit,Secondary Suite
+28:                              Single Detached House w/Sec Suite,Single Detached House
+29:                                          Parking Garage,Infill Single Detached House
+30:                                                         Single Detached House,Duplex
 31:                                   Single Detached House,Infill Single Detached House
 32:                                    Secondary Suite,Single Detached House w/Sec Suite
                                                                      specificusecategory
                                                                                   <char>
     isSingle isDuplex isMulti     N
       <lgcl>   <lgcl>  <lgcl> <int>
- 1:     TRUE    FALSE   FALSE  1774
- 2:     TRUE    FALSE   FALSE  1018
- 3:    FALSE     TRUE   FALSE   734
- 4:    FALSE    FALSE    TRUE   589
- 5:    FALSE     TRUE   FALSE   380
+ 1:     TRUE    FALSE   FALSE  1776
+ 2:     TRUE    FALSE   FALSE  1020
+ 3:    FALSE     TRUE   FALSE   739
+ 4:    FALSE    FALSE    TRUE   604
+ 5:    FALSE     TRUE   FALSE   381
  6:    FALSE     TRUE   FALSE   115
  7:     TRUE    FALSE   FALSE    67
  8:    FALSE     TRUE   FALSE    45
@@ -213,20 +213,20 @@ st_centroid assumes attributes are constant over geometries
 14:    FALSE    FALSE    TRUE     3
 15:    FALSE     TRUE   FALSE     3
 16:    FALSE    FALSE    TRUE     2
-17:    FALSE    FALSE    TRUE     1
-18:     TRUE    FALSE   FALSE     1
-19:    FALSE    FALSE    TRUE     1
+17:    FALSE    FALSE    TRUE     2
+18:    FALSE    FALSE    TRUE     1
+19:     TRUE    FALSE   FALSE     1
 20:    FALSE    FALSE    TRUE     1
-21:     TRUE    FALSE   FALSE     1
+21:    FALSE    FALSE    TRUE     1
 22:    FALSE    FALSE    TRUE     1
 23:     TRUE    FALSE   FALSE     1
-24:    FALSE    FALSE    TRUE     1
-25:     TRUE    FALSE   FALSE     1
-26:    FALSE     TRUE   FALSE     1
-27:     TRUE    FALSE   FALSE     1
+24:     TRUE    FALSE   FALSE     1
+25:    FALSE    FALSE    TRUE     1
+26:     TRUE    FALSE   FALSE     1
+27:    FALSE     TRUE   FALSE     1
 28:     TRUE    FALSE   FALSE     1
-29:    FALSE     TRUE   FALSE     1
-30:    FALSE    FALSE    TRUE     1
+29:     TRUE    FALSE   FALSE     1
+30:    FALSE     TRUE   FALSE     1
 31:     TRUE    FALSE   FALSE     1
 32:     TRUE    FALSE   FALSE     1
     isSingle isDuplex isMulti     N
@@ -237,14 +237,14 @@ st_centroid assumes attributes are constant over geometries
     year     N    single      duplex       multi matched2019SF       w33
    <int> <int>     <num>       <num>       <num>         <num>     <num>
 1:  2018   655 0.9923664 0.001526718 0.006106870     0.7557252 0.4020202
-2:  2019   517 0.9032882 0.090909091 0.005802708     0.6866538 0.3746479
-3:  2020   423 0.7825059 0.210401891 0.007092199     0.8037825 0.3529412
-4:  2021   420 0.6119048 0.371428571 0.016666667     0.8119048 0.4164223
-5:  2022   695 0.6086331 0.384172662 0.007194245     0.8561151 0.4302521
-6:  2023   531 0.5141243 0.470809793 0.015065913     0.7871940 0.4090909
-7:  2024   490 0.4367347 0.442857143 0.120408163     0.7775510 0.4409449
+2:  2019   515 0.9048544 0.091262136 0.003883495     0.6873786 0.3757062
+3:  2020   421 0.7838480 0.211401425 0.004750594     0.8052257 0.3539823
+4:  2021   419 0.6109785 0.369928401 0.019093079     0.8090692 0.4129794
+5:  2022   702 0.6054131 0.381766382 0.012820513     0.8532764 0.4307179
+6:  2023   528 0.5170455 0.473484848 0.009469697     0.7916667 0.4090909
+7:  2024   489 0.4376278 0.443762781 0.118609407     0.7791411 0.4409449
 8:  2025   657 0.2313546 0.290715373 0.477929985     0.6727549 0.3981900
-9:  2026   401 0.2493766 0.251870324 0.498753117     0.6533666 0.3969466
+9:  2026   429 0.2447552 0.249417249 0.505827506     0.6503497 0.3942652
 > 
 > # ---- one specification: measures, monthly correlations, plot ----
 > runSpec <- function(tag, bb, hh, pp) {
@@ -279,7 +279,7 @@ st_centroid assumes attributes are constant over geometries
 > 
 > cmAll <- runSpec("allLots", b, h, pm)
 
-==== spec: allLots | tracts: 76 | with all four: 69 | permits: 4789 ====
+==== spec: allLots | tracts: 76 | with all four: 69 | permits: 4815 ====
        mlppsf  hres elastA elastS
 mlppsf  1.000 0.992  0.784  0.747
 hres    0.992 1.000  0.770  0.732
@@ -292,7 +292,7 @@ hres    0.740  0.619
 `geom_smooth()` using formula = 'y ~ x'
 > cm33  <- runSpec("lot33", b[round(w) == 33], h[round(w) == 33], pm[w19 == 33])
 
-==== spec: lot33 | tracts: 64 | with all four: 50 | permits: 1469 ====
+==== spec: lot33 | tracts: 64 | with all four: 50 | permits: 1475 ====
        mlppsf  hres elastA elastS
 mlppsf  1.000 0.986  0.504  0.477
 hres    0.986 1.000  0.649  0.513
@@ -303,7 +303,118 @@ split-sample (levels x elasticities, disjoint folios):
 mlppsf  0.408  0.375
 hres    0.637  0.428
 `geom_smooth()` using formula = 'y ~ x'
+> # ---- 2019-roll land value onto folios, then onto permits (append-only; pm already has w19) ----
+> con <- dbConnect(SQLite(), bca19)
+> lv  <- data.table(dbGetQuery(con, "
++   SELECT folioID, SUM(CAST(landValue AS REAL)) AS landValue FROM valuation GROUP BY folioID"))
+> dbDisconnect(con)
+> b  <- merge(b, lv, by = "folioID", all.x = TRUE)
+> pm <- merge(pm, unique(b[, .(rollStart, lv19 = landValue, lot19 = w * dep)], by = "rollStart"),
++             by = "rollStart", all.x = TRUE)
+> 
+> # ---- NEW: lot-level cut, own 2019 assessed land value vs P(new permit is single) ----
+> # 33s: log land value (lots near-uniform depth, so level ~ per sqft)
+> # 50s: log land value per sqft of lot (depth varies more)
+> # z is standardized within each width group, so coefficients are dP(single) per 1 SD.
+> # Monthly slopes come from one pooled LPM with month-specific slopes; SEs clustered by tract.
+> PERIODS <- function(m) factor(fifelse(m < EVENTS[1], "pre", fifelse(m < EVENTS[2], "mid", "post")),
++                               levels = c("pre", "mid", "post"))
+> 
+> landCut <- function(tag, d) {
++   d <- d[is.finite(lx) & !is.na(CTNAME)]
++   d[, z := (lx - mean(lx)) / sd(lx)]
++   d[, mf := factor(as.character(month))]
++   d[, per := PERIODS(month)]
++ 
++   fits <- list(noFE    = feols(isSingle ~ i(mf, z) | mf,          d, cluster = ~CTNAME),
++                tractFE = feols(isSingle ~ i(mf, z) | mf + CTNAME, d, cluster = ~CTNAME))
++   cf <- rbindlist(lapply(names(fits), function(k) {
++     ct <- coeftable(fits[[k]])
++     data.table(spec = k, month = as.IDate(sub("^mf::(.*):z$", "\\1", rownames(ct))),
++                b = ct[, 1], se = ct[, 2])
++   }))
++   cf <- merge(cf, d[, .(n = .N, pSingle = mean(isSingle)), by = month], by = "month")
++ 
++   cat("\n==== land cut:", tag, "| permits:", nrow(d), "| tracts:", uniqueN(d$CTNAME), "====\n")
++   cat("pooled by period (pre / 2018-09 to 2023-10 / post):\n")
++   etable(feols(isSingle ~ i(per, z) | per,          d, cluster = ~CTNAME),
++          feols(isSingle ~ i(per, z) | per + CTNAME, d, cluster = ~CTNAME),
++          headers = c("noFE", "tractFE")) |> print()
++ 
++   ggplot(cf, aes(month, b)) +
++     geom_hline(yintercept = 0) +
++     geom_vline(xintercept = EVENTS, linetype = 2, colour = "grey50") +
++     geom_linerange(aes(ymin = b - 1.96 * se, ymax = b + 1.96 * se), alpha = .2) +
++     geom_point(aes(size = n), alpha = .4) +
++     geom_smooth(method = "loess", span = .3, se = FALSE) +
++     facet_wrap(~spec, ncol = 1) +
++     labs(x = NULL, y = "monthly coef: dP(single) per 1 SD of 2019 log land value",
++          size = "permits", title = tag) +
++     theme_bw()
++   ggsave(file.path(outDir, paste0("landCutMonthly_", tag, ".png")), width = 10, height = 8)
++   invisible(cf)
++ }
+> 
+> cut33 <- landCut("lot33_landValue",
++                  pm[w19 == 33, .(month, CTNAME, isSingle, lx = log(lv19))])
+NOTE: 0/3 fixed-effect singletons were removed (3 observations).
+
+==== land cut: lot33_landValue | permits: 1475 | tracts: 62 ====
+pooled by period (pre / 2018-09 to 2023-10 / post):
+NOTE: 0/3 fixed-effect singletons were removed (3 observations).
+                feols(isSingle ~.. feols(isSingle..
+                              noFE          tractFE
+Dependent Var.:           isSingle         isSingle
+                                                   
+z x per = pre         0e-16 (1e-6) -0.0658 (0.0445)
+z x per = mid   0.1024*** (0.0196)  0.0341 (0.0519)
+z x per = post     0.0045 (0.0278) -0.0804 (0.0530)
+Fixed-Effects:  ------------------ ----------------
+per                            Yes              Yes
+CTNAME                          No              Yes
+_______________ __________________ ________________
+S.E.: Clustered         by: CTNAME       by: CTNAME
+Observations                 1,475            1,472
+R2                         0.23011          0.29500
+Within R2                  0.03083          0.01657
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+`geom_smooth()` using formula = 'y ~ x'
+Warning messages:
+1: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+2: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+3: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+> cut50 <- landCut("lot50_landValuePsf",
++                  pm[w19 == 50 & lot19 > 0, .(month, CTNAME, isSingle, lx = log(lv19 / lot19))])
+NOTE: 11 fixed-effect singletons were removed (11 observations).
+NOTE: 12/10 fixed-effect singletons were removed (22 observations).
+
+==== land cut: lot50_landValuePsf | permits: 408 | tracts: 58 ====
+pooled by period (pre / 2018-09 to 2023-10 / post):
+NOTE: 0/10 fixed-effect singletons were removed (10 observations).
+                feols(isSingle .. feols(isSingle ~..
+                             noFE            tractFE
+Dependent Var.:          isSingle           isSingle
+                                                    
+z x per = pre        0e-16 (1e-6)    0.0991 (0.0682)
+z x per = mid   0.1217** (0.0400) 0.2242*** (0.0581)
+z x per = post   0.1186* (0.0469)  0.1812** (0.0582)
+Fixed-Effects:  ----------------- ------------------
+per                           Yes                Yes
+CTNAME                         No                Yes
+_______________ _________________ __________________
+S.E.: Clustered        by: CTNAME         by: CTNAME
+Observations                  408                398
+R2                        0.19087            0.32383
+Within R2                 0.07333            0.04609
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+`geom_smooth()` using formula = 'y ~ x'
+Warning messages:
+1: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+2: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+3: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
 > 
 > proc.time()
    user  system elapsed 
- 25.747   3.477  40.539 
+ 32.201   4.130  43.636 
