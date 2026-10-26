@@ -60,20 +60,26 @@ We study zoning that allows some combination of increased units or allowed floor
 
 \section{\label{sec:model} A model of sorting and density regulations}
 
+Locations in a city are vertically differentiated by quality $\theta$.
+$\theta$. At a location with quality index $\theta$, price per square foot of a
+home in an Nplex (a collection of $N$ homes), each of which has square footage
+$\frac{s(N)}{N}$ is $p\left(N,\theta,\frac{s(N)}{N}\right)$. We treat $N$ as continuous for simplicity small changes in $N$ to allow derivatives. The total cost of
+the $N$ units to build is $c(s(N),N)$. $c_{2}$, the effect of ain
+
+We assume that builders are always at a corner
+solution of building up to the maximum permitted size $s(N)$ square feet per
+unit. The function $p(N,\theta)$ includes the relationship between size and
+number of units implicitly in $N$. The cost per square foot of an Nplex is
+$c(N)$, with $c'\geq 0$ because of relatively fixed plumbing and utility costs
+and fire separation.
+
+
 $$\pi(N,\theta) = Np(N,\theta,\frac{s(N)}{N}) - c(s(N),N)$$
+$$\pi(N,\theta) - \pi(N-1,\theta) \equiv \Delta(N,\theta) = p(N,\theta,\frac{s(N)}{N}) - p(N-1,\theta,\frac{s(N-1)}{N-1}) + c(s(N-1),N-1) - c(s(N),N)$$
+$$\frac{\partial \Delta}{\partial \theta} = N\left[p_{2}(N,\theta,\frac{s(N)}{N}) - \left[N-1\right]p_{2}(N-1,\theta,\frac{s(N-1)}{N-1})\right]-p_{2}(N-1,$$
 $$\frac{\partial \pi}{\partial \theta} = N\frac{\partial p}{\partial \theta}$$
 $$\frac{\partial^{2}\pi}{\partial \theta \partial N} = p_{2} + N\left[p_{12} + \frac{p_{23}}{N}\left[s'-\frac{s}{N}\right]\right]$$
 $p_{2}+p_{23}s'$ is the addition effect. The remaining terms are the division effects: with positive income sorting $p_{12}<0$ representing the disutility of sharing a lot with more households and $p_{23}>0$.
-
-Locations in a city are vertically differentiated by quality $\theta$. $\theta$
-can be determined by multiple characteristics, but there is agreement on the
-ranking. At a location with quality $\theta$, price per square foot of a home
-in an Nplex (a collection of $N$ homes), each of which has square footage
-$s(N)$ is $p(N,\theta)s(N)$. We assume that builders are always at a corner
-solution of building up to the maximum permitted size $s(N)$ square feet per unit. The function
-$p(N,\theta)$ includes the relationship between size and number of units
-implicitly in $N$. The cost per square foot of an Nplex is $c(N)$, with $c'\geq
-0$ because of relatively fixed plumbing and utility costs and fire separation.
 
 The profit from building an Nplex at location $\theta$ is thus:
 
