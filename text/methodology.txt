@@ -1,0 +1,5 @@
+# econometrics
+1. logit lot-by lot
+2. Want interaction term on price
+3. So aggregate to shares - log shares ratio ...
+4. Check to see if can separate price from elasticity by predicting elasticity out of sample vs just price
