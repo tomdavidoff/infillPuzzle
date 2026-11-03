@@ -19,7 +19,7 @@ Type 'q()' to quit R.
 
 > # vancouverPriceElasticity.R
 > # price and elasticity by geography
-> # Tom Davidoff 
+> # Tom Davidoff
 > # 10/29/26
 > 
 > library(sf)
@@ -27,126 +27,160 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(DBI)
 > library(RSQLite)
 > library(data.table)
+> library(fixest)
+> 
+> yrs <- 2012:2018   # sale window for medians and elasticities
 > 
 > # 2019 data with sales through 2018
-> sql2019 <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
-> # open with 
-> con <- dbConnect(SQLite(), sql2019)
-> q <- "SELECT s.conveyancePrice, s.conveyanceDate, s.conveyanceTypeDescription, f.rollNumber, i.MB_effective_year, i.MB_total_finished_area, i.land_width, i.land_depth, d.actualUseDescription , d.neighbourhoodDescription
+> con <- dbConnect(SQLite(), "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3")
+> q <- "SELECT s.conveyancePrice, s.conveyanceDate, f.rollNumber, i.MB_effective_year,
++   i.MB_total_finished_area, i.land_width, i.land_depth, d.actualUseDescription, d.neighbourhoodDescription
 + FROM folio f
-+ JOIN sales s ON s.folioID=f.folioID 
-+ JOIN folioDescription d ON d.folioID=f.folioID
-+ JOIN residentialInventory i ON i.roll_number=f.rollNumber
-+ WHERE f.jurisdictionCode= '200' AND s.conveyanceTypeDescription=='Improved Single Property Transaction' and d.actualUseDescription IN ('Residential Dwelling with Suite',  'Single Family Dwelling')"
-> # do q1 with con
++ JOIN sales s ON s.folioID = f.folioID
++ JOIN folioDescription d ON d.folioID = f.folioID
++ JOIN residentialInventory i ON i.roll_number = f.rollNumber
++ WHERE f.jurisdictionCode = '200'
++   AND s.conveyanceTypeDescription = 'Improved Single Property Transaction'
++   AND d.actualUseDescription IN ('Residential Dwelling with Suite', 'Single Family Dwelling')"
 > df <- as.data.table(dbGetQuery(con, q))
-> print(head(df))
-   conveyancePrice conveyanceDate            conveyanceTypeDescription
-            <char>         <char>                               <char>
-1:         9450000     2014-06-16 Improved Single Property Transaction
-2:         1700000     1991-07-09 Improved Single Property Transaction
-3:         8800000     2013-02-08 Improved Single Property Transaction
-4:          190000     1977-04-15 Improved Single Property Transaction
-5:         3850000     2006-12-04 Improved Single Property Transaction
-6:          325000     1979-09-15 Improved Single Property Transaction
-        rollNumber MB_effective_year MB_total_finished_area land_width
-            <char>            <char>                 <char>     <char>
-1: 001019632060000              2019                  11895           
-2: 001019632290000              1997                   7760        195
-3: 001019632290000              1997                   7760        195
-4: 001019632450000              1945                   3215        150
-5: 001019632450000              1945                   3215        150
-6: 001019632650000              2011                   8673        150
-   land_depth   actualUseDescription neighbourhoodDescription
-       <char>                 <char>                   <char>
-1:            Single Family Dwelling               POINT GREY
-2:      251.9 Single Family Dwelling               POINT GREY
-3:      251.9 Single Family Dwelling               POINT GREY
-4:        250 Single Family Dwelling               POINT GREY
-5:        250 Single Family Dwelling               POINT GREY
-6:        250 Single Family Dwelling               POINT GREY
+> dbDisconnect(con)
 > print(table(df$actualUseDescription))
 
 Residential Dwelling with Suite          Single Family Dwelling 
                           64859                           61577 
-> df[,rollStart:=floor(as.numeric(rollNumber)/1000)]
 > 
-> # get tract etc
-> # ---- tracts; 2026 parcels -> tract (centroid) ----
-> fTract    <- "~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp"
-> ct <- st_read(fTract, quiet = TRUE)
+> num <- c("conveyancePrice", "MB_total_finished_area", "land_width", "land_depth", "MB_effective_year")
+> df[, (num) := lapply(.SD, as.numeric), .SDcols = num]
+> df[, convDate := as.IDate(conveyanceDate)]
+> df <- df[year(convDate) %in% yrs]
+> df[, rollStart := floor(as.numeric(rollNumber) / 1000)]
+> 
+> # tracts; 2026 parcels -> tract (centroid)
+> ct <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp", quiet = TRUE)
 > ct <- st_transform(st_make_valid(ct[ct$PRUID == "59", "CTNAME"]), 3005)
 > 
-> fdir <- "~/bigFiles/latestSpatialBCA/"
-> gpkg <- paste0(fdir,list.files(path="~/bigFiles/latestSpatialBCA")[1])
-> print(gpkg)
-[1] "~/bigFiles/latestSpatialBCA/2026-01-09_bca_folios.gpkg"
+> gpkg <- list.files("~/bigFiles/latestSpatialBCA", pattern = "\\.gpkg$", full.names = TRUE)[1]
 > g <- st_read(gpkg, quiet = TRUE, query =
 +   "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
 +    WHERE JURISDICTION_CODE = '200'")
+> g$rollStart <- floor(as.numeric(g$ROLL_NUMBER) / 1000)
+> g <- g[g$rollStart %in% df$rollStart & !duplicated(g$rollStart), ]
 > g <- st_transform(st_make_valid(g), 3005)
-> g$rollStart <- floor(as.numeric(g$ROLL_NUMBER)/ 1000)
-> geo <- as.data.table(st_drop_geometry(st_join(st_centroid(g), ct, join = st_within)))
+> geo <- as.data.table(st_drop_geometry(st_join(st_point_on_surface(g), ct, join = st_within)))
 Warning message:
-st_centroid assumes attributes are constant over geometries 
-> geo <- unique(geo[!is.na(CTNAME), .(rollStart, CTNAME)], by = "rollStart")
+st_point_on_surface assumes attributes are constant over geometries 
+> geo <- geo[!is.na(CTNAME), .(rollStart, CTNAME)]
 > 
-> print(head(geo))
-    rollStart  CTNAME
-        <num>  <char>
-1: 1640020020 0044.00
-2: 1686032390 0043.02
-3: 1670037240 0043.02
-4: 1686026110 0043.01
-5: 1688022610 0043.01
-6: 1670037380 0043.02
-> 
-> dfM <- merge(df, geo, by = "rollStart", all.x = TRUE)
-> print(table(dfM[,CTNAME]))
+> df <- merge(df, geo, by = "rollStart", all.x = TRUE)
+> print(table(is.na(df$CTNAME)))
 
-0001.01 0001.02 0002.01 0002.03 0002.04 0003.01 0003.02 0004.01 0004.02 0005.00 
-    358     264    1282    1516     870    1142    1198    1092    1488      28 
-0006.01 0006.02 0007.01 0007.02 0008.02 0009.00 0010.01 0010.02 0011.00 0012.01 
-   1683    1538    2372    1902    2201    2286    1262    1475    1865    1504 
-0012.02 0013.01 0013.03 0013.04 0014.01 0014.02 0015.01 0015.02 0016.01 0016.04 
-   1116    1982    1376    1207     962    1620    2111    1978    1321    1809 
-0016.05 0017.02 0017.03 0017.04 0018.01 0018.02 0019.00 0020.00 0021.00 0022.00 
-   1152    1853    1173     878    2133    2684    1675     637    2115     220 
-0023.00 0024.00 0025.00 0026.00 0027.01 0027.02 0028.00 0029.00 0030.00 0031.01 
-   2432    3274    3896    2743    1778    1096    1353    1561    2437    1799 
-0031.02 0032.01 0032.02 0033.01 0033.02 0034.01 0034.02 0035.01 0035.02 0036.01 
-   1301    1092     966    1652     913    1412    1838    1507    1683    2222 
-0036.02 0037.01 0037.02 0038.00 0039.01 0039.02 0040.01 0040.02 0041.02 0042.00 
-   2474     817     515     312     203      20       3       4     571    2514 
-0043.01 0043.02 0044.00 0045.01 0045.02 0046.00 0047.01 0047.02 0048.01 0048.02 
-   1705    2164    1713     592     855     108      21      18     204       1 
-0049.03 0049.04 0049.05 0050.02 0050.03 0050.04 0051.01 0051.02 0052.01 0052.02 
-      8       6      60     466      42      31    1075    1382    1871    2106 
-0053.01 0053.02 0054.01 0054.02 0055.01 0055.02 0056.01 0056.02 0057.01 0057.02 
-   2343    1439    1229    1716     906     539     131     430      59     531 
-0058.00 0059.10 0060.02 0061.00 0063.00 0064.00 0065.00 0067.01 0068.00 
-     34       5       2       2       7       4       4      20       3 
-> print(sum(is.na(dfM[,CTNAME])))
-[1] 888
-> print(table(dfM[is.na(CTNAME),neighbourhoodDescription]))
+FALSE  TRUE 
+19975   233 
+> print(table(df[is.na(CTNAME), neighbourhoodDescription]))
 
 ARBUTUS/MACKENZIE HEIGHTS                    CAMBIE             CEDAR COTTAGE 
-                       39                       150                        34 
+                        7                        40                        13 
               COLLINGWOOD                    DUNBAR                 GRANDVIEW 
-                       68                        21                        94 
-            HASTINGS EAST                KERRISDALE                 KILLARNEY 
-                       12                        20                        24 
-                KITSILANO                    KNIGHT               MAIN/FRASER 
-                        7                        25                        41 
-             MARINE DRIVE                   MARPOLE            MOUNT PLEASANT 
-                        1                        34                        11 
-                 OAKRIDGE                POINT GREY                   RENFREW 
-                      112                        14                        38 
-          RENFREW HEIGHTS               SHAUGHNESSY           SOUTH GRANVILLE 
-                        1                        14                        74 
+                       16                         4                        29 
+            HASTINGS EAST                KERRISDALE                 KITSILANO 
+                        8                         5                         5 
+                   KNIGHT               MAIN/FRASER                   MARPOLE 
+                        7                        13                         7 
+           MOUNT PLEASANT                  OAKRIDGE                POINT GREY 
+                        3                        28                         5 
+                  RENFREW               SHAUGHNESSY           SOUTH GRANVILLE 
+                        1                         2                        23 
           SOUTH VANCOUVER                SOUTHLANDS 
-                       21                        33 
+                        4                        13 
+> 
+> # lot dims: 0 is the missing sentinel
+> df[land_width == 0, land_width := NA]
+> df[land_depth == 0, land_depth := NA]
+> df <- df[!is.na(land_depth) & !is.na(land_width)]
+> qc <- quantile(df$land_depth, c(0.2, 0.8))
+> df <- df[land_depth %between% qc]
+> df[, w := round(land_width)]
+> df[w>47 & w<53, w := 50] # try to juice lot size
+> 
+> s <- df[w %in% c(33, 50) & conveyancePrice > 0 & MB_total_finished_area > 0 & !is.na(CTNAME)]
+> s[, convMonth := format(convDate, "%Y-%m")]
+> 
+> s[, `:=`(lsqft = log(MB_total_finished_area),
++          lage  = log(pmax(year(convDate) - MB_effective_year, 0) + 1),
++          tw    = paste(CTNAME, w, sep = "_"))]
+> s <- s[!is.na(lage)]
+> MAXAGE <- 30
+> s <- s[lage <= log(MAXAGE + 1)]
+> s[, N := .N, by = tw]
+> s <- s[N >= 20]
+> 
+> split <- FALSE   # TRUE: level and elasticity from disjoint folios
+> sA <- if (split) s[rollStart %% 2 == 0] else s
+> sB <- if (split) s[rollStart %% 2 == 1] else s
+> 
+> # level: tract x width FE in log ppsf, net of log age and month
+> m1 <- feols(log(conveyancePrice / MB_total_finished_area) ~ lage | tw + convMonth, sA)
+> fe <- fixef(m1)$tw
+> 
+> # elasticity: one regression, tract x width slopes on log sqft
+> m2 <- feols(log(conveyancePrice) ~ i(tw, lsqft) + lage | tw + convMonth, sB)
+> k  <- grep("^tw::", names(coef(m2)))
+> el <- data.table(tw = sub("^tw::(.*):lsqft$", "\\1", names(coef(m2))[k]),
++                  elas = coef(m2)[k], se = se(m2)[k])
+> 
+> dPEl <- merge(merge(unique(s[, .(tw, CTNAME, w, N)]),
++                     data.table(tw = names(fe), lppsf = as.numeric(fe)), by = "tw"),
++               el, by = "tw")
+> print(summary(dPEl))
+      tw               CTNAME                w               N         
+ Length:72          Length:72          Min.   :33.00   Min.   : 20.00  
+ Class :character   Class :character   1st Qu.:33.00   1st Qu.: 36.00  
+ Mode  :character   Mode  :character   Median :33.00   Median : 53.50  
+                                       Mean   :37.25   Mean   : 68.92  
+                                       3rd Qu.:37.25   3rd Qu.: 78.00  
+                                       Max.   :50.00   Max.   :359.00  
+     lppsf            elas               se         
+ Min.   :6.159   Min.   :-0.1245   Min.   :0.01113  
+ 1st Qu.:6.323   1st Qu.: 0.2658   1st Qu.:0.02629  
+ Median :6.490   Median : 0.4379   Median :0.03139  
+ Mean   :6.581   Mean   : 0.4849   Mean   :0.03424  
+ 3rd Qu.:6.838   3rd Qu.: 0.6692   3rd Qu.:0.04127  
+ Max.   :7.235   Max.   : 1.2153   Max.   :0.07198  
+> print(dPEl[, .(medLppsf = median(lppsf), medElas = median(elas), nTracts = .N), keyby = w])
+Key: <w>
+       w medLppsf   medElas nTracts
+   <num>    <num>     <num>   <int>
+1:    33 6.377445 0.4118926      54
+2:    50 6.853066 0.5881461      18
+> for (p in c(0, .25, .5, .75))
++   print(dPEl[N >= quantile(N, p), .(pN = p, cor = cor(lppsf, elas), nTracts = .N), keyby = w])
+Key: <w>
+       w    pN       cor nTracts
+   <num> <num>     <num>   <int>
+1:    33     0 0.5476461      54
+2:    50     0 0.5751341      18
+Key: <w>
+       w    pN       cor nTracts
+   <num> <num>     <num>   <int>
+1:    33  0.25 0.5857785      45
+2:    50  0.25 0.6803782      11
+Key: <w>
+       w    pN       cor nTracts
+   <num> <num>     <num>   <int>
+1:    33   0.5 0.7928838      28
+2:    50   0.5 0.8325205       8
+Key: <w>
+       w    pN       cor nTracts
+   <num> <num>     <num>   <int>
+1:    33  0.75 0.7310524      14
+2:    50  0.75 0.7953914       4
+> 
+> elW <- dcast(dPEl, CTNAME ~ w, value.var = c("lppsf", "elas", "N"))
+> print(elW[, cor(elas_33, elas_50, use = "complete.obs")])
+[1] 0.1015685
+> print(elW[, cor(lppsf_33, lppsf_50, use = "complete.obs")])
+[1] 0.9610812
 > 
 > proc.time()
    user  system elapsed 
- 28.922   4.892  44.029 
+  8.406   3.978  40.954 
