@@ -43,10 +43,33 @@ g <- st_read(gpkg, quiet = TRUE, query =
 g$rollStart <- floor(as.numeric(g$ROLL_NUMBER) / 1000)
 g <- g[g$rollStart %in% df$rollStart & !duplicated(g$rollStart), ]
 g <- st_transform(st_make_valid(g), 3005)
+# ---- zoning: R1-1 shapes (used for permits AND for the comp inR1 flag) -------
+dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson")
+dgZ <- dgZ[dgZ$zoning_district == "R1-1", ]
+print(head(dgZ))
+print(head(g))
+
+# 1. Put zoning in the parcels' CRS (BC Albers, metres)
+dgZ <- st_transform(dgZ, st_crs(g))
+dgZ <- st_make_valid(dgZ)                  # city polygons sometimes have slivers/self-intersections
+dgZ <- dgZ[, c("zoning_district", "zoning_category")]   # drop geo_point_2d text col etc.
+
+# 2. One interior point per parcel (guaranteed inside, unlike a centroid)
+gPt <- st_point_on_surface(g)
+
+# 3. Point-in-polygon join
+gPt <- st_join(gPt, dgZ, join = st_within, left = TRUE)
+
+# 4. Attach back to the parcel polygons
+g <- merge(g, st_drop_geometry(gPt)[, c("ROLL_NUMBER", "zoning_district", "zoning_category")],
+           by = "ROLL_NUMBER", all.x = TRUE)
+
 geo <- as.data.table(st_drop_geometry(st_join(st_point_on_surface(g), ct, join = st_within)))
-geo <- geo[!is.na(CTNAME), .(rollStart, CTNAME)]
+geo <- geo[!is.na(CTNAME), .(rollStart, CTNAME,zoning_district,zoning_category)]
+geo <- geo[zoning_category=="R1"]
 
 df <- merge(df, geo, by = "rollStart", all.x = TRUE)
+print(head(df))
 print(table(is.na(df$CTNAME)))
 print(table(df[is.na(CTNAME), neighbourhoodDescription]))
 
@@ -96,3 +119,6 @@ for (p in c(0, .25, .5, .75))
 elW <- dcast(dPEl, CTNAME ~ w, value.var = c("lppsf", "elas", "N"))
 print(elW[, cor(elas_33, elas_50, use = "complete.obs")])
 print(elW[, cor(lppsf_33, lppsf_50, use = "complete.obs")])
+print(head(elW))
+print(summary(elW))
+print(cor(elW[N_33>30 & N_50>30, .(elas_33,elas_50,lppsf_33, lppsf_50)], use = "complete.obs"))
