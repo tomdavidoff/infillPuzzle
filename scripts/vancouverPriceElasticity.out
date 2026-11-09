@@ -1,5 +1,5 @@
 
-R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -17,10 +17,11 @@ Type 'demo()' for some demos, 'help()' for on-line help, or
 'help.start()' for an HTML browser interface to help.
 Type 'q()' to quit R.
 
-> # vancouverPriceElasticity.R
-> # price and elasticity by geography
+> # vancouverDuplexElasticity.R
+> # Legacy (pre-2018-reform) duplex vs SFD price per sqft by area,
+> # against the area's SFD size elasticity. Augments vancouverPriceElasticity.R
 > # Tom Davidoff
-> # 10/29/26
+> # 11/7/26
 > 
 > library(sf)
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
@@ -29,9 +30,15 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 > library(data.table)
 > library(fixest)
 > 
-> yrs <- 2012:2018   # sale window for medians and elasticities
+> yrs     <- 2014:2018   # sale window; every duplex sold here is pre-reform stock
+> MAXAGE  <- 30          # effective-age cap, applied to both products
+> GEO     <- "CTNAME"    # or "neighbourhoodDescription" (BCA neighbourhood)
+> NDUPZ   <- 5           # duplexes: keep the top-NDUPZ zoning districts by duplex sales; SFD: R1 only
+> MIN_SFD <- 20          # min SFD sales (33/50 ft) per area
+> MIN_DUP <- 10          # min duplex sales per area
+> split   <- FALSE       # TRUE: SFD level and elasticity from disjoint folios
 > 
-> # 2019 data with sales through 2018
+> # ---- sales: SFD + anything "uplex" ------------------------------------------
 > con <- dbConnect(SQLite(), "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3")
 > q <- "SELECT s.conveyancePrice, s.conveyanceDate, f.rollNumber, i.MB_effective_year,
 +   i.MB_total_finished_area, i.land_width, i.land_depth, d.actualUseDescription, d.neighbourhoodDescription
@@ -41,21 +48,52 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 + JOIN residentialInventory i ON i.roll_number = f.rollNumber
 + WHERE f.jurisdictionCode = '200'
 +   AND s.conveyanceTypeDescription = 'Improved Single Property Transaction'
-+   AND d.actualUseDescription IN ('Residential Dwelling with Suite', 'Single Family Dwelling')"
++   AND (d.actualUseDescription IN ('Residential Dwelling with Suite', 'Single Family Dwelling')
++        OR d.actualUseDescription LIKE '%uplex%')"
 > df <- as.data.table(dbGetQuery(con, q))
 > dbDisconnect(con)
 > print(table(df$actualUseDescription))
 
-Residential Dwelling with Suite          Single Family Dwelling 
-                          64859                           61577 
+2 Acres Or More (Single Family Dwelling, Duplex) 
+                                              65 
+ Duplex, Non-Strata Side by Side or Front / Back 
+                                            1175 
+                    Duplex, Non-Strata Up / Down 
+                                             144 
+                     Duplex, Strata Front / Back 
+                                            4155 
+                     Duplex, Strata Side by Side 
+                                            2475 
+                        Duplex, Strata Up / Down 
+                                             236 
+                 Residential Dwelling with Suite 
+                                           64859 
+                          Single Family Dwelling 
+                                           61577 
 > 
 > num <- c("conveyancePrice", "MB_total_finished_area", "land_width", "land_depth", "MB_effective_year")
 > df[, (num) := lapply(.SD, as.numeric), .SDcols = num]
 > df[, convDate := as.IDate(conveyanceDate)]
 > df <- df[year(convDate) %in% yrs]
 > df[, rollStart := floor(as.numeric(rollNumber) / 1000)]
+> df <- df[!grepl("^2 Acres", actualUseDescription)]   # large estates, not duplexes
+> df[, dup  := grepl("uplex", actualUseDescription, ignore.case = TRUE)]
+> df[, prod := fifelse(dup, "DUP", "SFD")]
 > 
-> # tracts; 2026 parcels -> tract (centroid)
+> # area/price by duplex description (diagnostic only)
+> print(df[dup == TRUE, .(medArea = median(MB_total_finished_area, na.rm = TRUE),
++                         medPrice = median(conveyancePrice, na.rm = TRUE), .N),
++          keyby = actualUseDescription])
+Key: <actualUseDescription>
+                              actualUseDescription medArea medPrice     N
+                                            <char>   <num>    <num> <int>
+1: Duplex, Non-Strata Side by Side or Front / Back  1620.0  1875000   103
+2:                    Duplex, Non-Strata Up / Down  1756.5  1766000    14
+3:                     Duplex, Strata Front / Back  1351.0  1050000   800
+4:                     Duplex, Strata Side by Side  1616.0  1310000   427
+5:                        Duplex, Strata Up / Down  1299.0  1200000    37
+> 
+> # ---- geography: parcel points -> zoning (all districts) and tract ------------
 > ct <- st_read("~/DropboxExternal/dataRaw/lct_000b21a_e/lct_000b21a_e.shp", quiet = TRUE)
 > ct <- st_transform(st_make_valid(ct[ct$PRUID == "59", "CTNAME"]), 3005)
 > 
@@ -63,257 +101,299 @@ Residential Dwelling with Suite          Single Family Dwelling
 > g <- st_read(gpkg, quiet = TRUE, query =
 +   "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
 +    WHERE JURISDICTION_CODE = '200'")
+> g <- g[!st_is_empty(g), ]
 > g$rollStart <- floor(as.numeric(g$ROLL_NUMBER) / 1000)
-> g <- g[g$rollStart %in% df$rollStart & !duplicated(g$rollStart), ]
-> g <- st_transform(st_make_valid(g), 3005)
-> # ---- zoning: R1-1 shapes (used for permits AND for the comp inR1 flag) -------
-> dgZ <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson")
-Reading layer `vancouver_zoning' from data source 
-  `/Volumes/Micron2TB/Dropbox/dataRaw/vancouver_zoning.geojson' 
-  using driver `GeoJSON'
-Simple feature collection with 1590 features and 6 fields
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: -123.2248 ymin: 49.19952 xmax: -123.0233 ymax: 49.31617
-Geodetic CRS:  WGS 84
-> dgZ <- dgZ[dgZ$zoning_district == "R1-1", ]
-> print(head(dgZ))
-Simple feature collection with 6 features and 6 fields
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: -123.1712 ymin: 49.20618 xmax: -123.0236 ymax: 49.28674
-Geodetic CRS:  WGS 84
-    object_id zoning_classification zoning_category zoning_district cd_1_number
-17     440048 Residential Inclusive              R1            R1-1        <NA>
-18     440052 Residential Inclusive              R1            R1-1        <NA>
-98     439862 Residential Inclusive              R1            R1-1        <NA>
-99     439864 Residential Inclusive              R1            R1-1        <NA>
-106    439880 Residential Inclusive              R1            R1-1        <NA>
-146    440043 Residential Inclusive              R1            R1-1        <NA>
-                                                 geo_point_2d
-17  { "lon": -123.06668029570508, "lat": 49.271692342538294 }
-18  { "lon": -123.12926387861327, "lat": 49.206549285648336 }
-98  { "lon": -123.06209809553374, "lat": 49.285907173257471 }
-99  { "lon": -123.07479791756992, "lat": 49.247482242368577 }
-106   { "lon": -123.17045225504741, "lat": 49.2660266146951 }
-146 { "lon": -123.02791700810278, "lat": 49.220606418181134 }
-                          geometry
-17  POLYGON ((-123.0657 49.2721...
-18  POLYGON ((-123.1297 49.2062...
-98  POLYGON ((-123.0626 49.2856...
-99  POLYGON ((-123.0734 49.2480...
-106 POLYGON ((-123.1711 49.2666...
-146 POLYGON ((-123.0265 49.2223...
-> print(head(g))
-Simple feature collection with 6 features and 2 fields
-Geometry type: POLYGON
-Dimension:     XY
-Bounding box:  xmin: 1203728 ymin: 473092.5 xmax: 1207174 ymax: 477010.7
-Projected CRS: NAD83 / BC Albers
-       ROLL_NUMBER                           geom  rollStart
-9  002073630590000 POLYGON ((1206451 477010.3,... 2073630590
-13 002087646550000 POLYGON ((1207158 476245.3,... 2087646550
-14 001027683460000 POLYGON ((1203728 475625, 1... 1027683460
-16 001683030670000 POLYGON ((1204294 475673, 1... 1683030670
-30 002638042450000 POLYGON ((1205312 476701.2,... 2638042450
-45 003742030850000 POLYGON ((1204464 473134.5,... 3742030850
-> 
-> # 1. Put zoning in the parcels' CRS (BC Albers, metres)
-> dgZ <- st_transform(dgZ, st_crs(g))
-> dgZ <- st_make_valid(dgZ)                  # city polygons sometimes have slivers/self-intersections
-> dgZ <- dgZ[, c("zoning_district", "zoning_category")]   # drop geo_point_2d text col etc.
-> 
-> # 2. One interior point per parcel (guaranteed inside, unlike a centroid)
-> gPt <- st_point_on_surface(g)
+> g <- g[g$rollStart %in% df$rollStart & !duplicated(g$rollStart), "rollStart"]
+> gPt <- st_point_on_surface(st_make_valid(st_transform(g, 3005)))
 Warning message:
 st_point_on_surface assumes attributes are constant over geometries 
 > 
-> # 3. Point-in-polygon join
-> gPt <- st_join(gPt, dgZ, join = st_within, left = TRUE)
+> zn <- st_read("~/DropboxExternal/dataRaw/vancouver_zoning.geojson", quiet = TRUE)
+> zn <- st_make_valid(st_transform(zn[, c("zoning_district", "zoning_category")], 3005))
+> ctV <- ct[lengths(st_intersects(ct, st_as_sfc(st_bbox(gPt)))) > 0, ]
 > 
-> # 4. Attach back to the parcel polygons
-> g <- merge(g, st_drop_geometry(gPt)[, c("ROLL_NUMBER", "zoning_district", "zoning_category")],
-+            by = "ROLL_NUMBER", all.x = TRUE)
+> gPt <- st_join(gPt, zn,  join = st_intersects)
+> gPt <- st_join(gPt, ctV, join = st_intersects)
+> gPt <- gPt[!duplicated(gPt$rollStart), ]
+> df <- merge(df, as.data.table(st_drop_geometry(gPt)), by = "rollStart", all.x = TRUE)
 > 
-> geo <- as.data.table(st_drop_geometry(st_join(st_point_on_surface(g), ct, join = st_within)))
+> # where do legacy duplex sales sit, by current zoning? (before R1 restriction)
+> zt <- dcast(df[, .N, by = .(zoning_district, prod)], zoning_district ~ prod,
++             value.var = "N", fill = 0)
+> print(zt[order(-DUP)])
+    zoning_district   DUP   SFD
+             <char> <int> <int>
+ 1:            R3-2   249   123
+ 2:            RT-2   224    96
+ 3:            RT-5   220   374
+ 4:            RT-8   125    79
+ 5:            RT-7    96    77
+ 6:           RT-10    66   150
+ 7:            RM-4    54    48
+ 8:           RT-11    50    85
+ 9:            RM-7    46    73
+10:            R1-1    43 12825
+11:            RT-9    35    27
+12:            RT-3    23    69
+13:           RM-11    18    11
+14:           RM-8A    18    89
+15:            RM-2    14     2
+16:           RM-3A    12    12
+17:            RM-8    11    42
+18:           RT-4A    11     6
+19:            R3-3    10    19
+20:            R5-2    10     5
+21:            <NA>     9   191
+22:            RT-1     9     0
+23:           RM-12     7    26
+24:            RM-1     6    41
+25:            R5-3     4    18
+26:      CD-1 (212)     3     2
+27:            DEOD     2    13
+28:            R5-4     2     6
+29:             C-1     1     5
+30:            RA-1     1    20
+31:            RM-5     1     1
+32:           RM-9A     1    26
+33:             C-2     0     3
+34:      CD-1 (106)     0    14
+35:      CD-1 (143)     0     7
+36:      CD-1 (153)     0     4
+37:      CD-1 (174)     0     2
+38:      CD-1 (184)     0    19
+39:      CD-1 (192)     0     2
+40:      CD-1 (209)     0     1
+41:      CD-1 (213)     0     2
+42:      CD-1 (216)     0     4
+43:      CD-1 (217)     0     1
+44:      CD-1 (219)     0     1
+45:      CD-1 (225)     0     1
+46:      CD-1 (241)     0     5
+47:       CD-1 (36)     0     2
+48:      CD-1 (377)     0     1
+49:      CD-1 (448)     0     6
+50:      CD-1 (521)     0     1
+51:      CD-1 (645)     0     2
+52:      CD-1 (736)     0     1
+53:      CD-1 (804)     0     2
+54:      CD-1 (841)     0     1
+55:              DD     0     2
+56:            FM-1     0     2
+57:             FSD     0   130
+58:             I-1     0    10
+59:             I-2     0    10
+60:             M-2     0     4
+61:            R4-1     0     2
+62:            R5-1     0    14
+63:           RM-10     0     2
+64:           RM-5A     0     1
+65:           RM-5B     0     2
+66:           RM-7A     0     9
+67:            RM-9     0     6
+68:           RM-9B     0     7
+    zoning_district   DUP   SFD
+> 
+> dupZones <- head(zt[order(-DUP), zoning_district], NDUPZ)
+> print(dupZones)
+[1] "R3-2" "RT-2" "RT-5" "RT-8" "RT-7"
+> df <- df[(prod == "SFD" & zoning_category %in% "R1") |
++          (prod == "DUP" & zoning_district %in% dupZones)]
+> df[, gid := get(GEO)]
+> df <- df[!is.na(gid)]
+> 
+> # duplex prevalence: share of all SFD+duplex sales in the area
+> shr <- df[, .(nSFDall = sum(!dup), nDUPall = sum(dup)), by = gid]
+> shr[, dupShare := nDUPall / (nSFDall + nDUPall)]
+> 
+> # ---- common cleaning ---------------------------------------------------------
+> df <- df[conveyancePrice > 0 & MB_total_finished_area > 0]
+> df[, `:=`(lsqft     = log(MB_total_finished_area),
++           lage      = log(pmax(year(convDate) - MB_effective_year, 0) + 1),
++           convMonth = format(convDate, "%Y-%m"))]
+> df <- df[!is.na(lage) & lage <= log(MAXAGE + 1)]
+> 
+> # SFD: lot-dimension filters as in vancouverPriceElasticity.R
+> sfd <- df[prod == "SFD"]
+> sfd[land_width == 0, land_width := NA]
+> sfd[land_depth == 0, land_depth := NA]
+> sfd <- sfd[!is.na(land_depth) & !is.na(land_width)]
+> qc  <- quantile(sfd$land_depth, c(0.2, 0.8))
+> sfd <- sfd[land_depth %between% qc]
+> sfd[, w := round(land_width)]
+> sfd[w > 47 & w < 53, w := 50]
+> sfd <- sfd[w %in% c(33, 50)]
+> sfd[, N := .N, by = gid]
+> sfd <- sfd[N >= MIN_SFD]
+> 
+> # duplex: anything with "uplex" in actualUseDescription; no lot filter
+> du <- df[prod == "DUP"]
+> 
+> sA <- if (split) sfd[rollStart %% 2 == 0] else sfd
+> sB <- if (split) sfd[rollStart %% 2 == 1] else sfd
+> 
+> # ---- SFD elasticity: area-specific slope on log sqft, area x width FE -------
+> m2 <- feols(log(conveyancePrice) ~ i(gid, lsqft) + lage | gid^w + convMonth, sB)
+> k  <- grep("^gid::", names(coef(m2)))
+> el <- data.table(gid  = sub("^gid::(.*):lsqft$", "\\1", names(coef(m2))[k]),
++                  elas = coef(m2)[k], seEl = se(m2)[k])
+> 
+> # ---- levels: area x product FE in log ppsf, one pooled hedonic ---------------
+> # unconditional on lot size
+> lv <- rbind(sA, du, fill = TRUE)
+> lv[, gp := paste(gid, prod, sep = "|")]
+> m1 <- feols(log(conveyancePrice / MB_total_finished_area) ~ lage | gp + convMonth, lv)
+> fe <- fixef(m1)$gp
+> lev <- data.table(gp = names(fe), lppsf = as.numeric(fe))
+> lev[, c("gid", "prod") := tstrsplit(gp, "|", fixed = TRUE)]
+> lev <- dcast(lev, gid ~ prod, value.var = "lppsf")
+> setnames(lev, c("DUP", "SFD"), c("lppsfDUP", "lppsfSFD"))
+> lev[, gap := lppsfDUP - lppsfSFD]
+> 
+> cnt <- lv[, .(nSFD = sum(prod == "SFD"), nDUP = sum(prod == "DUP")), by = gid]
+> 
+> out <- Reduce(function(a, b) merge(a, b, by = "gid"), list(lev, el, cnt, shr))
+> print(table(cut(out$nDUP, c(-1, 0, 4, 9, 19, 49, Inf))))   # support: duplex sales per area
+
+  (-1,0]    (0,4]    (4,9]   (9,19]  (19,49] (49,Inf] 
+      29        9        5        3        2        1 
+> out <- out[nDUP >= MIN_DUP & !is.na(gap)]
+> if (nrow(out) < 5) stop("Fewer than 5 areas with >= MIN_DUP duplex sales; raise NDUPZ or loosen MIN_DUP / MAXAGE")
+> print(out[order(-dupShare)])
+       gid lppsfDUP lppsfSFD        gap       elas       seEl  nSFD  nDUP
+    <char>    <num>    <num>      <num>      <num>      <num> <int> <int>
+1: 0041.02 6.834245 6.773900 0.06034433  0.8103066 0.04075096    44    57
+2: 0006.02 6.757912 6.630089 0.12782371  0.6509248 0.20537699    38    48
+3: 0006.01 6.724238 6.680933 0.04330452  0.6158820 0.09874916    72    37
+4: 0014.02 6.536630 6.333504 0.20312676 -0.0469250 0.06266900    39    17
+5: 0004.02 6.488044 6.287682 0.20036206  0.2353666 0.05771209    20    18
+6: 0031.01 7.077491 6.750443 0.32704885  0.3171091 0.08424487    37    10
+   nSFDall nDUPall   dupShare
+     <int>   <int>      <num>
+1:      62      63 0.50400000
+2:     162      51 0.23943662
+3:     178      40 0.18348624
+4:     138      18 0.11538462
+5:     150      18 0.10714286
+6:     220      10 0.04347826
+> 
+> # ---- does SFD elasticity predict the duplex - SFD gap? -----------------------
+> print(out[, .(corGapElas = cor(gap, elas), corGapLevel = cor(gap, lppsfSFD),
++               corElasLevel = cor(elas, lppsfSFD), nAreas = .N)])
+   corGapElas corGapLevel corElasLevel nAreas
+        <num>       <num>        <num>  <int>
+1: -0.6772104  -0.2373303    0.7661389      6
+> hi <- out[dupShare >= median(dupShare)]
+> print(etable(
++   feols(gap ~ elas, out),
++   feols(gap ~ elas, out, weights = ~nDUP),
++   feols(gap ~ elas + lppsfSFD, out, weights = ~nDUP),   # elasticity vs level horse race
++   feols(gap ~ elas, hi, weights = ~nDUP),               # high-duplex-share half
++   vcov = "hetero",
++   headers = c("unwtd", "wt nDUP", "+ SFD level", "dupShare >= med")))
+                feols(gap ~ ela.. feols(gap ~ ela...1 feols(gap ~ el..
+                            unwtd             wt nDUP      + SFD level
+Dependent Var.:               gap                 gap              gap
+                                                                      
+Constant         0.2573* (0.0644)   0.2397** (0.0467)  -0.8111 (2.291)
+elas            -0.2252. (0.0922)   -0.2182* (0.0627) -0.3081 (0.2359)
+lppsfSFD                                               0.1662 (0.3658)
+_______________ _________________   _________________ ________________
+S.E. type       Heteroskeda.-rob.   Heteroskeda.-rob. Heterosked.-rob.
+Observations                    6                   6                6
+R2                        0.45861             0.56418          0.59693
+Adj. R2                   0.32327             0.45523          0.32822
+
+                feols(gap ~ el...1
+                   dupShare >= med
+Dependent Var.:                gap
+                                  
+Constant           0.1588 (0.2516)
+elas              -0.1135 (0.3136)
+lppsfSFD                          
+_______________   ________________
+S.E. type         Heterosked.-rob.
+Observations                     3
+R2                         0.07567
+Adj. R2                   -0.84866
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> fit <- feols(gap ~ elas, out, weights = ~nDUP)
+> drawGap <- function() {
++   plot(out$elas, out$gap,
++        cex = sqrt(out$nDUP / median(out$nDUP)), pch = 21,
++        bg  = gray(1 - out$dupShare / max(out$dupShare)),
++        xlab = "SFD size elasticity (log price on log sqft)",
++        ylab = "log ppsf: legacy duplex minus SFD",
++        main = sprintf("%s, %d-%d sales (size = duplex N, shade = duplex share)",
++                       GEO, min(yrs), max(yrs)))
++   abline(h = 0, lty = 3)
++   abline(coef(fit), col = "red")
++   text(out$elas, out$gap, out$gid, cex = 0.55, pos = 3)
++ }
+> drawGap()
+> png("duplexGapVsElas.png", width = 900, height = 700, res = 120)
+> drawGap()
+> dev.off()
+pdf 
+  2 
+> 
+> # ---- 33-ft SFD tract log ppsf vs size elasticity, coloured by longitude -------
+> # built here from the R1 SFD sample (sfd); same spec as vancouverPriceElasticity.R
+> stopifnot(GEO == "CTNAME")
+> ONTARIO <- -123.1036
+> 
+> s33 <- sfd[w == 33]
+> s33[, N33 := .N, by = gid]
+> s33 <- s33[N33 >= MIN_SFD]
+> m1_33 <- feols(log(conveyancePrice / MB_total_finished_area) ~ lage | gid + convMonth, s33)
+> m2_33 <- feols(log(conveyancePrice) ~ i(gid, lsqft) + lage | gid + convMonth, s33)
+> fe33 <- fixef(m1_33)$gid
+> k33  <- grep("^gid::", names(coef(m2_33)))
+> 
+> ctLon <- ctV[!duplicated(ctV$CTNAME), ]
+> ctLon <- data.table(gid = ctLon$CTNAME,
++                     lon = st_coordinates(st_transform(st_point_on_surface(ctLon), 4326))[, 1])
 Warning message:
 st_point_on_surface assumes attributes are constant over geometries 
-> geo <- geo[!is.na(CTNAME), .(rollStart, CTNAME,zoning_district,zoning_category)]
-> geo <- geo[zoning_category=="R1"]
 > 
-> df <- merge(df, geo, by = "rollStart", all.x = TRUE)
-> print(head(df))
-Key: <rollStart>
-    rollStart conveyancePrice conveyanceDate      rollNumber MB_effective_year
-        <num>           <num>         <char>          <char>             <num>
-1: 1019632060         9450000     2014-06-16 001019632060000              2019
-2: 1019632290         8800000     2013-02-08 001019632290000              1997
-3: 1019635170        14180000     2013-08-30 001019635170000              1980
-4: 1019635260        14680000     2012-03-29 001019635260000              1995
-5: 1019635740        12200000     2012-11-28 001019635740000              2000
-6: 1019635860         9500000     2013-10-10 001019635860000              1990
-   MB_total_finished_area land_width land_depth   actualUseDescription
-                    <num>      <num>      <num>                 <char>
-1:                  11895         NA         NA Single Family Dwelling
-2:                   7760      195.0      251.9 Single Family Dwelling
-3:                   7021      170.0      343.8 Single Family Dwelling
-4:                  11942      162.3      361.3 Single Family Dwelling
-5:                   7672         NA         NA Single Family Dwelling
-6:                   5068         NA         NA Single Family Dwelling
-   neighbourhoodDescription   convDate  CTNAME zoning_district zoning_category
-                     <char>     <IDat>  <char>          <char>          <char>
-1:               POINT GREY 2014-06-16 0044.00            R1-1              R1
-2:               POINT GREY 2013-02-08 0044.00            R1-1              R1
-3:               POINT GREY 2013-08-30 0044.00            R1-1              R1
-4:               POINT GREY 2012-03-29 0044.00            R1-1              R1
-5:               POINT GREY 2012-11-28 0044.00            R1-1              R1
-6:               POINT GREY 2013-10-10 0044.00            R1-1              R1
-> print(table(is.na(df$CTNAME)))
-
-FALSE  TRUE 
-17492  2716 
-> print(table(df[is.na(CTNAME), neighbourhoodDescription]))
-
-ARBUTUS/MACKENZIE HEIGHTS                    CAMBIE             CEDAR COTTAGE 
-                       16                       101                       207 
-              COLLINGWOOD            DOWNTOWN SOUTH                    DUNBAR 
-                      324                         2                         6 
-                 FAIRVIEW                FRASERVIEW                 GRANDVIEW 
-                        8                        18                       652 
-            HASTINGS EAST                KERRISDALE                 KILLARNEY 
-                       31                         6                         3 
-                KITSILANO                    KNIGHT               MAIN/FRASER 
-                      310                        84                        45 
-             MARINE DRIVE                   MARPOLE            MOUNT PLEASANT 
-                        1                        91                       318 
-                 OAKRIDGE                POINT GREY                   RENFREW 
-                      107                        15                        16 
-          RENFREW HEIGHTS               SHAUGHNESSY           SOUTH GRANVILLE 
-                        9                       190                        33 
-          SOUTH VANCOUVER                SOUTHLANDS                  WEST END 
-                       43                        75                         5 
+> p33 <- Reduce(function(a, b) merge(a, b, by = "gid"), list(
++   data.table(gid = names(fe33), lppsf = as.numeric(fe33)),
++   data.table(gid = sub("^gid::(.*):lsqft$", "\\1", names(coef(m2_33))[k33]), elas = coef(m2_33)[k33]),
++   unique(s33[, .(gid, N = N33)]),
++   ctLon))
 > 
-> # lot dims: 0 is the missing sentinel
-> df[land_width == 0, land_width := NA]
-> df[land_depth == 0, land_depth := NA]
-> df <- df[!is.na(land_depth) & !is.na(land_width)]
-> qc <- quantile(df$land_depth, c(0.2, 0.8))
-> df <- df[land_depth %between% qc]
-> df[, w := round(land_width)]
-> df[w>47 & w<53, w := 50] # try to juice lot size
+> pal <- hcl.colors(101, "Blue-Red 3")        # blue = west, red = east
+> lr  <- range(p33$lon)
+> pos <- ifelse(p33$lon < ONTARIO,
++               0.5 * (p33$lon - lr[1]) / (ONTARIO - lr[1]),
++               0.5 + 0.5 * (p33$lon - ONTARIO) / (lr[2] - ONTARIO))
+> p33[, col := pal[round(pmin(pmax(pos, 0), 1) * 100) + 1]]
 > 
-> s <- df[w %in% c(33, 50) & conveyancePrice > 0 & MB_total_finished_area > 0 & !is.na(CTNAME)]
-> s[, convMonth := format(convDate, "%Y-%m")]
+> print(p33[, .(cor = cor(lppsf, elas), corWest = cor(lppsf[lon < ONTARIO], elas[lon < ONTARIO]),
++               corEast = cor(lppsf[lon >= ONTARIO], elas[lon >= ONTARIO]), nTracts = .N)])
+         cor   corWest    corEast nTracts
+       <num>     <num>      <num>   <int>
+1: 0.5659296 0.5878672 0.09242069      40
 > 
-> s[, `:=`(lsqft = log(MB_total_finished_area),
-+          lage  = log(pmax(year(convDate) - MB_effective_year, 0) + 1),
-+          tw    = paste(CTNAME, w, sep = "_"))]
-> s <- s[!is.na(lage)]
-> MAXAGE <- 30
-> s <- s[lage <= log(MAXAGE + 1)]
-> s[, N := .N, by = tw]
-> s <- s[N >= 20]
-> 
-> split <- FALSE   # TRUE: level and elasticity from disjoint folios
-> sA <- if (split) s[rollStart %% 2 == 0] else s
-> sB <- if (split) s[rollStart %% 2 == 1] else s
-> 
-> # level: tract x width FE in log ppsf, net of log age and month
-> m1 <- feols(log(conveyancePrice / MB_total_finished_area) ~ lage | tw + convMonth, sA)
-> fe <- fixef(m1)$tw
-> 
-> # elasticity: one regression, tract x width slopes on log sqft
-> m2 <- feols(log(conveyancePrice) ~ i(tw, lsqft) + lage | tw + convMonth, sB)
-> k  <- grep("^tw::", names(coef(m2)))
-> el <- data.table(tw = sub("^tw::(.*):lsqft$", "\\1", names(coef(m2))[k]),
-+                  elas = coef(m2)[k], se = se(m2)[k])
-> 
-> dPEl <- merge(merge(unique(s[, .(tw, CTNAME, w, N)]),
-+                     data.table(tw = names(fe), lppsf = as.numeric(fe)), by = "tw"),
-+               el, by = "tw")
-> print(summary(dPEl))
-      tw               CTNAME                w               N         
- Length:65          Length:65          Min.   :33.00   Min.   : 20.00  
- Class :character   Class :character   1st Qu.:33.00   1st Qu.: 36.00  
- Mode  :character   Mode  :character   Median :33.00   Median : 55.00  
-                                       Mean   :37.71   Mean   : 70.92  
-                                       3rd Qu.:50.00   3rd Qu.: 81.00  
-                                       Max.   :50.00   Max.   :359.00  
-     lppsf            elas               se         
- Min.   :6.155   Min.   :-0.2610   Min.   :0.08049  
- 1st Qu.:6.318   1st Qu.: 0.2933   1st Qu.:0.14409  
- Median :6.492   Median : 0.4704   Median :0.20023  
- Mean   :6.574   Mean   : 0.5048   Mean   :0.21194  
- 3rd Qu.:6.851   3rd Qu.: 0.7553   3rd Qu.:0.25828  
- Max.   :7.079   Max.   : 1.2263   Max.   :0.46656  
-> print(dPEl[, .(medLppsf = median(lppsf), medElas = median(elas), nTracts = .N), keyby = w])
-Key: <w>
-       w medLppsf   medElas nTracts
-   <num>    <num>     <num>   <int>
-1:    33 6.353528 0.4173960      47
-2:    50 6.850701 0.6333888      18
-> for (p in c(0, .25, .5, .75))
-+   print(dPEl[N >= quantile(N, p), .(pN = p, cor = cor(lppsf, elas), nTracts = .N), keyby = w])
-Key: <w>
-       w    pN       cor nTracts
-   <num> <num>     <num>   <int>
-1:    33     0 0.5753142      47
-2:    50     0 0.5841408      18
-Key: <w>
-       w    pN       cor nTracts
-   <num> <num>     <num>   <int>
-1:    33  0.25 0.6042987      38
-2:    50  0.25 0.6593353      11
-Key: <w>
-       w    pN       cor nTracts
-   <num> <num>     <num>   <int>
-1:    33   0.5 0.7993022      25
-2:    50   0.5 0.7705890       8
-Key: <w>
-       w    pN       cor nTracts
-   <num> <num>     <num>   <int>
-1:    33  0.75 0.7278066      14
-2:    50  0.75 0.8007549       4
-> 
-> elW <- dcast(dPEl, CTNAME ~ w, value.var = c("lppsf", "elas", "N"))
-> print(elW[, cor(elas_33, elas_50, use = "complete.obs")])
-[1] 0.1340963
-> print(elW[, cor(lppsf_33, lppsf_50, use = "complete.obs")])
-[1] 0.9640967
-> print(head(elW))
-Key: <CTNAME>
-    CTNAME lppsf_33 lppsf_50    elas_33   elas_50  N_33  N_50
-    <char>    <num>    <num>      <num>     <num> <int> <int>
-1: 0002.03       NA 6.154721         NA 0.1817579    NA    25
-2: 0003.01 6.252916       NA  0.4121572        NA    45    NA
-3: 0003.02 6.262673       NA  0.5125036        NA    42    NA
-4: 0004.01 6.461097       NA -0.1655568        NA    31    NA
-5: 0004.02 6.323896       NA  0.2292356        NA    29    NA
-6: 0006.01 6.674677       NA  0.6222781        NA    88    NA
-> print(summary(elW))
-    CTNAME             lppsf_33        lppsf_50        elas_33       
- Length:54          Min.   :6.200   Min.   :6.155   Min.   :-0.2610  
- Class :character   1st Qu.:6.299   1st Qu.:6.748   1st Qu.: 0.2598  
- Mode  :character   Median :6.354   Median :6.851   Median : 0.4174  
-                    Mean   :6.486   Mean   :6.805   Mean   : 0.4478  
-                    3rd Qu.:6.687   3rd Qu.:6.884   3rd Qu.: 0.6145  
-                    Max.   :7.046   Max.   :7.079   Max.   : 1.2263  
-                    NA's   :7       NA's   :36      NA's   :7        
-    elas_50             N_33            N_50       
- Min.   :0.05034   Min.   : 21.0   Min.   : 20.00  
- 1st Qu.:0.44869   1st Qu.: 42.0   1st Qu.: 33.25  
- Median :0.63339   Median : 56.0   Median : 40.50  
- Mean   :0.65364   Mean   : 76.4   Mean   : 56.61  
- 3rd Qu.:0.93691   3rd Qu.: 85.0   3rd Qu.: 73.00  
- Max.   :1.20318   Max.   :359.0   Max.   :191.00  
- NA's   :36        NA's   :7       NA's   :36      
-> print(cor(elW[N_33>30 & N_50>30, .(elas_33,elas_50,lppsf_33, lppsf_50)], use = "complete.obs"))
-             elas_33   elas_50   lppsf_33    lppsf_50
-elas_33   1.00000000 0.0545615 0.06702653 -0.05883359
-elas_50   0.05456150 1.0000000 0.65107725  0.61740274
-lppsf_33  0.06702653 0.6510772 1.00000000  0.95735186
-lppsf_50 -0.05883359 0.6174027 0.95735186  1.00000000
+> draw33 <- function() {
++   plot(p33$elas, p33$lppsf, pch = 21, bg = p33$col, col = "grey30",
++        cex = sqrt(p33$N / median(p33$N)),
++        xlab = "SFD size elasticity, 33-ft lots",
++        ylab = "log price per sqft (tract FE), 33-ft lots",
++        main = sprintf("Vancouver R1 tracts, %d-%d sales (size = N)", min(yrs), max(yrs)))
++   abline(lm(lppsf ~ elas, p33), lty = 2)
++   legend("bottomright", bty = "n", pt.cex = 1.5, pch = 21, col = "grey30",
++          pt.bg = pal[c(1, 51, 101)], title = "Longitude",
++          legend = c(sprintf("%.3f (west)", lr[1]), "Ontario St", sprintf("%.3f (east)", lr[2])))
++ }
+> draw33()
+> png("lppsf33VsElasLon.png", width = 900, height = 700, res = 120)
+> draw33()
+> dev.off()
+pdf 
+  2 
 > 
 > proc.time()
    user  system elapsed 
-  9.434   4.334  17.733 
+ 17.472   7.714  66.816 
