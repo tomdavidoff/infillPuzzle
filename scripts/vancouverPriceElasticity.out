@@ -1,5 +1,5 @@
 
-R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
 Copyright (C) 2025 The R Foundation for Statistical Computing
 Platform: aarch64-apple-darwin20
 
@@ -125,14 +125,14 @@ st_point_on_surface assumes attributes are constant over geometries
              <char> <int> <int>
  1:            R3-2   249   123
  2:            RT-2   224    96
- 3:            RT-5   220   374
+ 3:            RT-5   220   373
  4:            RT-8   125    79
  5:            RT-7    96    77
  6:           RT-10    66   150
  7:            RM-4    54    48
  8:           RT-11    50    85
- 9:            RM-7    46    73
-10:            R1-1    43 12825
+ 9:            RM-7    46    71
+10:            R1-1    43 12818
 11:            RT-9    35    27
 12:            RT-3    23    69
 13:           RM-11    18    11
@@ -143,7 +143,7 @@ st_point_on_surface assumes attributes are constant over geometries
 18:           RT-4A    11     6
 19:            R3-3    10    19
 20:            R5-2    10     5
-21:            <NA>     9   191
+21:            <NA>     9   201
 22:            RT-1     9     0
 23:           RM-12     7    26
 24:            RM-1     6    41
@@ -192,6 +192,7 @@ st_point_on_surface assumes attributes are constant over geometries
 67:            RM-9     0     6
 68:           RM-9B     0     7
     zoning_district   DUP   SFD
+             <char> <int> <int>
 > 
 > dupZones <- head(zt[order(-DUP), zoning_district], NDUPZ)
 > print(dupZones)
@@ -233,6 +234,7 @@ st_point_on_surface assumes attributes are constant over geometries
 > 
 > # ---- SFD elasticity: area-specific slope on log sqft, area x width FE -------
 > m2 <- feols(log(conveyancePrice) ~ i(gid, lsqft) + lage | gid^w + convMonth, sB)
+NOTE: 5/0 fixed-effect singletons were removed (5 observations).
 > k  <- grep("^gid::", names(coef(m2)))
 > el <- data.table(gid  = sub("^gid::(.*):lsqft$", "\\1", names(coef(m2))[k]),
 +                  elas = coef(m2)[k], seEl = se(m2)[k])
@@ -242,6 +244,7 @@ st_point_on_surface assumes attributes are constant over geometries
 > lv <- rbind(sA, du, fill = TRUE)
 > lv[, gp := paste(gid, prod, sep = "|")]
 > m1 <- feols(log(conveyancePrice / MB_total_finished_area) ~ lage | gp + convMonth, lv)
+NOTE: 2/0 fixed-effect singletons were removed (2 observations).
 > fe <- fixef(m1)$gp
 > lev <- data.table(gp = names(fe), lppsf = as.numeric(fe))
 > lev[, c("gid", "prod") := tstrsplit(gp, "|", fixed = TRUE)]
@@ -259,21 +262,21 @@ st_point_on_surface assumes attributes are constant over geometries
 > out <- out[nDUP >= MIN_DUP & !is.na(gap)]
 > if (nrow(out) < 5) stop("Fewer than 5 areas with >= MIN_DUP duplex sales; raise NDUPZ or loosen MIN_DUP / MAXAGE")
 > print(out[order(-dupShare)])
-       gid lppsfDUP lppsfSFD        gap       elas       seEl  nSFD  nDUP
-    <char>    <num>    <num>      <num>      <num>      <num> <int> <int>
-1: 0041.02 6.834245 6.773900 0.06034433  0.8103066 0.04075096    44    57
-2: 0006.02 6.757912 6.630089 0.12782371  0.6509248 0.20537699    38    48
-3: 0006.01 6.724238 6.680933 0.04330452  0.6158820 0.09874916    72    37
-4: 0014.02 6.536630 6.333504 0.20312676 -0.0469250 0.06266900    39    17
-5: 0004.02 6.488044 6.287682 0.20036206  0.2353666 0.05771209    20    18
-6: 0031.01 7.077491 6.750443 0.32704885  0.3171091 0.08424487    37    10
+       gid lppsfDUP lppsfSFD        gap       elas      seEl  nSFD  nDUP
+    <char>    <num>    <num>      <num>      <num>     <num> <int> <int>
+1: 0041.02 6.834245 6.773900 0.06034433  0.8103066 0.1865372    44    57
+2: 0006.02 6.757912 6.630089 0.12782371  0.6509248 0.3597980    38    48
+3: 0006.01 6.724238 6.680933 0.04330452  0.6158820 0.1504998    72    37
+4: 0014.02 6.536630 6.333504 0.20312676 -0.0469250 0.2457273    39    17
+5: 0004.02 6.488044 6.287682 0.20036206  0.2353666 0.2869611    20    18
+6: 0031.01 7.077491 6.750443 0.32704885  0.3171091 0.3049424    37    10
    nSFDall nDUPall   dupShare
      <int>   <int>      <num>
 1:      62      63 0.50400000
-2:     162      51 0.23943662
+2:     161      51 0.24056604
 3:     178      40 0.18348624
 4:     138      18 0.11538462
-5:     150      18 0.10714286
+5:     149      18 0.10778443
 6:     220      10 0.04347826
 > 
 > # ---- does SFD elasticity predict the duplex - SFD gap? -----------------------
@@ -281,7 +284,7 @@ st_point_on_surface assumes attributes are constant over geometries
 +               corElasLevel = cor(elas, lppsfSFD), nAreas = .N)])
    corGapElas corGapLevel corElasLevel nAreas
         <num>       <num>        <num>  <int>
-1: -0.6772104  -0.2373303    0.7661389      6
+1: -0.6772104  -0.2373304    0.7661389      6
 > hi <- out[dupShare >= median(dupShare)]
 > print(etable(
 +   feols(gap ~ elas, out),
@@ -362,38 +365,173 @@ st_point_on_surface assumes attributes are constant over geometries
 +   data.table(gid = sub("^gid::(.*):lsqft$", "\\1", names(coef(m2_33))[k33]), elas = coef(m2_33)[k33]),
 +   unique(s33[, .(gid, N = N33)]),
 +   ctLon))
-> 
-> pal <- hcl.colors(101, "Blue-Red 3")        # blue = west, red = east
-> lr  <- range(p33$lon)
-> pos <- ifelse(p33$lon < ONTARIO,
-+               0.5 * (p33$lon - lr[1]) / (ONTARIO - lr[1]),
-+               0.5 + 0.5 * (p33$lon - ONTARIO) / (lr[2] - ONTARIO))
-> p33[, col := pal[round(pmin(pmax(pos, 0), 1) * 100) + 1]]
-> 
-> print(p33[, .(cor = cor(lppsf, elas), corWest = cor(lppsf[lon < ONTARIO], elas[lon < ONTARIO]),
-+               corEast = cor(lppsf[lon >= ONTARIO], elas[lon >= ONTARIO]), nTracts = .N)])
-         cor   corWest    corEast nTracts
-       <num>     <num>      <num>   <int>
-1: 0.5659296 0.5878672 0.09242069      40
-> 
-> draw33 <- function() {
-+   plot(p33$elas, p33$lppsf, pch = 21, bg = p33$col, col = "grey30",
-+        cex = sqrt(p33$N / median(p33$N)),
-+        xlab = "SFD size elasticity, 33-ft lots",
-+        ylab = "log price per sqft (tract FE), 33-ft lots",
-+        main = sprintf("Vancouver R1 tracts, %d-%d sales (size = N)", min(yrs), max(yrs)))
-+   abline(lm(lppsf ~ elas, p33), lty = 2)
-+   legend("bottomright", bty = "n", pt.cex = 1.5, pch = 21, col = "grey30",
-+          pt.bg = pal[c(1, 51, 101)], title = "Longitude",
-+          legend = c(sprintf("%.3f (west)", lr[1]), "Ontario St", sprintf("%.3f (east)", lr[2])))
-+ }
-> draw33()
-> png("lppsf33VsElasLon.png", width = 900, height = 700, res = 120)
-> draw33()
-> dev.off()
-pdf 
-  2 
-> 
+> print(head(k33))
+[1] 1 2 3 4 5 6
+> print(head(fe33))
+ 0003.01  0003.02  0004.01  0006.01  0006.02  0007.01 
+6.008082 6.014932 6.224253 6.401716 6.346120 6.413528 
+> print(head(s33))
+Key: <rollStart>
+    rollStart conveyancePrice conveyanceDate      rollNumber MB_effective_year
+        <num>           <num>         <char>          <char>             <num>
+1: 1032670920         2868000     2015-05-29 001032670920000              2010
+2: 1032686050         2196000     2014-06-24 001032686050000              2009
+3: 1032686170         2430000     2015-08-17 001032686170000              2009
+4: 1032688830         2102803     2014-06-17 001032688830000              2015
+5: 1032688830         3100000     2016-03-30 001032688830000              2015
+6: 1032688930         1943925     2014-05-12 001032688930000              2013
+   MB_total_finished_area land_width land_depth            actualUseDescription
+                    <num>      <num>      <num>                          <char>
+1:                   2137         33      112.0          Single Family Dwelling
+2:                   2265         33      112.6          Single Family Dwelling
+3:                   2307         33      112.6          Single Family Dwelling
+4:                   2652         33      112.3 Residential Dwelling with Suite
+5:                   2652         33      112.3 Residential Dwelling with Suite
+6:                   2652         33      112.3 Residential Dwelling with Suite
+   neighbourhoodDescription   convDate    dup   prod zoning_district
+                     <char>     <IDat> <lgcl> <char>          <char>
+1:               POINT GREY 2015-05-29  FALSE    SFD            R1-1
+2:               POINT GREY 2014-06-24  FALSE    SFD            R1-1
+3:               POINT GREY 2015-08-17  FALSE    SFD            R1-1
+4:               POINT GREY 2014-06-17  FALSE    SFD            R1-1
+5:               POINT GREY 2016-03-30  FALSE    SFD            R1-1
+6:               POINT GREY 2014-05-12  FALSE    SFD            R1-1
+   zoning_category  CTNAME     gid    lsqft      lage convMonth     w     N
+            <char>  <char>  <char>    <num>     <num>    <char> <num> <int>
+1:              R1 0043.02 0043.02 7.667158 1.7917595   2015-05    33   193
+2:              R1 0043.02 0043.02 7.725330 1.7917595   2014-06    33   193
+3:              R1 0043.02 0043.02 7.743703 1.9459101   2015-08    33   193
+4:              R1 0043.02 0043.02 7.883069 0.0000000   2014-06    33   193
+5:              R1 0043.02 0043.02 7.883069 0.6931472   2016-03    33   193
+6:              R1 0043.02 0043.02 7.883069 0.6931472   2014-05    33   193
+     N33
+   <int>
+1:   143
+2:   143
+3:   143
+4:   143
+5:   143
+6:   143
+> print(head(p33))
+Key: <gid>
+       gid    lppsf      elas     N       lon
+    <char>    <num>     <num> <int>     <num>
+1: 0003.01 6.008082 0.6091873    28 -123.0815
+2: 0003.02 6.014932 0.5037841    28 -123.0812
+3: 0004.01 6.224253 0.1935069    22 -123.1096
+4: 0006.01 6.401716 0.6876529    65 -123.1352
+5: 0006.02 6.346120 0.4280296    29 -123.1235
+6: 0007.01 6.413528 0.7584542    44 -123.1519
+> print(head(k33))
+[1] 1 2 3 4 5 6
+> print(head(fe33))
+ 0003.01  0003.02  0004.01  0006.01  0006.02  0007.01 
+6.008082 6.014932 6.224253 6.401716 6.346120 6.413528 
+> print(head(s33))
+Key: <rollStart>
+    rollStart conveyancePrice conveyanceDate      rollNumber MB_effective_year
+        <num>           <num>         <char>          <char>             <num>
+1: 1032670920         2868000     2015-05-29 001032670920000              2010
+2: 1032686050         2196000     2014-06-24 001032686050000              2009
+3: 1032686170         2430000     2015-08-17 001032686170000              2009
+4: 1032688830         2102803     2014-06-17 001032688830000              2015
+5: 1032688830         3100000     2016-03-30 001032688830000              2015
+6: 1032688930         1943925     2014-05-12 001032688930000              2013
+   MB_total_finished_area land_width land_depth            actualUseDescription
+                    <num>      <num>      <num>                          <char>
+1:                   2137         33      112.0          Single Family Dwelling
+2:                   2265         33      112.6          Single Family Dwelling
+3:                   2307         33      112.6          Single Family Dwelling
+4:                   2652         33      112.3 Residential Dwelling with Suite
+5:                   2652         33      112.3 Residential Dwelling with Suite
+6:                   2652         33      112.3 Residential Dwelling with Suite
+   neighbourhoodDescription   convDate    dup   prod zoning_district
+                     <char>     <IDat> <lgcl> <char>          <char>
+1:               POINT GREY 2015-05-29  FALSE    SFD            R1-1
+2:               POINT GREY 2014-06-24  FALSE    SFD            R1-1
+3:               POINT GREY 2015-08-17  FALSE    SFD            R1-1
+4:               POINT GREY 2014-06-17  FALSE    SFD            R1-1
+5:               POINT GREY 2016-03-30  FALSE    SFD            R1-1
+6:               POINT GREY 2014-05-12  FALSE    SFD            R1-1
+   zoning_category  CTNAME     gid    lsqft      lage convMonth     w     N
+            <char>  <char>  <char>    <num>     <num>    <char> <num> <int>
+1:              R1 0043.02 0043.02 7.667158 1.7917595   2015-05    33   193
+2:              R1 0043.02 0043.02 7.725330 1.7917595   2014-06    33   193
+3:              R1 0043.02 0043.02 7.743703 1.9459101   2015-08    33   193
+4:              R1 0043.02 0043.02 7.883069 0.0000000   2014-06    33   193
+5:              R1 0043.02 0043.02 7.883069 0.6931472   2016-03    33   193
+6:              R1 0043.02 0043.02 7.883069 0.6931472   2014-05    33   193
+     N33
+   <int>
+1:   143
+2:   143
+3:   143
+4:   143
+5:   143
+6:   143
+> print(summary(s33))
+   rollStart         conveyancePrice   conveyanceDate      rollNumber       
+ Min.   :1.033e+09   Min.   : 618000   Length:2313        Length:2313       
+ 1st Qu.:3.696e+09   1st Qu.:1385000   Class :character   Class :character  
+ Median :9.747e+09   Median :1860000   Mode  :character   Mode  :character  
+ Mean   :1.111e+10   Mean   :2037818                                        
+ 3rd Qu.:1.922e+10   3rd Qu.:2615000                                        
+ Max.   :2.477e+10   Max.   :5800000                                        
+ MB_effective_year MB_total_finished_area   land_width     land_depth   
+ Min.   :1985      Min.   : 519           Min.   :32.6   Min.   :112.0  
+ 1st Qu.:1997      1st Qu.:2346           1st Qu.:33.0   1st Qu.:121.8  
+ Median :2010      Median :2619           Median :33.0   Median :122.0  
+ Mean   :2006      Mean   :2558           Mean   :33.0   Mean   :121.8  
+ 3rd Qu.:2015      3rd Qu.:2819           3rd Qu.:33.0   3rd Qu.:122.2  
+ Max.   :2020      Max.   :3790           Max.   :33.4   Max.   :130.3  
+ actualUseDescription neighbourhoodDescription    convDate         
+ Length:2313          Length:2313              Min.   :2014-01-02  
+ Class :character     Class :character         1st Qu.:2014-11-13  
+ Mode  :character     Mode  :character         Median :2015-10-20  
+                                               Mean   :2016-01-04  
+                                               3rd Qu.:2017-01-09  
+                                               Max.   :2018-12-27  
+    dup              prod           zoning_district    zoning_category   
+ Mode :logical   Length:2313        Length:2313        Length:2313       
+ FALSE:2313      Class :character   Class :character   Class :character  
+                 Mode  :character   Mode  :character   Mode  :character  
+                                                                         
+                                                                         
+                                                                         
+    CTNAME              gid                lsqft            lage      
+ Length:2313        Length:2313        Min.   :6.252   Min.   :0.000  
+ Class :character   Class :character   1st Qu.:7.760   1st Qu.:0.000  
+ Mode  :character   Mode  :character   Median :7.871   Median :1.946  
+                                       Mean   :7.838   Mean   :1.688  
+                                       3rd Qu.:7.944   3rd Qu.:2.944  
+                                       Max.   :8.240   Max.   :3.434  
+  convMonth               w            N              N33        
+ Length:2313        Min.   :33   Min.   : 21.0   Min.   : 21.00  
+ Class :character   1st Qu.:33   1st Qu.: 45.0   1st Qu.: 39.00  
+ Mode  :character   Median :33   Median : 88.0   Median : 65.00  
+                    Mean   :33   Mean   :119.2   Mean   : 93.78  
+                    3rd Qu.:33   3rd Qu.:175.0   3rd Qu.:132.00  
+                    Max.   :33   Max.   :319.0   Max.   :244.00  
+> df <- merge(df, p33, by = "gid", all.x = TRUE)
+> horseRace <- feols(log(conveyancePrice/MB_total_finished_area) ~ dup*(elas+lppsf)|gid+ convMonth,df[round(land_width) == 33 | dup==1],cluster="gid")
+NOTE: 1,132 observations removed because of NA values (RHS: 1,132).
+The variables 'elas' and 'lppsf' have been removed because of collinearity (see
+$collin.var).
+> print(summary(horseRace))
+OLS estimation, Dep. Var.: log(conveyancePrice/MB_total_finished_area)
+Observations: 3,280
+Fixed-effects: gid: 40,  convMonth: 60
+Standard-errors: Clustered (gid) 
+               Estimate Std. Error   t value  Pr(>|t|)    
+dupTRUE       -0.545365   1.581490 -0.344842 0.7320659    
+dupTRUE:elas  -0.400057   0.122702 -3.260405 0.0023127 ** 
+dupTRUE:lppsf  0.132637   0.261278  0.507648 0.6145596    
+... 2 variables were removed because of collinearity (elas and lppsf)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.216745     Adj. R2: 0.693005
+                 Within R2: 0.017315
+> q("no")
 > proc.time()
    user  system elapsed 
- 17.472   7.714  66.816 
+ 10.076   4.660  18.382 

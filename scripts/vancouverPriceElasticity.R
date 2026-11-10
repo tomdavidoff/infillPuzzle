@@ -164,7 +164,7 @@ drawGap <- function() {
   text(out$elas, out$gap, out$gid, cex = 0.55, pos = 3)
 }
 drawGap()
-png("duplexGapVsElas.png", width = 900, height = 700, res = 120)
+png("text/duplexGapVsElas.png", width = 900, height = 700, res = 120)
 drawGap()
 dev.off()
 
@@ -190,6 +190,18 @@ p33 <- Reduce(function(a, b) merge(a, b, by = "gid"), list(
   data.table(gid = sub("^gid::(.*):lsqft$", "\\1", names(coef(m2_33))[k33]), elas = coef(m2_33)[k33]),
   unique(s33[, .(gid, N = N33)]),
   ctLon))
+print(head(k33))
+print(head(fe33))
+print(head(s33))
+print(head(p33))
+print(head(k33))
+print(head(fe33))
+print(head(s33))
+print(summary(s33))
+df <- merge(df, p33, by = "gid", all.x = TRUE)
+horseRace <- feols(log(conveyancePrice/MB_total_finished_area) ~ dup*(elas+lppsf)|gid+ convMonth,df[round(land_width) == 33 | dup==1],cluster="gid")
+print(summary(horseRace))
+
 
 pal <- hcl.colors(101, "Blue-Red 3")        # blue = west, red = east
 lr  <- range(p33$lon)
@@ -213,6 +225,6 @@ draw33 <- function() {
          legend = c(sprintf("%.3f (west)", lr[1]), "Ontario St", sprintf("%.3f (east)", lr[2])))
 }
 draw33()
-png("lppsf33VsElasLon.png", width = 900, height = 700, res = 120)
+png("text/lppsf33VsElasLon.png", width = 900, height = 700, res = 120)
 draw33()
 dev.off()
