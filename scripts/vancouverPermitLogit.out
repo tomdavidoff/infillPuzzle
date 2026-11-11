@@ -1,0 +1,969 @@
+
+R version 4.5.2 (2025-10-31) -- "[Not] Part in a Rumble"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # vancouverPermitLogit.R
+> # Product choice on new R1 permits (single / duplex / multiplex) vs tract price level,
+> # 2018-23 duplex era and post-Oct-2023 R1-1 era, on 33-ft and 50-ft lots.
+> # Under IIA, the duplex-vs-single logit (estimated on single+duplex permits) recovers the MNL
+> # duplex-vs-single coefficients in both eras, so the level slope x R1-1 interaction is a quasi-DiD.
+> # Multiplex-vs-single is R1-1 era only. Permits cached in dataRaw (refreshed if > 48 h old).
+> # Tom Davidoff, 11/10/26
+> 
+> if (!exists("sA")) source("scripts/vancouverPriceElasticity.R")
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+
+2 Acres Or More (Single Family Dwelling, Duplex) 
+                                              65 
+ Duplex, Non-Strata Side by Side or Front / Back 
+                                            1175 
+                    Duplex, Non-Strata Up / Down 
+                                             144 
+                     Duplex, Strata Front / Back 
+                                            4155 
+                     Duplex, Strata Side by Side 
+                                            2475 
+                        Duplex, Strata Up / Down 
+                                             236 
+                 Residential Dwelling with Suite 
+                                           64859 
+                          Single Family Dwelling 
+                                           61577 
+Key: <actualUseDescription>
+                              actualUseDescription medArea medPrice     N
+                                            <char>   <num>    <num> <int>
+1: Duplex, Non-Strata Side by Side or Front / Back  1620.0  1875000   103
+2:                    Duplex, Non-Strata Up / Down  1756.5  1766000    14
+3:                     Duplex, Strata Front / Back  1351.0  1050000   800
+4:                     Duplex, Strata Side by Side  1616.0  1310000   427
+5:                        Duplex, Strata Up / Down  1299.0  1200000    37
+    zoning_district   DUP   SFD
+             <char> <int> <int>
+ 1:            R3-2   249   123
+ 2:            RT-2   224    96
+ 3:            RT-5   220   373
+ 4:            RT-8   125    79
+ 5:            RT-7    96    77
+ 6:           RT-10    66   150
+ 7:            RM-4    54    48
+ 8:           RT-11    50    85
+ 9:            RM-7    46    71
+10:            R1-1    43 12818
+11:            RT-9    35    27
+12:            RT-3    23    69
+13:           RM-11    18    11
+14:           RM-8A    18    89
+15:            RM-2    14     2
+16:           RM-3A    12    12
+17:            RM-8    11    42
+18:           RT-4A    11     6
+19:            R3-3    10    19
+20:            R5-2    10     5
+21:            <NA>     9   201
+22:            RT-1     9     0
+23:           RM-12     7    26
+24:            RM-1     6    41
+25:            R5-3     4    18
+26:      CD-1 (212)     3     2
+27:            DEOD     2    13
+28:            R5-4     2     6
+29:             C-1     1     5
+30:            RA-1     1    20
+31:            RM-5     1     1
+32:           RM-9A     1    26
+33:             C-2     0     3
+34:      CD-1 (106)     0    14
+35:      CD-1 (143)     0     7
+36:      CD-1 (153)     0     4
+37:      CD-1 (174)     0     2
+38:      CD-1 (184)     0    19
+39:      CD-1 (192)     0     2
+40:      CD-1 (209)     0     1
+41:      CD-1 (213)     0     2
+42:      CD-1 (216)     0     4
+43:      CD-1 (217)     0     1
+44:      CD-1 (219)     0     1
+45:      CD-1 (225)     0     1
+46:      CD-1 (241)     0     5
+47:       CD-1 (36)     0     2
+48:      CD-1 (377)     0     1
+49:      CD-1 (448)     0     6
+50:      CD-1 (521)     0     1
+51:      CD-1 (645)     0     2
+52:      CD-1 (736)     0     1
+53:      CD-1 (804)     0     2
+54:      CD-1 (841)     0     1
+55:              DD     0     2
+56:            FM-1     0     2
+57:             FSD     0   130
+58:             I-1     0    10
+59:             I-2     0    10
+60:             M-2     0     4
+61:            R4-1     0     2
+62:            R5-1     0    14
+63:           RM-10     0     2
+64:           RM-5A     0     1
+65:           RM-5B     0     2
+66:           RM-7A     0     9
+67:            RM-9     0     6
+68:           RM-9B     0     7
+    zoning_district   DUP   SFD
+             <char> <int> <int>
+[1] "R3-2" "RT-2" "RT-5" "RT-8" "RT-7"
+NOTE: 5/0 fixed-effect singletons were removed (5 observations).
+NOTE: 2/0 fixed-effect singletons were removed (2 observations).
+
+  (-1,0]    (0,4]    (4,9]   (9,19]  (19,49] (49,Inf] 
+      29        9        5        3        2        1 
+       gid lppsfDUP lppsfSFD        gap       elas      seEl  nSFD  nDUP
+    <char>    <num>    <num>      <num>      <num>     <num> <int> <int>
+1: 0041.02 6.834245 6.773900 0.06034433  0.8103066 0.1865372    44    57
+2: 0006.02 6.757912 6.630089 0.12782371  0.6509248 0.3597980    38    48
+3: 0006.01 6.724238 6.680933 0.04330452  0.6158820 0.1504998    72    37
+4: 0014.02 6.536630 6.333504 0.20312676 -0.0469250 0.2457273    39    17
+5: 0004.02 6.488044 6.287682 0.20036206  0.2353666 0.2869611    20    18
+6: 0031.01 7.077491 6.750443 0.32704885  0.3171091 0.3049424    37    10
+   nSFDall nDUPall   dupShare
+     <int>   <int>      <num>
+1:      62      63 0.50400000
+2:     161      51 0.24056604
+3:     178      40 0.18348624
+4:     138      18 0.11538462
+5:     149      18 0.10778443
+6:     220      10 0.04347826
+   corGapElas corGapLevel corElasLevel nAreas
+        <num>       <num>        <num>  <int>
+1: -0.6772104  -0.2373304    0.7661389      6
+                feols(gap ~ ela.. feols(gap ~ ela...1 feols(gap ~ el..
+                            unwtd             wt nDUP      + SFD level
+Dependent Var.:               gap                 gap              gap
+                                                                      
+Constant         0.2573* (0.0644)   0.2397** (0.0467)  -0.8111 (2.291)
+elas            -0.2252. (0.0922)   -0.2182* (0.0627) -0.3081 (0.2359)
+lppsfSFD                                               0.1662 (0.3658)
+_______________ _________________   _________________ ________________
+S.E. type       Heteroskeda.-rob.   Heteroskeda.-rob. Heterosked.-rob.
+Observations                    6                   6                6
+R2                        0.45861             0.56418          0.59693
+Adj. R2                   0.32327             0.45523          0.32822
+
+                feols(gap ~ el...1
+                   dupShare >= med
+Dependent Var.:                gap
+                                  
+Constant           0.1588 (0.2516)
+elas              -0.1135 (0.3136)
+lppsfSFD                          
+_______________   ________________
+S.E. type         Heterosked.-rob.
+Observations                     3
+R2                         0.07567
+Adj. R2                   -0.84866
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+[1] 1 2 3 4 5 6
+ 0003.01  0003.02  0004.01  0006.01  0006.02  0007.01 
+6.008082 6.014932 6.224253 6.401716 6.346120 6.413528 
+Key: <rollStart>
+    rollStart conveyancePrice conveyanceDate      rollNumber MB_effective_year
+        <num>           <num>         <char>          <char>             <num>
+1: 1032670920         2868000     2015-05-29 001032670920000              2010
+2: 1032686050         2196000     2014-06-24 001032686050000              2009
+3: 1032686170         2430000     2015-08-17 001032686170000              2009
+4: 1032688830         2102803     2014-06-17 001032688830000              2015
+5: 1032688830         3100000     2016-03-30 001032688830000              2015
+6: 1032688930         1943925     2014-05-12 001032688930000              2013
+   MB_total_finished_area land_width land_depth            actualUseDescription
+                    <num>      <num>      <num>                          <char>
+1:                   2137         33      112.0          Single Family Dwelling
+2:                   2265         33      112.6          Single Family Dwelling
+3:                   2307         33      112.6          Single Family Dwelling
+4:                   2652         33      112.3 Residential Dwelling with Suite
+5:                   2652         33      112.3 Residential Dwelling with Suite
+6:                   2652         33      112.3 Residential Dwelling with Suite
+   neighbourhoodDescription   convDate    dup   prod zoning_district
+                     <char>     <IDat> <lgcl> <char>          <char>
+1:               POINT GREY 2015-05-29  FALSE    SFD            R1-1
+2:               POINT GREY 2014-06-24  FALSE    SFD            R1-1
+3:               POINT GREY 2015-08-17  FALSE    SFD            R1-1
+4:               POINT GREY 2014-06-17  FALSE    SFD            R1-1
+5:               POINT GREY 2016-03-30  FALSE    SFD            R1-1
+6:               POINT GREY 2014-05-12  FALSE    SFD            R1-1
+   zoning_category  CTNAME     gid    lsqft      lage convMonth     w     N
+            <char>  <char>  <char>    <num>     <num>    <char> <num> <int>
+1:              R1 0043.02 0043.02 7.667158 1.7917595   2015-05    33   193
+2:              R1 0043.02 0043.02 7.725330 1.7917595   2014-06    33   193
+3:              R1 0043.02 0043.02 7.743703 1.9459101   2015-08    33   193
+4:              R1 0043.02 0043.02 7.883069 0.0000000   2014-06    33   193
+5:              R1 0043.02 0043.02 7.883069 0.6931472   2016-03    33   193
+6:              R1 0043.02 0043.02 7.883069 0.6931472   2014-05    33   193
+     N33
+   <int>
+1:   143
+2:   143
+3:   143
+4:   143
+5:   143
+6:   143
+Key: <gid>
+       gid    lppsf      elas     N       lon
+    <char>    <num>     <num> <int>     <num>
+1: 0003.01 6.008082 0.6091873    28 -123.0815
+2: 0003.02 6.014932 0.5037841    28 -123.0812
+3: 0004.01 6.224253 0.1935069    22 -123.1096
+4: 0006.01 6.401716 0.6876529    65 -123.1352
+5: 0006.02 6.346120 0.4280296    29 -123.1235
+6: 0007.01 6.413528 0.7584542    44 -123.1519
+[1] 1 2 3 4 5 6
+ 0003.01  0003.02  0004.01  0006.01  0006.02  0007.01 
+6.008082 6.014932 6.224253 6.401716 6.346120 6.413528 
+Key: <rollStart>
+    rollStart conveyancePrice conveyanceDate      rollNumber MB_effective_year
+        <num>           <num>         <char>          <char>             <num>
+1: 1032670920         2868000     2015-05-29 001032670920000              2010
+2: 1032686050         2196000     2014-06-24 001032686050000              2009
+3: 1032686170         2430000     2015-08-17 001032686170000              2009
+4: 1032688830         2102803     2014-06-17 001032688830000              2015
+5: 1032688830         3100000     2016-03-30 001032688830000              2015
+6: 1032688930         1943925     2014-05-12 001032688930000              2013
+   MB_total_finished_area land_width land_depth            actualUseDescription
+                    <num>      <num>      <num>                          <char>
+1:                   2137         33      112.0          Single Family Dwelling
+2:                   2265         33      112.6          Single Family Dwelling
+3:                   2307         33      112.6          Single Family Dwelling
+4:                   2652         33      112.3 Residential Dwelling with Suite
+5:                   2652         33      112.3 Residential Dwelling with Suite
+6:                   2652         33      112.3 Residential Dwelling with Suite
+   neighbourhoodDescription   convDate    dup   prod zoning_district
+                     <char>     <IDat> <lgcl> <char>          <char>
+1:               POINT GREY 2015-05-29  FALSE    SFD            R1-1
+2:               POINT GREY 2014-06-24  FALSE    SFD            R1-1
+3:               POINT GREY 2015-08-17  FALSE    SFD            R1-1
+4:               POINT GREY 2014-06-17  FALSE    SFD            R1-1
+5:               POINT GREY 2016-03-30  FALSE    SFD            R1-1
+6:               POINT GREY 2014-05-12  FALSE    SFD            R1-1
+   zoning_category  CTNAME     gid    lsqft      lage convMonth     w     N
+            <char>  <char>  <char>    <num>     <num>    <char> <num> <int>
+1:              R1 0043.02 0043.02 7.667158 1.7917595   2015-05    33   193
+2:              R1 0043.02 0043.02 7.725330 1.7917595   2014-06    33   193
+3:              R1 0043.02 0043.02 7.743703 1.9459101   2015-08    33   193
+4:              R1 0043.02 0043.02 7.883069 0.0000000   2014-06    33   193
+5:              R1 0043.02 0043.02 7.883069 0.6931472   2016-03    33   193
+6:              R1 0043.02 0043.02 7.883069 0.6931472   2014-05    33   193
+     N33
+   <int>
+1:   143
+2:   143
+3:   143
+4:   143
+5:   143
+6:   143
+   rollStart         conveyancePrice   conveyanceDate      rollNumber       
+ Min.   :1.033e+09   Min.   : 618000   Length:2313        Length:2313       
+ 1st Qu.:3.696e+09   1st Qu.:1385000   Class :character   Class :character  
+ Median :9.747e+09   Median :1860000   Mode  :character   Mode  :character  
+ Mean   :1.111e+10   Mean   :2037818                                        
+ 3rd Qu.:1.922e+10   3rd Qu.:2615000                                        
+ Max.   :2.477e+10   Max.   :5800000                                        
+ MB_effective_year MB_total_finished_area   land_width     land_depth   
+ Min.   :1985      Min.   : 519           Min.   :32.6   Min.   :112.0  
+ 1st Qu.:1997      1st Qu.:2346           1st Qu.:33.0   1st Qu.:121.8  
+ Median :2010      Median :2619           Median :33.0   Median :122.0  
+ Mean   :2006      Mean   :2558           Mean   :33.0   Mean   :121.8  
+ 3rd Qu.:2015      3rd Qu.:2819           3rd Qu.:33.0   3rd Qu.:122.2  
+ Max.   :2020      Max.   :3790           Max.   :33.4   Max.   :130.3  
+ actualUseDescription neighbourhoodDescription    convDate         
+ Length:2313          Length:2313              Min.   :2014-01-02  
+ Class :character     Class :character         1st Qu.:2014-11-13  
+ Mode  :character     Mode  :character         Median :2015-10-20  
+                                               Mean   :2016-01-04  
+                                               3rd Qu.:2017-01-09  
+                                               Max.   :2018-12-27  
+    dup              prod           zoning_district    zoning_category   
+ Mode :logical   Length:2313        Length:2313        Length:2313       
+ FALSE:2313      Class :character   Class :character   Class :character  
+                 Mode  :character   Mode  :character   Mode  :character  
+                                                                         
+                                                                         
+                                                                         
+    CTNAME              gid                lsqft            lage      
+ Length:2313        Length:2313        Min.   :6.252   Min.   :0.000  
+ Class :character   Class :character   1st Qu.:7.760   1st Qu.:0.000  
+ Mode  :character   Mode  :character   Median :7.871   Median :1.946  
+                                       Mean   :7.838   Mean   :1.688  
+                                       3rd Qu.:7.944   3rd Qu.:2.944  
+                                       Max.   :8.240   Max.   :3.434  
+  convMonth               w            N              N33        
+ Length:2313        Min.   :33   Min.   : 21.0   Min.   : 21.00  
+ Class :character   1st Qu.:33   1st Qu.: 45.0   1st Qu.: 39.00  
+ Mode  :character   Median :33   Median : 88.0   Median : 65.00  
+                    Mean   :33   Mean   :119.2   Mean   : 93.78  
+                    3rd Qu.:33   3rd Qu.:175.0   3rd Qu.:132.00  
+                    Max.   :33   Max.   :319.0   Max.   :244.00  
+NOTE: 1,132 observations removed because of NA values (RHS: 1,132).
+The variables 'elas' and 'lppsf' have been removed because of collinearity (see
+$collin.var).
+OLS estimation, Dep. Var.: log(conveyancePrice/MB_total_finished_area)
+Observations: 3,280
+Fixed-effects: gid: 40,  convMonth: 60
+Standard-errors: Clustered (gid) 
+               Estimate Std. Error   t value  Pr(>|t|)    
+dupTRUE       -0.545365   1.581490 -0.344842 0.7320659    
+dupTRUE:elas  -0.400057   0.122702 -3.260405 0.0023127 ** 
+dupTRUE:lppsf  0.132637   0.261278  0.507648 0.6145596    
+... 2 variables were removed because of collinearity (elas and lppsf)
+---
+Signif. codes:  0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+RMSE: 0.216745     Adj. R2: 0.693005
+                 Within R2: 0.017315
+         cor   corWest    corEast nTracts
+       <num>     <num>      <num>   <int>
+1: 0.5659296 0.5878672 0.09242069      40
+Warning messages:
+1: st_point_on_surface assumes attributes are constant over geometries 
+2: st_point_on_surface assumes attributes are constant over geometries 
+> stopifnot(GEO == "CTNAME")
+> D_REFORM     <- as.IDate("2018-09-18")   # duplexes permitted in RS
+> R11_SWITCH   <- as.IDate("2023-10-01")   # R1-1 (multiplex) in force
+> PERMIT_START <- as.IDate("2015-01-01")
+> ONTARIO      <- -123.1036                # East/West divide
+> 
+> # ---- tract price level: pooled R1 SFD (33 + 50 ft), tract FE in log ppsf ---------
+> # pooled across widths so mostly-50-ft West tracts aren't dropped
+> mL  <- feols(log(conveyancePrice / MB_total_finished_area) ~ lage | gid + w + convMonth, sA)
+> feL <- fixef(mL)$gid
+> tr  <- merge(data.table(gid = names(feL), lppsf = as.numeric(feL)),
++              el[, .(gid, elas)], by = "gid", all.x = TRUE)
+> tr[, `:=`(zL = (lppsf - mean(lppsf)) / sd(lppsf),
++           zE = (elas - mean(elas, na.rm = TRUE)) / sd(elas, na.rm = TRUE))]
+> print(tr[, .(nTracts = .N, corElasLevel = cor(elas, lppsf, use = "complete.obs"))])
+   nTracts corElasLevel
+     <int>        <num>
+1:      49    0.6454608
+> 
+> # ---- permits: cached download, refreshed if older than MAX_AGE_HRS --------------
+> url <- paste0("https://opendata.vancouver.ca/api/explore/v2.1/catalog/datasets/",
++               "issued-building-permits/exports/csv?delimiter=%3B")
+> PERMIT_CACHE <- path.expand("~/DropboxExternal/dataRaw/vancouverIssuedBuildingPermits.csv")
+> MAX_AGE_HRS  <- 48
+> ageHrs <- if (file.exists(PERMIT_CACHE))
++   as.numeric(difftime(Sys.time(), file.mtime(PERMIT_CACHE), units = "hours")) else Inf
+> if (ageHrs > MAX_AGE_HRS) {
++   tmp <- paste0(PERMIT_CACHE, ".part")
++   oldTO <- options(timeout = 1200)
++   ok <- tryCatch(download.file(url, tmp, mode = "wb", quiet = TRUE) == 0, error = function(e) FALSE)
++   options(oldTO)
++   if (ok && file.exists(tmp) && file.size(tmp) > 1e6) {
++     file.rename(tmp, PERMIT_CACHE)
++     message("Permits downloaded to ", PERMIT_CACHE)
++   } else {
++     unlink(tmp)
++     if (!file.exists(PERMIT_CACHE)) stop("Permit download failed and no cached copy exists")
++     warning(sprintf("Permit download failed; using cached copy %.0f hours old", ageHrs))
++   }
++ } else message(sprintf("Using cached permits (%.1f hours old)", ageHrs))
+Using cached permits (20.4 hours old)
+> pm <- fread(PERMIT_CACHE, sep = ";", encoding = "UTF-8")
+> setnames(pm, tolower(names(pm)))
+> 
+> pm <- pm[typeofwork == "New Building"]
+> pm[, use := tolower(specificusecategory)]
+> pm <- pm[!grepl("infill|laneway", use)]      # second buildings on a lot, not the principal product
+> pm[, prodP := fcase(grepl("multiplex|multiple dwelling", use),              "MULTI",  # R1-only below
++                     grepl("duplex", use),                                   "DUP",
++                     grepl("single detached|one-family|single family", use), "SFD",
++                     default = NA_character_)]
+> pm <- pm[!is.na(prodP)]
+> dateCol <- if ("permitnumbercreateddate" %in% names(pm)) "permitnumbercreateddate" else "issuedate"
+> pm[, appDate := as.IDate(substr(get(dateCol), 1, 10))]
+> pm <- pm[appDate >= PERMIT_START]
+> xy <- tstrsplit(pm$geo_point_2d, ",\\s*")
+> pm[, `:=`(pLat = as.numeric(xy[[1]]), pLon = as.numeric(xy[[2]]))]
+> pm <- pm[!is.na(pLat) & !is.na(pLon)]
+> 
+> pS <- st_transform(st_as_sf(pm[, .(permitnumber, appDate, prodP, pLon, pLat)],
++                             coords = c("pLon", "pLat"), crs = 4326, remove = FALSE), 3005)
+> pS <- st_join(pS, zn,  join = st_intersects)
+> pS <- st_join(pS, ctV, join = st_intersects)
+> pS <- pS[!duplicated(pS$permitnumber), ]
+> 
+> # ---- lot width: permit point -> parcel -> 2019 inventory land_width ---------------
+> con <- dbConnect(SQLite(), "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3")
+> inv <- as.data.table(dbGetQuery(con, "SELECT roll_number, land_width FROM residentialInventory"))
+> dbDisconnect(con)
+> inv[, `:=`(rollStart = floor(as.numeric(roll_number) / 1000),
++            land_width = suppressWarnings(as.numeric(land_width)))]
+Warning message:
+In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+> inv <- inv[land_width > 0, .(w19 = median(land_width)), by = rollStart]
+> 
+> gAll <- st_read(gpkg, quiet = TRUE, query =
++   "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV
++    WHERE JURISDICTION_CODE = '200'")
+> gAll <- gAll[!st_is_empty(gAll), ]
+> gAll$rollStart <- floor(as.numeric(gAll$ROLL_NUMBER) / 1000)
+> gAll <- st_make_valid(st_transform(gAll[!duplicated(gAll$rollStart), "rollStart"], 3005))
+> pw <- as.data.table(st_drop_geometry(st_join(pS[, "permitnumber"], gAll, join = st_intersects)))
+> pw <- merge(pw[!duplicated(permitnumber)], inv, by = "rollStart", all.x = TRUE)
+> 
+> # ---- data-driven width windows: where does the heap around 33 / 50 fall back to background? ---
+> # Distribution of 2019 widths over all R1 parcels (not just permits, for power). Count parcels in
+> # BIN-ft bins; background = median bin count in the flanks (6-12 ft from the centre); the window
+> # grows outward from the centre bin until the first bin on each side with count < K x background.
+> # The window is the heap; widths outside it are as rare as generic odd lots.
+> gPt1 <- st_point_on_surface(gAll)
+Warning message:
+st_point_on_surface assumes attributes are constant over geometries 
+> gPt1 <- st_join(gPt1, zn[, "zoning_category"], join = st_intersects)
+> r1w  <- merge(as.data.table(st_drop_geometry(gPt1))[zoning_category %in% "R1", .(rollStart)],
++               inv, by = "rollStart")$w19
+> BIN <- 0.5; K <- 3
+> heapWindow <- function(ctr, w = r1w, bin = BIN, k = K) {
++   brk <- seq(ctr - 12 - bin / 2, ctr + 12 + bin / 2, by = bin)
++   cnt <- as.numeric(table(cut(w, brk)))
++   mid <- head(brk, -1) + bin / 2
++   bg  <- median(cnt[abs(mid - ctr) >= 6])
++   i0  <- which.min(abs(mid - ctr))
++   lo <- i0; while (lo > 1          && cnt[lo - 1] >= k * bg) lo <- lo - 1
++   hi <- i0; while (hi < length(cnt) && cnt[hi + 1] >= k * bg) hi <- hi + 1
++   out <- c(lo = brk[lo], hi = brk[hi + 1], background = bg,
++            nIn = sum(w > brk[lo] & w <= brk[hi + 1], na.rm = TRUE))
++   print(data.table(mid = mid, n = cnt, inWindow = seq_along(cnt) %between% c(lo, hi))[abs(mid - ctr) <= 6])
++   print(out)
++   out
++ }
+> win33 <- heapWindow(33)
+      mid     n inWindow
+    <num> <num>   <lgcl>
+ 1:  27.0    38    FALSE
+ 2:  27.5    32    FALSE
+ 3:  28.0    45    FALSE
+ 4:  28.5    36    FALSE
+ 5:  29.0    39    FALSE
+ 6:  29.5    80    FALSE
+ 7:  30.0   474    FALSE
+ 8:  30.5   280    FALSE
+ 9:  31.0   496    FALSE
+10:  31.5   196    FALSE
+11:  32.0  1270    FALSE
+12:  32.5   677    FALSE
+13:  33.0 26662     TRUE
+14:  33.5   999     TRUE
+15:  34.0   781    FALSE
+16:  34.5   338    FALSE
+17:  35.0   700    FALSE
+18:  35.5   189    FALSE
+19:  36.0   414    FALSE
+20:  36.5   122    FALSE
+21:  37.0   283    FALSE
+22:  37.5   191    FALSE
+23:  38.0   214    FALSE
+24:  38.5   119    FALSE
+25:  39.0   283    FALSE
+      mid     n inWindow
+    <num> <num>   <lgcl>
+        lo         hi background        nIn 
+     32.75      33.75     291.00   27661.00 
+> win50 <- heapWindow(50)
+      mid     n inWindow
+    <num> <num>   <lgcl>
+ 1:  44.0  1245    FALSE
+ 2:  44.5   356    FALSE
+ 3:  45.0   929    FALSE
+ 4:  45.5   288    FALSE
+ 5:  46.0   566    FALSE
+ 6:  46.5   305    FALSE
+ 7:  47.0   521    FALSE
+ 8:  47.5   176    FALSE
+ 9:  48.0   561    FALSE
+10:  48.5   151    FALSE
+11:  49.0   436    FALSE
+12:  49.5  1847     TRUE
+13:  50.0  4533     TRUE
+14:  50.5   151    FALSE
+15:  51.0   354    FALSE
+16:  51.5   120    FALSE
+17:  52.0   362    FALSE
+18:  52.5   141    FALSE
+19:  53.0   382    FALSE
+20:  53.5    98    FALSE
+21:  54.0   321    FALSE
+22:  54.5    62    FALSE
+23:  55.0   485    FALSE
+24:  55.5    73    FALSE
+25:  56.0   270    FALSE
+      mid     n inWindow
+    <num> <num>   <lgcl>
+        lo         hi background        nIn 
+     49.25      50.25     276.50    6380.00 
+> drawWidths <- function() {
++   hist(r1w[r1w > 25 & r1w <= 65], breaks = seq(25, 65, by = BIN), main = "R1 lot widths, 2019",
++        xlab = "land width (ft)", col = "gray85", border = "gray60")
++   abline(v = c(win33[c("lo", "hi")], win50[c("lo", "hi")]), col = "red", lty = 2)
++ }
+> drawWidths()
+> png("text/r1WidthWindows.png", width = 900, height = 600, res = 120); drawWidths(); dev.off()
+pdf 
+  2 
+> 
+> # ---- permit panel -------------------------------------------------------------------
+> pp <- as.data.table(st_drop_geometry(pS))
+> pp <- pp[zoning_category %in% "R1" & !is.na(CTNAME)]
+> pp[, gid := CTNAME]
+> pp <- merge(pp, tr, by = "gid")
+> pp <- merge(pp, pw[, .(permitnumber, w19)], by = "permitnumber", all.x = TRUE)
+> pp[, wbin := fcase(w19 > win33["lo"] & w19 <= win33["hi"], "33",
++                    w19 > win50["lo"] & w19 <= win50["hi"], "50",
++                    !is.na(w19),                            "other",
++                    default = NA_character_)]
+> pp[, wbin := factor(wbin, levels = c("33", "50", "other"))]
+> pp[, side := fifelse(pLon < ONTARIO, "West", "East")]
+> pp[, era := factor(fcase(appDate < D_REFORM,   "0pre",
++                          appDate < R11_SWITCH, "1duplex",
++                          default =             "2R11"))]
+> pp[, `:=`(appYear = year(appDate), appQ = paste0(year(appDate), "Q", quarter(appDate)),
++           isDup = as.numeric(prodP == "DUP"), isMulti = as.numeric(prodP == "MULTI"),
++           r11 = as.numeric(era == "2R11"))]
+> pp <- pp[!is.na(wbin)]
+> print(dcast(pp[, .N, by = .(wbin, era, prodP)], wbin + era ~ prodP, value.var = "N", fill = 0))
+Key: <wbin, era>
+     wbin     era   DUP MULTI   SFD
+   <fctr>  <fctr> <int> <int> <int>
+1:     33    0pre     1     0   457
+2:     33 1duplex   285     0   507
+3:     33    2R11   186    90    92
+4:     50    0pre     0     0   144
+5:     50 1duplex    58     0   148
+6:     50    2R11    21    30    45
+7:  other    0pre     0     7   623
+8:  other 1duplex   322    10   614
+9:  other    2R11   160   349   139
+> 
+> # ---- shares by East/West x lot width ----------------------------------------------------
+> sh <- pp[wbin != "other", .(N = .N, SFD = mean(prodP == "SFD"), DUP = mean(prodP == "DUP"),
++              MULTI = mean(prodP == "MULTI")), keyby = .(side, wbin, appYear)]
+> drawShares <- function() {
++   op <- par(mfrow = c(2, 2), mar = c(4, 4, 2.5, 1))
++   cols <- c(SFD = "gray30", DUP = "red", MULTI = "blue")
++   for (s in c("West", "East")) for (wb in c("33", "50")) {
++     d <- sh[side == s & wbin == wb]
++     matplot(d$appYear, as.matrix(d[, .(SFD, DUP, MULTI)]), type = "b", pch = 19, lty = 1,
++             col = cols, ylim = c(0, 1), xlab = "application year",
++             ylab = "share of new R1 permits", main = sprintf("%s, %s-ft lots", s, wb))
++     abline(v = c(2018 + 8.5/12, 2023 + 9/12), col = "gray", lty = 2)
++     text(d$appYear, 0.97, d$N, cex = 0.55, col = "gray40")     # permits per year
++     if (s == "West" && wb == "33") legend("left", names(cols), col = cols, pch = 19, lty = 1, bty = "n")
++   }
++   par(op)
++ }
+> drawShares()
+> png("text/permitSharesEastWest.png", width = 1100, height = 850, res = 120); drawShares(); dev.off()
+pdf 
+  2 
+> 
+> # ---- logits ------------------------------------------------------------------------------
+> # dup vs single: duplex + R1-1 eras pooled; zL:r11 = change in level slope at R1-1 (quasi-DiD)
+> # multi vs single: R1-1 era only
+> # pooled sample ("all"): adds width-category FE and width x R1-1 (33 ft is the reference)
+> # twfe = TRUE: tract + quarter FE. Tract FE absorb zL, zE and west, so only their x R1-1
+> #   interactions are identified (pure DiD). The multi model is R1-1-era only, so a tract FE
+> #   would absorb everything; it keeps quarter FE alone in both versions.
+> pp[, west := as.numeric(side == "West")]
+> 
+> fitLogits <- function(wb, twfe = FALSE) {
++   d   <- if (wb == "all") pp else pp[wbin == wb]
++   dd  <- d[prodP %in% c("SFD", "DUP") & era != "0pre"]
++   dm  <- d[prodP %in% c("SFD", "MULTI") & era == "2R11"]
++   wD  <- if (wb == "all") "+ i(wbin, r11, ref = '33')" else ""
++   feD <- paste("|", if (twfe) "gid + appQ" else "appQ", if (wb == "all") "+ wbin" else "")
++   feM <- paste("| appQ", if (wb == "all") "+ wbin" else "")
++   rhs <- if (twfe) c("zL:r11", "west:r11", "(zL + zE):r11") else
++                    c("zL + zL:r11", "west + west:r11", "zL + zE + (zL + zE):r11")
++   fD  <- function(s) as.formula(paste("isDup ~", s, wD, feD))
++   list(feglm(fD(rhs[1]), dd, family = binomial, cluster = ~gid),
++        feglm(fD(rhs[2]), dd, family = binomial, cluster = ~gid),
++        feglm(fD(rhs[3]), dd, family = binomial, cluster = ~gid),
++        feglm(as.formula(paste("isMulti ~ zL", feM)), dm, family = binomial, cluster = ~gid))
++ }
+> lgDict <- c(zL = "price level (z)", zE = "size elasticity (z)", west = "West Side",
++             "zL:r11" = "level x R1-1 era", "zE:r11" = "elasticity x R1-1 era",
++             "west:r11" = "West Side x R1-1 era", wbin = "width", gid = "tract", appQ = "quarter")
+> lgHead <- function(lab) list(lot = setNames(list(4), lab),
++                              choice = c("dup vs SFD", "dup vs SFD", "dup vs SFD", "multi vs SFD (R1-1)"))
+> 
+> for (tw in c(FALSE, TRUE)) {
++   tag <- if (tw) ", tract + quarter FE" else ", quarter FE"
++   cat("\n==========", if (tw) "TWFE" else "no tract FE", "==========\n")
++   print(etable(fitLogits("33",  tw), headers = lgHead(paste0("33 ft", tag)),      dict = lgDict))
++   print(etable(fitLogits("50",  tw), headers = lgHead(paste0("50 ft", tag)),      dict = lgDict))   # (a)
++   print(etable(fitLogits("all", tw), headers = lgHead(paste0("all widths", tag)), dict = lgDict))   # (b)
++ }
+
+========== no tract FE ==========
+NOTE: 1 fixed-effect (5 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 1 fixed-effect (5 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 1 fixed-effect (5 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 1 fixed-effect (18 observations) removed because of only 0 or only 1 outcomes or singletons.
+                                  model 1            model 2
+lot                     33 ft, quarter FE  33 ft, quarter FE
+choice                         dup vs SFD         dup vs SFD
+Dependent Var.:                     isDup              isDup
+                                                            
+price level (z)       -0.6226*** (0.1258)                   
+level x R1-1 era       0.7373*** (0.1471)                   
+West Side                                 -1.091*** (0.2662)
+West Side x R1-1 era                       1.364*** (0.2714)
+size elasticity (z)                                         
+elasticity x R1-1 era                                       
+Fixed-Effects:        ------------------- ------------------
+quarter                               Yes                Yes
+_____________________ ___________________ __________________
+S.E.: Clustered                 by: tract          by: tract
+Observations                        1,065              1,065
+Squared Cor.                      0.19678            0.18790
+Pseudo R2                         0.15867            0.15169
+BIC                               1,467.2            1,477.4
+
+                                  model 3             model 4
+lot                     33 ft, quarter FE   33 ft, quarter FE
+choice                         dup vs SFD multi vs SFD (R1-1)
+Dependent Var.:                     isDup             isMulti
+                                                             
+price level (z)       -0.8223*** (0.1610)   -0.4040. (0.2119)
+level x R1-1 era       0.8485*** (0.2019)                    
+West Side                                                    
+West Side x R1-1 era                                         
+size elasticity (z)      0.3441* (0.1624)                    
+elasticity x R1-1 era    -0.1965 (0.2075)                    
+Fixed-Effects:        -------------------   -----------------
+quarter                               Yes                 Yes
+_____________________ ___________________   _________________
+S.E.: Clustered                 by: tract           by: tract
+Observations                        1,065                 164
+Squared Cor.                      0.20296             0.11166
+Pseudo R2                         0.16435             0.08592
+BIC                               1,472.8              267.59
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+NOTE: 4 fixed-effects (16 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 4 fixed-effects (16 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 4 fixed-effects (16 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 3 fixed-effects (11 observations) removed because of only 0 or only 1 outcomes or singletons.
+                                  model 1            model 2            model 3
+lot                     50 ft, quarter FE  50 ft, quarter FE  50 ft, quarter FE
+choice                         dup vs SFD         dup vs SFD         dup vs SFD
+Dependent Var.:                     isDup              isDup              isDup
+                                                                               
+price level (z)       -0.9235*** (0.1875)                    -1.314*** (0.1888)
+level x R1-1 era         0.9005. (0.5081)                      1.352** (0.4642)
+West Side                                 -1.877*** (0.3859)                   
+West Side x R1-1 era                           1.351 (1.022)                   
+size elasticity (z)                                           0.6208** (0.1969)
+elasticity x R1-1 era                                          -0.7115 (0.5276)
+Fixed-Effects:        ------------------- ------------------ ------------------
+quarter                               Yes                Yes                Yes
+_____________________ ___________________ __________________ __________________
+S.E.: Clustered                 by: tract          by: tract          by: tract
+Observations                          256                256                256
+Squared Cor.                      0.16557            0.17522            0.18502
+Pseudo R2                         0.14903            0.15100            0.16559
+BIC                                435.60             434.98             441.45
+
+                                  model 4
+lot                     50 ft, quarter FE
+choice                multi vs SFD (R1-1)
+Dependent Var.:                   isMulti
+                                         
+price level (z)         -0.9630. (0.5397)
+level x R1-1 era                         
+West Side                                
+West Side x R1-1 era                     
+size elasticity (z)                      
+elasticity x R1-1 era                    
+Fixed-Effects:          -----------------
+quarter                               Yes
+_____________________   _________________
+S.E.: Clustered                 by: tract
+Observations                           64
+Squared Cor.                      0.19411
+Pseudo R2                         0.15107
+BIC                                116.70
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+NOTE: 1/0 fixed-effect (6 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 1/0 fixed-effect (6 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 1/0 fixed-effect (6 observations) removed because of only 0 or only 1 outcomes or singletons.
+                                     model 1                model 2
+lot                   all widths, quarter FE all widths, quarter FE
+choice                            dup vs SFD             dup vs SFD
+Dependent Var.:                        isDup                  isDup
+                                                                   
+price level (z)          -0.7679*** (0.0949)                       
+r11 x width = 50          -1.702*** (0.3647)     -1.651*** (0.3673)
+r11 x width = other       -0.6439** (0.1971)     -0.6266** (0.1942)
+level x R1-1 era          0.6672*** (0.0944)                       
+West Side                                        -1.350*** (0.2280)
+West Side x R1-1 era                              1.154*** (0.2271)
+size elasticity (z)                                                
+elasticity x R1-1 era                                              
+Fixed-Effects:           -------------------     ------------------
+quarter                                  Yes                    Yes
+width                                    Yes                    Yes
+_____________________    ___________________     __________________
+S.E.: Clustered                    by: tract              by: tract
+Observations                           2,571                  2,571
+Squared Cor.                         0.16674                0.15351
+Pseudo R2                            0.13486                0.12305
+BIC                                  3,294.8                3,335.7
+
+                                     model 3                model 4
+lot                   all widths, quarter FE all widths, quarter FE
+choice                            dup vs SFD    multi vs SFD (R1-1)
+Dependent Var.:                        isDup                isMulti
+                                                                   
+price level (z)          -0.8916*** (0.1068)    -0.5146*** (0.1249)
+r11 x width = 50          -1.678*** (0.3639)                       
+r11 x width = other       -0.6214** (0.1994)                       
+level x R1-1 era          0.8558*** (0.1335)                       
+West Side                                                          
+West Side x R1-1 era                                               
+size elasticity (z)         0.2141* (0.0862)                       
+elasticity x R1-1 era      -0.3235* (0.1476)                       
+Fixed-Effects:           -------------------    -------------------
+quarter                                  Yes                    Yes
+width                                    Yes                    Yes
+_____________________    ___________________    ___________________
+S.E.: Clustered                    by: tract              by: tract
+Observations                           2,571                    745
+Squared Cor.                         0.17024                0.23375
+Pseudo R2                            0.13747                0.19431
+BIC                                  3,301.5                 890.56
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+
+========== TWFE ==========
+NOTE: 2/1 fixed-effects (9 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 2/1 fixed-effects (9 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 2/1 fixed-effects (9 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 1 fixed-effect (18 observations) removed because of only 0 or only 1 outcomes or singletons.
+                                        model 1                   model 2
+lot                   33 ft, tract + quarter FE 33 ft, tract + quarter FE
+choice                               dup vs SFD                dup vs SFD
+Dependent Var.:                           isDup                     isDup
+                                                                         
+level x R1-1 era             0.7606*** (0.1792)                          
+West Side x R1-1 era                                    1.353*** (0.3551)
+elasticity x R1-1 era                                                    
+price level (z)                                                          
+Fixed-Effects:               ------------------         -----------------
+tract                                       Yes                       Yes
+quarter                                     Yes                       Yes
+_____________________        __________________         _________________
+S.E.: Clustered                       by: tract                 by: tract
+Observations                              1,061                     1,061
+Squared Cor.                            0.27907                   0.27568
+Pseudo R2                               0.22576                   0.22304
+BIC                                     1,651.0                   1,654.9
+
+                                        model 3                   model 4
+lot                   33 ft, tract + quarter FE 33 ft, tract + quarter FE
+choice                               dup vs SFD       multi vs SFD (R1-1)
+Dependent Var.:                           isDup                   isMulti
+                                                                         
+level x R1-1 era             0.8395*** (0.2445)                          
+West Side x R1-1 era                                                     
+elasticity x R1-1 era          -0.1289 (0.2629)                          
+price level (z)                                         -0.4040. (0.2119)
+Fixed-Effects:               ------------------         -----------------
+tract                                       Yes                        No
+quarter                                     Yes                       Yes
+_____________________        __________________         _________________
+S.E.: Clustered                       by: tract                 by: tract
+Observations                              1,061                       164
+Squared Cor.                            0.27894                   0.11166
+Pseudo R2                               0.22591                   0.08592
+BIC                                     1,657.7                    267.59
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+NOTE: 21/6 fixed-effects (80 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 21/6 fixed-effects (80 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 21/6 fixed-effects (80 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 3 fixed-effects (11 observations) removed because of only 0 or only 1 outcomes or singletons.
+                                        model 1                   model 2
+lot                   50 ft, tract + quarter FE 50 ft, tract + quarter FE
+choice                               dup vs SFD                dup vs SFD
+Dependent Var.:                           isDup                     isDup
+                                                                         
+level x R1-1 era                0.6485 (0.9432)                          
+West Side x R1-1 era                                       0.5092 (1.795)
+elasticity x R1-1 era                                                    
+price level (z)                                                          
+Fixed-Effects:                  ---------------            --------------
+tract                                       Yes                       Yes
+quarter                                     Yes                       Yes
+_____________________           _______________            ______________
+S.E.: Clustered                       by: tract                 by: tract
+Observations                                192                       192
+Squared Cor.                            0.17694                   0.17511
+Pseudo R2                               0.14613                   0.14265
+BIC                                      462.23                    463.08
+
+                                        model 3                   model 4
+lot                   50 ft, tract + quarter FE 50 ft, tract + quarter FE
+choice                               dup vs SFD       multi vs SFD (R1-1)
+Dependent Var.:                           isDup                   isMulti
+                                                                         
+level x R1-1 era                 1.500 (0.9280)                          
+West Side x R1-1 era                                                     
+elasticity x R1-1 era           -1.173 (0.8958)                          
+price level (z)                                         -0.9630. (0.5397)
+Fixed-Effects:                  ---------------         -----------------
+tract                                       Yes                        No
+quarter                                     Yes                       Yes
+_____________________           _______________         _________________
+S.E.: Clustered                       by: tract                 by: tract
+Observations                                192                        64
+Squared Cor.                            0.18614                   0.19411
+Pseudo R2                               0.15674                   0.15107
+BIC                                      464.88                    116.70
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+NOTE: 0/1/0 fixed-effect (6 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 0/1/0 fixed-effect (6 observations) removed because of only 0 or only 1 outcomes or singletons.
+NOTE: 0/1/0 fixed-effect (6 observations) removed because of only 0 or only 1 outcomes or singletons.
+                                                 model 1
+lot                       all widths, tract + quarter FE
+choice                                        dup vs SFD
+Dependent Var.:                                    isDup
+                                                        
+r11 x width = 50                      -1.572*** (0.3816)
+r11 x width = other                  -0.6983*** (0.2084)
+level x R1-1 era                      0.7127*** (0.0998)
+West Side x R1-1 era                                    
+r11 x size elasticity (z)                               
+price level (z)                                         
+Fixed-Effects:                       -------------------
+tract                                                Yes
+quarter                                              Yes
+width                                                Yes
+_________________________            ___________________
+S.E.: Clustered                                by: tract
+Observations                                       2,571
+Squared Cor.                                     0.22847
+Pseudo R2                                        0.18437
+BIC                                              3,492.4
+
+                                                 model 2
+lot                       all widths, tract + quarter FE
+choice                                        dup vs SFD
+Dependent Var.:                                    isDup
+                                                        
+r11 x width = 50                      -1.453*** (0.3913)
+r11 x width = other                   -0.6470** (0.2158)
+level x R1-1 era                                        
+West Side x R1-1 era                   1.125*** (0.2564)
+r11 x size elasticity (z)                               
+price level (z)                                         
+Fixed-Effects:                        ------------------
+tract                                                Yes
+quarter                                              Yes
+width                                                Yes
+_________________________             __________________
+S.E.: Clustered                                by: tract
+Observations                                       2,571
+Squared Cor.                                     0.22304
+Pseudo R2                                        0.18005
+BIC                                              3,507.4
+
+                                                 model 3
+lot                       all widths, tract + quarter FE
+choice                                        dup vs SFD
+Dependent Var.:                                    isDup
+                                                        
+r11 x width = 50                      -1.551*** (0.3790)
+r11 x width = other                   -0.6778** (0.2115)
+level x R1-1 era                      0.8732*** (0.1387)
+West Side x R1-1 era                                    
+r11 x size elasticity (z)              -0.2647. (0.1507)
+price level (z)                                         
+Fixed-Effects:                        ------------------
+tract                                                Yes
+quarter                                              Yes
+width                                                Yes
+_________________________             __________________
+S.E.: Clustered                                by: tract
+Observations                                       2,571
+Squared Cor.                                     0.22945
+Pseudo R2                                        0.18520
+BIC                                              3,497.4
+
+                                                 model 4
+lot                       all widths, tract + quarter FE
+choice                               multi vs SFD (R1-1)
+Dependent Var.:                                  isMulti
+                                                        
+r11 x width = 50                                        
+r11 x width = other                                     
+level x R1-1 era                                        
+West Side x R1-1 era                                    
+r11 x size elasticity (z)                               
+price level (z)                      -0.5146*** (0.1249)
+Fixed-Effects:                       -------------------
+tract                                                 No
+quarter                                              Yes
+width                                                Yes
+_________________________            ___________________
+S.E.: Clustered                                by: tract
+Observations                                         745
+Squared Cor.                                     0.23375
+Pseudo R2                                        0.19431
+BIC                                               890.56
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> # LPM check on the TWFE DiD (no incidental-parameters bias)
+> ddAll <- pp[prodP %in% c("SFD", "DUP") & era != "0pre"]
+> print(etable(
++   feols(isDup ~ zL:r11 | gid + appQ, ddAll[wbin == "33"], cluster = ~gid),
++   feols(isDup ~ zL:r11 | gid + appQ, ddAll[wbin == "50"], cluster = ~gid),
++   feols(isDup ~ zL:r11 + i(wbin, r11, ref = "33") | gid + appQ + wbin, ddAll, cluster = ~gid),
++   headers = c("LPM 33", "LPM 50", "LPM all"), dict = lgDict))
+NOTE: 1/0 fixed-effect singleton was removed (1 observation).
+NOTE: 9/1 fixed-effect singletons were removed (10 observations).
+                    feols(isDup ~ zL.. feols(isDup ~.. feols(isDup ~ zL:..
+                                LPM 33          LPM 50             LPM all
+Dependent Var.:                  isDup           isDup               isDup
+                                                                          
+level x R1-1 era    0.1420*** (0.0297) 0.0975 (0.1215)  0.1182*** (0.0208)
+r11 x width = 50                                       -0.3431*** (0.0758)
+r11 x width = other                                     -0.1472** (0.0437)
+Fixed-Effects:      ------------------ --------------- -------------------
+tract                              Yes             Yes                 Yes
+quarter                            Yes             Yes                 Yes
+width                               No              No                 Yes
+___________________ __________________ _______________ ___________________
+S.E.: Clustered              by: tract       by: tract           by: tract
+Observations                     1,069             262               2,577
+R2                             0.27344         0.30101             0.21956
+Within R2                      0.01926         0.00461             0.01863
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> proc.time()
+   user  system elapsed 
+ 19.706   4.832  28.091 

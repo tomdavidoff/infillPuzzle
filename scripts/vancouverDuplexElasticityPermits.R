@@ -125,6 +125,14 @@ print(etable(
   feols(isDup ~ zE      | appMonth, dEra, cluster = ~gid),
   headers = c("level", "both", "elas")))
 
+# ----- R11 mult
+print(etable(
+  feols(isMulti ~ zL      | appMonth, pp[era=="2R11"], cluster = ~gid),
+  feols(isMulti ~ zE + zL | appMonth, pp[era=="2R11"], cluster = ~gid),
+  feols(isMulti ~ zE      | appMonth, pp[era=="2R11"], cluster = ~gid),
+  headers = c("level", "both", "elas")))
+
+
 # reliability of the tract elasticity: share of cross-tract variance that is signal
 eHat <- coef(m2_33)[k33]; eSE <- se(m2_33)[k33]
 print(c(varElas = var(eHat), meanSE2 = mean(eSE^2), reliability = 1 - mean(eSE^2) / var(eHat)))

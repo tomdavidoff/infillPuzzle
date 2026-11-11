@@ -431,7 +431,7 @@ Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
 +     warning(sprintf("Permit download failed; using cached copy %.0f hours old", ageHrs))
 +   }
 + } else message(sprintf("Using cached permits (%.1f hours old)", ageHrs))
-Using cached permits (0.3 hours old)
+Using cached permits (18.5 hours old)
 > pm <- fread(PERMIT_CACHE, sep = ";", encoding = "UTF-8")
 > setnames(pm, tolower(names(pm)))
 > need <- c("permitnumber", "issuedate", "typeofwork", "specificusecategory", "geo_point_2d")
@@ -573,6 +573,32 @@ R2                          0.17764             0.17916               0.11248
 Within R2                   0.09867             0.10034               0.02726
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
+> # ----- R11 mult
+> print(etable(
++   feols(isMulti ~ zL      | appMonth, pp[era=="2R11"], cluster = ~gid),
++   feols(isMulti ~ zE + zL | appMonth, pp[era=="2R11"], cluster = ~gid),
++   feols(isMulti ~ zE      | appMonth, pp[era=="2R11"], cluster = ~gid),
++   headers = c("level", "both", "elas")))
+NOTE: 1 fixed-effect singleton was removed (1 observation).
+NOTE: 1 fixed-effect singleton was removed (1 observation).
+NOTE: 1 fixed-effect singleton was removed (1 observation).
+                feols(isMulti ~ z.. feols(isMulti ~ z...1 feols(isMulti ~..
+                              level                  both              elas
+Dependent Var.:             isMulti               isMulti           isMulti
+                                                                           
+zL              -0.0899*** (0.0172)   -0.0971*** (0.0198)                  
+zE                                        0.0128 (0.0200) -0.0524* (0.0218)
+Fixed-Effects:  -------------------   ------------------- -----------------
+appMonth                        Yes                   Yes               Yes
+_______________ ___________________   ___________________ _________________
+S.E.: Clustered             by: gid               by: gid           by: gid
+Observations                    993                   993               993
+R2                          0.17294               0.17332           0.14725
+Within R2                   0.04149               0.04193           0.01171
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+> 
 > 
 > # reliability of the tract elasticity: share of cross-tract variance that is signal
 > eHat <- coef(m2_33)[k33]; eSE <- se(m2_33)[k33]
@@ -772,4 +798,4 @@ pdf
 > 
 > proc.time()
    user  system elapsed 
- 17.957   3.323  21.244 
+ 18.002   3.445  21.611 
