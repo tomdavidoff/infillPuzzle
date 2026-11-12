@@ -77,7 +77,11 @@ number of units implicitly in $N$. The cost per square foot of an Nplex is
 $c(N)$, with $c'\geq 0$ because of relatively fixed plumbing and utility costs
 and fire separation.
 
-$$\pi(N,\theta) = F(N)\left[p(N,\theta)-c(N)\right].$$
+$$\pi(n,\theta) = F(n)x(n,\theta)]$$
+$$\Delta(n,\theta) = \underbrace{\left[F(n)-F(n-1)\right]x(n,\theta)}_\text{addition} + \underbrace{F(n-1)\left[x(n,\theta)-x(n-1,\theta)\right]}_{\text{division}}$$
+$$\frac{\partial \Delta}{\partial \theta} = \left[F(n)-F(n-1)\right]x_{2}(n,\theta) + F(n-1)\left[x_{2}(n,\theta)-x_{2}(n-1,\theta)\right]$$
+The first term is positive by assumption. The second term, the change in the division effect with location quality is negative if at both $n$ and $n-1$, there is positive income sorting...
+
 We suppress variation in the quality of construction and hence cost that might vary systematically with $\theta$. What would matter for our results is if the difference in investment in quality between a single family home and a duplex vary systematically with location, e.g. through clientele effects. We expect 
 
 
