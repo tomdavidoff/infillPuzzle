@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  5 OCT 2026 13:32
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  11 NOV 2026 17:30
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -22,6 +22,9 @@ File: size12.clo 2024/06/29 v1.4n Standard LaTeX file (size option)
 \abovecaptionskip=\skip49
 \belowcaptionskip=\skip50
 \bibindent=\dimen141
+)
+(/usr/local/texlive/2025/texmf-dist/tex/latex/setspace/setspace.sty
+Package: setspace 2022/12/04 v6.7b set line spacing
 )
 (/usr/local/texlive/2025/texmf-dist/tex/latex/amsmath/amsmath.sty
 Package: amsmath 2024/11/05 v2.17t AMS math features
@@ -373,20 +376,20 @@ Package: blx-case-expl3 2024/03/21 v3.20 expl3 case changing code for biblatex
 (./modelSimple.aux)
 \openout1 = `modelSimple.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 8.
-LaTeX Font Info:    ... okay on input line 8.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 8.
-LaTeX Font Info:    ... okay on input line 8.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 8.
-LaTeX Font Info:    ... okay on input line 8.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 8.
-LaTeX Font Info:    ... okay on input line 8.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 8.
-LaTeX Font Info:    ... okay on input line 8.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 8.
-LaTeX Font Info:    ... okay on input line 8.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 8.
-LaTeX Font Info:    ... okay on input line 8.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 9.
+LaTeX Font Info:    ... okay on input line 9.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 9.
+LaTeX Font Info:    ... okay on input line 9.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 9.
+LaTeX Font Info:    ... okay on input line 9.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 9.
+LaTeX Font Info:    ... okay on input line 9.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 9.
+LaTeX Font Info:    ... okay on input line 9.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 9.
+LaTeX Font Info:    ... okay on input line 9.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 9.
+LaTeX Font Info:    ... okay on input line 9.
 Package biblatex Info: Trying to load language 'english'...
 Package biblatex Info: ... file 'english.lbx' found.
 
@@ -402,48 +405,279 @@ Package biblatex Info: Trying to load bibliographic data...
 Package biblatex Info: ... file 'modelSimple.bbl' not found.
 
 No file modelSimple.bbl.
-Package biblatex Info: Reference section=0 on input line 8.
-Package biblatex Info: Reference segment=0 on input line 8.
+Package biblatex Info: Reference section=0 on input line 9.
+Package biblatex Info: Reference segment=0 on input line 9.
+
+Overfull \hbox (60.14948pt too wide) in paragraph at lines 13--13
+ [][] 
+ []
+
+
+Underfull \hbox (badness 10000) in paragraph at lines 13--13
+[][]\OT1/cmr/m/n/10 thomas.davidoff@sauder.ubc.ca; robert.helsley@sauder.ubc.ca
+;
+ []
+
 
 
 [1
 
-{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}]
+{/usr/local/texlive/2025/texmf-var/fonts/map/pdftex/updmap/pdftex.map}{/usr/loc
+al/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
 
-[2] (./modelSimple.aux)
+LaTeX Warning: Citation 'bruecknerSingh' on page 2 undefined on input line 25.
+
+
+LaTeX Warning: Citation 'HsiehMoretti' on page 2 undefined on input line 25.
+
+
+LaTeX Warning: Citation 'Wheaton77' on page 2 undefined on input line 27.
+
+
+
+[2]
+
+LaTeX Warning: Reference `sec:policies' on page 3 undefined on input line 31.
+
+
+LaTeX Warning: Reference `sec:results' on page 3 undefined on input line 31.
+
+
+LaTeX Warning: Reference `sec:conclusion' on page 3 undefined on input line 31.
+
+
+
+
+[3]
+
+LaTeX Warning: Citation 'Brueckner_1981' on page 4 undefined on input line 37.
+
+
+LaTeX Warning: Citation 'HochmanPines_1980' on page 4 undefined on input line 3
+7.
+
+
+LaTeX Warning: Citation 'Wheaton_1982' on page 4 undefined on input line 37.
+
+
+LaTeX Warning: Citation 'Wheaton_1982' on page 4 undefined on input line 37.
+
+
+LaTeX Warning: Citation 'GyourkoMolloy2015' on page 4 undefined on input line 3
+7.
+
+
+LaTeX Warning: Citation 'Molloy2020' on page 4 undefined on input line 37.
+
+
+
+[4]
+
+LaTeX Warning: Citation 'Anagol_etal2021' on page 5 undefined on input line 41.
+
+
+
+Overfull \hbox (2.19551pt too wide) in paragraph at lines 41--42
+[][] \OT1/cmr/m/n/12 an-a-lyze a broad-based 2016 zon-ing re-form in S~ao Paulo
+,
+ []
+
+
+LaTeX Warning: Citation 'GreenawayPhillips2023' on page 5 undefined on input li
+ne 43.
+
+
+LaTeX Warning: Citation 'Anagol_etal2021' on page 5 undefined on input line 45.
+
+
+
+LaTeX Warning: Citation 'GreenawayPhillips2023' on page 5 undefined on input li
+ne 45.
+
+
+LaTeX Warning: Citation 'BuchlerLutz2024' on page 5 undefined on input line 45.
+
+
+
+LaTeX Warning: Citation 'Anagol_etal2021' on page 5 undefined on input line 45.
+
+
+
+Overfull \hbox (40.74472pt too wide) in paragraph at lines 45--46
+\OT1/cmr/m/n/12 short-run ef-fects, within a five-year pe-riod fol-low-ing the 
+re-zon-ing. []
+ []
+
+
+
+[5]
+
+LaTeX Warning: Citation 'Liao2023' on page 6 undefined on input line 47.
+
+
+LaTeX Warning: Citation 'Liao2023' on page 6 undefined on input line 47.
+
+
+LaTeX Warning: Citation 'Peng2023' on page 6 undefined on input line 47.
+
+
+Overfull \hbox (19.26529pt too wide) in paragraph at lines 47--48
+[]\OT1/cmr/m/n/12 While not the en-tire city, New York, NY in-tro-duced a se-ri
+es of neighbourhood-
+ []
+
+
+LaTeX Warning: Citation 'Rollet_2025' on page 6 undefined on input line 49.
+
+
+LaTeX Warning: Citation 'Dong2024a' on page 6 undefined on input line 51.
+
+
+LaTeX Warning: Citation 'GuMunro_2025' on page 6 undefined on input line 51.
+
+
+
+[6]
+
+LaTeX Warning: Citation 'Tiebout1956' on page 7 undefined on input line 53.
+
+
+LaTeX Warning: Citation 'Rosen1974' on page 7 undefined on input line 53.
+
+
+LaTeX Warning: Citation 'Bayer_etal2004' on page 7 undefined on input line 53.
+
+
+LaTeX Warning: Citation 'Couture_etal2024' on page 7 undefined on input line 53
+.
+
+
+LaTeX Warning: Citation 'AlmagoDomingues2025' on page 7 undefined on input line
+ 53.
+
+
+LaTeX Warning: Citation 'BayerMcMillan2012' on page 7 undefined on input line 5
+3.
+
+
+LaTeX Warning: Citation 'MarantzElmendorfKim2023_ADUReforms' on page 7 undefine
+d on input line 55.
+
+
+LaTeX Warning: Citation 'BruecknerThomaz2024' on page 7 undefined on input line
+ 55.
+
+
+LaTeX Warning: Citation 'DongHansz_2019' on page 7 undefined on input line 55.
+
+
+Overfull \hbox (18.52295pt too wide) in paragraph at lines 55--56
+\OT1/cmr/m/n/12 tiv-ity fol-low-ing zon-ing re-forms. []
+ []
+
+
+Overfull \hbox (3.70712pt too wide) in paragraph at lines 55--56
+\OT1/cmr/m/n/12 find that ac-ces-sory dwelling unit (ADU) place-ment in Cal-i-f
+or-nia is widespread,
+ []
+
+
+Overfull \hbox (61.50041pt too wide) in paragraph at lines 55--56
+\OT1/cmr/m/n/12 not in more ex-pen-sive neigh-bour-hoods. Sim-i-lar find-ings a
+re in [],
+ []
+
+
+LaTeX Warning: Citation 'Stacy_etal2023' on page 7 undefined on input line 57.
+
+
+Overfull \hbox (48.11993pt too wide) in paragraph at lines 57--58
+[]\OT1/cmr/m/n/12 While the work cited above ex-am-ines up-zon-ing in in-di-vid
+-ual cities, []
+ []
+
+
+
+[7]
+
+LaTeX Warning: Citation 'Ma_2025' on page 8 undefined on input line 59.
+
+
+LaTeX Warning: Citation 'vonBergmannLauster' on page 8 undefined on input line 
+59.
+
+
+
+[8]
+Overfull \hbox (125.38864pt too wide) detected at line 82
+\OML/cmm/m/it/12 ^^Y\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 N; ^^R\OT1/cmr/m/n/12 ) \
+OMS/cmsy/m/n/12 ^^@ \OML/cmm/m/it/12 ^^Y\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 N \OM
+S/cmsy/m/n/12 ^^@ \OT1/cmr/m/n/12 1\OML/cmm/m/it/12 ; ^^R\OT1/cmr/m/n/12 ) \OMS
+/cmsy/m/n/12 ^^Q \OT1/cmr/m/n/12 ^^A(\OML/cmm/m/it/12 N; ^^R\OT1/cmr/m/n/12 ) =
+ \OML/cmm/m/it/12 p\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 N; ^^R; []\OT1/cmr/m/n/12 
+) \OMS/cmsy/m/n/12 ^^@ \OML/cmm/m/it/12 p\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 N \O
+MS/cmsy/m/n/12 ^^@ \OT1/cmr/m/n/12 1\OML/cmm/m/it/12 ; ^^R; []\OT1/cmr/m/n/12 )
+ + \OML/cmm/m/it/12 c\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 s\OT1/cmr/m/n/12 (\OML/c
+mm/m/it/12 N \OMS/cmsy/m/n/12 ^^@ \OT1/cmr/m/n/12 1)\OML/cmm/m/it/12 ; N \OMS/c
+msy/m/n/12 ^^@ \OT1/cmr/m/n/12 1) \OMS/cmsy/m/n/12 ^^@ \OML/cmm/m/it/12 c\OT1/c
+mr/m/n/12 (\OML/cmm/m/it/12 s\OT1/cmr/m/n/12 (\OML/cmm/m/it/12 N\OT1/cmr/m/n/12
+ )\OML/cmm/m/it/12 ; N\OT1/cmr/m/n/12 )
+ []
+
+
+
+[9]
+
+[10]
+
+[11] (./modelSimple.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
 
 
+LaTeX Warning: There were undefined references.
+
+
 LaTeX Warning: Label(s) may have changed. Rerun to get cross-references right.
+
+
+Package biblatex Warning: Please (re)run Biber on the file:
+(biblatex)                modelSimple
+(biblatex)                and rerun LaTeX afterwards.
 
 Package logreq Info: Writing requests to 'modelSimple.run.xml'.
 \openout1 = `modelSimple.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 9223 strings out of 473190
- 176182 string characters out of 5715801
- 1007938 words of memory out of 5000000
- 32440 multiletter control sequences out of 15000+600000
- 562853 words of font info for 50 fonts, out of 8000000 for 9000
+ 9488 strings out of 473190
+ 181430 string characters out of 5715801
+ 1010237 words of memory out of 5000000
+ 32697 multiletter control sequences out of 15000+600000
+ 566947 words of font info for 64 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 66i,24n,81p,700b,803s stack positions out of 10000i,1000n,20000p,200000b,200000s
-</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb
-></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb>
-</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb><
-/usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></u
-sr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr
-/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/lo
-cal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local
-/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/
-texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb>
-Output written on modelSimple.pdf (2 pages, 96366 bytes).
+ 66i,24n,81p,1770b,804s stack positions out of 10000i,1000n,20000p,200000b,200000s
+</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
+></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
+</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><
+/usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></
+usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi8.pfb></us
+r/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr10.pfb></usr/
+local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr12.pfb></usr/lo
+cal/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr17.pfb></usr/loca
+l/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr6.pfb></usr/local/t
+exlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr7.pfb></usr/local/texl
+ive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texlive
+/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texlive/
+2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/20
+25/texmf-dist/fonts/type1/public/cm-super/sfrm0700.pfb></usr/local/texlive/2025
+/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb>
+Output written on modelSimple.pdf (11 pages, 197079 bytes).
 PDF statistics:
- 56 PDF objects out of 1000 (max. 8388607)
- 33 compressed objects within 1 object stream
+ 116 PDF objects out of 1000 (max. 8388607)
+ 72 compressed objects within 1 object stream
  0 named destinations out of 1000 (max. 500000)
  1 words of extra memory for PDF output out of 10000 (max. 10000000)
 
