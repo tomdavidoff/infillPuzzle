@@ -79,8 +79,56 @@ exogenous quality $\theta$:
 We assume that price, not cost varies with location quality. The important
 content of the assumption for the analysis that follows is that the optimal
 choice of building quality can change with $N$, but not systematically with
-location. Whether the optimal quality in a single family home versus a duplex
-is 
+location. Whether the difference between the optimized cost per square foot of
+an $N$plex and that of an $N+1$plex is larger in better or worse locations
+strikes us as a second order empirical question.
+
+The gain in profits when a city offers a price-taking developer the option to build $N+1$ at density $F(N+1)$ instead of at $F(N)x(N)$, $F(N+1)x(N+1) -
+F(N)x(N)$ can be written: 
+
+\begin{equation}
+	\label{eq:Delta}
+	\Delta(N,\theta) = \left[F(N+1)-F(N)\right]x(N,\theta) + F(N+1)\left[x(N+1,\theta)-x(N,\theta)\right].
+\end{equation}
+
+The two terms on the right hand side of equation \eqref{eq:Delta} $Delta(N)$ correspond to the addition effect of potentially
+greater allowed floor area and the division effect of potentially greater price
+per square foot from newly permissible smaller unit types that may be closer to
+optimal.
+
+The difference in the gain to taking up the option to build $N+1$ instead of $N$ units is:
+
+\begin{equation}
+	\label{eq:compStatic}
+	\frac{\partial \Delta(N,\theta)}{\partial \theta} = \left[F(N+1)-F(N)\right]\frac{\partial x(N,\theta)}{\partial \theta} + F(N+1)\left[\frac{\partial x(N+1,\theta)}{\partial \theta}-\frac{\partial x(N,\theta)}{\partial \theta}\right].
+\end{equation}
+
+The first term on the right hand side of \eqref{eq:compStatic} is positive as
+long as $F(N+1)-F(N)>0$. The second term, the change in the division effect,
+will be negative if residents of less expensive neighbourhoods have less
+willingness to pay for the benefits of larger units and more privacy embedded
+in $N$plexes versus $N+1$plexes.
+
+Whether willingness to pay for size and privacy increases in neighbourhood
+quality is an empirical question, but monocentric city models provide an
+intuition for why the condition would likely hold. Bid rent curves for location are the
+ratio of willingness to pay for incremental location divided by willingness to
+pay for incremental home size. With the denominator shut down by zoning
+constraints, with only single family homes of common size, households with
+greater willingness to pay for location live in the better locations.
+Similarly, conditional on purchase of a duplex, higher income households will
+outbid lower income households. With income sorting in place for both types of
+housing, the elasticity of willingness to pay for quality should be greater in
+better locations. However, both because high income households may sort into
+single family homes in worse locations, and because the dollar value
+of homes is larger and subject to more variation with the same elasticity in
+better locations, the sign of \eqref{eq:compStatic} is empirical.
+
+That
+sorting could be different with $N+1$plexes, as lower income households with
+less willingness to pay for size may outbid higher income households for the
+worse units in better locations, with higher income households prefering better
+units in worse locations.
 
 
 Consider a builder chosing which among $k$ options to build on a lot, e.g. a
