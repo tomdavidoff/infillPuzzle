@@ -7,7 +7,7 @@ produce the facts, tables and figures the draft asks for, reproducibly.
 
 ## Layout
 
-- `text/main.tex` — the draft. Do not edit prose unless asked. Compile from the repo root.
+- `text/main.tex` — the draft. Do not edit prose unless asked. Compiled from inside `text/`, so `\input` and `\addbibresource` paths are bare filenames.
 - `scripts/<name>.R` — all code. Source other scripts by relative path.
 - `text/` — all outputs that the paper reads: `text/<name>.png`, `text/<name>.tex`.
 - Raw data: `~/DropboxExternal/dataRaw/` (outside git, never modify).
