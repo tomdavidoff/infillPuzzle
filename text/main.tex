@@ -3,9 +3,11 @@
 \usepackage{setspace}
 \usepackage{amsmath}
 \usepackage[style=authoryear,backend=biber]{biblatex}
-\addbibresource{text/infillPuzzle}
+\addbibresource{text/infillPuzzle.bib}
+\addbibresource{text/CLAUDE.bib}
 \usepackage[margin=1in]{geometry}
 \newcommand{\fact}[1]{\textcolor{red}{[#1]}}
+\input{text/duplexStock2018}
 
 
 \begin{document}
@@ -134,7 +136,7 @@ For example, the following scenario admits parameters under which duplexes domin
 Vancouver, British Columbia, is a Canadian city with a population of 662,248 as
 of the 2021 Canadian census. The city has been densifying over time. In 2001, the City had 65,390 single detached homes, 39,580 ``other ground oriented homes such as townhomes and half-duplexes, and 131,130 apartments. By 2021, the counts were 44,755 single family, 70,650 other ground oriented, and 189,940 apartments.\footnote{2018 and 2025 Metro Vancouver Housing Data Book.} The loss of single family homes is attributable to a near absence of unbuilt residentially zoned land.
 
-Vancouver has historically zoned most of its residential land for single family homes, with different variants of ``RS'' zoning. As of 2018, \fact{How many duplexes, how concentrated in top 5 zoning codes that had duplexes.} Vancouver incrementally formally allowed rental suites in basements of single detached homes starting in 1986 in a restricted set of zones, with all RS zones allowed suites by \fact{when? Start here: https://council.vancouver.ca/20040325/ph2.pdf. Find a reference for this assertion: it is generally believed that the large majority of suites do not conform with regulations and have not been legalized}. After basement suites, the city next moved to allow laneway homes, with most RS zones enabled in 2009 and the rest in \fact{find year of 100\% of RS}.
+Vancouver has historically zoned most of its residential land for single family homes, with different variants of ``RS'' zoning. As of 2018, before duplexes were permitted in RS zones, the assessment roll records \duplexBldgStockEighteen{} duplex buildings in the City (\duplexFolioStockEighteen{} assessment folios, as each strata duplex unit is a separate folio), spread across \duplexZoningCodesEighteen{} zoning codes. \duplexTopFiveZoneShareEighteen\% were in the five most common of these (\duplexTopFiveZonesEighteen), \duplexRTShareEighteen\% were in the two-family RT zones, and only \duplexRSShareEighteen\% were in RS zones \parencite{BCAssessment2019}. Vancouver incrementally formally allowed rental suites in basements of single detached homes starting in 1986 in a restricted set of zones, with all RS zones allowed suites by \fact{when? Start here: https://council.vancouver.ca/20040325/ph2.pdf. Find a reference for this assertion: it is generally believed that the large majority of suites do not conform with regulations and have not been legalized}. After basement suites, the city next moved to allow laneway homes, with most RS zones enabled in 2009 and the rest in \fact{find year of 100\% of RS}.
 
 In \fact{month?} 2018, duplex homes were enabled by council in all RS zones. Generally, duplexes were allowed the same FSR as a single family home (with or without a suite), and \fact{check this: were not permitted an additional laneway home on the same lot}. In that way, a single family home with a laneway was granted more total square footage than a duplex, so that the value to a builder would come from dividing the purchaseable square footage into two units (laneway homes cannot be sold separately from the main structure).
 

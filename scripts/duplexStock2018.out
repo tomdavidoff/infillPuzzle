@@ -1,0 +1,57 @@
+folio -> description: 208724 of 208724 COV folios matched (lost 0.00%)
+                               actualUseDescription     N
+                                             <char> <int>
+1:                      Duplex, Strata Front / Back  2622
+2:                      Duplex, Strata Side by Side  1524
+3:  Duplex, Non-Strata Side by Side or Front / Back   891
+4:                         Duplex, Strata Up / Down   159
+5:                     Duplex, Non-Strata Up / Down    96
+6: 2 Acres Or More (Single Family Dwelling, Duplex)    37
+duplex folios without inventory zoning: 68 of 5292 (1.28%)
+                              actualUseDescription folios stems
+                                            <char>  <int> <int>
+1:                     Duplex, Strata Side by Side   1524   779
+2: Duplex, Non-Strata Side by Side or Front / Back    891   889
+3:                    Duplex, Non-Strata Up / Down     96    96
+4:                     Duplex, Strata Front / Back   2622  1339
+5:                        Duplex, Strata Up / Down    159    85
+   strata foliosPerStem     N
+   <lgcl>         <int> <int>
+1:  FALSE             1   983
+2:  FALSE             2     2
+3:   TRUE             1    29
+4:   TRUE             2  2138
+stems with >1 non-strata duplex folio or strata/non-strata mix: 2
+stems with conflicting zoning across folios: 11
+duplex buildings (stems): 3152; folios: 5292; zoning missing: 64 (2.03%)
+    zoning     N      share family
+    <char> <int>      <num> <char>
+ 1:    RT2   794 0.25712435     RT
+ 2:    RT5   556 0.18005181     RT
+ 3:    RT8   354 0.11463731     RT
+ 4:    RT7   262 0.08484456     RT
+ 5:    RM4   130 0.04209845     RM
+ 6:    RT4   107 0.03465026     RT
+ 7:    RT9    81 0.02623057     RT
+ 8:    RT3    68 0.02202073     RT
+ 9:   RT10    64 0.02072539     RT
+10:    RT6    52 0.01683938     RT
+11:   RM4N    52 0.01683938     RM
+12:    RS1    46 0.01489637     RS
+13:   RM3A    46 0.01489637     RM
+14:   RS1B    40 0.01295337     RS
+15:   RT11    37 0.01198187     RT
+   family     N       share
+   <char> <int>       <num>
+1:     RT  2493 0.807318653
+2:     RM   377 0.122085492
+3:     RS   151 0.048898964
+4:  other    41 0.013277202
+5:     CD    26 0.008419689
+\newcommand{\duplexBldgStockEighteen}{3,152}
+\newcommand{\duplexFolioStockEighteen}{5,292}
+\newcommand{\duplexZoningCodesEighteen}{57}
+\newcommand{\duplexTopFiveZoneShareEighteen}{68}
+\newcommand{\duplexTopFiveZonesEighteen}{RT2, RT5, RT8, RT7, RM4}
+\newcommand{\duplexRTShareEighteen}{81}
+\newcommand{\duplexRSShareEighteen}{5}
