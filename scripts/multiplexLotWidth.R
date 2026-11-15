@@ -1,6 +1,8 @@
 # multiplexLotWidth.R
 # New-building permits issued 2024+, matched to 2018 single-family lots in R1-1 (BCA 2019 roll):
 # share of multiplexes on 33-ft lots, and multiplex share of new builds by lot width.
+# Multiplex = "Multiple Dwelling" whose description says multiplex (or two-unit front/rear building), applied on/after R1-1 start;
+# other "Multiple Dwelling" (apartments, townhouses, rebuilt multifamily) is kept as otherMultiple and excluded from shares.
 # Tom Davidoff 11/15/26
 
 library(data.table)
@@ -48,7 +50,12 @@ setnames(dtP, tolower(names(dtP)))
 stopifnot(!anyDuplicated(dtP$permitnumber))
 dtP[, issued := as.IDate(issuedate)]
 n0 <- nrow(dtP); dtP <- dtP[typeofwork == "New Building" & year(issued) >= YEAR_MIN]; lost(n0, nrow(dtP), "New Building, issued 2024+")
-dtP[, product := fcase(grepl("Multiple Dwelling", specificusecategory), "multiplex",
+R1_START <- as.IDate("2023-10-17")
+dtP[, isMplx := grepl("multiplex|multi-plex|two-units (front|rear)", tolower(projectdescription)) &
+                as.IDate(permitnumbercreateddate) >= R1_START]
+print(dtP[grepl("Multiple Dwelling", specificusecategory), .N, by = .(multiplexByDescAndDate = isMplx)])
+dtP[, product := fcase(grepl("Multiple Dwelling", specificusecategory) & isMplx, "multiplex",
+                       grepl("Multiple Dwelling", specificusecategory), "otherMultiple",
                        grepl("Duplex",            specificusecategory), "duplex",
                        grepl("Single",            specificusecategory), "single",
                        default = NA_character_)]
@@ -121,7 +128,7 @@ print(dt[product == "multiplex", .N, keyby = widthBin][, share := round(N / sum(
 cat("\n=== by issue year: multiplex N and share on 33 ===\n")
 print(dt[product == "multiplex", .(N = .N, share33 = round(mean(widthBin == "33"), 3)), keyby = .(year = year(issued))])
 cat("\n=== product mix within width bin (2024+) ===\n")
-print(dcast(dt[, .N, by = .(widthBin, product)], widthBin ~ product, fill = 0)[, `:=`(
+print(dcast(dt[product != "otherMultiple", .N, by = .(widthBin, product)], widthBin ~ product, fill = 0)[, `:=`(
   total = duplex + multiplex + single, multiplexShare = round(multiplex / (duplex + multiplex + single), 3))][])
 cat("\nbaseline: share of 2018 R1-1 SFD lots that are 33:", round(dtS[, mean(landWidth > 30 & landWidth <= 36)], 3), "\n")
 cat("latest issue date in data:", format(max(dtP$issued)), "\n")

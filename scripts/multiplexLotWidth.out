@@ -4,6 +4,10 @@ one lot per rollStart                     67794 ->  67785 (lost 0.0%)
 in R1-1                                   67785 ->  58004 (lost 14.4%)
 2018 R1-1 lots with an address key: 1 | keys shared by >1 lot (E/W): 1219 
 New Building, issued 2024+                52683 ->   3194 (lost 93.9%)
+   multiplexByDescAndDate     N
+                   <lgcl> <int>
+1:                  FALSE   183
+2:                   TRUE   615
                            specificusecategory     N
                                         <char> <int>
 1:                               Laneway House   968
@@ -15,53 +19,58 @@ New Building, issued 2024+                52683 ->   3194 (lost 93.9%)
 7:                         Apartment,Townhouse     9
 8:                        Public Authority Use     7
 principal product, geocoded                3194 ->   1982 (lost 37.9%)
-     product     N near26 roll26in2018
-      <char> <int>  <num>        <num>
-1:    single   545  0.828        0.710
-2:    duplex   646  0.879        0.633
-3: multiplex   791  0.451        0.353
-     product     N address near5
-      <char> <int>   <num> <num>
-1: multiplex   791   0.351 0.353
-2:    single   545   0.705 0.710
-3:    duplex   646   0.633 0.633
+         product     N near26 roll26in2018
+          <char> <int>  <num>        <num>
+1:        single   545  0.828        0.710
+2:        duplex   646  0.879        0.633
+3: otherMultiple   182  0.176        0.011
+4:     multiplex   609  0.534        0.455
+         product     N address near5
+          <char> <int>   <num> <num>
+1: otherMultiple   182   0.011 0.011
+2:        single   545   0.705 0.710
+3:        duplex   646   0.633 0.633
+4:     multiplex   609   0.453 0.455
 address vs 5m agreement where both match: 1  N = 1070 
-     product     N addr26 addr26in2018
-      <char> <int>  <num>        <num>
-1: multiplex   791  0.710        0.470
-2:    single   545  0.930        0.752
-3:    duplex   646  0.952        0.661
+         product     N addr26 addr26in2018
+          <char> <int>  <num>        <num>
+1: otherMultiple   182  0.775        0.060
+2:        single   545  0.930        0.752
+3:        duplex   646  0.952        0.661
+4:     multiplex   609  0.691        0.593
 2026-address vs centroid agreement where both match: 0.999  N = 1070 
 rollStart vs address agreement where both match: 1  N = 1070 
 Using 'N' as value column. Use 'value.var' to override
 Key: <product>
-     product    NA address26 rollStart26
-      <char> <int>     <int>       <int>
-1:    duplex   218        19         409
-2: multiplex   418        94         279
-3:    single   132        26         387
+         product    NA address26 rollStart26
+          <char> <int>     <int>       <int>
+1:        duplex   218        19         409
+2:     multiplex   247        85         277
+3: otherMultiple   171         9           2
+4:        single   132        26         387
 matched to 2018 R1-1 SFD lot               1982 ->   1214 (lost 38.7%)
-     product     N
-      <char> <int>
-1:    single   413
-2: multiplex   373
-3:    duplex   428
+         product     N
+          <char> <int>
+1:        single   413
+2:     multiplex   362
+3:        duplex   428
+4: otherMultiple    11
 latest permit per lot                      1214 ->   1108 (lost 8.7%)
 
 === share of 2024+ multiplexes by lot width ===
 Key: <widthBin>
    widthBin     N share
      <fctr> <int> <num>
-1:       33   119 0.420
-2:    37-41    30 0.106
-3:    42-50    81 0.286
-4:      >50    53 0.187
+1:       33   118 0.420
+2:    37-41    30 0.107
+3:    42-50    80 0.285
+4:      >50    53 0.189
 
 === by issue year: multiplex N and share on 33 ===
 Key: <year>
     year     N share33
    <int> <int>   <num>
-1:  2024    26   0.462
+1:  2024    24   0.458
 2:  2025   145   0.366
 3:  2026   112   0.482
 
@@ -71,9 +80,9 @@ Key: <widthBin>
    widthBin duplex multiplex single total multiplexShare
      <fctr>  <int>     <int>  <int> <int>          <num>
 1:     <=30      7         0     10    17          0.000
-2:       33    273       119    163   555          0.214
+2:       33    273       118    163   554          0.213
 3:    37-41     36        30     26    92          0.326
-4:    42-50     71        81    124   276          0.293
+4:    42-50     71        80    124   275          0.291
 5:      >50     33        53     82   168          0.315
 
 baseline: share of 2018 R1-1 SFD lots that are 33: 0.537 
