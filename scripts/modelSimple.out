@@ -1,0 +1,123 @@
+
+R version 4.5.0 (2025-04-11) -- "How About a Twenty-Six"
+Copyright (C) 2025 The R Foundation for Statistical Computing
+Platform: aarch64-apple-darwin20
+
+R is free software and comes with ABSOLUTELY NO WARRANTY.
+You are welcome to redistribute it under certain conditions.
+Type 'license()' or 'licence()' for distribution details.
+
+  Natural language support but running in an English locale
+
+R is a collaborative project with many contributors.
+Type 'contributors()' for more information and
+'citation()' on how to cite R or R packages in publications.
+
+Type 'demo()' for some demos, 'help()' for on-line help, or
+'help.start()' for an HTML browser interface to help.
+Type 'q()' to quit R.
+
+> # modelSimple.R
+> # R to solve for equilibrium stuff
+> # Tom Davidoff
+> # 11/13/26
+> 
+> # u = t+h+ ln(y-p)
+> # outside option t+h = k,p=p0
+> # outside utility = k + ln(y-p0) 
+> # inside utility = t+h + ln(y-p)
+> # hence ln(y-p) = k-t-h + ln(y-p0)
+> # y-p = exp(k-t-h)*(y-p0)
+> # p = y - exp(k-t-h)*(y-p0)
+> 
+> library(data.table)
+> 
+> 
+> wtp <- function(y,p0,k,t,h) {
++ 	return(y - exp(k-t-h)*(y-p0))
++ }
+> 
+> for (y in c(3,5,10)) {
++ 	for (p0 in c(2.5)) {
++ 		for (k in c(3)) {
++ 			for (t in c(1,2)) {
++ 				for (h in c(1,2)) {
++ 			print(c(y,p0,k,t,h))
++ 			print(wtp(y,p0,k,t,h))
++ 				}
++ 			}
++ 		}
++ 	}
++ }
+[1] 3.0 2.5 3.0 1.0 1.0
+[1] 1.640859
+[1] 3.0 2.5 3.0 1.0 2.0
+[1] 2.5
+[1] 3.0 2.5 3.0 2.0 1.0
+[1] 2.5
+[1] 3.0 2.5 3.0 2.0 2.0
+[1] 2.81606
+[1] 5.0 2.5 3.0 1.0 1.0
+[1] -1.795705
+[1] 5.0 2.5 3.0 1.0 2.0
+[1] 2.5
+[1] 5.0 2.5 3.0 2.0 1.0
+[1] 2.5
+[1] 5.0 2.5 3.0 2.0 2.0
+[1] 4.080301
+[1] 10.0  2.5  3.0  1.0  1.0
+[1] -10.38711
+[1] 10.0  2.5  3.0  1.0  2.0
+[1] 2.5
+[1] 10.0  2.5  3.0  2.0  1.0
+[1] 2.5
+[1] 10.0  2.5  3.0  2.0  2.0
+[1] 7.240904
+> 
+> for (y in c(3,5,10)) {
++ 	for (p0 in c(1)) {
++ 		for (k in c(2)) {
++ 			for (t in c(1,2)) {
++ 				for (h in c(1,2)) {
++ 			print(c(y,p0,k,t,h))
++ 			print(wtp(y,p0,k,t,h))
++ 				}
++ 			}
++ 		}
++ 	}
++ }
+[1] 3 1 2 1 1
+[1] 1
+[1] 3 1 2 1 2
+[1] 2.264241
+[1] 3 1 2 2 1
+[1] 2.264241
+[1] 3 1 2 2 2
+[1] 2.729329
+[1] 5 1 2 1 1
+[1] 1
+[1] 5 1 2 1 2
+[1] 3.528482
+[1] 5 1 2 2 1
+[1] 3.528482
+[1] 5 1 2 2 2
+[1] 4.458659
+[1] 10  1  2  1  1
+[1] 1
+[1] 10  1  2  1  2
+[1] 6.689085
+[1] 10  1  2  2  1
+[1] 6.689085
+[1] 10  1  2  2  2
+[1] 8.781982
+> 
+> 
+> 
+> # Try different utility
+> #log(t)+log(s) + log(y-p(t,s))
+> #outside: 0 + 0 + log(y-p0)
+> 
+> 
+> proc.time()
+   user  system elapsed 
+  0.160   0.045   0.217 

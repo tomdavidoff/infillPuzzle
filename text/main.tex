@@ -1,37 +1,32 @@
 \documentclass[12pt]{article}
 
-\usepackage{amssymb}
-\usepackage{tikz}
-\usepackage{amsmath}
-\usepackage[margin=1in]{geometry}
-\usepackage{graphicx}
 \usepackage{setspace}
-\usepackage{booktabs}
-\newtheorem{assumption}{Assumption}
-\newtheorem{proposition}{Proposition}
-
+\usepackage{amsmath}
 \usepackage[style=authoryear,backend=biber]{biblatex}
-\addbibresource{infillPuzzle.bib}
+\addbibresource{text/infillPuzzle}
+\usepackage[margin=1in]{geometry}
+\newcommand{\fact}[1]{\textcolor{red}{[#1]}}
+
 
 \begin{document}
 
 \title{Where does the infill housing go?\\Addition versus division}
-\author{Thomas Davidoff, Robert Helsley, and Tsur Somerville\thanks{thomas.davidoff@sauder.ubc.ca; robert.helsley@sauder.ubc.ca; tsur.somerville@sauder.ubc.ca}\\Sauder School of Business, University of British Columbia\\\textbf{Under continual revision.} Updated version is available at:\\ https://github.com/tomdavidoff/infillPuzzle/blob/main/text/main.pdf}
+\author{Thomas Davidoff, Robert Helsley, and Tsur Somerville\thanks{thomas.davidoff@sauder.ubc.ca; robert.helsley@sauder.ubc.ca; tsur.somerville@sauder.ubc.ca}\\Sauder School of Business, University of British Columbia}%\\\textbf{Under continual revision.} Updated version is available at:\\ https://github.com/tomdavidoff/infillPuzzle/blob/main/text/main.pdf}
   \maketitle
 
 \onehalfspacing
 \begin{abstract}
-	
-Jurisdictions across Canada and the U.S. have recently allowed ``missing-middle'' infill housing, such as accessory dwelling units and multiplexes, in residential zones formerly restricted to single-family use. Existing studies document that infill housing is less prevalent in more expensive neighbourhoods within metro areas. This is puzzling because the right to add space should be more valuable in neighbourhoods where land prices are higher. To resolve this contradiction, we develop a parsimonious model that distinguishes between two components of missing-middle reform: ``addition'' (adding to allowable square footage) and ``division'' (permitting the subdivision of a fixed amount of square footage into multiple units).  In the model, addition is more valuable where price per square foot of built space is greatest, while division is more valuable where the elasticity of price in square footage is less positive. With fixed home sizes, wealthy households sort into better locations. If they also have a greater willingness to pay for space, then infill housing will be less prevalent in pricier neighbourhoods when the upzoning features relatively little addition and more division. We test these predictions with housing transactions and permitting data with respect to a division-only 2018 upzoning in Vancouver that allowed duplexes to replace ``single-family'' homes, but with no additional density allowed. Duplex takeup was concentrated in relatively low-price-per-square-foot neighbourhoods, which feature lower elasticity of willingness to pay for space. There is some evidence from Vancouver, Portland, and Minneapolis that policies that mix addition-and-division show less negative correlation between infill takeup and land price.
-\par\bigskip
+
+Several U.S. and Canadian jurisdictions have recently allowed  multifamily homes in formerly single-family-only zones. Within markets, the option to build infill multifamily is commonly exercised disproportionately in cheaper locations. This is puzzling, because the right to add space is more valuable where rents and prices are higher. We distinguish two aspects of zoning allowances: ``addition'' of allowable built space on a fixed lot versus ``division'' of given built space into more homes. Addition is more valuable in better locations; division likely is not. When density cannot vary much with location, richer households, with more willingness to pay for incremental square feet, sort into better locations. Vancouver legalized duplexes in 2018, but allowed them no more space than single family homes. A 2023 reform reduced allowable single family square footage, so that duplexes represented addition and division. Consistent with our model, duplexes initially sorted heavily into cheaper locations and the 2023 reform was associated with a significant spatial reallocation of duplexes towards pricier locations. 
+par\bigskip
 \textbf{Keywords:} housing supply and markets, government policy, regulation, state and local government
 \end{abstract}
 
 \section{\label{sec:intro}Introduction}
 
-As concerns over housing affordability have grown in political salience over the last decade, a growing number of U.S. and Canadian jurisdictions have introduced reforms to allow ``missing middle'', ``infill'', or ``gentle density'' housing types in formerly single-family-only residential zones. This housing might take the form of additional density that does not dramatically change the urban fabric such as accessory dwelling units (Vancouver's laneway homes) or ``multiplex'' structures with a range of two to six homes on single lot, or more noticeable changes in urban form in the missing-middle's densest form such as row and townhouses or three- to four-storey apartment buildings. As has been emphasized, e.g. by \textcite{bruecknerSingh} and \textcite{HsiehMoretti}, restrictive zoning causes deadweight loss most where real estate is most valuable. It is thus natural to expect that the option to densify urban land would be exercised most commonly in the neighborhoods where land and structure prices per unit are highest.
+As concerns over housing affordability have grown in political salience over the last decade, a growing number of U.S. and Canadian jurisdictions have introduced reforms to allow ``missing middle'', ``infill'', or ``gentle density'' housing types in formerly single-family-only residential zones. This housing might take the form of additional density that does not dramatically change the urban fabric, such as accessory dwelling units (Vancouver's laneway homes) or ``multiplex'' structures with a range of two to six homes on single lot, or more noticeable changes in urban form in the missing-middle's densest form such as row and townhouses or three- to four-storey apartment buildings. As has been emphasized, e.g. by \textcite{bruecknerSingh} and \textcite{HsiehMoretti}, restrictive zoning causes deadweight loss most where real estate is most valuable. It is thus natural to expect that the option to densify urban land would be exercised most commonly in the neighborhoods where land and structure prices per unit are highest.
 
-The puzzle with missing middle uptake is that several recent empirical studies (cited below) have documented that infill housing is, in fact, less prevalent in highly expensive neighbourhoods. We present a parsimonious model of density choice that shows how where redevelopment occurs can depend on the extent to which policy changes allow the addition of greater density on a lot (``addition'') and the allowance for more units within that density (``division''). These two effects likely work in opposite directions with respect to the relationship between infill prevalence and neighbourhood price levels. In the model, the extent that infill policies allow more square feet to be built on the same lot (addition) lead to greater take-up where the price per square foot of structure net of construction costs is greatest. For a given allowed density, allowing more (i.e. smaller) units to be created out of the same square footage (division) will result in less take-up if wealthier households with a greater elasticity of willingness to pay for square footage sort into more expensive single-family neighbourhoods. That positive sorting is theoretically likely: in standard monocentric models affluent households may suburbanize due to flat bid-rent curves generated by income-elastic demand for housing,\footnote{See \textcite{Wheaton77} and earlier work of Muth, Alonso, Mills, and Beckmann cited therein.} but with single-family zoning leading many households to a fixed (over-) consumption of lot size, the normality of demand for location quality should generate positive sorting.
+Recent empirical studies have documented that infill housing is, in fact, less prevalent in the most expensive neighbourhoods in jurisdictions that have upzoned. We present a parsimonious model of housing type choice by builders that shows how where redevelopment occurs can depend on the extent to which policy changes allow the addition of greater density on a lot (``addition'') and the allowance for more units within that density (``division''). These two effects may work in opposite directions with respect to the relationship between infill prevalence and neighbourhood price levels. In the model, the extent that infill policies allow more square feet to be built on the same lot (addition) lead to greater take-up where the price per square foot of structure net of construction costs is greatest. For a given allowed density, allowing more (i.e. smaller) units to be created out of the same square footage (division) will result in negatively sorted take-up if wealthier households with a greater elasticity of willingness to pay for square footage sort into more expensive single-family neighbourhoods. That positive sorting is theoretically likely: in standard monocentric models affluent households may suburbanize due to flat bid-rent curves generated by income-elastic demand for housing,\footnote{See \textcite{Wheaton77} and earlier work of Muth, Alonso, Mills, and Beckmann cited therein.} but with single-family zoning leading many households to a fixed (over-) consumption of lot size, the normality of demand for location quality should generate positive sorting.
 
 This paper studies patterns of redevelopment from two very modest, but broad upzonings in Vancouver, BC, in Canada. These upzonings represent different mixes of addition and division. In the first case, allowing duplexes (division) without an increase in allowable floor area (addition). The second policy change allowing up to 8 units on single lot included addition.\footnote{We focus on the reforms that allowed for additional ownership units rather than those that allowed for accessory dwelling units, which are rental only.} We evaluate the spatial correlation between neighbourhood price levels and the prevalence of infill housing permits following the different upzoning. The first policy allowing duplexes without additional floor area has been taken up predominantly in less expensive East Side neighbourhoods. Relatively recently-allowed multiplexes, that allow a bit more density have also been concentrated on the East Side; a quantitative exercise does not make a clear prediction of the siting given the offsetting addition and division effects. (Our empirical evidence here is on the first reform, analysis of the multiplex reform and similar reforms in Portland and Minneapolis are work in progress).
 
@@ -68,458 +63,95 @@ We study zoning that allows some combination of increased units or allowed floor
 
 \section{\label{sec:model} A model of sorting and density regulations}
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Parcels and Location Quality}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+A developer who owns a lot of fixed size (one unit of land) chooses how
+many of $N$ permitted units to build on the lot. Zoning permits a maximum floor
+area ratio (and total square footage due to the unit lot size) of $F(N)$. We
+assume, appropriately for Vancouver but not all jurisdictions, that developers
+are at a corner solution $F(N)$ for any $N$. Zoning may or may not grant more
+square feet total when more units are built. 
 
-The city consists of a continuum of land parcels, each of unit size. Each parcel has a  location quality $\theta \in [\underline{\theta}, \bar{\theta}]$, reflecting access to natural, social and economic amenities. We treat $\theta$ as exogenous.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{The Regulatory Environment}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-The regulatory authority sets two zoning instruments: 1. The total floor space permitted on a lot $\bar{S}$. Since all lots are of unit size, $\bar{S}$ is also the \emph{floor space ratio}. 2. 
-The number of housing units permitted on a lot $N$. $N$ is presumably closely related to population density. Both constraints bind wherever development occurs. 
-
-Floor space per lot is divided equally among the units, so unit size or floor space consumption per household is
-\begin{equation}
-  s \equiv \frac{\bar{S}}{N}.
-  \label{eq:s}
-\end{equation}
-The case $N=1$ corresponds to single-family housing, with $s = \bar{S}$.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Utility and Its Components}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-Household utility takes the form
-\begin{equation}
-  U\!\bigl(X,\, V(s, N, \theta)\bigr),
-  \label{eq:utility}
-\end{equation}
-where $X$ is numeraire consumption and $V(s, N, \theta)$ is housing services. We assume that $U$ is increasing and strictly quasi-concave. The partial derivatives of $V$ satisfy:
-\[
-  V_s > 0, \qquad V_N < 0, \qquad V_\theta > 0.
-\]
-More floor space and better location quality raise housing services. More units per lot, holding $s$ and $\theta$ fixed, reduce housing services --- a density externality capturing congestion, noise, and loss of privacy from higher density development.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Income Groups and the Open-City Equilibrium}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-There are two household types or income groups in the city, indexed by $i \in \{H, L\}$, with incomes $Y_H > Y_L$. Each household faces the budget constraint $X + P \cdot s = Y_i$, where $P$ is the price per square foot of housing. The city is "open" in the sense that migration to other regions or housing markets is costless, and the income groups have exogenous outside-option utilities $\bar{U}_H > \bar{U}_L$. These represent the utilities that are available to each type elsewhere in the economy. Since migration is costless, each type must receive its outside-option utility level in equilibrium:
-\begin{equation}
-  U\!\Bigl(Y_i - P_i \cdot s,\; V(s, N, \theta)\Bigr) = \bar{U}_i.
-  \label{eq:opencity}
-\end{equation}
-\eqref{eq:opencity} defines an equilibrium price per square foot of housing such that residents with the same income are indifferent among locations.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Equilibrium Prices and Comparative Statics}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%------------------------------------------------------------------
-\subsubsection{The Bid Price Function}
-%------------------------------------------------------------------
-
-To characterize this equilibrium price, it will be convenient to let $X^*(\bar{U}_i, V)$ represent the minimum level of numeraire consumption needed to reach $\bar{U}_i$. Its partial derivatives are:
+Profits from building are $F(N)x(N,\theta)$, where $x(N,\theta)$ is the sale
+price per square foot minus average cost per square foot on a lot of exogenous
+quality $\theta$:
 
 \begin{equation}
-  X^*_V \equiv \frac{\partial X^*}{\partial V} = -\frac{U_V}{U_X} < 0, \qquad
-  X^*_{\bar{U}} \equiv \frac{\partial X^*}{\partial \bar{U}_i} = \frac{1}{U_X} > 0.
-  \label{eq:Xstar}
+	x(N,\theta) = p(N,\theta) - c(N).
 \end{equation}
 
-The equilibrium bid price per square foot can then be written as
+We assume that price, not cost, varies with location quality. The important
+content of the assumption for the analysis that follows is that the optimal
+choice of building quality can change with $N$, but not systematically with
+location. Whether the difference between the optimized cost per square foot of
+an $N$plex and that of an $N+1$plex is larger in better or worse locations
+strikes us as a second order empirical question.
+
+The gain in profits when a city offers a price-taking developer the option to build $N+1$ units at density $F(N+1)$ instead of $N$ at $F(N)$, $F(N+1)x(N+1) -
+F(N)x(N,\theta)$ can be written: 
+
 \begin{equation}
-  P_i(\theta; \bar{S}, N) = \frac{N}{\bar{S}}\Bigl[Y_i - X^*\!\Bigl(\bar{U}_i,\, V\!\Bigl(\frac{\bar{S}}{N}, N, \theta\Bigr)\Bigr)\Bigr].
-  \label{eq:price}
+	\label{eq:Delta}
+	\Delta(N,\theta) = \left[F(N+1)-F(N)\right]x(N,\theta) + F(N+1)\left[x(N+1,\theta)-x(N,\theta)\right].
 \end{equation}
-The term in square brackets is the household's maximum willingness to pay for housing: income minus the minimum level of numeraire consumption needed to reach the outside option. Dividing by $s = \bar{S}/N$ converts this to a per-square-foot price.
-%------------------------------------------------------------------
-\subsubsection{Comparative Statics of the Bid Price}
-%------------------------------------------------------------------
 
-Differentiating \eqref{eq:price} with respect to $\theta$ yields the slope of the bid price in location quality:
+The two terms on the right hand side of equation \eqref{eq:Delta}
+$\Delta(N,\theta)$ correspond to the addition effect of potentially greater
+allowed floor area and the division effect of potentially greater price per
+square foot from newly permissible smaller unit types that may be closer to
+optimal.
+
+How the gain to taking up the option to build $N+1$ instead of $N$ units varies with location is:
+
 \begin{equation}
-  \frac{\partial P_i}{\partial\theta} = \frac{U_V \cdot V_\theta}{U_X \cdot s} = -\frac{X^*_V \cdot V_\theta}{s} > 0.
-  \label{eq:dPdtheta}
+	\label{eq:compStatic}
+	\frac{\partial \Delta(N,\theta)}{\partial \theta} = \left[F(N+1)-F(N)\right]\frac{\partial x(N,\theta)}{\partial \theta} + F(N+1)\left[\frac{\partial x(N+1,\theta)}{\partial \theta}-\frac{\partial x(N,\theta)}{\partial \theta}\right].
 \end{equation}
-Not surprisingly, households bid more for more desirable locations.
 
-Differentiating \eqref{eq:price} with respect to $\bar{S}$ (holding $N$ fixed) and $N$ (holding $\bar{S}$ fixed) gives the impacts of changes in the regulatory instruments:
-\begin{align}
-  \frac{\partial P_i}{\partial \bar{S}}\bigg|_N &= -\frac{P_i}{\bar{S}} - \frac{X^*_V \cdot V_s}{\bar{S}},
-  \label{eq:dPdSbar}\\[6pt]
-  \frac{\partial P_i}{\partial N}\bigg|_{\bar{S}} &= \frac{P_i}{N} + X^*_V\!\left(-\frac{V_s}{N} + \frac{N \cdot V_N}{\bar{S}}\right).
-  \label{eq:dPdN}
-\end{align}
+The first term on the right hand side of \eqref{eq:compStatic} is positive as
+long as $F(N+1)-F(N)>0$. The second term, the change in the division effect,
+will be negative if the residents of less expensive neighbourhoods have less
+willingness to pay for the benefits of larger units and more privacy embedded
+in $N$plexes versus $N+1$plexes.
 
-In \eqref{eq:dPdSbar}, increasing $\bar{S}$ raises $s$, which raises housing services through $V_s > 0$, reducing $X^*$ and increasing total willingness to pay ($-X^*_V V_s/\bar{S} > 0$); but it also spreads that willingness to pay over more square feet, reducing the per-square-foot price ($-P_i/\bar{S} < 0$). The net effect is ambiguous. Conversely, in \eqref{eq:dPdN}, increasing $N$ reduces $s$, concentrating willingness to pay over fewer square feet and raising the per-square-foot price ($P_i/N > 0$); but smaller units lower housing services through $V_s$, raising $X^*$ and reducing total willingness to pay ($X^*_V V_s/N < 0$ since $X^*_V < 0$), and the density externality further reduces housing services through $V_N < 0$ ($N X^*_V V_N/\bar{S} < 0$). The net effect is again ambiguous.
+Whether willingness to pay for size and privacy increases in neighbourhood
+quality is an empirical question, but monocentric city models provide an
+intuition for why the condition would likely hold. Bid rent curves for location
+are the ratio of willingness to pay for incremental location divided by
+home size. With the denominator shut down by zoning constraints because only
+single family homes of common size exist, households with greater willingness
+to pay for location (presumably those with higher incomes) live in the better
+locations. If the change in housing quality from upzoning is small relative to
+willingness to pay differentials, the sorting pattern should not vary enough
+with rezoning to change neighbourhood sorting dramatically. However, both
+because high income households may sort into single family homes in worse
+locations, and because the dollar value of homes is larger and subject to more
+variation with the same elasticity in better locations, the sign of
+\eqref{eq:compStatic} is empirical. 
 
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{The Slope Condition and Single-Crossing}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+For example, the following scenario admits parameters under which duplexes dominate in a cheaper neighbourhood and single family homes in the more expensive neighbourhood and other parameters in which the opposite is true.  Suppose households with income $y$ have utility over single family homes ($N=1$) and duplexes ($N=2$) on the East Side $(\theta=1)$ and West Side $(\theta=2)$ given by $U = 3-N+\theta + \log(y-p(N,\theta))$. The city is open and has a fixed supply of single family homes, some of which may be split in half in either neighbourhood at no cost and converted into two duplex units. Outside utility is $\bar{u} = k+\log(y-p_{0})$. The price of any of the four location-type pairs is determined by the highest bid among all income types. Single family homes give way to duplexes when the price of duplex is more than half that of a single family home. Whether and where single family homes are divided into duplexes depends on the income distribution and the characteristics of the outside option.\footnote{With two income levels (invariant to whether in the city or in the outside location), 3 and 10, and $k=3, p_{0}=2.5$, the East Side has duplexes and the West Side has single family homes. If everyone has income $10$, $k=2$, $p_{0}=1$, there are single family homes in the East and duplexes in the West.}
 
-Differentiating \eqref{eq:dPdtheta} with respect to $Y_i$ gives:
+\section{Institutional background}
+
+Vancouver, British Columbia, is a Canadian city with a population of 662,248 as
+of the 2021 Canadian census. The city has been densifying over time. In 2001, the City had 65,390 single detached homes, 39,580 ``other ground oriented homes such as townhomes and half-duplexes, and 131,130 apartments. By 2021, the counts were 44,755 single family, 70,650 other ground oriented, and 189,940 apartments.\footnote{2018 and 2025 Metro Vancouver Housing Data Book.} The loss of single family homes is attributable to a near absence of unbuilt residentially zoned land.
+
+Vancouver has historically zoned most of its residential land for single family homes, with different variants of ``RS'' zoning. As of 2018, \fact{How many duplexes, how concentrated in top 5 zoning codes that had duplexes.} Vancouver incrementally formally allowed rental suites in basements of single detached homes starting in 1986 in a restricted set of zones, with all RS zones allowed suites by \fact{when? Start here: https://council.vancouver.ca/20040325/ph2.pdf. Find a reference for this assertion: it is generally believed that the large majority of suites do not conform with regulations and have not been legalized}. After basement suites, the city next moved to allow laneway homes, with most RS zones enabled in 2009 and the rest in \fact{find year of 100\% of RS}.
+
+In \fact{month?} 2018, duplex homes were enabled by council in all RS zones. Generally, duplexes were allowed the same FSR as a single family home (with or without a suite), and \fact{check this: were not permitted an additional laneway home on the same lot}. In that way, a single family home with a laneway was granted more total square footage than a duplex, so that the value to a builder would come from dividing the purchaseable square footage into two units (laneway homes cannot be sold separately from the main structure).
+
+A \fact{month?} 2023 zoning reform had several components. First, all RS \fact{and RT?} zones were combined into a single R1 zone. Second, the maximum FSR for single family homes was set at \fact{What?} and for duplexes at \fact{what}. Also, multiplexes of up to 4 units on the most commonly sized lots (33 feet wide and 122 feet deep, but anything over \fact{100 feet deep}) and up to \fact{8? 6?} on lots of up to \fact{?}, 50 feet wide is another common width, particularly south of 16th Avenue. Multiplexes were allowed FSRs of \fact{I think 1.0 in all cases?}
+
+\subsection{Testable hypothesis}
+
+The pure division effect of the 2018 allowance of duplex homes suggests that duplex homes should have been more prevalent in less expensive neighbourhoods (concentrated on the East Side, see \textcite{SanghoonDaryl}) with (relatively) less affluent buyers than in more expensive neighbourhoods. The 2023 reforms added an addition effect to building duplexes, as $F(2)>F(1)$ after 2023. This suggests a difference in difference analysis: duplexes should have been relatively more attractive after 2023 in more expensive neighbourhoods.
+
+That difference-in-differences is complicated by the presence of a third alternative, multiplexes, newly allowed in 2023. Assuming that errors in profits have a \fact{type 1 extreme value?} distribution in \eqref{eq:profit}, then the relative appeal of duplexes versus single family homes is unaffected by the presence of the multiplex option. We thus include in our analysis on the logit as well as OLS difference in differences. \fact{Note need for parallel trends 2018-2023 reforms}. Whether multiplexes, granted more FSR, but further divided relative to duplexes, would be more or less attractive on more expensive lots is unclear.
+
+The regression of interest in OLS form is confined to single family or duplex new build permits\footnote{New builds are identified as either a permit for a new structure or for any permit above a certain threshold percentile in dollar cost of the permitted work. Inclusion of the latter is important as the definition of ``new build'' is not clear, and yadda yadda.}
+
 \begin{equation}
-  \frac{\partial^2 P_i}{\partial Y_i\,\partial\theta}
-  = -\frac{V_\theta}{s}\cdot\frac{\partial X^*_V}{\partial X}
-  = \frac{V_\theta}{s}\cdot\frac{U_{VX}\,U_X - U_V\,U_{XX}}{U_X^2}.
-  \label{eq:crosspd}
-\end{equation}
-Given our earlier assumptions about $U(X,V)$, a sufficient condition for $\frac{\partial^2 P_i}{\partial Y_i\,\partial\theta} > 0$  is  $U_{VX} \geq 0$. This also implies that the marginal value of housing services is non-decreasing in income. In what follows, we will assume that this condition holds.
-
-This implies that $P_H(\theta)$ is steeper than $P_L(\theta)$ for all $\theta \in [\underline{\theta}, \bar{\theta}]$, so that the bid price schedules can cross at most once. To ensure that they do cross we assume that the incomes and outside-option utilities of the two groups are such that $P_H(\bar{\theta}) > P_L(\bar{\theta})$ and $P_L(\underline{\theta}) > P_H(\underline{\theta})$. Then there will be a unique $\theta^* \in (\underline\theta, \bar\theta)$, the sorting threshold, such that $P_H(\theta^*) = P_L(\theta^*)$.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{The Sorting Threshold $\theta^*$}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%------------------------------------------------------------------
-\subsubsection{Definition of Income Sorting}
-%------------------------------------------------------------------
-
-The sorting threshold $\theta^*$ partitions locations by the income of residents: low-income households occupy parcels with $\theta < \theta^*$ and high-income households occupy parcels with $\theta > \theta^*$. The equilibrium price per square foot is the upper envelope of the bid prices of the two groups:  $P^*(\theta) = \max\{P_H(\theta), P_L(\theta)\}$.
-
-%------------------------------------------------------------------
-\subsubsection{Comparative Statics of $\theta^*$}
-%------------------------------------------------------------------
-
-From \eqref{eq:price}, the condition $P_H(\theta^*) = P_L(\theta^*)$ can be written as:
-\begin{equation}
-  Y_H - Y_L = X^*\!\Bigl(\bar{U}_H, V\!\Bigl(\tfrac{\bar{S}}{N}, N, \theta^*\Bigr)\Bigr) - X^*\!\Bigl(\bar{U}_L, V\!\Bigl(\tfrac{\bar{S}}{N}, N, \theta^*\Bigr)\Bigr).
-  \label{eq:tstar_implicit}
-\end{equation}
-Then the implicit function theorem gives, after a bit of algebra,
-\begin{equation}
-  \frac{\partial\theta^*}{\partial\bar{S}}\bigg|_N = -\frac{V_s}{N\,V_\theta} < 0,
-  \label{eq:dts_dSbar}
-\end{equation}
-\begin{equation}
-  \frac{\partial\theta^*}{\partial N}\bigg|_{\bar{S}} = \frac{\frac{\bar{S}}{N^2}V_s - V_N}{V_\theta} > 0.
-  \label{eq:dts_dN}
+	I_{ijt}   = \alpha + \beta_{1} Post 2023 \times ppsf_{j} + \beta_{2}D_{T} + \beta_{3}D_{j} + \epsilon_{ijt} 
 \end{equation}
 
-In contrast to the comparative statics of the bid price in \eqref{eq:dPdSbar} and \eqref{eq:dPdN}, the effects of the regulatory instruments on $\theta^*$ are unambiguous. Increasing structural density $\bar{S}$ (holding $N$ fixed) increases floor space per unit $s = \bar{S}/N$, which increases the level of housing services. Since the marginal value of housing services is higher for high-income households, they outbid low-income households in a neighborhood of the sorting threshold and $\theta^*$ falls. Increasing unit density $N$ (holding $\bar{S}$ fixed) reduces housing services by reducing space consumption and exacerbating the density externality. Both effects reduce housing services disproportionately for high-income households, pushing $\theta^*$ upward.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Costs, Profit, and the Zero-Profit Condition}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-The profit from developing a parcel of quality $\theta$ is
-\begin{equation}
-  \pi(\theta) = P^*(\theta)\cdot\bar{S} - C(\bar{S}, N),
-  \label{eq:profit}
-\end{equation}
-where $C(\bar{S}, N)$ is the cost of building $\bar{S}$ square feet of space divided into $N$ equally sized units. We assume construction cost is increasing and convex in both arguments. Under free entry, developers build wherever $\pi(\theta) \geq 0$, that is, where $P^*(\theta) \geq C(\bar{S}, N)/\bar{S}$, the construction cost per square foot. Since $P^*(\theta)$ is increasing in $\theta$, there is a unique lowest quality parcel where development occurs. This development margin $\hat\theta$ is defined by:
-\begin{equation}
-  P^*(\hat\theta) = \frac{C(\bar{S}, N)}{\bar{S}}.
-  \label{eq:thetahat}
-\end{equation}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{The Development Margin $\hat\theta$ and Equilibrium Land Allocation}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-%------------------------------------------------------------------
-\subsubsection{Equilibrium Development Pattern}
-%------------------------------------------------------------------
-
-The equilibrium development pattern depends on the position of $\hat\theta$ relative to $\theta^*$. Assuming that some but not all land is developed leaves two cases:
-
-\begin{enumerate}
-  \item \textbf{High-income development} ($\hat\theta \geq \theta^*$): construction costs are high enough that only parcels attractive to high-income households are profitable. The development pattern is:
-  \[
-    \begin{cases} \text{Undeveloped} & \theta < \hat\theta \\ \text{High-income housing} & \theta \in [\hat\theta, \bar\theta] \end{cases}
-  \]
-  \item \textbf{Mixed development} ($\hat\theta < \theta^*$): the development margin lies below the sorting threshold. The binding bid at $\hat\theta$ is $P_L$, so $P_L(\hat\theta) = C(\bar{S},N)/\bar{S}$, and the development pattern is:
-  \[
-    \begin{cases} \text{Undeveloped} & \theta < \hat\theta \\ \text{Low-income housing} & \theta \in [\hat\theta, \theta^*) \\ \text{High-income housing} & \theta \in [\theta^*, \bar\theta] \end{cases}
-  \]
-\end{enumerate}
-
-Case 2 is the focus of the remainder of the analysis. The equilibrium development pattern is illustrated in Figure~\ref{fig:sorting}.
-
-\begin{figure}[h]
-\centering
-\resizebox{\textwidth}{!}{%
-\begin{tikzpicture}[>=stealth, font=\small]
-  % P_L: y = 1.5 + 0.35*x.  kappa=1.9 => theta_hat: 1.5+0.35x=1.9 => x=1.14~1.2
-  % P_H: y = 0.625*x. Crossing: 1.5+0.35x=0.625x => x=5.45, y=3.41
-  \def\that{1.2}
-  \def\tstar{5.45}
-  \def\tmax{10.0}
-  \def\kappa{1.9}
-  % Zone shading
-  \fill[gray!12]        (0,0)      rectangle (\that, \kappa);
-  \fill[green!10]       (\that,0)  rectangle (\tstar, 7.0);
-  \fill[violet!8]       (\tstar,0) rectangle (\tmax,  7.0);
-  % Axes
-  \draw[->,thick] (-0.1,0) -- (11.2,0) node[right] {$\theta$};
-  \draw[->,thick] (0,-0.1) -- (0,7.5)  node[above] {$P$};
-  % kappa line
-  \draw[dashed,gray!70,thick] (0,\kappa) -- (10.5,\kappa)
-    node[right=2pt] {$C(\bar{S},N)/\bar{S}$};
-  % P_L
-  \draw[thick,teal!80!black] (0,1.5) -- (\tmax,{1.5+0.35*10})
-    node[right=3pt] {$P_L(\theta)$};
-  % P_H
-  \draw[thick,violet!80!black] (0,0) -- (\tmax,{0.625*10})
-    node[right=3pt] {$P_H(\theta)$};
-  % Vertical dashed lines
-  \draw[dashed,gray!70] (\that,0)  -- (\that,\kappa);
-  \draw[dashed,gray!70] (\tstar,0) -- (\tstar,{1.5+0.35*\tstar});
-  % Ticks
-  \draw (\tmax,-0.06) -- (\tmax,0.06);
-  % Axis labels
-  \node[below=4pt] at (0,0)     {$\underline{\theta}$};
-  \node[below=4pt] at (\that,0) {$\hat{\theta}$};
-  \node[below=4pt] at (\tstar,0){$\theta^*$};
-  \node[below=4pt] at (\tmax,0) {$\bar{\theta}$};
-  % Dots
-  \filldraw (\that,\kappa)              circle (3pt);
-  \filldraw (\tstar,{1.5+0.35*\tstar}) circle (3pt);
-  % Zone labels
-  \node[gray!70,align=center]        at (0.6, 0.8)  {\footnotesize No\\\footnotesize development};
-  \node[teal!70!black,align=center]  at (3.3, 0.8)  {\footnotesize Low-income\\\footnotesize housing};
-  \node[violet!70!black,align=center]at (7.7, 0.8)  {\footnotesize High-income\\\footnotesize housing};
-\end{tikzpicture}}
-\caption{Equilibrium development pattern when $\hat\theta < \theta^*$. Both bid price functions are linear in location quality. $P_H(\theta)$ has the steeper slope, crossing $P_L(\theta)$ exactly once at $\theta^*$. The horizontal dashed line is the average construction cost per square foot $C(\bar{S},N)/\bar{S}$; its intersection with $P_L(\theta)$ determines the development margin $\hat\theta$.}
-\label{fig:sorting}
-\end{figure}
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{The Comparative Statics of $\hat\theta$}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-For the mixed development case, the development margin $\hat\theta$ satisfies $P_L(\hat\theta)\cdot\bar{S} - C(\bar{S},N) = 0$. Applying the implicit function theorem to this expression gives, after a bit of algebra,
-\begin{equation}
-  \frac{\partial\hat\theta}{\partial\bar{S}}\bigg|_N
-  = -\frac{\bar{S}\,\frac{\partial P_L}{\partial\bar{S}}\big|_N + P_L - C_{\bar{S}}}{\bar{S}\cdot\partial P_L/\partial\theta}
-  = -\frac{-X^*_V V_s - C_{\bar{S}}}{\bar{S}\cdot\partial P_L/\partial\theta},
-  \label{eq:dthat_dSbar}
-\end{equation}
-\begin{equation}
-  \frac{\partial\hat\theta}{\partial N}\bigg|_{\bar{S}}
-  = -\frac{\bar{S}\,\frac{\partial P_L}{\partial N}\big|_{\bar{S}} - C_N}{\bar{S}\cdot\partial P_L/\partial\theta}
-  = -\frac{\frac{\bar{S}}{N}P_L - \frac{\bar{S}}{N}X^*_V V_s + NX^*_V V_N - C_N}{\bar{S}\cdot\partial P_L/\partial\theta},
-  \label{eq:dthat_dN}
-\end{equation}
-
-where the second expression in \eqref{eq:dthat_dSbar} uses \eqref{eq:dPdSbar} and the second expression in \eqref{eq:dthat_dN} uses \eqref{eq:dPdN}. The numerators are $\partial\pi/\partial\bar{S}|_N$ and $\partial\pi/\partial N|_{\bar{S}}$ respectively, and since the denominator $(\partial P_L/\partial\theta)\cdot\bar{S} > 0$, the sign of each comparative static equals the sign of the corresponding profit derivative: a regulatory change that raises profit lowers $\hat\theta$ and expands development.
-
-The sign of each profit derivative depends in turn on whether the regulated value of the instrument lies below or above its profit-maximising level. Let $(\bar{S}^*, N^*)$ denote the unconstrained optimum, where both profit derivatives are zero. Since profit is concave in each instrument, $\partial\pi/\partial\bar{S}|_N \gtrless 0$ as $\bar{S} \lessgtr \bar{S}^*$, and $\partial\pi/\partial N|_{\bar{S}} \gtrless 0$ as $N \lessgtr N^*$. Therefore:
-\begin{itemize}
-  \item If $\bar{S} < \bar{S}^*$: profit is increasing in $\bar{S}$, so raising $\bar{S}$ lowers $\hat\theta$ and expands development. If $\bar{S} > \bar{S}^*$: profit is falling, so raising $\bar{S}$ raises $\hat\theta$ and contracts development.
-  \item If $N < N^*$: profit is increasing in $N$, so raising $N$ lowers $\hat\theta$ and expands development. If $N > N^*$: profit is falling, so raising $N$ raises $\hat\theta$ and contracts development.
-\end{itemize}
-In both cases, regulation that holds an instrument below its profit-maximising level is development-suppressing. The empirically natural case --- the constrained regime where zoning sets binding maxima below the profit-maximising levels --- gives $\partial\hat\theta/\partial\bar{S}|_N < 0$ and $\partial\hat\theta/\partial N|_{\bar{S}} < 0$: relaxing either restriction expands the developed area and the range of location qualities that can be developed for low-income housing. Notably, regulation can also be development-suppressing when it mandates values \emph{above} the profit-maximising levels --- buildings that are too large or too dense reduce profit and raise $\hat\theta$ just as surely as restrictions that are too tight.
-
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Interpretation: Regulation and the Allocation of Land}
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-
-The range of location qualities available to low-income households is $[\hat\theta, \theta^*)$, which expands when $\hat\theta$ falls, $\theta^*$ rises, or both. Since $s = \bar{S}/N$, changes in the two policy instruments affect floor space per unit according to:
-\begin{equation}
-  \frac{ds}{s} = \frac{d\bar{S}}{\bar{S}} - \frac{dN}{N}.
-  \label{eq:ds_pct}
-\end{equation}
-Floor space per unit rises, stays constant, or falls according to whether the percentage change in $\bar{S}$ exceeds, equals, or falls short of the percentage change in $N$. The effects on both thresholds can be organised around this decomposition. We consider five cases, working in the constrained regime ($\bar{S} < \bar{S}^*$, $N < N^*$) for $\hat\theta$.
-
-\medskip
-\noindent\textbf{Case 1: Only $\bar{S}$ rises ($dN = 0$, $ds > 0$).} Larger units raise housing services. High-income households benefit more at the margin, so they outbid low-income households in a wider range of locations and $\theta^*$ falls unambiguously. In the constrained regime, larger floor space raises $P_L$ and profit, so $\hat\theta$ falls unambiguously. Both thresholds fall, so the effect on the low-income range $[\hat\theta, \theta^*)$ depends on which falls by more and is therefore ambiguous.
-
-\medskip
-\noindent\textbf{Case 2: $\bar{S}$ grows faster than $N$ ($d\bar{S}/\bar{S} > dN/N > 0$, $ds > 0$).} As in Case 1, $s$ rises, but now the density externality also worsens. The fall in $\theta^*$ from the larger units is offset to some degree by the rise from the density externality, leaving the net effect on $\theta^*$ ambiguous. In the constrained regime $\hat\theta$ falls unambiguously. The low-income range may expand from below but the upper boundary is uncertain.
-
-\medskip
-\noindent\textbf{Case 3: $\bar{S}$ and $N$ grow proportionally ($d\bar{S}/\bar{S} = dN/N > 0$, $ds = 0$).} Floor space per unit is unchanged, so only the density externality operates. More units worsen congestion, reducing housing services disproportionately for high-income households and raising $\theta^*$ unambiguously. In the constrained regime, revenue rises faster than costs so profit rises, lowering $\hat\theta$ unambiguously. The range $[\hat\theta, \theta^*)$ expands at both ends. This is the unique configuration with $d\bar{S}, dN > 0$ that unambiguously improves low-income housing supply.
-
-\medskip
-\noindent\textbf{Case 4: $N$ grows faster than $\bar{S}$ ($dN/N > d\bar{S}/\bar{S} > 0$, $ds < 0$).} Smaller units and the density externality both reduce housing services for high-income households, raising $\theta^*$ unambiguously. The effect on $\hat\theta$ is ambiguous: smaller units reduce $P_L$ and profit (raising $\hat\theta$), while more units in the constrained regime raise profit (lowering $\hat\theta$). The low-income range expands from above but not necessarily from below.
-
-\medskip
-\noindent\textbf{Case 5: Only $N$ rises ($d\bar{S} = 0$, $ds < 0$).} Smaller units reduce housing services and the density externality worsens. Both push $\theta^*$ upward unambiguously. In the constrained regime $\hat\theta$ falls unambiguously. The low-income range expands from above and from below.
-
-\medskip
-Table~\ref{tab:summary} summarises these results.
-
-\begin{table}[h]
-\centering
-\caption{Effects of regulatory changes on the low-income housing range $[\hat\theta, \theta^*)$}
-\label{tab:summary}
-\begin{tabular}{@{}llcccc@{}}
-\toprule
-& & $ds/s$ & $d\theta^*$ & $d\hat\theta$ & $[\hat\theta, \theta^*)$ \\
-\midrule
-Case 1 & Only $\bar{S}$ rises ($dN=0$)                          & $+$ & $-$ & $-$ & ambiguous \\
-Case 2 & $\bar{S}$ grows faster than $N$                        & $+$ & ambiguous & $-$ & ambiguous \\
-Case 3 & Proportional growth ($d\bar{S}/\bar{S} = dN/N$)        & $0$ & $+$ & $-$ & expands \\
-Case 4 & $N$ grows faster than $\bar{S}$                        & $-$ & $+$ & ambiguous & ambiguous \\
-Case 5 & Only $N$ rises ($d\bar{S}=0$)                          & $-$ & $+$ & $-$ & expands \\
-\bottomrule
-\multicolumn{6}{@{}l@{}}{\footnotesize Results for $d\hat\theta$ assume the constrained regime: $\bar{S} < \bar{S}^*$ and $N < N^*$.}
-\end{tabular}
-\end{table}
-
-
-
-\subsection{\label{sec:policies} Policy Changes}
-
-\subsubsection{City of Vancouver Duplex Reform}
-
-In September, 2018, the City of Vancouver allowed homes in zones that previously allowed only a single family residence (possibly with a basement suite and a laneway home, both rental-only) to be built in the form of two (half) duplex units (each duplex with a rental basement suite, but no laneway home).\footnote{See \texttt{https://council.vancouver.ca/20181218/documents/a5.pdf}.} This reform was pure division and no addition, in that the ratio of floor space to lot size (``FSR'') was not increased for duplex units. Empirically, B.C. Assessment inventory data, shows only a very small difference in FSR between single family and duplexes built at that time. Among single family and duplex homes built on standard 33' lots with effective years between 2019 and 2023 (the date of a subsequent reform), duplex units have a mean and median FSR of .37 (so .74 for the pair), whereas single family home main buildings have mean and medians of .69 and .71. This change applied to most ``RS'' zones, which became uniformly labelled ``R1-1'' or ``R1'' in a 2023 reform.
-
-We expect duplex homes to replace existing single-family homes in locations where duplex homes sell for more per square foot relative to single family homes than in other locations. Our model predicts under plausible conditions, that this price wedge would be greatest where price per square foot of single family homes is lowest. We do not have a clear prediction on whether the choice to tear down a home would be likelier in areas with higher or lower price per square foot. Generally, we might expect depreciation and the gains to redevelopment to be greater in more expensive neighbourhoods.\footnote{A second-order prediction is that there might be a relative acceleration in tear-downs in areas where the duplex option has more value around the time of the reform. This is challenging to verify in our data, which has only a short sample prior to the reform, and which features a general trend of relatively increasing prices in less expensive locations, as well as a dynamic policy environment with changes such as foreign buyer and empty homes taxes being enacted around the time of the zoning reform.}
-
-\subsubsection{City of Vancouver Multiplex Reform}
-
-In advance of changes initiated by the Province of British Columbia to eliminate all single family zoning and allow a minimum of three units in all single family zones, the City of Vancouver extended multiplex permissions to all formerly single family and low density townhomes residential zones.\footnote{See \texttt{https://council.vancouver.ca/20230914/documents/phea1sr.pdf}.} The guidelines allowed a maximum of four units on lots with frontage from 10.0m (32.8 ft) and less than 13.4m (44'); up to five units for lots with a frontage from 13.4m (44') to less than 15.1m (49.5'); and up to six units *(eight units if all are rental) with frontage of 15.1m (49.5') and higher. A standard 33’ × 122’ lot would allow three units and the less common 50' x 122' would allow up to six units.\footnote{There is an additional minimum site depth requirement of 30.4m (99.7 ft) and a minimum site area of 280m\textsuperscript{2} (3,013.9 sq ft) to allow for more than three units. There are no parking requirements}. 
-
-With the 2023 changes, maximum allowed FAR depended on several factors. Single-family homes and duplexes were permitted maximum FSRs of 0.6 and 0.70, respectively. For multiplexes (three or more units), the default maximum was 0.7, with 1.0 FSR attainable if one of the following applied: (i) all units are secured-rental housing; (ii) one unit is designated as ``below-market'' homeownership; or (iii) the developer pays a density bonus, which can vary from \$3.00 to \$140.00 per square foot of additional density depending on lot size and location. The cost of the density of this bonusing appears to be lower than land prices per buildable square foot in all locations. Including the multiplex policy in our analysis will depend on having a few more periods of data as permit applications only started near the end of our data analysis window.
-
-\section{\label{sec:results}Data and Results}
-
-\subsubsection{Data}
-
-Table \ref{tab:dataSources} describes data from the City of Vancouver and B.C. Assessment that we use to analyze pricing just before the zoning reform across locations in Vancouver and on builders' choices to replace existing single family homes with duplexes or single family homes (with or without basement suites or laneway homes).
-
-\begin{table}
-	\caption{\label{tab:dataSources} Vancouver Data Sources}
-	\begin{footnotesize}
-		\begin{tabular}{lll}
-			\hline
-			Data Source & Description \\
-			\hline
-			B.C. Assessment Inventory & Property ``year built'' and ``effective year'' built, \\ & lot and structure characterstics as of 2018\\
-			B.C. Assessment Folio Data & Data on property characteristics and assessed values \\ & and last three transaction dates and prices \\
-			City of Vancouver Zoning Map & Data on zoning (restricted to R1-1 zones as of 2023, \\ & excluding Cambie Corridor area\footnote{The Cambie Corridor rezoning offers some properties with R1-1 zones various ``missing middle'' redevelopment options and hence the entire area betweeen Oak and Ontario south of 16th Avenue is excluded.} \\
-			City of Vancouver Building Permits & Permit-level data with new property centroid, \\ & permit date, type of work, cost, and type of home\\
-			\hline
-		\end{tabular}
-	\end{footnotesize}
-\end{table}
-
-\subsubsection{Analysis}
-
-We identify building permits issued in R1 zones between 2019 and 2023 on parcels that were formerly single-family homes (there were some grandfathered duplexes in R1 zones, with most in nearby RT zones \textit{ex-ante}). The location of duplex and single family permits are plotted in Figures \ref{fig:plotDuplexSingle33} and Figure \ref{fig:plotDuplexSingle50}. The first plots the location of permits on 33-foot-wide lots (the most common width) and the second on 50' lots (the next most common). Two patterns stand out: at both widths, duplexes are relatively more common on the East Side of Vancouver than the West Side. The West Side, with more green space, better beach access, and proximity to UBC, has higher prices than the East Side. Both sides of the city have similar vehicle access to downtown. 
-
-The second notable pattern is that duplexes are a more common choice on 33' foot lots than 50' lots. This is not easy to explain, in that to the extent single family homes are oversized, they would be more oversized on a 50' lot as the 0.7 FSR allowance (with rental basement suite) is common to lots of all sizes. An explanation put forward by industry participants in casual discussion is that 50' lots are so expensive, that a single duplex unit on a 50' lot can be nearly as expensive as a single family home on a 33' lot in a slightly worse neighbourhood. Developers claim there is thus a very limited clientele that prefers the duplex unit in this case. 
-
-\begin{figure}
-	\caption{\label{fig:plotDuplexSingle33} Location of duplex and single family building permits for new builds or high-cost alterations in R1-1 zones, 2019-2023. 33' lots (32.5-33.5 feet wide)}
-	\includegraphics[width=\textwidth]{duplexChoice_w33.png}
-\end{figure}
-
-\begin{figure}
-	\caption{\label{fig:plotDuplexSingle50} Location of duplex and single family building permits for new builds or high-cost alterations in R1-1 zones, 2019-2023. 50' lots (49.5-50.5 feet wide)}
-	\includegraphics[width=\textwidth]{duplexChoice_w50.png}
-\end{figure}
-
-Figure \ref{fig:pricePerSqFt} plots the price per square foot of single family homes in 2018, just before the reform, across locations in Vancouver. The pattern is similar to the pattern of duplex choice, with higher prices per square foot on the West Side and lower prices on the East Side. Figure \ref{fig:pricePerSqFt} plots for each single family (as of 2018) lot the estimated price per square foot of lot size in two ways. In the top panel, residuals from a full-sample regression of single family transaction prices on lot size, structure year built, and transaction year are plotted (square foot of structure is excluded to avoid separately estimating structure and lot elasticities and because lot size and structure are very highly correlated due to binding FSR constraints for modern-era completions). The land value residuals are distance-weighted for the nearest 250 transactions, with a Gaussian kernel.
-
-In the bottom panel of Figure \ref{fig:pricePerSqFt}, 2019 BC Assessments (based on observations in Summer, 2018, prior to rezoning) estimates of land value per lot square foot are plotted. Greater within-neighborhood variation in the BC Assessments land value estimates may reflect assessors' use of lot-level characteristics, ignored in the spatially weighted average pricing. Both measures show a concentration of value on the West Side, but the East-West difference is greater relative to local differences in the transaction-based panel. The lot-level correlation between the two measures is .8.
-
-Combining Figures \ref{fig:plotDuplexSingle33} through \ref{fig:pricePerSqFt}, the pattern of duplex choice across locations in Vancouver is consistent with the model's prediction that with pure division only, infill is more likely to occur in areas where amenity values are lower., i.e. in areas with lower price per square foot.
-
-\begin{figure}
-	\caption{\label{fig:pricePerSqFt} Price per square foot of single family homes in 2018, just before the reform, across locations in Vancouver. Top panel, spatially weighted transaction residuals 2014-2018, bottom panel lot-level BC Assessment estimates of land value per lot square foot}
-	\includegraphics[width=.75\textwidth]{surface_LocalPPSF.png}\\
-	\includegraphics[width=.75\textwidth]{surface_bcaLogLandPPSF.png}
-\end{figure}
-
-The next empirical question is whether location quality and elasticity of willingness to pay per square foot are empirically correlated in the City of Vancouver. Figure \ref{fig:diffDuplex} plots the spatially-weighted average log transaction price difference between duplex homes and single family homes between 2014 and 2018 for each permit location 2019-2023. This is the most natural measure of the relevant local elasticity of willingness to pay with respect to size, as duplex homes on the same size lot are typically roughly one-half the size of single family homes. We see that the negative percentage price difference between duplex and single family homes is generally closer to zero on the East Side where duplexes are prevalent. The correlation between the duplex premium and the single family transaction price per square foot measure is a remarkably large -.87. There is a mechanical negative correlation here because single family price levels enter both measures, but the correlation between duplex average price per square foot and the duplex premium (mechanically positive) is -.9. These results suggest that builders may not differentiate analytically between these different measures in their choice between elasticity and price per square foot.
-
-\begin{figure}
-	\caption{\label{fig:diffDuplex} Spatially-weighted average log transaction price difference between duplex homes and single family homes between 2014 and 2018 for each permit location.}
-	\includegraphics[width=.9\textwidth]{surface_slope_duplexPremium33.png}
-\end{figure}
-
-To test empirically whether in the case of division alone, the incidence of redevelopment falls with increased amenity levels or the returns to addition (greater floor area) we assess the determinants of whether an existing older single family home is redeveloped as a new single family unit or as two duplex units. Table \ref{tab:horseRace} presents lot-level logit regressions of the choice to build a duplex (1) or a single family home (0) on redeveloped lots. In all regressions we include lot size (permitLogArea) as a control. Our direct measure of amenities (proxy for $\theta$ in the model) is the redeveloped property's BCA estimated land value per square foot (logBcaLandPPSF), from the lot's July 2018 BCA assessed values (hence pre-upzoning). The most salient measure of willingness to pay for incremental floor space (expected to covary negatively with $\theta$) is the price per square foot difference between single family homes and duplexes (larger value, more relative valuation of single family homes, elasticity\_duplexPenalty33, estimated only on 33' lots). An alternative measure presenting similar but unreported results is the locally weighted elasticity of transaction price with respect to lot size for single family homes only (elasticity\_singleFamilyPre). The single-duplex price per square foot measure is more direct, but the single family measure may be more precise in that prior to 2019, duplexes were concentrated in a small number of ``RT'' zones, so local price differences reflect a mix of location and housing type. (The single family measure is imperfect, as lot sizes are spatially correlated as seen in Figures \ref{fig:plotDuplexSingle33} and \ref{fig:plotDuplexSingle50}. For each redeveloped lot the elasticity proxies are estimated with a distance-weighted Gaussian kernel applied to single family home transactions from 2014-18.\footnote{The nearest 250 transactions are used, with standard deviations for the Gaussian varying with proximity of permitted lots to sales.} Both of our elasticity measures come from transactions 2014-2018, so that the post-duplex-reform era supply does not endogenously appear in the elasticity measures.
-
-The results are a horse race between the different ways to address sorting and the likelihood of redevelopment as more smaller units. Across specifications, smaller lots are likelier to be redeveloped as duplexes rather than single-family, consistent with Figure \ref{fig:plotDuplexSingle33} and \ref{fig:plotDuplexSingle50}. Assessed land value per land square foot, the $\theta$ proxy, is strongly negatively associated with duplex choice, consistent with the model. Also consistent with the model, the pre-2018-reform single-duplex price per square foot differential is negatively associated with duplex choice. In specification (3), though, we see that land value per square foot ``wins the horse race'', in the sense that the coefficient on the single-duplex differential falls more in the presence of the $\theta$ control than vice-versa. It is thus not true that the price per square foot negative sorting observed in Vancouver can be explained away by our elasticity measure. In fact, closer to the opposite. Similar results apply to the single-family-based elasticity measure (and a similar measure of strata price per square foot elasticity).
-
-\begin{table}
-	\caption{\label{tab:horseRace} Lot-level logit regressions of the choice to build a duplex (1) or a single family home (0) on redeveloped lots, with lot size as a control. The first column includes the price per square foot residual measure, a proxy for $\theta$, the second column includes the duplex premium as a measure of elasticity of willingness to pay, and the third column includes both measures. Conley standard errors.}
-\begingroup
-\centering
-\begin{tabular}{lccc}
-   \tabularnewline \midrule \midrule
-   Dependent Variable: & \multicolumn{3}{c}{isDuplex}\\
-   Model:                       & (1)            & (2)            & (3)\\  
-   \midrule
-   \emph{Variables}\\
-   Constant                     & 25.88$^{***}$  & -0.9119        & 20.16$^{***}$\\   
-                                & (2.767)        & (3.538)        & (3.647)\\   
-   permitLogArea                & -1.174$^{***}$ & -0.1367        & -0.8782$^{**}$\\   
-                                & (0.3168)       & (0.4203)       & (0.3643)\\   
-   logBcaLandPPSF               & -2.985$^{***}$ &                & -2.472$^{***}$\\   
-                                & (0.3417)       &                & (0.2898)\\   
-   elasticity\_duplexPenalty33  &                & -3.453$^{***}$ & -1.283$^{**}$\\   
-                                &                & (0.2624)       & (0.5247)\\   
-   \midrule
-   \emph{Fit statistics}\\
-   Observations                 & 3,171          & 3,171          & 3,171\\  
-   Squared Correlation          & 0.05523        & 0.04442        & 0.06162\\  
-   Pseudo R$^2$                 & 0.07037        & 0.04660        & 0.07374\\  
-   BIC                          & 2,865.0        & 2,937.7        & 2,862.8\\  
-   \midrule \midrule
-   \multicolumn{4}{l}{\emph{Conley (3km) standard-errors in parentheses}}\\
-   \multicolumn{4}{l}{\emph{Signif. Codes: ***: 0.01, **: 0.05, *: 0.1}}\\
-\end{tabular}
-\par\endgroup
-\end{table}
-
-We see two ways to interpret the ``horse race'' result that price per square
-foot beats the elasticity measure as an explanation for duplex choice. The
-first is that our model is somehow not salient to builder choice. One
-possibility would be that single family homes are commonly ``custom'' projects
-in which the end-user buys land and pays a contractor to build. Duplexes are
-generally ``spec'' projects in which a builder pays for land and construction
-and then sells completed homes to the market. Local builders appear not to be
-highly concentrated and could be relatively small-time players who are
-liquidity constrained and seek to buy inexpensive land for spec projects.
-
-A second possibility is that builders do not distinguish between price level
-and elasticity conceptually because the two are so highly correlated.
-Elasticity of willingness to pay is worse measured as it is a second-order
-versus first-order measure. In addition to the high correlation within
-Vancouver mentioned above, we estimate land value correlations and elasticities
-of assessed land value with respect to size of .33 within census tracts and .25
-within typically somewhat larger neighbourhoods. When observations are weighted
-by inverse standard errors of the elasticity estimate, that correlation rises
-to .52 and .57 respectively. For jurisdictions, the values are .6 unweighted
-and .83 weighted. That the correlations approach one as measurement error for
-the elasticity rises suggests a true value sufficiently close to one that
-industry participants may conflate the two.
-
-\subsection{Infill by type and year, East versus West}
-
-An obvious feature of Vancouver housing prices studied by \textcite{SanghoonDaryl} is that a key determinant of price is simple East-West Geography. Figures \ref{fig:permitSharesByYearAndLotWidth33} and \ref{fig:permitSharesByYearAndLotWidth50} show the share of R1-1 infill permits that are duplex, single family, or multiplex by year and lot width, separately for the East (``TRUE'') and West (``FALSE'') Sides. In the duplex-only era, 2019-2023, duplexes are far more prevalent on the East Side on 50' lots and somewhat more so on 33' lots. In the multiplex-and-duplex era, 2024-2025, multiplexes are mixed -- more prevalent on the East Side initially in 2024, but not so in 2025. Notably, multiplex is more common on 50' lots. This provides some vindication to the notion that getting infill in high-priced locations requires more density.
-
-\begin{figure}
-	\caption{\label{fig:permitSharesByYearAndLotWidth33} Share of R1-1 infill permits that are duplex, single family, or multiplex by year and lot width, separately for the East (``TRUE'') and West (``FALSE'') Sides.}
-	\pgfimage[width=\textwidth]{permitSharesByYearAndLotWidth33.png}
-\end{figure}
-\begin{figure}
-	\caption{label{fig:permitSharesByYearAndLotWidth50} Share of R1-1 infill permits that are duplex, single family, or multiplex by year and lot width, separately for the East (``TRUE'') and West (``FALSE'') Sides.}
-	\pgfimage[width=\textwidth]{permitSharesByYearAndLotWidth50.png}
-\end{figure}
-
-\section{\label{sec:conclusion} Conclusion}
-
-We present a simple model of infill housing benefits that distinguishes between the benefits of additional square footage and the ability to divide square footage. We find elasticities of price with respect to square footage generally significantly below one, consistent with strong demand for the division effect. This model does a fair but incomplete job of explaining the seeming puzzle of stronger uptake of infill where real estate is less valuable, so that the addition effect is weaker.
-
-In standard urban models, there is uncertainty over the correlation between price per square foot and incomes (and hence, presumably, demand for division). This is because both locational quality (e.g. time saved commuting and public goods) and space are normal goods. When zoning binds so households are largely forced to overconsume space, households have limited scope to sort on demand for space, and hence sorting is strongly positive on income across locations.
-
-In Vancouver, there are generally negative correlations between price per square foot and infill activity across different specifications of geography. There is relatively little difference, particularly in recent years in uptake of the laneway home option among single family homes, consistent with offsetting price per square foot effects (larger on the West Side) and privacy costs and small-unit benefit effects (smaller and larger respectively on the East Side). Duplex units involve only a division effect, with no addition benefit (and indeed lost laneway square footage). Consistent with our model, duplex units are roughly twice as popular on the cheaper (relatively!) and less affluent East Side than the West Side. 
-
-Multiplexes have both addition and division effects and their locational sorting is more ambiguous than duplexes.
-
-\printbibliography
-
+% NOTE TO CLAUDE: more to come!
 
 \end{document}
-
-
