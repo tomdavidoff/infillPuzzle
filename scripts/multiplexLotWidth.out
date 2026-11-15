@@ -15,35 +15,54 @@ New Building, issued 2024+                52683 ->   3194 (lost 93.9%)
 7:                         Apartment,Townhouse     9
 8:                        Public Authority Use     7
 principal product, geocoded                3194 ->   1982 (lost 37.9%)
+     product     N near26 roll26in2018
+      <char> <int>  <num>        <num>
+1:    single   545  0.828        0.710
+2:    duplex   646  0.879        0.633
+3: multiplex   791  0.451        0.353
      product     N address near5
       <char> <int>   <num> <num>
 1: multiplex   791   0.351 0.353
 2:    single   545   0.705 0.710
 3:    duplex   646   0.633 0.633
 address vs 5m agreement where both match: 1  N = 1070 
-matched to 2018 R1-1 SFD lot (address or 5m)   1982 ->   1076 (lost 45.7%)
+     product     N addr26 addr26in2018
+      <char> <int>  <num>        <num>
+1: multiplex   791  0.710        0.470
+2:    single   545  0.930        0.752
+3:    duplex   646  0.952        0.661
+2026-address vs centroid agreement where both match: 0.999  N = 1070 
+rollStart vs address agreement where both match: 1  N = 1070 
+Using 'N' as value column. Use 'value.var' to override
+Key: <product>
+     product    NA address26 rollStart26
+      <char> <int>     <int>       <int>
+1:    duplex   218        19         409
+2: multiplex   418        94         279
+3:    single   132        26         387
+matched to 2018 R1-1 SFD lot               1982 ->   1214 (lost 38.7%)
      product     N
       <char> <int>
-1:    single   387
-2: multiplex   279
-3:    duplex   410
-latest permit per lot                      1076 ->   1071 (lost 0.5%)
+1:    single   413
+2: multiplex   373
+3:    duplex   428
+latest permit per lot                      1214 ->   1108 (lost 8.7%)
 
 === share of 2024+ multiplexes by lot width ===
 Key: <widthBin>
    widthBin     N share
      <fctr> <int> <num>
-1:       33   118 0.426
-2:    37-41    27 0.097
-3:    42-50    80 0.289
-4:      >50    52 0.188
+1:       33   119 0.420
+2:    37-41    30 0.106
+3:    42-50    81 0.286
+4:      >50    53 0.187
 
 === by issue year: multiplex N and share on 33 ===
 Key: <year>
     year     N share33
    <int> <int>   <num>
-1:  2024    24   0.458
-2:  2025   141   0.376
+1:  2024    26   0.462
+2:  2025   145   0.366
 3:  2026   112   0.482
 
 === product mix within width bin (2024+) ===
@@ -51,11 +70,11 @@ Using 'N' as value column. Use 'value.var' to override
 Key: <widthBin>
    widthBin duplex multiplex single total multiplexShare
      <fctr>  <int>     <int>  <int> <int>          <num>
-1:     <=30      5         0     10    15          0.000
-2:       33    268       118    155   541          0.218
-3:    37-41     35        27     26    88          0.307
-4:    42-50     68        80    115   263          0.304
-5:      >50     33        52     79   164          0.317
+1:     <=30      7         0     10    17          0.000
+2:       33    273       119    163   555          0.214
+3:    37-41     36        30     26    92          0.326
+4:    42-50     71        81    124   276          0.293
+5:      >50     33        53     82   168          0.315
 
 baseline: share of 2018 R1-1 SFD lots that are 33: 0.537 
 latest issue date in data: 2026-11-13 

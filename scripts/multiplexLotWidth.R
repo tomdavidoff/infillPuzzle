@@ -1,7 +1,6 @@
 # multiplexLotWidth.R
 # New-building permits issued 2024+, matched to 2018 single-family lots in R1-1 (BCA 2019 roll):
 # share of multiplexes on 33-ft lots, and multiplex share of new builds by lot width.
-# Only ~35% of multiplex permits link to a 2018 SFD lot (most carry new civic addresses absent from the 2019 roll).
 # Tom Davidoff 11/15/26
 
 library(data.table)
@@ -14,6 +13,8 @@ ADDRDIST  <- 60     # m, max permit-to-lot distance for an address match (E/W am
 fPermit   <- "~/DropboxExternal/dataRaw/vancouverIssuedBuildingPermits.csv"
 fSingles  <- "~/DropboxExternal/dataProcessed/bca19VancouverSingles.rds"
 fZoning   <- "~/DropboxExternal/dataRaw/vancouver_zoning.geojson"
+fGeo26    <- "~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds"  # rollStart centroids, 2026 gpkg (see vancouverR1FSRDate.R)
+fGpkg26   <- list.files("~/bigFiles/latestSpatialBCA/", pattern = "\\.gpkg$", full.names = TRUE)
 fBCA19    <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
 stopifnot(difftime(Sys.time(), file.mtime(fPermit), units = "hours") < 48)
 
@@ -55,7 +56,14 @@ print(dtP[is.na(product), .N, by = specificusecategory][order(-N)][1:8])
 n0 <- nrow(dtP); dtP <- dtP[!is.na(product) & geo_point_2d != ""]; lost(n0, nrow(dtP), "principal product, geocoded")
 dtP[, c("lat", "lon") := tstrsplit(geo_point_2d, ",\\s*", type.convert = TRUE)]
 sfP <- st_transform(st_as_sf(dtP, coords = c("lon", "lat"), crs = 4326), 26910)
-# match 1 (comparison): nearest 2018 lot centroid within MATCHDIST
+# match 0 (main): nearest 2026 BCA folio centroid within MATCHDIST -> its rollStart -> 2018 SFD lot on that rollStart
+g26 <- readRDS(fGeo26)
+sfG <- st_transform(st_as_sf(g26, coords = c("longitude", "latitude"), crs = 4326), 26910)
+ng  <- st_nearest_feature(sfP, sfG)
+dtP[, `:=`(dist26 = as.numeric(st_distance(sfP, sfG[ng, ], by_element = TRUE)), roll26 = g26$rollStart[ng])]
+dtP[, roll26ok := dist26 <= MATCHDIST & roll26 %in% dtS$rollStart]
+print(dtP[, .(N = .N, near26 = round(mean(dist26 <= MATCHDIST), 3), roll26in2018 = round(mean(roll26ok), 3)), by = product])
+# match 1 (fallback): nearest 2018 lot centroid within MATCHDIST
 nn  <- st_nearest_feature(sfP, sfS)
 dtP[, `:=`(dist = as.numeric(st_distance(sfP, sfS[nn, ], by_element = TRUE)), rollNear = dtS$rollStart[nn])]
 # match 2 (main): civic address, nearest candidate lot within ADDRDIST; fall back to match 1. permit "2636 E 23RD AVENUE, Vancouver, BC ..." -> "2636 E 23RD"
@@ -72,8 +80,30 @@ n0 <- nrow(dtP); dtP <- merge(dtP, cand[, .(permitnumber, rollStart, dAddr)], by
 print(dtP[, .(N = .N, address = round(mean(!is.na(rollStart)), 3), near5 = round(mean(dist <= MATCHDIST), 3)), by = product])
 cat("address vs 5m agreement where both match:", dtP[!is.na(rollStart) & dist <= MATCHDIST, round(mean(rollStart == rollNear), 3)],
     " N =", dtP[!is.na(rollStart) & dist <= MATCHDIST, .N], "\n")
-dtP[is.na(rollStart) & dist <= MATCHDIST, rollStart := rollNear]   # fall back to spatial
-n0 <- nrow(dtP); dtP <- dtP[!is.na(rollStart)]; lost(n0, nrow(dtP), "matched to 2018 R1-1 SFD lot (address or 5m)")
+# match 3: 2026 BCA civic address (multiplexes get new civic numbers) -> 2026 roll -> rollStart -> 2018 lot
+stopifnot(length(fGpkg26) == 1)
+con <- dbConnect(SQLite(), fGpkg26)
+a26 <- as.data.table(dbGetQuery(con, "SELECT ROLL_NUMBER, STREET_NUMBER, STREET_NAME FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_ADDRESSES_SV WHERE JURISDICTION_CODE = '200'"))
+dbDisconnect(con)
+a26 <- unique(a26[!is.na(STREET_NUMBER) & STREET_NUMBER != "", .(key = addrKey(STREET_NUMBER, STREET_NAME), rollStart = floor(as.numeric(ROLL_NUMBER) / 1000))])
+gc26 <- g26[, .(lonS = mean(longitude), latS = mean(latitude)), by = rollStart]
+c26 <- merge(dtP[, .(permitnumber, key, lon, lat)], a26, by = "key", allow.cartesian = TRUE)
+c26 <- merge(c26, gc26, by = "rollStart")
+c26[, d := as.numeric(st_distance(st_transform(st_as_sf(c26, coords = c("lon", "lat"), crs = 4326), 26910),
+                                  st_transform(st_as_sf(c26, coords = c("lonS", "latS"), crs = 4326), 26910), by_element = TRUE))]
+c26 <- c26[d <= ADDRDIST][order(permitnumber, d)][, .SD[1], by = permitnumber]
+n0 <- nrow(dtP); dtP <- merge(dtP, c26[, .(permitnumber, rollA26 = rollStart)], by = "permitnumber", all.x = TRUE); stopifnot(nrow(dtP) == n0)
+dtP[, a26ok := !is.na(rollA26) & rollA26 %in% dtS$rollStart]
+print(dtP[, .(N = .N, addr26 = round(mean(!is.na(rollA26)), 3), addr26in2018 = round(mean(a26ok), 3)), by = product])
+cat("2026-address vs centroid agreement where both match:", dtP[a26ok & roll26ok, round(mean(rollA26 == roll26), 3)], " N =", dtP[a26ok & roll26ok, .N], "\n")
+cat("rollStart vs address agreement where both match:", dtP[roll26ok & !is.na(rollStart), round(mean(roll26 == rollStart), 3)],
+    " N =", dtP[roll26ok & !is.na(rollStart), .N], "\n")
+dtP[, how := fcase(roll26ok, "rollStart26", a26ok, "address26", !is.na(rollStart), "address19", dist <= MATCHDIST, "near2018", default = NA_character_)]
+dtP[how == "address26", rollStart := rollA26]
+dtP[roll26ok == TRUE, rollStart := roll26]
+dtP[is.na(rollStart) & dist <= MATCHDIST, rollStart := rollNear]
+print(dcast(dtP[, .N, by = .(product, how)], product ~ how, fill = 0))
+n0 <- nrow(dtP); dtP <- dtP[!is.na(rollStart)]; lost(n0, nrow(dtP), "matched to 2018 R1-1 SFD lot")
 print(dtP[, .N, by = product])
 n0 <- nrow(dtP); dtP <- dtP[order(rollStart, -issued)][, .SD[1], by = rollStart]; lost(n0, nrow(dtP), "latest permit per lot")
 

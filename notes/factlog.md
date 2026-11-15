@@ -37,8 +37,9 @@
 
 ## 2026-11-15 — multiplex share on 33-ft lots, 2024+ (not in paper; no macro) — CHECK
 
-- Script: `scripts/multiplexLotWidth.R` (log `.out`). Permits refreshed 2026-11-15 (latest issue 2026-11-13); lot width from 2018 SFD lots in R1-1 (BCA 2019 roll).
-- 42.6% of 2024+ multiplex new-build permits are on 33-ft lots (118 / 277 matched). By year: 2024 46% (N=24), 2025 38% (141), 2026 48% (112). Baseline: 53.7% of 2018 R1-1 SFD lots are 33s.
-- Multiplex share of new builds by width: 33s 21.8% (118/541); 37–41 31%; 42–50 30%; >50 32%.
-- Why CHECK: only 279 of 791 multiplex permits (35%) link to a 2018 SFD lot, vs 71% of singles and 63% of duplexes. Of 339 unmatched multiplexes inside R1-1, 283 have addresses absent from the 2019 roll (new civic numbers) and points 20–50 m from any 2018 lot centroid. 5 m spatial, parcel-polygon and address matches agree 100% where they overlap and none recover them. 173 more multiplex permits are outside R1-1 (RM-8A, C-2, RM-12…). If unmatched multiplexes are on wider lots or assemblies, the 33-ft share is overstated.
-- Also lost: 8% of 2018 SFD lots have zero recorded width.
+- Script: `scripts/multiplexLotWidth.R` (log `.out`). Permits refreshed 2026-11-15 (latest issue 2026-11-13). Lot width from 2018 SFD lots in R1-1 (BCA 2019 roll, `bca19VancouverSingles.rds`).
+- Linking permit to 2018 lot, in priority order: (a) nearest 2026 BCA folio centroid ≤5 m → rollStart (Tom's method; built `dataProcessed/bca26FolioGeometryVancouver.rds` from the 2026-01-09 gpkg in the format `vancouverR1FSRDate.R` expects); (b) 2026 BCA civic address (number + street, nearest candidate ≤60 m, since BCA has no E/W) → rollStart; (c) 2019 address; (d) ≤5 m to 2018 centroid. Where methods overlap, agreement is 99.9–100% (N≈1,070).
+- Result: 42.0% of 2024+ multiplex lots are 33-ft (119 / 283 distinct lots, from 373 linked permits; projects often hold 2+ permits with separate civic numbers). By year: 2024 46% (26), 2025 37% (145), 2026 48% (112). Baseline: 53.7% of 2018 R1-1 SFD lots are 33s.
+- Multiplex share of new builds by width: 33s 21.4% (119/555); 37–41 33%; 42–50 29%; >50 32%.
+- Why CHECK: 349 R1-1 multiplex permits remain unlinked. 194 have no 2026 address hit (civic numbers newer than the Jan 2026 roll); 81 resolve to new 2026 stems (51 stems, median 1,460 m², i.e. assemblies or large sites, none contain a 2018 SFD centroid); 28 are 2018 SFD with zero width; 29 had non-SFD 2019 use; 17 other. Bound: counting the 51 new-stem sites as wide gives 119/334 = 36%. The 194 recent-address permits can't be classified until a newer roll.
+- Dead ends: City parcel polygons (2026) omit most redeveloped lots; nearest BCA polygon is unreliable because street-side permit points fall inside large road/park polygons.
