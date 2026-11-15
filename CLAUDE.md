@@ -7,7 +7,7 @@ produce the facts, tables and figures the draft asks for, reproducibly.
 
 ## Layout
 
-- `paper/main.tex` — the draft. Do not edit prose unless asked. <!-- TODO: confirm path -->
+- `text/main.tex` — the draft. Do not edit prose unless asked. Compile from the repo root.
 - `scripts/<name>.R` — all code. Source other scripts by relative path.
 - `text/` — all outputs that the paper reads: `text/<name>.png`, `text/<name>.tex`.
 - Raw data: `~/DropboxExternal/dataRaw/` (outside git, never modify).
@@ -23,7 +23,7 @@ produce the facts, tables and figures the draft asks for, reproducibly.
   than ~48 hours.
 - Assessment data: BC Assessment. The main price-level regressor is
   `logBcaLandPPSF`.
-- Projected CRS: EPSG 26912 as used so far. <!-- TODO: confirm; Vancouver is UTM 10N = EPSG 26910 -->
+- Projected CRS: EPSG 26910 (UTM 10N), as used in existing Vancouver scripts.
 
 ## How facts get into the paper
 
