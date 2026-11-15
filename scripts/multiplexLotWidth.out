@@ -39,51 +39,62 @@ address vs 5m agreement where both match: 1  N = 1070
 3:        duplex   646  0.952        0.661
 4:     multiplex   609  0.691        0.593
 2026-address vs centroid agreement where both match: 0.999  N = 1070 
+street-nearest vs 2026 address, address-linked off-centroid permits: agree = 0.863  N = 139 
 rollStart vs address agreement where both match: 1  N = 1070 
 Using 'N' as value column. Use 'value.var' to override
 Key: <product>
-         product    NA address26 rollStart26
-          <char> <int>     <int>       <int>
-1:        duplex   218        19         409
-2:     multiplex   247        85         277
-3: otherMultiple   171         9           2
-4:        single   132        26         387
-matched to 2018 R1-1 SFD lot               1982 ->   1214 (lost 38.7%)
+         product    NA address26 rollStart26 streetNear
+          <char> <int>     <int>       <int>      <int>
+1:        duplex   132        19         409         86
+2:     multiplex    36        85         277        211
+3: otherMultiple   135         9           2         36
+4:        single    82        26         387         50
+matched to 2018 R1-1 SFD lot               1982 ->   1597 (lost 19.4%)
          product     N
           <char> <int>
-1:        single   413
-2:     multiplex   362
-3:        duplex   428
-4: otherMultiple    11
-latest permit per lot                      1214 ->   1108 (lost 8.7%)
+1: otherMultiple    47
+2:        single   463
+3:        duplex   514
+4:     multiplex   573
+latest permit per lot                      1597 ->   1318 (lost 17.5%)
 
 === share of 2024+ multiplexes by lot width ===
 Key: <widthBin>
    widthBin     N share
      <fctr> <int> <num>
-1:       33   118 0.420
-2:    37-41    30 0.107
-3:    42-50    80 0.285
-4:      >50    53 0.189
+1:     <=30     2 0.006
+2:       33   152 0.434
+3:    37-41    35 0.100
+4:    42-50    96 0.274
+5:      >50    65 0.186
+
+=== multiplex share on 33 by link method ===
+           how     N share33
+        <char> <int>   <num>
+1:  streetNear    86   0.500
+2: rollStart26   250   0.424
+3:   address26    14   0.214
+excluding street-nearest links: 0.413  N = 264 
+street-nearest only if clear gap > 2 m: 0.407  N = 312 
 
 === by issue year: multiplex N and share on 33 ===
 Key: <year>
     year     N share33
    <int> <int>   <num>
-1:  2024    24   0.458
-2:  2025   145   0.366
-3:  2026   112   0.482
+1:  2024    26   0.538
+2:  2025   176   0.364
+3:  2026   148   0.500
 
 === product mix within width bin (2024+) ===
 Using 'N' as value column. Use 'value.var' to override
 Key: <widthBin>
    widthBin duplex multiplex single total multiplexShare
      <fctr>  <int>     <int>  <int> <int>          <num>
-1:     <=30      7         0     10    17          0.000
-2:       33    273       118    163   554          0.213
-3:    37-41     36        30     26    92          0.326
-4:    42-50     71        80    124   275          0.291
-5:      >50     33        53     82   168          0.315
+1:     <=30      8         2     11    21          0.095
+2:       33    308       152    177   637          0.239
+3:    37-41     41        35     30   106          0.330
+4:    42-50     88        96    135   319          0.301
+5:      >50     45        65     96   206          0.316
 
 baseline: share of 2018 R1-1 SFD lots that are 33: 0.537 
 latest issue date in data: 2026-11-13 

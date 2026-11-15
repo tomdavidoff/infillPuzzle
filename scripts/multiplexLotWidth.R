@@ -11,6 +11,7 @@ library(RSQLite)
 
 MATCHDIST <- 5      # m, permit point to 2018 SFD centroid (as in vancouverR1FSRDate.R)
 YEAR_MIN  <- 2024
+STREETDIST <- 30     # m, street-side geocode search radius
 ADDRDIST  <- 60     # m, max permit-to-lot distance for an address match (E/W ambiguity, street-side geocodes)
 fPermit   <- "~/DropboxExternal/dataRaw/vancouverIssuedBuildingPermits.csv"
 fSingles  <- "~/DropboxExternal/dataProcessed/bca19VancouverSingles.rds"
@@ -103,19 +104,40 @@ n0 <- nrow(dtP); dtP <- merge(dtP, c26[, .(permitnumber, rollA26 = rollStart)], 
 dtP[, a26ok := !is.na(rollA26) & rollA26 %in% dtS$rollStart]
 print(dtP[, .(N = .N, addr26 = round(mean(!is.na(rollA26)), 3), addr26in2018 = round(mean(a26ok), 3)), by = product])
 cat("2026-address vs centroid agreement where both match:", dtP[a26ok & roll26ok, round(mean(rollA26 == roll26), 3)], " N =", dtP[a26ok & roll26ok, .N], "\n")
+# match 4 (last resort): street-side geocodes. Nearest 2018 SFD lot polygon within STREETDIST whose 2019/2026 address
+# is on the permit's street. Validated against address-linked off-centroid permits (see factlog): 86% agree, 96% if gap > 2 m.
+sfP <- st_transform(st_as_sf(dtP, coords = c("lon", "lat"), crs = 4326, remove = FALSE), 26910)   # dtP re-sorted by merges
+P26 <- st_read(fGpkg26, query = "SELECT ROLL_NUMBER, geom FROM WHSE_HUMAN_CULTURAL_ECONOMIC_BCA_FOLIO_DESCRIPTIONS_SV WHERE JURISDICTION_CODE = '200'", quiet = TRUE)
+P26 <- st_transform(st_make_valid(P26), 26910)
+P26$rollStart <- floor(as.numeric(P26$ROLL_NUMBER) / 1000)
+Ps <- P26[P26$rollStart %in% dtS$rollStart & !duplicated(P26$rollStart), ]
+streetOf  <- function(k) sub("^[0-9]+[A-Z]? ", "", k)
+lotStreet <- unique(rbind(adr[, .(rollStart, st = streetOf(key))], a26[rollStart %in% dtS$rollStart, .(rollStart, st = streetOf(key))]))
+w <- st_is_within_distance(sfP, Ps, STREETDIST)
+cs <- data.table(i = rep(seq_len(nrow(dtP)), lengths(w)), j = unlist(w))
+cs[, `:=`(rollC = Ps$rollStart[j], st = streetOf(dtP$key[i]))]
+cs <- merge(cs, lotStreet, by.x = c("rollC", "st"), by.y = c("rollStart", "st"))
+cs[, d := as.numeric(st_distance(sfP[i, ], Ps[j, ], by_element = TRUE))]
+cs <- cs[order(i, d)][, .(rollSt = rollC[1], gapSt = if (.N > 1) d[2] - d[1] else Inf), by = i]
+dtP[, c("rollSt", "gapSt") := list(NA_real_, NA_real_)]
+dtP[cs$i, `:=`(rollSt = cs$rollSt, gapSt = cs$gapSt)]
+cat("street-nearest vs 2026 address, address-linked off-centroid permits: agree =",
+    dtP[a26ok & !roll26ok & !is.na(rollSt), round(mean(rollSt == rollA26), 3)], " N =", dtP[a26ok & !roll26ok & !is.na(rollSt), .N], "\n")
 cat("rollStart vs address agreement where both match:", dtP[roll26ok & !is.na(rollStart), round(mean(roll26 == rollStart), 3)],
     " N =", dtP[roll26ok & !is.na(rollStart), .N], "\n")
-dtP[, how := fcase(roll26ok, "rollStart26", a26ok, "address26", !is.na(rollStart), "address19", dist <= MATCHDIST, "near2018", default = NA_character_)]
+dtP[, how := fcase(roll26ok, "rollStart26", a26ok, "address26", !is.na(rollStart), "address19", dist <= MATCHDIST, "near2018",
+                   !is.na(rollSt), "streetNear", default = NA_character_)]
 dtP[how == "address26", rollStart := rollA26]
 dtP[roll26ok == TRUE, rollStart := roll26]
 dtP[is.na(rollStart) & dist <= MATCHDIST, rollStart := rollNear]
+dtP[how == "streetNear", rollStart := rollSt]
 print(dcast(dtP[, .N, by = .(product, how)], product ~ how, fill = 0))
 n0 <- nrow(dtP); dtP <- dtP[!is.na(rollStart)]; lost(n0, nrow(dtP), "matched to 2018 R1-1 SFD lot")
 print(dtP[, .N, by = product])
 n0 <- nrow(dtP); dtP <- dtP[order(rollStart, -issued)][, .SD[1], by = rollStart]; lost(n0, nrow(dtP), "latest permit per lot")
 
 n0 <- nrow(dtP)
-dt <- merge(dtP[, .(rollStart, product, issued)], dtS[, .(rollStart, landWidth)], by = "rollStart")
+dt <- merge(dtP[, .(rollStart, product, issued, how, gapSt)], dtS[, .(rollStart, landWidth)], by = "rollStart")
 stopifnot(nrow(dt) == n0, !anyDuplicated(dt$rollStart))
 dt[, widthBin := fcase(landWidth > 30 & landWidth <= 36, "33",
                        landWidth > 36 & landWidth <= 41, "37-41",
@@ -125,6 +147,12 @@ dt[, widthBin := factor(widthBin, c("<=30", "33", "37-41", "42-50", ">50"))]
 
 cat("\n=== share of 2024+ multiplexes by lot width ===\n")
 print(dt[product == "multiplex", .N, keyby = widthBin][, share := round(N / sum(N), 3)][])
+cat("\n=== multiplex share on 33 by link method ===\n")
+print(dt[product == "multiplex", .(N = .N, share33 = round(mean(widthBin == "33"), 3)), by = how])
+cat("excluding street-nearest links:", dt[product == "multiplex" & how != "streetNear", round(mean(widthBin == "33"), 3)],
+    " N =", dt[product == "multiplex" & how != "streetNear", .N], "\n")
+cat("street-nearest only if clear gap > 2 m:", dt[product == "multiplex" & (how != "streetNear" | gapSt > 2), round(mean(widthBin == "33"), 3)],
+    " N =", dt[product == "multiplex" & (how != "streetNear" | gapSt > 2), .N], "\n")
 cat("\n=== by issue year: multiplex N and share on 33 ===\n")
 print(dt[product == "multiplex", .(N = .N, share33 = round(mean(widthBin == "33"), 3)), keyby = .(year = year(issued))])
 cat("\n=== product mix within width bin (2024+) ===\n")
