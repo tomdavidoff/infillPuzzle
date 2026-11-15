@@ -15,6 +15,9 @@ produce the facts, tables and figures the draft asks for, reproducibly.
 - Old scripts may still point at `~/OneDrive/` or `~/OneDrive - UBC/`. Those
   paths are dead; update them to `~/DropboxExternal/`.
 - Disposable caches can go in `~/Downloads`.
+- Policy documents (bylaws, council reports): `data/policyDocs/` in the repo if
+  under ~200 KB (tracked; text extracts of big PDFs go here too), otherwise
+  `~/DropboxExternal/dataRaw/policyDocs/`.
 
 ## Data
 
@@ -62,7 +65,7 @@ toward what the draft seems to expect; if it contradicts the text, say so.
 
 - Work on a branch, not `main`.
 - One commit per fact/table/figure, with a message naming the macro it produces.
-- Never commit data. Never push without asking.
+- Never commit data, except small docs in `data/policyDocs/`. Never push without asking.
 - Never change authorship, acknowledgements, or coauthor-written sections.
 
 # Reporting

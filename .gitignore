@@ -1,5 +1,6 @@
 # Ignore the data directory
-data/
+data/*
+!data/policyDocs/
 
 # Ignore data files even if they are in the root
 *.csv
