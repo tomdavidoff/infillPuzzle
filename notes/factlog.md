@@ -34,3 +34,11 @@
 - Parallel trends: replaced the note with one sentence stating the assumption. No pre-trend test run yet (the regression isn't specified).
 - `\eqref{eq:profit}` points to a label that doesn't exist; left for Tom.
 - Fixed `\addbibresource{text/infillPuzzle}` → `.bib`; biber couldn't find the file, so every citation was undefined.
+
+## 2026-11-15 — multiplex share on 33-ft lots, 2024+ (not in paper; no macro) — CHECK
+
+- Script: `scripts/multiplexLotWidth.R` (log `.out`). Permits refreshed 2026-11-15 (latest issue 2026-11-13); lot width from 2018 SFD lots in R1-1 (BCA 2019 roll).
+- 42.6% of 2024+ multiplex new-build permits are on 33-ft lots (118 / 277 matched). By year: 2024 46% (N=24), 2025 38% (141), 2026 48% (112). Baseline: 53.7% of 2018 R1-1 SFD lots are 33s.
+- Multiplex share of new builds by width: 33s 21.8% (118/541); 37–41 31%; 42–50 30%; >50 32%.
+- Why CHECK: only 279 of 791 multiplex permits (35%) link to a 2018 SFD lot, vs 71% of singles and 63% of duplexes. Of 339 unmatched multiplexes inside R1-1, 283 have addresses absent from the 2019 roll (new civic numbers) and points 20–50 m from any 2018 lot centroid. 5 m spatial, parcel-polygon and address matches agree 100% where they overlap and none recover them. 173 more multiplex permits are outside R1-1 (RM-8A, C-2, RM-12…). If unmatched multiplexes are on wider lots or assemblies, the 33-ft share is overstated.
+- Also lost: 8% of 2018 SFD lots have zero recorded width.

@@ -1,0 +1,61 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+2018 SFD lots: width>0, located           73694 ->  67794 (lost 8.0%)
+one lot per rollStart                     67794 ->  67785 (lost 0.0%)
+in R1-1                                   67785 ->  58004 (lost 14.4%)
+2018 R1-1 lots with an address key: 1 | keys shared by >1 lot (E/W): 1219 
+New Building, issued 2024+                52683 ->   3194 (lost 93.9%)
+                           specificusecategory     N
+                                        <char> <int>
+1:                               Laneway House   968
+2:                               Dwelling Unit    31
+3:                                   Apartment    30
+4:                                   Townhouse    25
+5: Mixed-Use Residential Building,Retail Store    11
+6:                                      Infill    10
+7:                         Apartment,Townhouse     9
+8:                        Public Authority Use     7
+principal product, geocoded                3194 ->   1982 (lost 37.9%)
+     product     N address near5
+      <char> <int>   <num> <num>
+1: multiplex   791   0.351 0.353
+2:    single   545   0.705 0.710
+3:    duplex   646   0.633 0.633
+address vs 5m agreement where both match: 1  N = 1070 
+matched to 2018 R1-1 SFD lot (address or 5m)   1982 ->   1076 (lost 45.7%)
+     product     N
+      <char> <int>
+1:    single   387
+2: multiplex   279
+3:    duplex   410
+latest permit per lot                      1076 ->   1071 (lost 0.5%)
+
+=== share of 2024+ multiplexes by lot width ===
+Key: <widthBin>
+   widthBin     N share
+     <fctr> <int> <num>
+1:       33   118 0.426
+2:    37-41    27 0.097
+3:    42-50    80 0.289
+4:      >50    52 0.188
+
+=== by issue year: multiplex N and share on 33 ===
+Key: <year>
+    year     N share33
+   <int> <int>   <num>
+1:  2024    24   0.458
+2:  2025   141   0.376
+3:  2026   112   0.482
+
+=== product mix within width bin (2024+) ===
+Using 'N' as value column. Use 'value.var' to override
+Key: <widthBin>
+   widthBin duplex multiplex single total multiplexShare
+     <fctr>  <int>     <int>  <int> <int>          <num>
+1:     <=30      5         0     10    15          0.000
+2:       33    268       118    155   541          0.218
+3:    37-41     35        27     26    88          0.307
+4:    42-50     68        80    115   263          0.304
+5:      >50     33        52     79   164          0.317
+
+baseline: share of 2018 R1-1 SFD lots that are 33: 0.537 
+latest issue date in data: 2026-11-13 
