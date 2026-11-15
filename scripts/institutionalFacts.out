@@ -1,0 +1,30 @@
+\newcommand{\suitesAllRSYear}{2004}
+\newcommand{\suitesIllegalShareTwoThousandFour}{78}
+\newcommand{\suitesTotalTwentyNineteen}{34,593}
+\newcommand{\suitesPermittedShareTwentyNineteen}{27}
+\newcommand{\lanewayFirstYear}{2009}
+\newcommand{\lanewayFirstLotShare}{94}
+\newcommand{\lanewayAllRSYear}{2013}
+\newcommand{\duplexCouncilMonth}{September}
+\newcommand{\duplexEnactedDate}{October 30, 2018}
+\newcommand{\rsDuplexFSR}{0.70}
+\newcommand{\rsSingleBaseFSR}{0.60}
+\newcommand{\rsSingleMaxFSR}{0.70}
+\newcommand{\rOneCouncilMonth}{September}
+\newcommand{\rOneEffectiveDate}{October 17, 2023}
+\newcommand{\rOneSingleFSR}{0.60}
+\newcommand{\rOneDuplexFSR}{0.70}
+\newcommand{\rOneMultiplexBaseFSR}{0.70}
+\newcommand{\rOneMultiplexMaxFSR}{1.00}
+\newcommand{\rOneMultiplexRTYear}{2024}
+\newcommand{\rOneSixUnitMax}{6}
+\newcommand{\rOneRentalUnitMax}{8}
+\newcommand{\rOneFourUnitFrontageM}{10.0}
+\newcommand{\rOneFourUnitAreaM}{306}
+\newcommand{\rOneSixUnitFrontageM}{15.1}
+\newcommand{\rOneSixUnitAreaM}{557}
+\newcommand{\rOneFourUnitFrontageFt}{32.8}
+\newcommand{\rOneFourUnitAreaFt}{3,290}
+\newcommand{\rOneSixUnitFrontageFt}{49.5}
+\newcommand{\rOneSixUnitAreaFt}{6,000}
+\newcommand{\rOneFourUnitDepthThirtyThreeFt}{100}
