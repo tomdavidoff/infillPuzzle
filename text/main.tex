@@ -12,6 +12,7 @@
 \input{institutionalFacts}
 \input{multiplexLotWidth}
 \input{ppsf33}
+\input{permitTrends}
 
 
 \begin{document}
@@ -191,7 +192,13 @@ That difference-in-differences is complicated by the presence of a third alterna
 
 Figure \ref{fig:permitTrends} plots duplex permits (red) and single family permits (blue) spatially with the top panel reflecting the pre-2023 period and the bottom panel reflecting the post-2023 period. Multiplexes are shown in black in the bottom figure. The figure shows that duplexes are more prevalent in the East Side than the West Side, and that the 2023 reform increased duplex take-up in the West Side relative to the East Side.
 
-\fact{Please do these plots with a decent Vancouver map as I have done in some of the R files, not too heavy weight, but major street and water features at least.}
+Both panels are confined to 33' lots and show the most recent permit on each lot within each period. Among single family and duplex permits on 33' lots, the duplex share rose from \dupVsSingleEastDuplexEra\% to \dupVsSingleEastRoneEra\% on the East Side and from \dupVsSingleWestDuplexEra\% to \dupVsSingleWestRoneEra\% on the West Side.
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=\textwidth]{permitTrends.png}
+	\caption{\label{fig:permitTrends}New build permits on 33' lots now zoned R1, by application date: \mapPermitsDuplexEra{} lots between the September 2018 duplex approval and the October 2023 reform (top) and \mapPermitsRoneEra{} lots after the reform (bottom). Single family in blue, duplex in red, multiplex in black. The dashed line is Ontario Street, dividing the East and West Sides. Map tiles \copyright{} OpenStreetMap contributors.}
+\end{figure}
 
 After the reform, multiplexes were \mplxShareEastThirtyThree\% of new builds on 33' lots and \mplxShareEastFifty\% on 50' lots on the East Side (\mplxNEastThirtyThree{} and \mplxNEastFifty{} lots), and \mplxShareWestThirtyThree\% and \mplxShareWestFifty\% on the West Side (\mplxNWestThirtyThree{} and \mplxNWestFifty{} lots).
 
