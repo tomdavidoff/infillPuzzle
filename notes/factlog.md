@@ -103,3 +103,7 @@
 - Correlations, tract: premium vs lppsf −0.80, vs elas −0.70, lppsf vs elas 0.54. Nbhd: −0.10, +0.34, 0.45.
 - Why CHECK: tract and neighbourhood disagree. The tract result is mainly East vs 3 West tracts (East premiums ~+0.05 to +0.26, West −0.05 to +0.03). At neighbourhood level, Fraserview (20 SFD sales, elasticity 0.07, premium −0.15) and Kitsilano (+0.09) drive the weak correlations. Very few areas either way. Also, 409 of 1,658 duplex sales are in qualifying tracts, because duplexes sit in RT-heavy tracts with few 33-ft R1 sales.
 - Also: multi-folio conveyances are now dropped against the whole sales table (no change to either sample).
+
+## 2026-11-15 — elasPpsfDupCor: West Side indicator added — CHECK
+
+- The table now includes a West Side dummy (lot longitude < −123.101). Tracts (15, 3 West): West vs lppsf 0.98, vs elas 0.48, vs premium −0.78. Nbhds (10, 2 West: Kitsilano, Marpole): 0.95, 0.37, −0.24. The tract premium correlation is essentially East vs West. Neighbourhoods: 10 have ≥10 duplex sales (8 have ≥45), but only 2 are West.

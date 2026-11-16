@@ -38,14 +38,16 @@ cor with vancouverPPSF33.R tract FE: 1
           <char> <int>     <num> <int>     <num> <int>     <num>       <num>
 1:  Census tract    56 0.5738147    17 0.7328953    39 0.1002859   0.4411217
 2: Neighbourhood    20 0.6597743     9 0.8157981    11 0.4584022   0.5301618
-                lppsf       elas dupPremium
-lppsf       1.0000000  0.5373151 -0.8007166
-elas        0.5373151  1.0000000 -0.6986257
-dupPremium -0.8007166 -0.6986257  1.0000000
-                lppsf      elas dupPremium
-lppsf       1.0000000 0.4546351 -0.1008018
-elas        0.4546351 1.0000000  0.3390810
-dupPremium -0.1008018 0.3390810  1.0000000
+                lppsf       elas dupPremium      westD
+lppsf       1.0000000  0.5373151 -0.8007166  0.9787877
+elas        0.5373151  1.0000000 -0.6986257  0.4817103
+dupPremium -0.8007166 -0.6986257  1.0000000 -0.7763250
+westD       0.9787877  0.4817103 -0.7763250  1.0000000
+                lppsf      elas dupPremium      westD
+lppsf       1.0000000 0.4546351 -0.1008018  0.9463959
+elas        0.4546351 1.0000000  0.3390810  0.3699544
+dupPremium -0.1008018 0.3390810  1.0000000 -0.2394002
+westD       0.9463959 0.3699544 -0.2394002  1.0000000
 \newcommand{\elasMeanTract}{0.38}
 \newcommand{\elasMeanNbhd}{0.36}
 \newcommand{\elasPpsfCorTract}{0.57}
@@ -53,6 +55,9 @@ dupPremium -0.1008018 0.3390810  1.0000000
 \newcommand{\dupSales}{1,658}
 \newcommand{\dupMinSales}{10}
 \newcommand{\dupWestTracts}{3}
+\newcommand{\dupWestNbhds}{2}
+\newcommand{\dupPremWestCorTract}{-0.78}
+\newcommand{\dupPremWestCorNbhd}{-0.24}
 \newcommand{\dupRTShare}{64}
 \newcommand{\dupAreasTract}{15}
 \newcommand{\dupAreasNbhd}{10}
