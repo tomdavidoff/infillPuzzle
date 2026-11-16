@@ -38,13 +38,14 @@ s <- as.data.table(dbGetQuery(con, "
   WHERE trim(f.jurisdictionCode) = '200'
     AND d.actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
     AND s.conveyanceTypeDescription = 'Improved Single Property Transaction'"))
+multi <- as.data.table(dbGetQuery(con, "SELECT saleID FROM sales GROUP BY saleID HAVING COUNT(DISTINCT folioID) > 1"))$saleID
 nAll <- as.numeric(dbGetQuery(con, "
   SELECT COUNT(*) FROM sales s JOIN folio f USING(folioID) JOIN folioDescription d USING(folioID)
   WHERE trim(f.jurisdictionCode) = '200'
     AND d.actualUseDescription IN ('Single Family Dwelling', 'Residential Dwelling with Suite')
     AND s.conveyanceTypeDescription = 'Improved Single Property Transaction'"))
 dbDisconnect(con)
-n0 <- nrow(s); s <- s[s[, .N, by = saleID][N == 1], on = "saleID"][, N := NULL]
+n0 <- nrow(s); s <- s[!saleID %in% multi & !saleID %in% s[duplicated(saleID), saleID]]
 lost(n0, nrow(s), "drop multi-folio conveyances")
 stopifnot(!anyDuplicated(s$saleID))
 lost(nAll, nrow(s), "SFD arm's-length sales -> inventory join")
@@ -123,6 +124,7 @@ plotFE <- function(e, file, what, labels = TRUE) {
 plotFE(rT$est, paste0(OUT, "ppsf33Tract.png"), "Census tract", labels = FALSE)
 plotFE(rN$est, paste0(OUT, "ppsf33Neighbourhood.png"), "Neighbourhood")
 
+saveRDS(s, "~/DropboxExternal/dataProcessed/ppsf33Sales.rds")   # cleaned SFD sample, reused by vancouverElasticityPremium.R
 fwrite(rT$est, "~/DropboxExternal/dataProcessed/ppsf33Tract.csv")
 fwrite(rN$est, "~/DropboxExternal/dataProcessed/ppsf33Neighbourhood.csv")
 
