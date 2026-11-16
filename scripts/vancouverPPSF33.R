@@ -1,6 +1,6 @@
 # vancouverPPSF33.R
 # Local price per sqft (eq. ppsfHedonic): log(price / finished area) on sale-year FE, (optionally) log effective
-# year, and area FE, for 2012-2019 single-family sales on 33-ft lots now zoned R1-1. Areas: census tract (CTUID)
+# year, and area FE, for single-family sales from 2012 to the Sept 2018 duplex approval on 33-ft lots now zoned R1-1. Areas: census tract (CTUID)
 # and BCA neighbourhood. Plots tract/neighbourhood FE with vs without the effective-year control.
 # Writes text/ppsf33.tex, text/ppsf33Tract.png, text/ppsf33Neighbourhood.png
 # Tom Davidoff 11/15/26
@@ -12,7 +12,8 @@ library(fixest)
 library(ggplot2)
 library(ggrepel)
 
-YEARS   <- 2012:2019          # 2019 roll has sales through 2019 only
+YEARS   <- 2012:2018
+D_REFORM <- as.IDate("2018-09-18")  # council approves duplexes in RS (as vancouverPermitLogit.R); sales end before it
 MIN_OBS <- 20                 # min sales per area
 ONT     <- -123.101           # Ontario St: East/West divide
 fBCA19  <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
@@ -50,7 +51,7 @@ lost(nAll, nrow(s), "SFD arm's-length sales -> inventory join")
 
 s[, `:=`(date = as.IDate(conveyanceDate), rollStart = floor(as.numeric(rollNumber) / 1000))]
 s[, yr := year(date)]
-n0 <- nrow(s); s <- s[yr %in% YEARS];                                      lost(n0, nrow(s), "sale year 2012-2019")
+n0 <- nrow(s); s <- s[yr %in% YEARS & date < D_REFORM];                   lost(n0, nrow(s), "sale 2012 to pre-duplex reform")
 n0 <- nrow(s); s <- s[price > 0 & sqft > 0 & effYr > 1800 & yrBuilt > 1800]; lost(n0, nrow(s), "price, sqft, effective/built year valid")
 n0 <- nrow(s); s <- s[yr >= yrBuilt];                                       lost(n0, nrow(s), "sale not before house built")
 n0 <- nrow(s); s <- s[round(w) == 33];                                      lost(n0, nrow(s), "lot width rounds to 33 ft")
@@ -107,19 +108,19 @@ tn <- merge(tn, rT$est[, .(CTUID = id, withEff)], by = "CTUID")[, .(tractAvg = w
 tn <- merge(tn, rN$est[, .(nbhd = id, withEff)], by = "nbhd")
 cat("cor(neighbourhood FE, sales-weighted mean tract FE):", round(tn[, cor(tractAvg, withEff)], 3), "N =", nrow(tn), "\n")
 
-plotFE <- function(e, file, what) {
+plotFE <- function(e, file, what, labels = TRUE) {
   p <- ggplot(e, aes(withEff, noEff, colour = lon)) +
     geom_abline(linetype = 2, colour = "grey60") +
     geom_point(aes(size = N)) +
-    geom_text_repel(aes(label = label), colour = "black", size = 2.3, max.overlaps = Inf, segment.size = 0.2, show.legend = FALSE) +
+    (if (labels) geom_text_repel(aes(label = label), colour = "black", size = 2.3, max.overlaps = Inf, segment.size = 0.2, show.legend = FALSE)) +
     scale_colour_gradient(low = "grey85", high = "grey10", name = "Longitude\n(darker = east)") +
     scale_size_area(max_size = 3, name = "Sales") +
     labs(x = "Log ppsf, with effective-year control", y = "Log ppsf, without effective-year control",
-         title = paste0(what, " price per square foot, 33-ft lots now R1-1, 2012-2019 sales")) +
+         title = paste0(what, " price per square foot, 33-ft lots now R1-1, ", min(YEARS), "-", format(D_REFORM - 1, "%b %Y"), " sales")) +
     coord_equal() + theme_minimal(base_size = 9)
   ggsave(file, p, width = 7.5, height = 7, dpi = 200)
 }
-plotFE(rT$est, paste0(OUT, "ppsf33Tract.png"), "Census tract")
+plotFE(rT$est, paste0(OUT, "ppsf33Tract.png"), "Census tract", labels = FALSE)
 plotFE(rN$est, paste0(OUT, "ppsf33Neighbourhood.png"), "Neighbourhood")
 
 fwrite(rT$est, "~/DropboxExternal/dataProcessed/ppsf33Tract.csv")

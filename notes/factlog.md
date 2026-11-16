@@ -62,3 +62,9 @@
 - Log effective year coefficient 2.13 (SE 0.30) tract, 2.15 nbhd, i.e. about 0.1% per year. Within R² 0.01. With- vs without-control FE correlate 0.9999 (tract) and 0.9999 (nbhd), so the figures lie on the 45° line.
 - West (lon < −123.101) minus East mean FE: +54% tract, +57% nbhd; cor(FE, −longitude) 0.93 / 0.94. Neighbourhood FE vs sales-weighted mean tract FE: cor 0.99 (19 nbhds).
 - Why CHECK: (1) the draft said 2012–2021, but the 2019 extract ends in 2019, so the text now uses the macros. (2) The effective-year control is nearly irrelevant as specified (log of a calendar year ≈ linear year). Log age or log sqft would be a stronger control; not run, because it isn't the draft's specification. (3) No published City ppsf to sanity-check against.
+
+## 2026-11-15 — ppsf33 revised: sales end before duplex approval — CHECK
+
+- Per Tom: keep the 2019 extract, but don't overlap the duplex period. Sales now 2012 to 2018-09-17 (council approval 2018-09-18, the same cutoff as `D_REFORM` in vancouverPermitLogit.R). The tract plot has no labels.
+- 5,822 sales (median $660/sqft); 5,750 in 56 tracts, 5,818 in 20 neighbourhoods. Log effective year 1.89 (SE 0.32) tract, 1.91 nbhd. With/without-control correlation still 1.00. West premium 56% tract, 59% nbhd; tract–nbhd cor 0.99.
+- Other CHECK points as in the previous entry.

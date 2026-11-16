@@ -167,20 +167,20 @@ To estimate a price per square foot at the census tract or neighbourhood level, 
 	\log \text{ppsf}_{ijt} = \alpha + \sum_{t}\beta_{t}I_{t} + \beta \log \text{effective year}_{i} + \sum_{j}\gamma_{j}I_{j} + \epsilon_{ijt}
 \end{equation}
 
-ppsf is the price per square foot (main building total built area). We estimate these for single family transactions in zones now R1 for the years \ppsfFirstYear{} through \ppsfLastYear{}, the last year of sales in the 2019 assessment extract \parencite{BCAssessment2019}. Figure \ref{fig:tractPPSF} plots these estimates at the tract level with (horizontal axis) and without (vertical axis) the effective year control. The points are shaded with darker shades further east and lighter shades further west. Figure \ref{fig:neighbourhoodPPSF} is at the neighbourhood level. All of these estimates are for 33' lots, the focus of our empirical analysis. We choose 33' lots because \lotShareThirtyThreeRone\% of R1 lots are (rounded) 33' wide and because, among new building permits issued since 2024, multiplexes are \mplxShareThirtyThree\% of new builds on 33' lots versus \mplxShareWider\% on larger lots \parencite{BCAssessment2019,COVdata}.
+ppsf is the price per square foot (main building total built area). We estimate these for single family transactions in zones now R1 from \ppsfFirstYear{} until council approved duplexes in RS zones in \duplexCouncilMonth{} \ppsfLastYear{}, so that prices predate the duplex period \parencite{BCAssessment2019}. Figure \ref{fig:tractPPSF} plots these estimates at the tract level with (horizontal axis) and without (vertical axis) the effective year control. The points are shaded with darker shades further east and lighter shades further west. Figure \ref{fig:neighbourhoodPPSF} is at the neighbourhood level. All of these estimates are for 33' lots, the focus of our empirical analysis. We choose 33' lots because \lotShareThirtyThreeRone\% of R1 lots are (rounded) 33' wide and because, among new building permits issued since 2024, multiplexes are \mplxShareThirtyThree\% of new builds on 33' lots versus \mplxShareWider\% on larger lots \parencite{BCAssessment2019,COVdata}.
 
 The estimates use \ppsfSalesTract{} sales in \ppsfNTract{} tracts and \ppsfSalesNbhd{} sales in \ppsfNNbhd{} neighbourhoods with at least \ppsfMinObs{} sales each. The effective-year control barely moves the local estimates: the correlation between the two sets is \ppsfCorEffTract{} across tracts and \ppsfCorEffNbhd{} across neighbourhoods. Price per square foot is \ppsfWestPremiumTract\% higher in West Side than East Side tracts on average.
 
 \begin{figure}[htbp]
 	\centering
 	\includegraphics[width=\textwidth]{ppsf33Tract.png}
-	\caption{\label{fig:tractPPSF}Census tract price per square foot fixed effects (log, demeaned), single family sales on 33' lots now zoned R1, \ppsfFirstYear--\ppsfLastYear. Darker points are further east.}
+	\caption{\label{fig:tractPPSF}Census tract price per square foot fixed effects (log, demeaned), single family sales on 33' lots now zoned R1, \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear. Darker points are further east.}
 \end{figure}
 
 \begin{figure}[htbp]
 	\centering
 	\includegraphics[width=\textwidth]{ppsf33Neighbourhood.png}
-	\caption{\label{fig:neighbourhoodPPSF}Neighbourhood price per square foot fixed effects (log, demeaned), single family sales on 33' lots now zoned R1, \ppsfFirstYear--\ppsfLastYear. Darker points are further east.}
+	\caption{\label{fig:neighbourhoodPPSF}Neighbourhood price per square foot fixed effects (log, demeaned), single family sales on 33' lots now zoned R1, \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear. Darker points are further east.}
 \end{figure}
 
 That difference-in-differences is complicated by the presence of a third alternative, multiplexes, newly allowed in 2023. Assuming that errors in profits have a type 1 extreme value distribution in \eqref{eq:profit}, then the relative appeal of duplexes versus single family homes is unaffected by the presence of the multiplex option. We thus include in our analysis on the logit as well as OLS difference in differences. Either version requires parallel trends: absent the 2023 reform, the relationship between neighbourhood prices and duplex take-up would have continued on the path it followed between the two reforms. Whether multiplexes, granted more FSR, but further divided relative to duplexes, would be more or less attractive on more expensive lots is unclear.
