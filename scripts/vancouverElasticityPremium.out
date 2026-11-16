@@ -1,0 +1,64 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+simulation: cor(true, est slope) = 0.977, mean abs error = 0.042, lEff = 1.68 (true 2)
+SFD sales: 5822 
+duplex: drop multi-folio conveyances             8185 ->    8185 (lost 0.0%)
+duplex: 2012 to pre-duplex reform                8185 ->    1828 (lost 77.7%)
+duplex: strata units only                        1828 ->    1677 (lost 8.3%)
+duplex: valid fields                             1677 ->    1677 (lost 0.0%)
+duplex: sale not before built                    1677 ->    1677 (lost 0.0%)
+duplex: located                                  1677 ->    1676 (lost 0.1%)
+duplex points in >1 zoning polygon: 0 
+duplex sales by current zoning district:
+      zone   zcat     N
+    <char> <char> <int>
+ 1:   R3-2     R3   315
+ 2:   RT-2     RT   275
+ 3:   RT-5     RT   258
+ 4:   RT-8     RT   169
+ 5:   RT-7     RT   128
+ 6:  RT-10     RT    89
+ 7:   RM-4     RM    64
+ 8:   RT-9     RT    51
+ 9:  RT-11     RT    47
+10:   R1-1     R1    43
+11:   RM-7     RM    43
+12:   RT-3     RT    31
+RT polygons: 101 (RT-1,RT-10,RT-11,RT-2,RT-3,RT-4,RT-4A,RT-5,RT-7,RT-8,RT-9); area of RT n R1-1 overlap: 0.3 m2
+duplex: tract and neighbourhood                  1676 ->    1676 (lost 0.0%)
+duplex: log ppsf within 0.5-99.5 pctile          1676 ->    1658 (lost 1.1%)
+duplex sales: 1658 | median ppsf $733 | median sqft 1428
+cor with vancouverPPSF33.R tract FE: 1 
+   nAreas  meanElas    sdElas      medSE withDup meanPremium
+    <int>     <num>     <num>      <num>   <int>       <num>
+1:     56 0.3752219 0.1622714 0.09506551      15    0.117812
+   nAreas meanElas    sdElas      medSE withDup meanPremium
+    <int>    <num>     <num>      <num>   <int>       <num>
+1:     20 0.363339 0.1439818 0.05581002      10  0.08387747
+           level     n       all    nW      west    nE      east corWestElas
+          <char> <int>     <num> <int>     <num> <int>     <num>       <num>
+1:  Census tract    56 0.5738147    17 0.7328953    39 0.1002859   0.4411217
+2: Neighbourhood    20 0.6597743     9 0.8157981    11 0.4584022   0.5301618
+                lppsf       elas dupPremium
+lppsf       1.0000000  0.5373151 -0.8007166
+elas        0.5373151  1.0000000 -0.6986257
+dupPremium -0.8007166 -0.6986257  1.0000000
+                lppsf      elas dupPremium
+lppsf       1.0000000 0.4546351 -0.1008018
+elas        0.4546351 1.0000000  0.3390810
+dupPremium -0.1008018 0.3390810  1.0000000
+\newcommand{\elasMeanTract}{0.38}
+\newcommand{\elasMeanNbhd}{0.36}
+\newcommand{\elasPpsfCorTract}{0.57}
+\newcommand{\elasPpsfCorNbhd}{0.66}
+\newcommand{\dupSales}{1,658}
+\newcommand{\dupMinSales}{10}
+\newcommand{\dupWestTracts}{3}
+\newcommand{\dupRTShare}{64}
+\newcommand{\dupAreasTract}{15}
+\newcommand{\dupAreasNbhd}{10}
+\newcommand{\dupPremiumMeanTract}{13}
+\newcommand{\dupPremiumMeanNbhd}{9}
+\newcommand{\dupPremPpsfCorTract}{-0.80}
+\newcommand{\dupPremPpsfCorNbhd}{-0.10}
+\newcommand{\dupPremElasCorTract}{-0.70}
+\newcommand{\dupPremElasCorNbhd}{0.34}

@@ -83,3 +83,23 @@
 - Script: `scripts/vancouverPermitMap.R`. 33-ft lots only (round(width) == 33), plotted at the 2018 lot centroid, latest permit per lot within each era. Duplex era: applied 2018-09-18 to 2023-10-16 (1,068 lots). R1-1 era: applied ≥ 2023-10-17 (460 lots). Tiles: keyless OSM, faded (cartolight needs an API key under rosm 0.3.2).
 - Duplex share of single+duplex: East 44% → 70%, West 21% → 66%. This supports the draft's claim that West duplex take-up rose relative to East.
 - Why CHECK: R1-1-era permits are right-censored (applied but not yet issued by Nov 2026 are missing), and single-family counts are low in that era (52 East, 55 West).
+
+## 2026-11-15 — new-build cutoff sensitivity (multiplexLotWidth.R; no new macros) — OK
+
+- Main cutoff A = $340,000 (q95 of value among non-new-build principal permits). Alternatives: B = $1,200,000 (q95 of all principal permits, new builds included); C = $706,637 (q33 of new-build single + duplex values). Every principal permit is linked; the rule is applied afterwards; `newBuild` (rule A) is saved in permitLotLinks.rds and used by the map.
+- Non-new-build permits counted (linked): A 294, B 28, C 82.
+- Post-reform multiplex share, E33 / E50 / W33 / W50: A .332/.406/.182/.317; B .339/.406/.193/.347; C .336/.406/.188/.340.
+- 2024+ multiplex share, 33 vs wider: A .224/.299; B .233/.316; C .229/.311.
+- Map duplex share of single+duplex on 33s, East and West, duplex era → R1-1 era: A .44→.70 / .21→.66; B .45→.72 / .22→.71; C .45→.72 / .22→.69.
+- Conclusions are not sensitive to the cutoff.
+
+## 2026-11-15 — elasPremium; tables elasPpsfCor, elasPpsfDupCor (text/) — CHECK
+
+- Script: `scripts/vancouverElasticityPremium.R`. Mirrors `vancouverPriceElasticity.R`: the elasticity is an area-specific slope of log price on log sqft, and the duplex premium is DUP − SFD area×product FE in a pooled log ppsf hedonic. Controls follow eq. ppsfHedonic (sale-year FE, log effective year). Same SFD sample as ppsf33 (now saved by vancouverPPSF33.R; area FE cor 1.0000 with ppsf33Tract.csv).
+- Validation: simulated 40 areas with known slopes; cor(true, est) 0.977, MAE 0.042.
+- Elasticity: mean 0.38 (tract, 56) / 0.36 (nbhd, 20); median SE 0.095 / 0.056. cor(lppsf, elas): tract 0.57 (West 0.73 N=17, East 0.10 N=39); nbhd 0.66 (West 0.82 N=9, East 0.46 N=11).
+- Duplexes: strata duplex units only (non-strata records carry one unit's sqft at building price, avg $1,310/sqft vs ~$760–920 strata; 151 sales dropped). Any zone: 64% RT, R3-2 315, RM-4 64, R1-1 43. RT ∩ R1-1 polygon overlap 0.3 m² (slivers), so the zones are distinct. 1,658 duplex sales after filters; median $733/sqft, 1,428 sqft.
+- Areas with ≥10 duplex and ≥20 SFD sales: 15 tracts (409 duplex sales; 3 West), 10 nbhds (1,318). Mean premium +13% tract, +9% nbhd.
+- Correlations, tract: premium vs lppsf −0.80, vs elas −0.70, lppsf vs elas 0.54. Nbhd: −0.10, +0.34, 0.45.
+- Why CHECK: tract and neighbourhood disagree. The tract result is mainly East vs 3 West tracts (East premiums ~+0.05 to +0.26, West −0.05 to +0.03). At neighbourhood level, Fraserview (20 SFD sales, elasticity 0.07, premium −0.15) and Kitsilano (+0.09) drive the weak correlations. Very few areas either way. Also, 409 of 1,658 duplex sales are in qualifying tracts, because duplexes sit in RT-heavy tracts with few 33-ft R1 sales.
+- Also: multi-folio conveyances are now dropped against the whole sales table (no change to either sample).

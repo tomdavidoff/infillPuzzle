@@ -13,6 +13,7 @@
 \input{multiplexLotWidth}
 \input{ppsf33}
 \input{permitTrends}
+\input{elasPremium}
 
 
 \begin{document}
@@ -183,6 +184,25 @@ The estimates use \ppsfSalesTract{} sales in \ppsfNTract{} tracts and \ppsfSales
 	\includegraphics[width=\textwidth]{ppsf33Neighbourhood.png}
 	\caption{\label{fig:neighbourhoodPPSF}Neighbourhood price per square foot fixed effects (log, demeaned), single family sales on 33' lots now zoned R1, \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear. Darker points are further east.}
 \end{figure}
+
+\subsection{Elasticity of price with respect to square footage and the single-duplex premium}
+
+To evaluate the assumption that the gap in willingness to pay for a single family home versus a duplex grows in local price per square foot, we estimate the elasticity of price with respect to square footage for each tract and neighbourhood. We add an area-specific slope on log square footage to equation \eqref{eq:ppsfHedonic}, using the same \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear{} single family sales on 33' lots now zoned R1 \parencite{BCAssessment2019}. The mean elasticity is \elasMeanTract{} across tracts and \elasMeanNbhd{} across neighbourhoods. Table \ref{tab:elasPpsf} shows that elasticity and price per square foot are positively correlated (\elasPpsfCorTract{} across tracts, \elasPpsfCorNbhd{} across neighbourhoods), mostly within the West Side.
+
+\begin{table}[htbp]
+	\centering
+	\caption{\label{tab:elasPpsf}Correlation of local log price per square foot with the size elasticity of price, single family sales on 33' lots now zoned R1, \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear.}
+	\input{elasPpsfCor}
+\end{table}
+
+To measure the duplex premium, we add \dupSales{} sales of strata duplex units from the same period in any zone; \dupRTShare\% are in the two-family RT zones, which do not overlap R1. (Non-strata duplex records report one unit's floor area but the sale price of the building, so we exclude them.) The premium is the difference between duplex and single family area effects in a pooled version of equation \eqref{eq:ppsfHedonic}. The mean duplex premium per square foot is \dupPremiumMeanTract\% across the \dupAreasTract{} tracts and \dupPremiumMeanNbhd\% across the \dupAreasNbhd{} neighbourhoods with at least \dupMinSales{} duplex sales. Table \ref{tab:elasPpsfDup} shows the correlations. Across tracts, the duplex premium falls with both price per square foot (\dupPremPpsfCorTract) and elasticity (\dupPremElasCorTract), but this is largely a contrast between East Side tracts and the \dupWestTracts{} West Side tracts with enough duplex sales. Across neighbourhoods the correlations are weak (\dupPremPpsfCorNbhd{} and \dupPremElasCorNbhd).
+
+\begin{table}[htbp]
+	\centering
+	\caption{\label{tab:elasPpsfDup}Correlations among local log price per square foot, size elasticity, and duplex price per square foot premium, areas with at least \dupMinSales{} strata duplex sales, \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear.}
+	\input{elasPpsfDupCor}
+\end{table}
+
 
 \subsection{Building permits}
 
