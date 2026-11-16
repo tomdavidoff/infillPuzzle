@@ -1,0 +1,4 @@
+\subsection{Elasticity of price with respect to square footage and the single-duplex premium}
+
+To evaluate the assumption that the gap in willingness to pay for a single family home versus a duplex grows in local price per square foot, we estimate the elasticity of price with respect to square footage \fact{Please locate most recent .R that estimates this, and show results in a suitable tabular form -- correlations. Then for the subset of neighbourhoods that have duplex transactions, show the correlations among price, elasticity, and the price per square foot premium for duplex vs single family, all in the pre-reform sales data. Repeat at the tract level.
+

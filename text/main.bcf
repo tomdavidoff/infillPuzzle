@@ -2371,6 +2371,7 @@
   <!-- SECTION 0 -->
   <bcf:bibdata section="0">
     <bcf:datasource type="file" datatype="bibtex" glob="false">infillPuzzle.bib</bcf:datasource>
+    <bcf:datasource type="file" datatype="bibtex" glob="false">CLAUDE.bib</bcf:datasource>
   </bcf:bibdata>
   <bcf:section number="0">
     <bcf:citekey order="1" intorder="1">bruecknerSingh</bcf:citekey>
@@ -2406,7 +2407,27 @@
     <bcf:citekey order="31" intorder="1">Stacy_etal2023</bcf:citekey>
     <bcf:citekey order="32" intorder="1">Ma_2025</bcf:citekey>
     <bcf:citekey order="33" intorder="1">vonBergmannLauster</bcf:citekey>
-    <bcf:citekey order="34" intorder="1">SanghoonDaryl</bcf:citekey>
+    <bcf:citekey order="34" intorder="1">BCAssessment2019</bcf:citekey>
+    <bcf:citekey order="35" intorder="1">CoV2004Suites</bcf:citekey>
+    <bcf:citekey order="36" intorder="1">CoV2004Suites</bcf:citekey>
+    <bcf:citekey order="37" intorder="1">CoV2019SuitesMemo</bcf:citekey>
+    <bcf:citekey order="38" intorder="1">CoV2009Laneway</bcf:citekey>
+    <bcf:citekey order="39" intorder="1">CoV2018LanewayReview</bcf:citekey>
+    <bcf:citekey order="40" intorder="1">CoV2018DuplexReport</bcf:citekey>
+    <bcf:citekey order="40" intorder="2">CoV2018DuplexAdmin</bcf:citekey>
+    <bcf:citekey order="41" intorder="1">CoVRS1Schedule2023</bcf:citekey>
+    <bcf:citekey order="42" intorder="1">CoV2018DuplexAdmin</bcf:citekey>
+    <bcf:citekey order="43" intorder="1">CoV2023MissingMiddle</bcf:citekey>
+    <bcf:citekey order="44" intorder="1">vonBergmannMultiplex2025</bcf:citekey>
+    <bcf:citekey order="45" intorder="1">CoVR1Schedule</bcf:citekey>
+    <bcf:citekey order="46" intorder="1">CoVR1Schedule</bcf:citekey>
+    <bcf:citekey order="47" intorder="1">SanghoonDaryl</bcf:citekey>
+    <bcf:citekey order="48" intorder="1">BCAssessment2019</bcf:citekey>
+    <bcf:citekey order="49" intorder="1">BCAssessment2019</bcf:citekey>
+    <bcf:citekey order="49" intorder="2">COVdata</bcf:citekey>
+    <bcf:citekey order="50" intorder="1">BCAssessment2019</bcf:citekey>
+    <bcf:citekey order="51" intorder="1">COVdata</bcf:citekey>
+    <bcf:citekey order="52" intorder="1">BCAssessment2019</bcf:citekey>
   </bcf:section>
   <!-- SORTING TEMPLATES -->
   <bcf:sortingtemplate name="nyt">
@@ -2438,14 +2459,4 @@
     </bcf:sort>
   </bcf:sortingtemplate>
   <!-- DATALISTS -->
-  <bcf:datalist section="0"
-                name="nyt/global//global/global/global"
-                type="entry"
-                sortingtemplatename="nyt"
-                sortingnamekeytemplatename="global"
-                labelprefix=""
-                uniquenametemplatename="global"
-                labelalphanametemplatename="global"
-                namehashtemplatename="global">
-  </bcf:datalist>
 </bcf:controlfile>
