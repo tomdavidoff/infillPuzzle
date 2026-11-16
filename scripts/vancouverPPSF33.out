@@ -1,0 +1,64 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+Warning message:
+package ‘ggrepel’ was built under R version 4.5.2 
+drop multi-folio conveyances                   126436 ->  126434 (lost 0.0%)
+SFD arm's-length sales -> inventory join       126687 ->  126434 (lost 0.2%)
+sale year 2012-2019                            126434 ->   21797 (lost 82.8%)
+price, sqft, effective/built year valid         21797 ->   21750 (lost 0.2%)
+sale not before house built                     21750 ->   18413 (lost 15.3%)
+lot width rounds to 33 ft                       18413 ->    7761 (lost 57.9%)
+located via 2026 rollStart centroid              7761 ->    7697 (lost 0.8%)
+lot now zoned R1-1                               7697 ->    6579 (lost 14.5%)
+tract and neighbourhood assigned                 6579 ->    6579 (lost 0.0%)
+log ppsf within 0.5-99.5 pctile                  6579 ->    6513 (lost 1.0%)
+sales: 6513 | median ppsf $675 | median sqft 2311 | median eff yr 1994
+Key: <yr>
+      yr     N medPPSF
+   <int> <int>   <num>
+1:  2012   751     463
+2:  2013   893     480
+3:  2014  1034     533
+4:  2015  1087     644
+5:  2016   871     833
+6:  2017   786     826
+7:  2018   537     826
+8:  2019   554     756
+CTUID: 66 areas with 33-ft R1-1 sales, 56 with >= 20 (sales kept 98.8%)
+nbhd: 23 areas with 33-ft R1-1 sales, 20 with >= 20 (sales kept 99.9%)
+                            rT$m1    rT$m0             rN$m1    rN$m0
+                            tract    tract              nbhd     nbhd
+Dependent Var.:             lppsf    lppsf             lppsf    lppsf
+                                                                     
+lEff            2.128*** (0.3045)          2.146*** (0.3023)         
+Fixed-Effects:  ----------------- -------- ----------------- --------
+yr                            Yes      Yes               Yes      Yes
+CTUID                         Yes      Yes                No       No
+nbhd                           No       No               Yes      Yes
+_______________ _________________ ________ _________________ ________
+S.E. type       Heteroskeda.-rob.       -- Heteroskeda.-rob.       --
+Observations                6,432    6,432             6,508    6,508
+R2                        0.76970  0.76732           0.76164  0.75920
+Within R2                 0.01025       --           0.01016       --
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    level nAreas corWithNo    sdWith      sdNo westMinusEast    corLon
+   <char>  <int>     <num>     <num>     <num>         <num>     <num>
+1:  tract     56 0.9998647 0.2208042 0.2245785     0.4320842 0.9275227
+2:   nbhd     20 0.9999043 0.2401597 0.2445066     0.4517429 0.9363397
+cor(neighbourhood FE, sales-weighted mean tract FE): 0.992 N = 19 
+\newcommand{\ppsfSalesTract}{6,432}
+\newcommand{\ppsfSalesNbhd}{6,508}
+\newcommand{\ppsfNTract}{56}
+\newcommand{\ppsfNNbhd}{20}
+\newcommand{\ppsfMinObs}{20}
+\newcommand{\ppsfFirstYear}{2012}
+\newcommand{\ppsfLastYear}{2019}
+\newcommand{\ppsfEffCoefTract}{2.13}
+\newcommand{\ppsfEffCoefNbhd}{2.15}
+\newcommand{\ppsfCorEffTract}{1.00}
+\newcommand{\ppsfCorEffNbhd}{1.00}
+\newcommand{\ppsfWestPremiumTract}{54}
+\newcommand{\ppsfWestPremiumNbhd}{57}
+\newcommand{\ppsfCorTractNbhd}{0.99}

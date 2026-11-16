@@ -46,3 +46,19 @@
 - Why CHECK: 14% of street-nearest links are probably the wrong lot (mostly a neighbour on the same street). "Latest permit per lot" drops 17.5% of linked permits (multi-permit projects plus some street-nearest collisions).
 - Bug found and fixed in diagnostics (not in the main script): spatial lookups after merge() used an sf object in the pre-merge row order. Earlier claims from those diagnostics (nearest polygon "0% agreement", new-stem bridging, "62 apartments in R1-1") were artifacts; corrected: only 19 of 182 non-multiplex Multiple Dwelling permits are in R1-1.
 - Dead ends: City parcel polygons (2026) omit most redeveloped lots.
+
+## 2026-11-15 — lotShareThirtyThreeRone, mplxShareThirtyThree / mplxShareWider / mplxShareGap (text/multiplexLotWidth.tex) — CHECK
+
+- Script: `scripts/multiplexLotWidth.R`.
+- `\lotShareThirtyThreeRone` = 44%: 2018 SFD lots in R1-1 (BCA 2019, width > 0, N = 58,004) with round(width) == 33. A looser 30–36 ft bin gives 54%, so the number depends on the definition.
+- `\mplxShareThirtyThree` 23% (123/531) vs `\mplxShareWider` 32% (219/686, round(width) > 33): multiplex share of single/duplex/multiplex new-build permits issued 2024+, one (latest) permit per 2018 lot; gap 9 pp.
+- Why CHECK: inherits the permit-to-lot linking caveats above (14% of street-side links probably the wrong lot).
+
+## 2026-11-15 — ppsf33 (text/ppsf33.tex, text/ppsf33Tract.png, text/ppsf33Neighbourhood.png) — CHECK
+
+- Script: `scripts/vancouverPPSF33.R`. Eq. ppsfHedonic: log(price / MB_total_finished_area) on sale-year FE + log(effective year) + area FE, with and without the effective-year term; heteroskedasticity-robust SEs. Area FE demeaned for plots; estimates also saved to `dataProcessed/ppsf33{Tract,Neighbourhood}.csv`.
+- Sample: BCA 2019 sales, COV, 'Single Family Dwelling' / 'Residential Dwelling with Suite', 'Improved Single Property Transaction'. Drops: multi-folio conveyances (2), years outside 2012–2019 (83%), invalid fields (0.2%), sale before year built (15.3%; the 2019 inventory describes a later house), width not rounding to 33 (58%), no 2026 centroid (0.8%), not now R1-1 (14.5%), log ppsf outside 0.5–99.5 pctile (1.0%). Final 6,513 sales; median $675/sqft, 2,311 sqft, effective year 1994.
+- Areas with ≥ 20 sales: 56 of 66 tracts (6,432 sales, 98.8%); 20 of 23 BCA neighbourhoods (6,508 sales).
+- Log effective year coefficient 2.13 (SE 0.30) tract, 2.15 nbhd, i.e. about 0.1% per year. Within R² 0.01. With- vs without-control FE correlate 0.9999 (tract) and 0.9999 (nbhd), so the figures lie on the 45° line.
+- West (lon < −123.101) minus East mean FE: +54% tract, +57% nbhd; cor(FE, −longitude) 0.93 / 0.94. Neighbourhood FE vs sales-weighted mean tract FE: cor 0.99 (19 nbhds).
+- Why CHECK: (1) the draft said 2012–2021, but the 2019 extract ends in 2019, so the text now uses the macros. (2) The effective-year control is nearly irrelevant as specified (log of a calendar year ≈ linear year). Log age or log sqft would be a stronger control; not run, because it isn't the draft's specification. (3) No published City ppsf to sanity-check against.
