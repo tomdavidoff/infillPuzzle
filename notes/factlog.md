@@ -121,3 +121,19 @@
 - East/West 2×2, no controls: East 44.0% (N=704) → 70.3% (175); West 20.6% (364) → 66.0% (162). DiD +19.2 pp (SE 5.8, z 3.30, p 0.001); ratio of odds ratios 2.49, Woolf χ²(1) 10.78, p 0.001. DiD under B/C cutoffs: 21.5 / 20.6 pp.
 - Duplex share by period: −5 .12, −4 .33, −3 .42, −2 .47, −1 .38, 0 .74, 1 .64, 2 .64. The dip in the last pre-reform year could reflect applicants rushing single-family permits ahead of the FSR cut; this would also affect the ±6-month window.
 - Why CHECK: (1) the narrow-window estimates are positive but insignificant (few permits; possible anticipation). (2) The neighbourhood trend column is not significant. (3) The last period is right-censored (applied through 2026-09-08; unissued permits are missing). (4) The draft's "convergence in pricing" motivation for the trend term was not tested here; the trend coefficients are ≈0. (5) Inherits the permit-linking caveats.
+
+## 2026-11-16 — shareDiD period length (text/shareDiDPeriods.tex; tab:ShareDiDPeriods; sdMonth*/sdYear*/sd*Range* macros) — OK
+
+- Script: `scripts/permitShareDiD.R`. Periods are now `perOf(applied, L)` = L-month bins from 2023-10-17 (a first partial bin shorter than half a period joins the next). L = 12 reproduces the previous periods exactly; Table ShareDiD is unchanged.
+- Weighted cell OLS = permit-level LPM with area + period FE for any L, so thin cells don't bias it. Tract β 0.450–0.464, SE 0.098–0.112; nbhd β 0.410–0.434, SE 0.098–0.106. Annual periods have the lowest SE and MDE (2.8 SE: 0.274 tract, 0.276 nbhd). Median permits per cell: tract 1 (monthly) to 3 (annual); nbhd 1 to 7. No tract-month cell has ≥5 permits.
+- Unweighted cells are sensitive to L (tract 0.457–0.615), as expected.
+- The share sample is saved to `dataProcessed/shareDiDPermits.rds` for permitLogitDiD.R.
+
+## 2026-11-16 — logitDiD (text/logitDiD.tex, text/logitDiDTable.tex; tab:LogitDiD, eq:LogitDiD) — CHECK
+
+- Script: `scripts/permitLogitDiD.R`. Permit level, same sample (1,389 tract / 1,404 nbhd permits), 12-month period FE, clustered by area.
+- LPM: area FE 0.452 / 0.418 (same as the cell estimates; permit-level SEs differ in the third decimal from the small-sample adjustment). ppsf control instead of area FE: 0.458 (0.092) / 0.407 (0.096); WCR p ≤ 0.001.
+- Logit, area FE: 2.387 (0.553) tract, 2.265 (0.506) nbhd (1 nbhd dropped, all one product; N = 1,400). ppsf control: 2.405 (0.440) / 2.171 (0.458); ppsf level −2.59 / −2.45. Conditional logit (exact, model-based SE; robust variance isn't available with exact): 2.305 (0.608) / 2.210 (0.590). Odds ratio at the W−E gap: 2.66 / 2.35, vs 2.49 for the unconditional 2×2.
+- Monte Carlo (1,000 draws, actual design, area/period effects from the FE logit, true β = clogit estimate): FE logit mean 2.381 vs 2.305 (+3%) tract and 2.274 vs 2.210 (+3%) nbhd; clogit 2.300 / 2.217 (unbiased); ppsf-control logit 2.316 / 2.129 (−4% nbhd, attenuated by omitted area heterogeneity). MC SD of the FE logit is 0.655 / 0.600, vs clustered SEs of 0.553 / 0.506.
+- Why CHECK: the clustered logit SEs understate sampling variability by about 15–20% on this design; there's no wild bootstrap for the logit (a score bootstrap would be the next step). Inherits the ShareDiD caveats (right-censored last period, linking).
+- Refs added to CLAUDE.bib: NeymanScott1948, Chamberlain1980, Greene2004, HahnNewey2004, FernandezValWeidner2016, Katz2001, AiNorton2003, Puhani2012.

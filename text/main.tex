@@ -15,6 +15,7 @@
 \input{permitTrends}
 \input{elasPremium}
 \input{shareDiD}
+\input{logitDiD}
 
 
 \begin{document}
@@ -242,6 +243,31 @@ Table \ref{tab:ShareDiD} shows the results of estimating \eqref{eq:ShareDiD} at 
 \end{table}
 
 Figures \ref{fig:tractPPSF} and \ref{fig:neighbourhoodPPSF} show a discrete difference in price levels between the East and West sides, and Figure \ref{fig:permitTrends} a corresponding difference in duplex take-up. Aggregating to the side level with no controls, across \ewN{} permits (the latest on each lot in each era), the duplex share of single family and duplex permits rose \ewDiD{} percentage points more on the West Side than on the East Side after the 2023 reform (standard error \ewDiDSE, \ewDiDP). Equivalently, the ratio of the West Side to the East Side odds ratio for a duplex after versus before the reform is \ewOddsRatio{} (Woolf $\chi^{2}(1) = \ewChiSq$, \ewChiSqP).
+
+The periods $t$ in \eqref{eq:ShareDiD} need not be years. Because cells are weighted by their number of permits, the estimate is the permit-level linear probability coefficient with area and period fixed effects for any period length, so thin cells do not bias it; shorter periods change only the time effects and use up degrees of freedom. Table \ref{tab:ShareDiDPeriods} re-estimates columns 1 and 4 of Table \ref{tab:ShareDiD} with periods of 1, 3, 6 and 12 months. With monthly periods the median tract-month cell has \sdMonthMedPermits{} permit and \sdMonthShareFive\% of cells have at least five, against a median of \sdYearMedPermits{} permits per tract-year cell. The coefficient barely moves (\sdBRangeTract{} across tracts, \sdBRangeNbhd{} across neighbourhoods), and annual periods give the smallest standard errors (the range is \sdSeRangeTract{} across tracts and \sdSeRangeNbhd{} across neighbourhoods) and hence the smallest minimum detectable effect, so we keep annual periods. Unweighted cell regressions, which give a one-permit cell the same weight as a twenty-permit cell, are more sensitive to the period length (\sdUnwRangeTract{} across tracts).
+
+\begin{table}[htbp]
+	\centering
+	\caption{\label{tab:ShareDiDPeriods}Equation \ref{eq:ShareDiD} with different period lengths, base specification (columns 1 and 4 of Table \ref{tab:ShareDiD}). Weighted: cells weighted by permits, standard errors clustered by area, wild cluster restricted bootstrap $p$-values in brackets. MDE: minimum detectable effect at 80\% power and 5\% two-sided size, 2.8 standard errors. Unweighted: each cell weighted equally.}
+	\resizebox{\textwidth}{!}{\input{shareDiDPeriods}}
+\end{table}
+
+Table \ref{tab:LogitDiD} estimates the analogous difference in differences at the lot level. The outcome is an indicator that a new-build permit is for a duplex rather than a single family home:
+
+\begin{equation}
+	\label{eq:LogitDiD}
+	\Pr(\text{Duplex}_{ijt} = 1) = \Lambda\left(\alpha + \beta_{1} Post 2023 \times ppsf_{j} + \beta_{2}D_{t} + \beta_{3}D_{j}\right),
+\end{equation}
+
+where $\Lambda$ is the logistic function. The logit coefficient on the interaction is \lgTractFE{} (standard error \lgTractFESE) with tract fixed effects and \lgNbhdFE{} (\lgNbhdFESE) with neighbourhood fixed effects. At the West minus East gap in log price per square foot, these imply that the reform multiplied the odds of a duplex on the West Side relative to the East Side by \lgTractOR{} and \lgNbhdOR, close to the unconditional ratio of odds ratios of \ewOddsRatio{} above. In a nonlinear model the interaction coefficient is not the cross-partial effect on the probability \parencite{AiNorton2003}, but in a difference-in-differences design its sign is the sign of the treatment effect \parencite{Puhani2012}.
+
+Two small-sample concerns arise. First, maximum likelihood with area dummies suffers from the incidental parameters problem \parencite{NeymanScott1948}: with few observations per area, the fixed effect logit coefficient is biased away from zero \parencite{Katz2001,Greene2004}, with bias of order $1/T$ for $T$ observations per group \parencite{HahnNewey2004,FernandezValWeidner2016}. We have about \lgPermitsPerTract{} permits per tract and \lgPermitsPerNbhd{} per neighbourhood. The conditional logit \parencite{Chamberlain1980} conditions the area effects out of the likelihood and is consistent for fixed $T$; it gives \lgTractCL{} and \lgNbhdCL{} (panel C). In a Monte Carlo of \lgNSim{} samples drawn from the estimated logit on our actual design, with the true coefficient set to the conditional logit estimate, the fixed effect logit is biased upward by \lgSimBiasFETract\% (tracts) and \lgSimBiasFENbhd\% (neighbourhoods), while the conditional logit is essentially unbiased (mean \lgSimCLTract{} against a true \lgSimTrueTract{} for tracts, \lgSimCLNbhd{} against \lgSimTrueNbhd{} for neighbourhoods). The clustered standard errors of the fixed effect logit are smaller than the Monte Carlo standard deviation of the estimator (\lgSimSdFETract{} and \lgSimSdFENbhd), consistent with few clusters, so the logit $p$-values in Table \ref{tab:LogitDiD} should be read with some caution. Second, area fixed effects are themselves estimated from few permits. Columns 2 and 4 replace them with the area's log price per square foot as a control. The interaction is essentially unchanged: \lpTractCtl{} (\lpTractCtlP) and \lpNbhdCtl{} (\lpNbhdCtlP) in the linear probability model, \lgTractCtl{} and \lgNbhdCtl{} in the logit. The coefficient on the price level itself is negative, reflecting the lower duplex share in pricier areas before the reform.
+
+\begin{table}[htbp]
+	\centering
+	\caption{\label{tab:LogitDiD}Lot-level difference in differences (equation \ref{eq:LogitDiD}): duplex versus single family new-build permits on 33' lots now zoned R1, September 2018 to November 2026, with twelve-month period fixed effects. Fixed effects columns include area fixed effects; ppsf control columns replace them with the area's log price per square foot. Standard errors clustered by area in parentheses (model-based for the conditional logit); $^{*}$, $^{**}$, $^{***}$: significant at 10, 5, 1\%. Wild cluster restricted bootstrap $p$-values use \sdNBoot{} draws with Webb weights. Odds ratio: $\exp(\beta_{1}\times$ West minus East gap in mean log ppsf). The neighbourhood fixed effect logit drops \lgNbhdAreasDropped{} neighbourhood in which every permit is for the same product.}
+	\input{logitDiDTable}
+\end{table}
 
 The regression of interest in OLS form is confined to single family or duplex new build permits\footnote{New builds are identified as either a permit for a new structure or for any permit above a certain threshold percentile in dollar cost of the permitted work. Inclusion of the latter is important as the definition of ``new build'' is not clear, and yadda yadda.}
 
