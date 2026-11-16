@@ -9,6 +9,7 @@
 \newcommand{\fact}[1]{\textcolor{red}{[#1]}}
 \input{duplexStock2018}
 \input{institutionalFacts}
+\input{multiplexLotWidth}
 
 
 \begin{document}
@@ -164,7 +165,7 @@ To estimate a price per square foot at the census tract or neighbourhood level, 
 	\log \text{ppsf}_{ijt} = \alpha + \sum_{t}\beta_{t}I_{t} + \beta \log \text{effective year}_{i} + \sum_{j}\gamma_{j}I_{j} + \epsilon_{ijt}
 \end{equation}
 
-ppsf is the price per square foot (main building total built area). We estimate these for single family transactions in zones now R1 for the years 2012 through 2021. Figure \ref{fig:tractPPSF} plots these estimates at the tract level with (horizontal axis) and without (vertical axis) the effective year control. The points are shaded with darker shades further east and lighter shades further west. Figure \ref{fig:neighbourhoodPPSF} is at the neighbourhood level. All of these estimates are for 33' lots, the focus of our empirical analysis. We choose 33' lots because \fact{What percent} of R1 lots are (rounded) 33' wide and because \fact{difference in fraction of permits going to multiplex after 2023 on 33' versus larger lots.}
+ppsf is the price per square foot (main building total built area). We estimate these for single family transactions in zones now R1 for the years 2012 through 2021. Figure \ref{fig:tractPPSF} plots these estimates at the tract level with (horizontal axis) and without (vertical axis) the effective year control. The points are shaded with darker shades further east and lighter shades further west. Figure \ref{fig:neighbourhoodPPSF} is at the neighbourhood level. All of these estimates are for 33' lots, the focus of our empirical analysis. We choose 33' lots because \lotShareThirtyThreeRone\% of R1 lots are (rounded) 33' wide and because, among new building permits issued since 2024, multiplexes are \mplxShareThirtyThree\% of new builds on 33' lots versus \mplxShareWider\% on larger lots \parencite{BCAssessment2019,COVdata}.
 
 \fact{Please estimate these regressions restricted to 33' lots and make the plots with names.png.}
 

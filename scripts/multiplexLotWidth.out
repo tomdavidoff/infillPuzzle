@@ -98,3 +98,14 @@ Key: <widthBin>
 
 baseline: share of 2018 R1-1 SFD lots that are 33: 0.537 
 latest issue date in data: 2026-11-13 
+      r33     N    mx     share
+   <lgcl> <int> <int>     <num>
+1:  FALSE   686   219 0.3192420
+2:   TRUE   531   123 0.2316384
+\newcommand{\lotShareThirtyThreeRone}{44}
+\newcommand{\lotsRoneSFD}{58,004}
+\newcommand{\mplxShareThirtyThree}{23}
+\newcommand{\mplxShareWider}{32}
+\newcommand{\mplxShareGap}{9}
+\newcommand{\mplxNewBuildsThirtyThree}{531}
+\newcommand{\mplxNewBuildsWider}{686}
