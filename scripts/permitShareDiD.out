@@ -1,0 +1,158 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+    beta  reps      meanEst  rejBoot05 rejCluster05
+   <num> <int>        <num>      <num>        <num>
+1:   0.0  1500 -0.001990016 0.06333333        0.084
+2:   0.5   500  0.505354162 0.86000000        0.928
+33-ft single+duplex new builds, latest per lot x era: 1405 (duplex era 1068, R1-1 era 337)
+lots with >1 BCA neighbourhood: 0 
+lots without tract: 0  without neighbourhood: 0 
+Key: <per>
+     per     N dupShare       from         to
+   <num> <int>    <num>     <IDat>     <IDat>
+1:    -5   201    0.124 2018-09-18 2019-10-11
+2:    -4   133    0.331 2019-10-17 2020-10-15
+3:    -3   270    0.419 2020-10-20 2021-10-15
+4:    -2   307    0.469 2021-10-18 2022-10-14
+5:    -1   157    0.376 2022-11-02 2023-10-16
+6:     0   136    0.743 2023-10-17 2024-10-15
+7:     1   129    0.643 2024-10-18 2025-10-14
+8:     2    72    0.639 2025-10-17 2026-09-08
+CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
+CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
+CTUID: area has ppsf33 estimate (window)         165 ->    162 (lost 1.8%)
+NOTE: 23/0 fixed-effect singletons were removed (23 observations).
+nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
+nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
+nbhd: area has ppsf33 estimate (window)          165 ->    165 (lost 0.0%)
+NOTE: 3/0 fixed-effect singletons were removed (3 observations).
+
+==== base | areas 56 | cells 372 | permits 1389 | WCR p 0 
+       Estimate Std. Error  t value     Pr(>|t|)
+postX 0.4518882 0.09778284 4.621344 2.345624e-05
+attr(,"type")
+[1] "Clustered (area)"
+
+==== trend | areas 56 | cells 372 | permits 1389 | WCR p 0.03760376 
+          Estimate Std. Error   t value   Pr(>|t|)
+postX  0.430193938 0.19956258 2.1556844 0.03549988
+trendX 0.005802465 0.04582209 0.1266303 0.89969483
+attr(,"type")
+[1] "Clustered (area)"
+
+==== window | areas 29 | cells 58 | permits 128 | WCR p 0.3754375 
+       Estimate Std. Error   t value  Pr(>|t|)
+postX 0.3365509  0.3422973 0.9832122 0.3339231
+attr(,"type")
+[1] "Clustered (area)"
+
+==== base | areas 20 | cells 143 | permits 1404 | WCR p 0.00090009 
+       Estimate Std. Error  t value     Pr(>|t|)
+postX 0.4175996 0.09847412 4.240704 0.0004422893
+attr(,"type")
+[1] "Clustered (area)"
+
+==== trend | areas 20 | cells 143 | permits 1404 | WCR p 0.1549155 
+          Estimate Std. Error    t value  Pr(>|t|)
+postX   0.47437678 0.27860253  1.7027009 0.1049282
+trendX -0.01494403 0.05945213 -0.2513623 0.8042326
+attr(,"type")
+[1] "Clustered (area)"
+
+==== window | areas 16 | cells 32 | permits 161 | WCR p 0.610161 
+       Estimate Std. Error   t value Pr(>|t|)
+postX 0.2003966  0.3796514 0.5278436 0.605329
+attr(,"type")
+[1] "Clustered (area)"
+CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
+CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
+    Estimate   Std. Error      t value     Pr(>|t|) 
+0.5086984117 0.1169852843 4.3483965916 0.0000598052 
+nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
+nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
+   Estimate  Std. Error     t value    Pr(>|t|) 
+0.588869529 0.144030257 4.088512659 0.000625952 
+West-East mean ppsf gap: tract 0.411  nbhd 0.377 
+CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
+CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
+nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
+nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
+CTUID: area has ppsf33 estimate                 1345 ->   1331 (lost 1.0%)
+CTUID: area has ppsf33 estimate                 1345 ->   1331 (lost 1.0%)
+nbhd: area has ppsf33 estimate                  1345 ->   1344 (lost 0.1%)
+nbhd: area has ppsf33 estimate                  1345 ->   1344 (lost 0.1%)
+CTUID: area has ppsf33 estimate                 1356 ->   1342 (lost 1.0%)
+CTUID: area has ppsf33 estimate                 1356 ->   1342 (lost 1.0%)
+nbhd: area has ppsf33 estimate                  1356 ->   1355 (lost 0.1%)
+nbhd: area has ppsf33 estimate                  1356 ->   1355 (lost 0.1%)
+   cutoff  level     N         b         se
+   <char> <char> <int>     <num>      <num>
+1:      A  tract  1405 0.4518882 0.09778284
+2:      A   nbhd  1405 0.4175996 0.09847412
+3:      B  tract  1345 0.4688717 0.09977912
+4:      B   nbhd  1345 0.4583599 0.10520833
+5:      C  tract  1356 0.4480958 0.09764496
+6:      C   nbhd  1356 0.4416026 0.10136369
+Key: <side, post>
+     side  post     n     d         p
+   <char> <num> <int> <num>     <num>
+1:   East     0   704   310 0.4403409
+2:   East     1   175   123 0.7028571
+3:   West     0   364    75 0.2060440
+4:   West     1   162   107 0.6604938
+EW DiD 0.192 (SE 0.058, z 3.30, p 0.0010) | ratio of odds ratios 2.49, Woolf chi2(1) 10.78, p 0.0010 | logit coef 0.914
+   cutoff       did         se
+   <char>     <num>      <num>
+1:      A 0.1919336 0.05811292
+2:      B 0.2151245 0.05840092
+3:      C 0.2056897 0.05851914
+% generated by scripts/permitShareDiD.R; do not edit
+\begin{tabular}{lcccccc}
+\hline
+ & \multicolumn{3}{c}{Census tract} & \multicolumn{3}{c}{Neighbourhood} \\
+ & (1) & (2) & (3) & (4) & (5) & (6) \\
+\hline
+Post 2023 $\times$ log ppsf & $0.452^{***}$ & $0.430^{**}$ & $0.337$ & $0.418^{***}$ & $0.474$ & $0.200$ \\
+ & (0.098) & (0.200) & (0.342) & (0.098) & (0.279) & (0.380) \\
+\quad wild bootstrap $p$ & $<$0.001 & 0.038 & 0.375 & $<$0.001 & 0.155 & 0.610 \\
+Period $\times$ log ppsf &  & $0.006$ &  &  & $-0.015$ &  \\
+ &  & (0.046) &  &  & (0.059) &  \\
+\hline
+Window & full & full & $\pm$6 mo. & full & full & $\pm$6 mo. \\
+Areas & 56 & 56 & 29 & 20 & 20 & 16 \\
+Periods & 8 & 8 & 2 & 8 & 8 & 2 \\
+Area $\times$ period cells & 372 & 372 & 58 & 143 & 143 & 32 \\
+Permits & 1,389 & 1,389 & 128 & 1,404 & 1,404 & 161 \\
+Mean duplex share & 0.44 & 0.44 & 0.51 & 0.44 & 0.44 & 0.50 \\
+\hline
+\end{tabular}
+% generated by scripts/permitShareDiD.R; do not edit
+\newcommand{\sdTractB}{0.452}
+\newcommand{\sdTractSE}{0.098}
+\newcommand{\sdTractP}{$p<0.001$}
+\newcommand{\sdNbhdB}{0.418}
+\newcommand{\sdNbhdSE}{0.098}
+\newcommand{\sdNbhdP}{$p<0.001$}
+\newcommand{\sdTractTrendB}{0.430}
+\newcommand{\sdTractTrendP}{$p=0.038$}
+\newcommand{\sdNbhdTrendB}{0.474}
+\newcommand{\sdNbhdTrendP}{$p=0.155$}
+\newcommand{\sdTractWinB}{0.337}
+\newcommand{\sdTractWinP}{$p=0.375$}
+\newcommand{\sdNbhdWinB}{0.200}
+\newcommand{\sdNbhdWinP}{$p=0.610$}
+\newcommand{\sdWinPermits}{128}
+\newcommand{\sdNTract}{56}
+\newcommand{\sdNNbhd}{20}
+\newcommand{\sdNPermits}{1,389}
+\newcommand{\sdGapTract}{0.41}
+\newcommand{\sdGapNbhd}{0.38}
+\newcommand{\sdEffectGapTract}{19}
+\newcommand{\sdEffectGapNbhd}{16}
+\newcommand{\ewDiD}{19}
+\newcommand{\ewDiDSE}{5.8}
+\newcommand{\ewDiDP}{$p<0.001$}
+\newcommand{\ewOddsRatio}{2.49}
+\newcommand{\ewChiSq}{10.78}
+\newcommand{\ewChiSqP}{$p=0.001$}
+\newcommand{\ewN}{1,405}
+\newcommand{\sdNBoot}{9,999}

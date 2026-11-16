@@ -107,3 +107,17 @@
 ## 2026-11-15 — elasPpsfDupCor: West Side indicator added — CHECK
 
 - The table now includes a West Side dummy (lot longitude < −123.101). Tracts (15, 3 West): West vs lppsf 0.98, vs elas 0.48, vs premium −0.78. Nbhds (10, 2 West: Kitsilano, Marpole): 0.95, 0.37, −0.24. The tract premium correlation is essentially East vs West. Neighbourhoods: 10 have ≥10 duplex sales (8 have ≥45), but only 2 are West.
+
+## 2026-11-16 — shareDiD (text/shareDiD.tex, text/shareDiDTable.tex; tab:ShareDiD) — CHECK
+
+- Script: `scripts/permitShareDiD.R`. Eq. ShareDiD: duplex share of single+duplex new builds (rule A) on 33-ft 2018 SFD lots now R1-1, latest permit per lot × era (the same sample as the permitTrends map: 1,068 duplex era + 337 R1-1 era = 1,405). Cells = area × 12-month application period relative to 2023-10-17 (8 periods; the Sept 18 – Oct 16, 2018 fragment is merged into the first). ppsf_j = ppsf33 withEff FE. Area + period FE, weighted by permits per cell (equivalent to a permit-level LPM). Clustered by area; wild cluster restricted bootstrap p-values with Webb weights and 9,999 draws, computed by FWL demeaning (the coefficient matches feols to 1e-8).
+- Validation: 1,500 simulated 20-cluster panels with β=0: WCR rejects 6.3% at 5%, CR1 clustered rejects 8.4%; with β=0.5, mean estimate 0.505.
+- Tracts: β = 0.452 (SE 0.098, WCR p<0.001), 56 tracts, 1,389 permits (1.1% lost: tract has no ppsf33). Nbhd: 0.418 (0.098, WCR p<0.001), 20 nbhds, 1,404 permits.
+- + ppsf × linear period trend: tract 0.430 (0.200, p=0.038), nbhd 0.474 (0.279, WCR p=0.155); trend coefficients ≈0 (0.006, −0.015).
+- ±6 months: tract 0.337 (0.342, p=0.375; 29 identifying tracts, 128 permits); nbhd 0.200 (0.380, p=0.610; 16 nbhds, 161 permits). About half the window permits are in singleton areas.
+- Unweighted cells: tract 0.509 (0.117), nbhd 0.589 (0.144).
+- Cutoff sensitivity (base spec, tract / nbhd): A 0.452/0.418; B 0.469/0.458; C 0.448/0.442.
+- West−East mean log ppsf gap: 0.41 tract, 0.38 nbhd → implied relative West increase of 19 / 16 pp.
+- East/West 2×2, no controls: East 44.0% (N=704) → 70.3% (175); West 20.6% (364) → 66.0% (162). DiD +19.2 pp (SE 5.8, z 3.30, p 0.001); ratio of odds ratios 2.49, Woolf χ²(1) 10.78, p 0.001. DiD under B/C cutoffs: 21.5 / 20.6 pp.
+- Duplex share by period: −5 .12, −4 .33, −3 .42, −2 .47, −1 .38, 0 .74, 1 .64, 2 .64. The dip in the last pre-reform year could reflect applicants rushing single-family permits ahead of the FSR cut; this would also affect the ±6-month window.
+- Why CHECK: (1) the narrow-window estimates are positive but insignificant (few permits; possible anticipation). (2) The neighbourhood trend column is not significant. (3) The last period is right-censored (applied through 2026-09-08; unissued permits are missing). (4) The draft's "convergence in pricing" motivation for the trend term was not tested here; the trend coefficients are ≈0. (5) Inherits the permit-linking caveats.

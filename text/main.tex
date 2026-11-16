@@ -14,6 +14,7 @@
 \input{ppsf33}
 \input{permitTrends}
 \input{elasPremium}
+\input{shareDiD}
 
 
 \begin{document}
@@ -222,12 +223,32 @@ Both panels are confined to 33' lots and show the most recent permit on each lot
 
 After the reform, multiplexes were \mplxShareEastThirtyThree\% of new builds on 33' lots and \mplxShareEastFifty\% on 50' lots on the East Side (\mplxNEastThirtyThree{} and \mplxNEastFifty{} lots), and \mplxShareWestThirtyThree\% and \mplxShareWestFifty\% on the West Side (\mplxNWestThirtyThree{} and \mplxNWestFifty{} lots).
 
+
+\section{Regression analysis}
+
+To test whether the 2023 reform led to an increase in the share of duplex permits among R1 duplex and single family permits in more expensive neighbourhoods, we first estimate tract- and neighbourhood level difference in differences in shares:
+
+\begin{equation}
+	\label{eq:ShareDiD}
+	\frac{\text{Duplex}_{jt}}{\text{Duplex + Single}_{jt}} = \alpha + \beta_{1} Post 2023 \times ppsf_{j} + \beta_{2}D_{T} + \beta_{3}D_{j} + \epsilon_{ijt}
+\end{equation}
+
+Table \ref{tab:ShareDiD} shows the results of estimating \eqref{eq:ShareDiD} at the tract and neighbourhood levels for new-build single family and duplex permits on 33' lots now zoned R1 \parencite{COVdata,BCAssessment2019}. Periods $t$ are twelve-month windows of application date relative to the 2023 reform, $ppsf_{j}$ is the local log price per square foot from \eqref{eq:ppsfHedonic}, and cells are weighted by their number of permits, so that the estimates equal those of a permit-level linear probability model with the same fixed effects. The coefficient on the interaction term is positive and statistically significant: \sdTractB{} (standard error \sdTractSE) across \sdNTract{} tracts and \sdNbhdB{} (\sdNbhdSE) across \sdNNbhd{} neighbourhoods, indicating that the 2023 reform was associated with an increase in the share of duplex permits in more expensive neighbourhoods. Scaled by the West minus East gap in mean log price per square foot (\sdGapTract{} across tracts, \sdGapNbhd{} across neighbourhoods), the estimates imply a relative increase in the West Side duplex share of \sdEffectGapTract{} and \sdEffectGapNbhd{} percentage points. Standard errors are clustered at the tract and neighbourhood levels, respectively. There are \sdNNbhd{} neighbourhoods with R1 zoning and enough sales to estimate a price level, a small number of clusters for cluster-robust inference \parencite{CameronGelbachMiller2008,CameronMiller2015}, so we also report wild cluster restricted bootstrap $p$-values with the weights of \textcite{Webb2023}: \sdTractP{} for tracts and \sdNbhdP{} for neighbourhoods. Columns 2 and 5 add $ppsf_{j}$ times a linear period trend, as there has been convergence in pricing over time. The trend coefficients are close to zero, and the interaction coefficients are similar in magnitude (\sdTractTrendB{} and \sdNbhdTrendB) but less precisely estimated (\sdTractTrendP{} and \sdNbhdTrendP). The base specification includes the entire period from the September 2018 duplex approval through November 2026; because permits applied for but not yet issued are not in the data, the last period is incomplete. Columns 3 and 6 narrow the window to 6 months on either side of the 2023 reform. Only \sdWinPermits{} permits in tracts with permits on both sides of the reform date remain, and the estimates are positive but imprecise (\sdTractWinB, \sdTractWinP{} for tracts; \sdNbhdWinB, \sdNbhdWinP{} for neighbourhoods).
+
+\begin{table}[htbp]
+	\centering
+	\caption{\label{tab:ShareDiD}Duplex share of single family and duplex new-build permits on 33' lots now zoned R1, by area and twelve-month application period (equation \ref{eq:ShareDiD}), September 2018 to November 2026. All columns include area and period fixed effects; cells are weighted by permits. Standard errors clustered by area in parentheses; $^{*}$, $^{**}$, $^{***}$: significant at 10, 5, 1\% with clustered standard errors. Wild cluster restricted bootstrap $p$-values use \sdNBoot{} draws with Webb weights. Columns 3 and 6 use applications within 6 months of October 17, 2023; areas with permits on only one side drop out.}
+	\input{shareDiDTable}
+\end{table}
+
+Figures \ref{fig:tractPPSF} and \ref{fig:neighbourhoodPPSF} show a discrete difference in price levels between the East and West sides, and Figure \ref{fig:permitTrends} a corresponding difference in duplex take-up. Aggregating to the side level with no controls, across \ewN{} permits (the latest on each lot in each era), the duplex share of single family and duplex permits rose \ewDiD{} percentage points more on the West Side than on the East Side after the 2023 reform (standard error \ewDiDSE, \ewDiDP). Equivalently, the ratio of the West Side to the East Side odds ratio for a duplex after versus before the reform is \ewOddsRatio{} (Woolf $\chi^{2}(1) = \ewChiSq$, \ewChiSqP).
+
 The regression of interest in OLS form is confined to single family or duplex new build permits\footnote{New builds are identified as either a permit for a new structure or for any permit above a certain threshold percentile in dollar cost of the permitted work. Inclusion of the latter is important as the definition of ``new build'' is not clear, and yadda yadda.}
 
 \begin{equation}
 	I_{ijt}   = \alpha + \beta_{1} Post 2023 \times ppsf_{j} + \beta_{2}D_{T} + \beta_{3}D_{j} + \epsilon_{ijt} 
 \end{equation}
 
-% NOTE TO CLAUDE: more to come!
 
+% NOTE TO CLAUDE: more to come!
 \end{document}
