@@ -1,0 +1,2 @@
+- [vancouver.ca blocked](vancouver-ca-blocked.md) — City sites 403 to automated fetch; policy facts need PDFs from Tom
+- [New-build cutoff sensitivity](new-build-cutoff-sensitivity.md) — show permit shares under q95 non-new-build, q95 all, q33 new single+duplex cutoffs

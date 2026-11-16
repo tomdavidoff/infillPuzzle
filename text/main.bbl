@@ -19,6 +19,43 @@
 
 \refsection{0}
   \datalist[entry]{nyt/global//global/global/global}
+    \entry{AiNorton2003}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=1ccc2d4d2cb8e566d431552091eb3663}{%
+           family={Ai},
+           familyi={A\bibinitperiod},
+           given={Chunrong},
+           giveni={C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=4146bd10bd8287757605188ba3023777}{%
+           family={Norton},
+           familyi={N\bibinitperiod},
+           given={Edward\bibnamedelima C.},
+           giveni={E\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{bc82bf69ab8956b5fc997897dd56b9b7}
+      \strng{fullhash}{bc82bf69ab8956b5fc997897dd56b9b7}
+      \strng{fullhashraw}{bc82bf69ab8956b5fc997897dd56b9b7}
+      \strng{bibnamehash}{bc82bf69ab8956b5fc997897dd56b9b7}
+      \strng{authorbibnamehash}{bc82bf69ab8956b5fc997897dd56b9b7}
+      \strng{authornamehash}{bc82bf69ab8956b5fc997897dd56b9b7}
+      \strng{authorfullhash}{bc82bf69ab8956b5fc997897dd56b9b7}
+      \strng{authorfullhashraw}{bc82bf69ab8956b5fc997897dd56b9b7}
+      \field{sortinit}{A}
+      \field{sortinithash}{2f401846e2029bad6b3ecc16d50031e2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Economics Letters}
+      \field{number}{1}
+      \field{title}{Interaction Terms in Logit and Probit Models}
+      \field{volume}{80}
+      \field{year}{2003}
+      \field{pages}{123\bibrangedash 129}
+      \range{pages}{7}
+    \endentry
     \entry{AlmagoDomingues2025}{article}{}{}
       \name{author}{2}{}{%
         {{un=0,uniquepart=base,hash=aa6f436c3e26f2d998760c0eee9d4214}{%
@@ -194,6 +231,30 @@
       \verb 10.3386/w10865
       \endverb
     \endentry
+    \entry{BCAssessment2019}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=f675a527b14189e78481ba59aa9a2152}{%
+           family={{BC Assessment}},
+           familyi={B\bibinitperiod}}}%
+      }
+      \strng{namehash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{fullhash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{fullhashraw}{f675a527b14189e78481ba59aa9a2152}
+      \strng{bibnamehash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{authorbibnamehash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{authornamehash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{authorfullhash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{authorfullhashraw}{f675a527b14189e78481ba59aa9a2152}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Licensed data; roll reflects property condition as of 2018}
+      \field{title}{2019 Residential Inventory and Data Advice Extracts ({REVD19})}
+      \field{year}{2019}
+    \endentry
     \entry{Brueckner_1981}{article}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=475960db9d449cfe8f8ab1ecb8a46ff5}{%
@@ -361,6 +422,433 @@
       \endverb
       \keyw{Upzoning,affordability,land use regulation,housing supply}
     \endentry
+    \entry{CameronGelbachMiller2008}{article}{}{}
+      \name{author}{3}{}{%
+        {{un=0,uniquepart=base,hash=dab37900e0b3d1bbd6b945d99fef4b06}{%
+           family={Cameron},
+           familyi={C\bibinitperiod},
+           given={A.\bibnamedelimi Colin},
+           giveni={A\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=d037e69d793c2bd3f19e61d52dd15337}{%
+           family={Gelbach},
+           familyi={G\bibinitperiod},
+           given={Jonah\bibnamedelima B.},
+           giveni={J\bibinitperiod\bibinitdelim B\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=666ff5de6a44e31611322ad1b6ddf9d3}{%
+           family={Miller},
+           familyi={M\bibinitperiod},
+           given={Douglas\bibnamedelima L.},
+           giveni={D\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{8ab93612723c51a9a5e7e7030929186a}
+      \strng{fullhash}{8ab93612723c51a9a5e7e7030929186a}
+      \strng{fullhashraw}{8ab93612723c51a9a5e7e7030929186a}
+      \strng{bibnamehash}{8ab93612723c51a9a5e7e7030929186a}
+      \strng{authorbibnamehash}{8ab93612723c51a9a5e7e7030929186a}
+      \strng{authornamehash}{8ab93612723c51a9a5e7e7030929186a}
+      \strng{authorfullhash}{8ab93612723c51a9a5e7e7030929186a}
+      \strng{authorfullhashraw}{8ab93612723c51a9a5e7e7030929186a}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Review of Economics and Statistics}
+      \field{number}{3}
+      \field{title}{Bootstrap-Based Improvements for Inference with Clustered Errors}
+      \field{volume}{90}
+      \field{year}{2008}
+      \field{pages}{414\bibrangedash 427}
+      \range{pages}{14}
+    \endentry
+    \entry{CameronMiller2015}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=dab37900e0b3d1bbd6b945d99fef4b06}{%
+           family={Cameron},
+           familyi={C\bibinitperiod},
+           given={A.\bibnamedelimi Colin},
+           giveni={A\bibinitperiod\bibinitdelim C\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=666ff5de6a44e31611322ad1b6ddf9d3}{%
+           family={Miller},
+           familyi={M\bibinitperiod},
+           given={Douglas\bibnamedelima L.},
+           giveni={D\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{4812b38c4bb59442f6ac89330a8f3370}
+      \strng{fullhash}{4812b38c4bb59442f6ac89330a8f3370}
+      \strng{fullhashraw}{4812b38c4bb59442f6ac89330a8f3370}
+      \strng{bibnamehash}{4812b38c4bb59442f6ac89330a8f3370}
+      \strng{authorbibnamehash}{4812b38c4bb59442f6ac89330a8f3370}
+      \strng{authornamehash}{4812b38c4bb59442f6ac89330a8f3370}
+      \strng{authorfullhash}{4812b38c4bb59442f6ac89330a8f3370}
+      \strng{authorfullhashraw}{4812b38c4bb59442f6ac89330a8f3370}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Human Resources}
+      \field{number}{2}
+      \field{title}{A Practitioner's Guide to Cluster-Robust Inference}
+      \field{volume}{50}
+      \field{year}{2015}
+      \field{pages}{317\bibrangedash 372}
+      \range{pages}{56}
+    \endentry
+    \entry{Chamberlain1980}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=cadf3c0a01d3d0ed77596395b933c92b}{%
+           family={Chamberlain},
+           familyi={C\bibinitperiod},
+           given={Gary},
+           giveni={G\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{cadf3c0a01d3d0ed77596395b933c92b}
+      \strng{fullhash}{cadf3c0a01d3d0ed77596395b933c92b}
+      \strng{fullhashraw}{cadf3c0a01d3d0ed77596395b933c92b}
+      \strng{bibnamehash}{cadf3c0a01d3d0ed77596395b933c92b}
+      \strng{authorbibnamehash}{cadf3c0a01d3d0ed77596395b933c92b}
+      \strng{authornamehash}{cadf3c0a01d3d0ed77596395b933c92b}
+      \strng{authorfullhash}{cadf3c0a01d3d0ed77596395b933c92b}
+      \strng{authorfullhashraw}{cadf3c0a01d3d0ed77596395b933c92b}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Review of Economic Studies}
+      \field{number}{1}
+      \field{title}{Analysis of Covariance with Qualitative Data}
+      \field{volume}{47}
+      \field{year}{1980}
+      \field{pages}{225\bibrangedash 238}
+      \range{pages}{14}
+    \endentry
+    \entry{CoV2004Suites}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
+           family={{City of Vancouver}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {City of Vancouver}%
+      }
+      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \field{extraname}{1}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Public hearing March 25, 2004; verify}
+      \field{title}{Secondary Suites: Proposed Zoning By-law Amendments ({Policy Report}, Development and Building)}
+      \field{type}{techreport}
+      \field{year}{2004}
+      \verb{urlraw}
+      \verb https://council.vancouver.ca/20040325/ph2.pdf
+      \endverb
+      \verb{url}
+      \verb https://council.vancouver.ca/20040325/ph2.pdf
+      \endverb
+    \endentry
+    \entry{CoV2009Laneway}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
+           family={{City of Vancouver}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {City of Vancouver}%
+      }
+      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \field{extraname}{2}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{verify}
+      \field{title}{{EcoDensity}: Laneway Housing, Proposed Amendments to the Zoning and Development By-law ({Policy Report})}
+      \field{type}{techreport}
+      \field{year}{2009}
+      \verb{urlraw}
+      \verb https://council.vancouver.ca/20090616/documents/p3.pdf
+      \endverb
+      \verb{url}
+      \verb https://council.vancouver.ca/20090616/documents/p3.pdf
+      \endverb
+    \endentry
+    \entry{CoV2018DuplexAdmin}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
+           family={{City of Vancouver}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {City of Vancouver}%
+      }
+      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \field{extraname}{3}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradate}{1}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Duplex not permitted with laneway house; enacted October 30, 2018; verify}
+      \field{title}{Duplexes in {RS} Zones ({Administrative Report}, December 5, 2018)}
+      \field{type}{techreport}
+      \field{year}{2018}
+      \verb{urlraw}
+      \verb https://council.vancouver.ca/20181218/documents/a5.pdf
+      \endverb
+      \verb{url}
+      \verb https://council.vancouver.ca/20181218/documents/a5.pdf
+      \endverb
+    \endentry
+    \entry{CoV2018LanewayReview}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
+           family={{City of Vancouver}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {City of Vancouver}%
+      }
+      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \field{extraname}{4}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradate}{2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Documents the June 11, 2013 expansion to all RS zones; verify}
+      \field{title}{Laneway Housing Review ({Council Report})}
+      \field{type}{techreport}
+      \field{year}{2018}
+      \verb{urlraw}
+      \verb https://council.vancouver.ca/20180619/documents/rr1c.pdf
+      \endverb
+      \verb{url}
+      \verb https://council.vancouver.ca/20180619/documents/rr1c.pdf
+      \endverb
+    \endentry
+    \entry{CoV2018DuplexReport}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
+           family={{City of Vancouver}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {City of Vancouver}%
+      }
+      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \field{extraname}{5}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradate}{3}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Public hearing September 18--19, 2018; verify}
+      \field{title}{Making Room Housing Program: Duplexes in Most {RS} Zones ({Policy Report}, June 27, 2018)}
+      \field{type}{techreport}
+      \field{year}{2018}
+      \verb{urlraw}
+      \verb https://council.vancouver.ca/20180724/documents/p6.pdf
+      \endverb
+      \verb{url}
+      \verb https://council.vancouver.ca/20180724/documents/p6.pdf
+      \endverb
+    \endentry
+    \entry{CoV2019SuitesMemo}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
+           family={{City of Vancouver}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {City of Vancouver}%
+      }
+      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \field{extraname}{6}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{9}
+      \field{note}{verify}
+      \field{title}{Memo to Mayor and Council: Secondary Suite Program}
+      \field{type}{techreport}
+      \field{year}{2019}
+      \verb{urlraw}
+      \verb https://vancouver.ca/files/cov/2019-09-30-secondary-suite-program.pdf
+      \endverb
+      \verb{url}
+      \verb https://vancouver.ca/files/cov/2019-09-30-secondary-suite-program.pdf
+      \endverb
+    \endentry
+    \entry{CoV2023MissingMiddle}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
+           family={{City of Vancouver}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {City of Vancouver}%
+      }
+      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \field{extraname}{7}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradate}{1}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Public hearing September 14, 2023; effective October 17, 2023; verify}
+      \field{title}{By-law Amendments re: Missing Middle Housing and Simplifying Regulations in Low Density Areas}
+      \field{type}{techreport}
+      \field{year}{2023}
+      \verb{urlraw}
+      \verb https://council.vancouver.ca/20230914/documents/1.ZDBy-lawamendmentre.missingmiddlehousingandsimplifyingregulations.pdf
+      \endverb
+      \verb{url}
+      \verb https://council.vancouver.ca/20230914/documents/1.ZDBy-lawamendmentre.missingmiddlehousingandsimplifyingregulations.pdf
+      \endverb
+    \endentry
+    \entry{CoVRS1Schedule2023}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
+           family={{City of Vancouver}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {City of Vancouver}%
+      }
+      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \field{extraname}{8}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradate}{2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{4}
+      \field{note}{Sections 3.1.1.1 (duplex 0.70) and 3.2.1.1 (single detached 0.60, 0.70 conditional); text read, extract in data/policyDocs/rs1DistrictSchedule2023Apr.txt}
+      \field{title}{Zoning and Development By-law: {RS-1} District Schedule}
+      \field{type}{techreport}
+      \field{year}{2023}
+    \endentry
+    \entry{CoVR1Schedule}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
+           family={{City of Vancouver}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {City of Vancouver}%
+      }
+      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \field{extraname}{9}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{June 2026 consolidation; section 3.2.1.1. October 2023 text not checked; verify}
+      \field{title}{Zoning and Development By-law: {R1-1} District Schedule}
+      \field{type}{techreport}
+      \field{year}{2026}
+      \verb{urlraw}
+      \verb https://bylaws.vancouver.ca/zoning/zoning-by-law-district-schedule-r1-1.pdf
+      \endverb
+      \verb{url}
+      \verb https://bylaws.vancouver.ca/zoning/zoning-by-law-district-schedule-r1-1.pdf
+      \endverb
+    \endentry
     \entry{Couture_etal2024}{article}{}{}
       \name{author}{4}{}{%
         {{un=0,uniquepart=base,hash=7e04bb1f0a7962e508a41fa9d60186a1}{%
@@ -488,6 +976,43 @@
       \field{pages}{3486\bibrangedash 3503}
       \range{pages}{18}
     \endentry
+    \entry{FernandezValWeidner2016}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=00018206993be186898211545ed16048}{%
+           family={Fernández-Val},
+           familyi={F\bibinithyphendelim V\bibinitperiod},
+           given={Iván},
+           giveni={I\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=1e52e19eb33c58a542693bca33d64c5b}{%
+           family={Weidner},
+           familyi={W\bibinitperiod},
+           given={Martin},
+           giveni={M\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{56fc06696b5b07774001d13584973bc4}
+      \strng{fullhash}{56fc06696b5b07774001d13584973bc4}
+      \strng{fullhashraw}{56fc06696b5b07774001d13584973bc4}
+      \strng{bibnamehash}{56fc06696b5b07774001d13584973bc4}
+      \strng{authorbibnamehash}{56fc06696b5b07774001d13584973bc4}
+      \strng{authornamehash}{56fc06696b5b07774001d13584973bc4}
+      \strng{authorfullhash}{56fc06696b5b07774001d13584973bc4}
+      \strng{authorfullhashraw}{56fc06696b5b07774001d13584973bc4}
+      \field{sortinit}{F}
+      \field{sortinithash}{2638baaa20439f1b5a8f80c6c08a13b4}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Econometrics}
+      \field{number}{1}
+      \field{title}{Individual and Time Effects in Nonlinear Panel Models with Large {N}, {T}}
+      \field{volume}{192}
+      \field{year}{2016}
+      \field{pages}{291\bibrangedash 312}
+      \range{pages}{22}
+    \endentry
     \entry{GreenawayPhillips2023}{article}{}{}
       \name{author}{2}{}{%
         {{un=0,uniquepart=base,hash=59729c6d858774b827a926fa07614809}{%
@@ -534,6 +1059,37 @@
       \verb https://www.sciencedirect.com/science/article/pii/S0094119023000244
       \endverb
       \keyw{Upzoning,Land use regulations,Redevelopment,Housing construction,Housing affordability,Spillovers}
+    \endentry
+    \entry{Greene2004}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=ff48db8b859a0cf151a8c3d144db3aca}{%
+           family={Greene},
+           familyi={G\bibinitperiod},
+           given={William},
+           giveni={W\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{ff48db8b859a0cf151a8c3d144db3aca}
+      \strng{fullhash}{ff48db8b859a0cf151a8c3d144db3aca}
+      \strng{fullhashraw}{ff48db8b859a0cf151a8c3d144db3aca}
+      \strng{bibnamehash}{ff48db8b859a0cf151a8c3d144db3aca}
+      \strng{authorbibnamehash}{ff48db8b859a0cf151a8c3d144db3aca}
+      \strng{authornamehash}{ff48db8b859a0cf151a8c3d144db3aca}
+      \strng{authorfullhash}{ff48db8b859a0cf151a8c3d144db3aca}
+      \strng{authorfullhashraw}{ff48db8b859a0cf151a8c3d144db3aca}
+      \field{sortinit}{G}
+      \field{sortinithash}{32d67eca0634bf53703493fb1090a2e8}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Econometrics Journal}
+      \field{number}{1}
+      \field{title}{The Behaviour of the Maximum Likelihood Estimator of Limited Dependent Variable Models in the Presence of Fixed Effects}
+      \field{volume}{7}
+      \field{year}{2004}
+      \field{pages}{98\bibrangedash 119}
+      \range{pages}{22}
     \endentry
     \entry{GuMunro_2025}{report}{}{}
       \name{author}{2}{}{%
@@ -607,6 +1163,43 @@
       \field{pages}{1289\bibrangedash 1337}
       \range{pages}{49}
       \keyw{housing supply,land use regulation}
+    \endentry
+    \entry{HahnNewey2004}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=9f17ae9c1144a00e95dc36d6be53dccc}{%
+           family={Hahn},
+           familyi={H\bibinitperiod},
+           given={Jinyong},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=9c98526d9f1775b95096664c9cf0c633}{%
+           family={Newey},
+           familyi={N\bibinitperiod},
+           given={Whitney},
+           giveni={W\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{72f8df8da6bdc0b2b2fa2c60d2636be6}
+      \strng{fullhash}{72f8df8da6bdc0b2b2fa2c60d2636be6}
+      \strng{fullhashraw}{72f8df8da6bdc0b2b2fa2c60d2636be6}
+      \strng{bibnamehash}{72f8df8da6bdc0b2b2fa2c60d2636be6}
+      \strng{authorbibnamehash}{72f8df8da6bdc0b2b2fa2c60d2636be6}
+      \strng{authornamehash}{72f8df8da6bdc0b2b2fa2c60d2636be6}
+      \strng{authorfullhash}{72f8df8da6bdc0b2b2fa2c60d2636be6}
+      \strng{authorfullhashraw}{72f8df8da6bdc0b2b2fa2c60d2636be6}
+      \field{sortinit}{H}
+      \field{sortinithash}{23a3aa7c24e56cfa16945d55545109b5}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Econometrica}
+      \field{number}{4}
+      \field{title}{Jackknife and Analytical Bias Reduction for Nonlinear Panel Models}
+      \field{volume}{72}
+      \field{year}{2004}
+      \field{pages}{1295\bibrangedash 1319}
+      \range{pages}{25}
     \endentry
     \entry{HochmanPines_1980}{article}{}{}
       \name{author}{2}{}{%
@@ -689,6 +1282,37 @@
       \verb{doi}
       \verb 10.1257/mac.20170388
       \endverb
+    \endentry
+    \entry{Katz2001}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=04876457488b929bbbb58a01f6feb142}{%
+           family={Katz},
+           familyi={K\bibinitperiod},
+           given={Ethan},
+           giveni={E\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{04876457488b929bbbb58a01f6feb142}
+      \strng{fullhash}{04876457488b929bbbb58a01f6feb142}
+      \strng{fullhashraw}{04876457488b929bbbb58a01f6feb142}
+      \strng{bibnamehash}{04876457488b929bbbb58a01f6feb142}
+      \strng{authorbibnamehash}{04876457488b929bbbb58a01f6feb142}
+      \strng{authornamehash}{04876457488b929bbbb58a01f6feb142}
+      \strng{authorfullhash}{04876457488b929bbbb58a01f6feb142}
+      \strng{authorfullhashraw}{04876457488b929bbbb58a01f6feb142}
+      \field{sortinit}{K}
+      \field{sortinithash}{c02bf6bff1c488450c352b40f5d853ab}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Political Analysis}
+      \field{number}{4}
+      \field{title}{Bias in Conditional and Unconditional Fixed Effects Logit Estimation}
+      \field{volume}{9}
+      \field{year}{2001}
+      \field{pages}{379\bibrangedash 384}
+      \range{pages}{6}
     \endentry
     \entry{vonBergmannLauster}{misc}{}{}
       \name{author}{2}{}{%
@@ -923,6 +1547,43 @@
       \endverb
       \keyw{Land use regulations,housing supply}
     \endentry
+    \entry{NeymanScott1948}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=2e9a89bf0a1281de5b3c321d52d56b73}{%
+           family={Neyman},
+           familyi={N\bibinitperiod},
+           given={Jerzy},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=17eb01d640648507c62c5dedbeb9da51}{%
+           family={Scott},
+           familyi={S\bibinitperiod},
+           given={Elizabeth\bibnamedelima L.},
+           giveni={E\bibinitperiod\bibinitdelim L\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{60ab81fa3e32691c29aea1ca7db1fa47}
+      \strng{fullhash}{60ab81fa3e32691c29aea1ca7db1fa47}
+      \strng{fullhashraw}{60ab81fa3e32691c29aea1ca7db1fa47}
+      \strng{bibnamehash}{60ab81fa3e32691c29aea1ca7db1fa47}
+      \strng{authorbibnamehash}{60ab81fa3e32691c29aea1ca7db1fa47}
+      \strng{authornamehash}{60ab81fa3e32691c29aea1ca7db1fa47}
+      \strng{authorfullhash}{60ab81fa3e32691c29aea1ca7db1fa47}
+      \strng{authorfullhashraw}{60ab81fa3e32691c29aea1ca7db1fa47}
+      \field{sortinit}{N}
+      \field{sortinithash}{22369a73d5f88983a108b63f07f37084}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Econometrica}
+      \field{number}{1}
+      \field{title}{Consistent Estimates Based on Partially Consistent Observations}
+      \field{volume}{16}
+      \field{year}{1948}
+      \field{pages}{1\bibrangedash 32}
+      \range{pages}{32}
+    \endentry
     \entry{Peng2023}{unpublished}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=fd4d38b19189cf53b21f89f0443d2f51}{%
@@ -950,6 +1611,37 @@
       \field{title}{The Dynamics of Urban Development: Evidence from Land Use Reform in New York}
       \field{year}{2023}
       \keyw{Upzoning}
+    \endentry
+    \entry{Puhani2012}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=9ba4cd5770b2daef105d50a9b9e388b0}{%
+           family={Puhani},
+           familyi={P\bibinitperiod},
+           given={Patrick\bibnamedelima A.},
+           giveni={P\bibinitperiod\bibinitdelim A\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{9ba4cd5770b2daef105d50a9b9e388b0}
+      \strng{fullhash}{9ba4cd5770b2daef105d50a9b9e388b0}
+      \strng{fullhashraw}{9ba4cd5770b2daef105d50a9b9e388b0}
+      \strng{bibnamehash}{9ba4cd5770b2daef105d50a9b9e388b0}
+      \strng{authorbibnamehash}{9ba4cd5770b2daef105d50a9b9e388b0}
+      \strng{authornamehash}{9ba4cd5770b2daef105d50a9b9e388b0}
+      \strng{authorfullhash}{9ba4cd5770b2daef105d50a9b9e388b0}
+      \strng{authorfullhashraw}{9ba4cd5770b2daef105d50a9b9e388b0}
+      \field{sortinit}{P}
+      \field{sortinithash}{ff3bcf24f47321b42cb156c2cc8a8422}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Economics Letters}
+      \field{number}{1}
+      \field{title}{The Treatment Effect, the Cross Difference, and the Interaction Term in Nonlinear ``Difference-in-Differences'' Models}
+      \field{volume}{115}
+      \field{year}{2012}
+      \field{pages}{85\bibrangedash 87}
+      \range{pages}{3}
     \endentry
     \entry{Rollet_2025}{unpublished}{}{}
       \name{author}{1}{}{%
@@ -1125,6 +1817,104 @@
       \verb{doi}
       \verb 10.1086/257839
       \endverb
+    \endentry
+    \entry{COVdata}{url}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=1c6aafae6b42a475cca70c91c80b84cd}{%
+           family={Vancouver},
+           familyi={V\bibinitperiod},
+           given={City},
+           giveni={C\bibinitperiod},
+           givenun=0,
+           prefix={of},
+           prefixi={o\bibinitperiod},
+           prefixun=0}}%
+      }
+      \strng{namehash}{1c6aafae6b42a475cca70c91c80b84cd}
+      \strng{fullhash}{1c6aafae6b42a475cca70c91c80b84cd}
+      \strng{fullhashraw}{1c6aafae6b42a475cca70c91c80b84cd}
+      \strng{bibnamehash}{1c6aafae6b42a475cca70c91c80b84cd}
+      \strng{authorbibnamehash}{1c6aafae6b42a475cca70c91c80b84cd}
+      \strng{authornamehash}{1c6aafae6b42a475cca70c91c80b84cd}
+      \strng{authorfullhash}{1c6aafae6b42a475cca70c91c80b84cd}
+      \strng{authorfullhashraw}{1c6aafae6b42a475cca70c91c80b84cd}
+      \field{sortinit}{V}
+      \field{sortinithash}{afb52128e5b4dc4b843768c0113d673b}
+      \field{labeldatesource}{nodate}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{title}{Open Data Portal}
+      \verb{urlraw}
+      \verb https://opendata.vancouver.ca/pages/home/
+      \endverb
+      \verb{url}
+      \verb https://opendata.vancouver.ca/pages/home/
+      \endverb
+      \keyw{data,vancouver}
+    \endentry
+    \entry{vonBergmannMultiplex2025}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=b66ab2a47ae8fc244cde5bf373a23806}{%
+           family={{von Bergmann}},
+           familyi={v\bibinitperiod},
+           given={Jens},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{b66ab2a47ae8fc244cde5bf373a23806}
+      \strng{fullhash}{b66ab2a47ae8fc244cde5bf373a23806}
+      \strng{fullhashraw}{b66ab2a47ae8fc244cde5bf373a23806}
+      \strng{bibnamehash}{b66ab2a47ae8fc244cde5bf373a23806}
+      \strng{authorbibnamehash}{b66ab2a47ae8fc244cde5bf373a23806}
+      \strng{authornamehash}{b66ab2a47ae8fc244cde5bf373a23806}
+      \strng{authorfullhash}{b66ab2a47ae8fc244cde5bf373a23806}
+      \strng{authorfullhashraw}{b66ab2a47ae8fc244cde5bf373a23806}
+      \field{sortinit}{v}
+      \field{sortinithash}{afb52128e5b4dc4b843768c0113d673b}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{MountainMath blog}
+      \field{title}{Multiplex Reforms -- The Details Matter}
+      \field{year}{2025}
+      \verb{urlraw}
+      \verb https://doodles.mountainmath.ca/posts/2025-08-29-multiplex-reforms----the-details-matter/
+      \endverb
+      \verb{url}
+      \verb https://doodles.mountainmath.ca/posts/2025-08-29-multiplex-reforms----the-details-matter/
+      \endverb
+    \endentry
+    \entry{Webb2023}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=4ae2b24777e3b860e02219dc03481797}{%
+           family={Webb},
+           familyi={W\bibinitperiod},
+           given={Matthew\bibnamedelima D.},
+           giveni={M\bibinitperiod\bibinitdelim D\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{4ae2b24777e3b860e02219dc03481797}
+      \strng{fullhash}{4ae2b24777e3b860e02219dc03481797}
+      \strng{fullhashraw}{4ae2b24777e3b860e02219dc03481797}
+      \strng{bibnamehash}{4ae2b24777e3b860e02219dc03481797}
+      \strng{authorbibnamehash}{4ae2b24777e3b860e02219dc03481797}
+      \strng{authornamehash}{4ae2b24777e3b860e02219dc03481797}
+      \strng{authorfullhash}{4ae2b24777e3b860e02219dc03481797}
+      \strng{authorfullhashraw}{4ae2b24777e3b860e02219dc03481797}
+      \field{sortinit}{W}
+      \field{sortinithash}{4315d78024d0cea9b57a0c6f0e35ed0d}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Canadian Journal of Economics}
+      \field{number}{3}
+      \field{title}{Reworking Wild Bootstrap-Based Inference for Clustered Errors}
+      \field{volume}{56}
+      \field{year}{2023}
+      \field{pages}{839\bibrangedash 858}
+      \range{pages}{20}
     \endentry
     \entry{Wheaton77}{article}{}{}
       \name{author}{1}{}{%
