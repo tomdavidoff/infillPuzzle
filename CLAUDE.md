@@ -68,6 +68,20 @@ toward what the draft seems to expect; if it contradicts the text, say so.
 - Never commit data, except small docs in `data/policyDocs/`. Never push without asking.
 - Never change authorship, acknowledgements, or coauthor-written sections.
 
+## Conventions settled with Tom (Nov 2026; details in notes/factlog.md)
+
+- 33' lot = round(width) == 33; 50' = round(width) == 50. East/West = lot longitude vs Ontario St (−123.101).
+- Price samples: BCA 2019 extract only, sales 2012 to 2018-09-17 (before duplex approval); SFD on 33' lots now R1-1
+  (`vancouverPPSF33.R` saves the sample). Drop sales before year built and multi-folio conveyances.
+- Duplex sales: strata units only (non-strata records carry one unit's sqft at building price); any zone.
+- Permits: product rule from `vancouverPermitLogit.R` (drop infill/laneway; multiplex = Multiple Dwelling whose
+  description says multiplex and applied ≥ 2023-10-17). New build = New Building or any permit ≥ q95 of
+  non-new-build value; always also report cutoffs q95-all and q33 of new single+duplex (`multiplexLotWidth.R`).
+- Permit → 2018 lot linking lives in `multiplexLotWidth.R` (saves `dataProcessed/permitLotLinks.rds`): 2026 BCA
+  rollStart centroid, 2026/2019 civic address, then nearest same-street lot. Rebuild sf objects after merge().
+- Maps: keyless OSM tiles, faded (cartolight needs an API key), white background. Tract plots unlabeled.
+- vancouver.ca blocks automated fetches; ask Tom for PDFs (data/policyDocs/ if < 200 KB).
+
 # Reporting
 
 For every fact, append an entry to `notes/factlog.md`:
