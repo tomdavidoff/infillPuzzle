@@ -1,6 +1,9 @@
 # multiplexLotWidth.R
-# New-building permits issued 2024+, matched to 2018 single-family lots in R1-1 (BCA 2019 roll):
-# share of multiplexes on 33-ft lots, and multiplex share of new builds by lot width.
+# New-building permits (all issued 2017+) linked to 2018 single-family lots in R1-1 (BCA 2019 roll); links saved for
+# vancouverPermitMap.R. Share of 2024+ multiplexes on 33-ft lots, multiplex share of new builds by lot width, and
+# post-reform (applied on/after R1-1 start) multiplex share on 33 vs 50 ft lots, East and West.
+# Products as in vancouverPermitLogit.R: drop infill/laneway categories; single = single detached, duplex = duplex.
+# New build = New Building, or any permit type at/above the 95th pct value of non-new-build principal permits.
 # Multiplex = "Multiple Dwelling" whose description says multiplex (or two-unit front/rear building), applied on/after R1-1 start;
 # other "Multiple Dwelling" (apartments, townhouses, rebuilt multifamily) is kept as otherMultiple and excluded from shares.
 # Tom Davidoff 11/15/26
@@ -10,7 +13,10 @@ library(sf)
 library(RSQLite)
 
 MATCHDIST <- 5      # m, permit point to 2018 SFD centroid (as in vancouverR1FSRDate.R)
-YEAR_MIN  <- 2024
+YEAR_MIN  <- 2024     # issue-year floor for the 2024+ tables
+HIGHVAL_Q <- 0.95      # high-value non-new-build permits count as new builds
+ONT       <- -123.101 # Ontario St: East/West divide
+fLinks    <- "~/DropboxExternal/dataProcessed/permitLotLinks.rds"
 STREETDIST <- 30     # m, street-side geocode search radius
 ADDRDIST  <- 60     # m, max permit-to-lot distance for an address match (E/W ambiguity, street-side geocodes)
 fPermit   <- "~/DropboxExternal/dataRaw/vancouverIssuedBuildingPermits.csv"
@@ -50,15 +56,25 @@ dtP <- fread(fPermit)
 setnames(dtP, tolower(names(dtP)))
 stopifnot(!anyDuplicated(dtP$permitnumber))
 dtP[, issued := as.IDate(issuedate)]
-n0 <- nrow(dtP); dtP <- dtP[typeofwork == "New Building" & year(issued) >= YEAR_MIN]; lost(n0, nrow(dtP), "New Building, issued 2024+")
+dtP[, applied := as.IDate(permitnumbercreateddate)]
+dtP[, u := tolower(specificusecategory)]
+n0 <- nrow(dtP); dtP <- dtP[!grepl("infill|laneway", u)]; lost(n0, nrow(dtP), "drop infill/laneway categories")
+# new build = typed New Building, or any other permit type at/above the HIGHVAL_Q quantile of value among non-new-build
+# permits for the principal products (single / duplex / multiple dwelling)
+prin <- dtP[, grepl("multiplex|multiple dwelling|duplex|single detached|one-family|single family", u)]
+hvTh <- dtP[prin & typeofwork != "New Building", quantile(projectvalue, HIGHVAL_Q, na.rm = TRUE)]
+dtP[, highVal := typeofwork != "New Building" & projectvalue >= hvTh]
+cat(sprintf("high-value threshold (q%.2f of non-new-build principal permits): $%s\n", HIGHVAL_Q, format(hvTh, big.mark = ",")))
+print(dtP[prin & highVal == TRUE, .N, by = typeofwork])
+n0 <- nrow(dtP); dtP <- dtP[typeofwork == "New Building" | highVal]; lost(n0, nrow(dtP), "New Building or high-value permit")
 R1_START <- as.IDate("2023-10-17")
 dtP[, isMplx := grepl("multiplex|multi-plex|two-units (front|rear)", tolower(projectdescription)) &
                 as.IDate(permitnumbercreateddate) >= R1_START]
 print(dtP[grepl("Multiple Dwelling", specificusecategory), .N, by = .(multiplexByDescAndDate = isMplx)])
-dtP[, product := fcase(grepl("Multiple Dwelling", specificusecategory) & isMplx, "multiplex",
-                       grepl("Multiple Dwelling", specificusecategory), "otherMultiple",
-                       grepl("Duplex",            specificusecategory), "duplex",
-                       grepl("Single",            specificusecategory), "single",
+dtP[, product := fcase(grepl("multiplex|multiple dwelling", u) & isMplx, "multiplex",
+                       grepl("multiplex|multiple dwelling", u), "otherMultiple",
+                       grepl("duplex", u), "duplex",
+                       grepl("single detached|one-family|single family", u), "single",
                        default = NA_character_)]
 print(dtP[is.na(product), .N, by = specificusecategory][order(-N)][1:8])
 n0 <- nrow(dtP); dtP <- dtP[!is.na(product) & geo_point_2d != ""]; lost(n0, nrow(dtP), "principal product, geocoded")
@@ -134,11 +150,14 @@ dtP[how == "streetNear", rollStart := rollSt]
 print(dcast(dtP[, .N, by = .(product, how)], product ~ how, fill = 0))
 n0 <- nrow(dtP); dtP <- dtP[!is.na(rollStart)]; lost(n0, nrow(dtP), "matched to 2018 R1-1 SFD lot")
 print(dtP[, .N, by = product])
-n0 <- nrow(dtP); dtP <- dtP[order(rollStart, -issued)][, .SD[1], by = rollStart]; lost(n0, nrow(dtP), "latest permit per lot")
+links <- merge(dtP[, .(permitnumber, rollStart, product, applied, issued, how, gapSt, highVal, typeofwork, projectvalue, pLon = lon, pLat = lat)],
+               dtS[, .(rollStart, landWidth, lotLon = longitude, lotLat = latitude)], by = "rollStart")
+stopifnot(nrow(links) == nrow(dtP), !anyDuplicated(links$permitnumber))
+saveRDS(links, fLinks)
 
-n0 <- nrow(dtP)
-dt <- merge(dtP[, .(rollStart, product, issued, how, gapSt)], dtS[, .(rollStart, landWidth)], by = "rollStart")
-stopifnot(nrow(dt) == n0, !anyDuplicated(dt$rollStart))
+n0 <- nrow(links); dt <- links[year(issued) >= YEAR_MIN]; lost(n0, nrow(dt), "issued 2024+")
+n0 <- nrow(dt); dt <- dt[order(rollStart, -issued)][, .SD[1], by = rollStart]; lost(n0, nrow(dt), "latest permit per lot")
+stopifnot(!anyDuplicated(dt$rollStart))
 dt[, widthBin := fcase(landWidth > 30 & landWidth <= 36, "33",
                        landWidth > 36 & landWidth <= 41, "37-41",
                        landWidth > 41 & landWidth <= 50, "42-50",
@@ -161,6 +180,15 @@ print(dcast(dt[product != "otherMultiple", .N, by = .(widthBin, product)], width
 cat("\nbaseline: share of 2018 R1-1 SFD lots that are 33:", round(dtS[, mean(landWidth > 30 & landWidth <= 36)], 3), "\n")
 cat("latest issue date in data:", format(max(dtP$issued)), "\n")
 
+# ---- post-reform (applied on/after R1-1 start): multiplex share of new builds, 33 vs 50 ft, East vs West ----
+pr <- links[applied >= R1_START & product != "otherMultiple"][order(rollStart, -issued)][, .SD[1], by = rollStart]
+pr[, w := fcase(round(landWidth) == 33, "33", round(landWidth) == 50, "50", default = NA_character_)]
+pr[, side := fifelse(lotLon < ONT, "West", "East")]
+ew <- pr[!is.na(w), .(N = .N, mx = sum(product == "multiplex"), dup = sum(product == "duplex")), keyby = .(side, w)][, share := mx / N]
+print(ew)
+stopifnot(nrow(ew) == 4)
+cat("post-reform lots counted via high-value non-new-build permits:\n"); print(pr[, .N, by = .(product, highVal)])
+
 # ---- macros for the draft: rounded-33 lots, multiplex share of new builds on 33s vs wider ----
 lotShare33 <- dtS[, mean(round(landWidth) == 33)]
 dt[, r33 := round(landWidth) == 33]
@@ -168,12 +196,16 @@ mx <- dt[product != "otherMultiple" & round(landWidth) >= 33, .(N = .N, mx = sum
 print(mx)
 stopifnot(nrow(mx) == 2)
 mac <- c(
+  sprintf("\\newcommand{\\newBuildValueQuantile}{%.0f}", 100 * HIGHVAL_Q),
+  sprintf("\\newcommand{\\newBuildValueThreshold}{%s}", formatC(hvTh, format = "d", big.mark = ",")),
   sprintf("\\newcommand{\\lotShareThirtyThreeRone}{%.0f}", 100 * lotShare33),
   sprintf("\\newcommand{\\lotsRoneSFD}{%s}", formatC(nrow(dtS), format = "d", big.mark = ",")),
   sprintf("\\newcommand{\\mplxShareThirtyThree}{%.0f}", 100 * mx[r33 == TRUE, share]),
   sprintf("\\newcommand{\\mplxShareWider}{%.0f}", 100 * mx[r33 == FALSE, share]),
   sprintf("\\newcommand{\\mplxShareGap}{%.0f}", 100 * (mx[r33 == FALSE, share] - mx[r33 == TRUE, share])),
   sprintf("\\newcommand{\\mplxNewBuildsThirtyThree}{%s}", formatC(mx[r33 == TRUE, N], format = "d", big.mark = ",")),
-  sprintf("\\newcommand{\\mplxNewBuildsWider}{%s}", formatC(mx[r33 == FALSE, N], format = "d", big.mark = ",")))
+  sprintf("\\newcommand{\\mplxNewBuildsWider}{%s}", formatC(mx[r33 == FALSE, N], format = "d", big.mark = ",")),
+  ew[, sprintf("\\newcommand{\\mplxShare%s%s}{%.0f}", side, fifelse(w == "33", "ThirtyThree", "Fifty"), 100 * share)],
+  ew[, sprintf("\\newcommand{\\mplxN%s%s}{%s}", side, fifelse(w == "33", "ThirtyThree", "Fifty"), formatC(N, format = "d", big.mark = ","))])
 writeLines(c("% generated by scripts/multiplexLotWidth.R; do not edit", mac), "../text/multiplexLotWidth.tex")
 cat(mac, sep = "\n")

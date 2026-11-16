@@ -3,60 +3,70 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 one lot per rollStart                     67794 ->  67785 (lost 0.0%)
 in R1-1                                   67785 ->  58004 (lost 14.4%)
 2018 R1-1 lots with an address key: 1 | keys shared by >1 lot (E/W): 1219 
-New Building, issued 2024+                52683 ->   3194 (lost 93.9%)
+drop infill/laneway categories            52683 ->  48085 (lost 8.7%)
+high-value threshold (q0.95 of non-new-build principal permits): $340,000
+                             typeofwork     N
+                                 <char> <int>
+1:                Addition / Alteration  1147
+2:          Demolition / Deconstruction    31
+3:       Temporary Building / Structure     3
+4: Outdoor Uses (No Buildings Proposed)     1
+5:                Salvage and Abatement     1
+New Building or high-value permit         48085 ->  12121 (lost 74.8%)
    multiplexByDescAndDate     N
                    <lgcl> <int>
-1:                  FALSE   183
+1:                  FALSE  1555
 2:                   TRUE   615
-                           specificusecategory     N
-                                        <char> <int>
-1:                               Laneway House   968
-2:                               Dwelling Unit    31
-3:                                   Apartment    30
-4:                                   Townhouse    25
-5: Mixed-Use Residential Building,Retail Store    11
-6:                                      Infill    10
-7:                         Apartment,Townhouse     9
-8:                        Public Authority Use     7
-principal product, geocoded                3194 ->   1982 (lost 37.9%)
+            specificusecategory     N
+                         <char> <int>
+1:               General Office  1207
+2:                 Retail Store   288
+3:         Restaurant - Class 1   208
+4: Multiple Conversion Dwelling   160
+5:           Health Care Office   120
+6:                     Hospital   120
+7:                Dwelling Unit   114
+8:               Not Applicable    97
+principal product, geocoded               12121 ->   8185 (lost 32.5%)
          product     N near26 roll26in2018
           <char> <int>  <num>        <num>
-1:        single   545  0.828        0.710
-2:        duplex   646  0.879        0.633
-3: otherMultiple   182  0.176        0.011
+1:        single  4187  0.881        0.720
+2:        duplex  1858  0.855        0.543
+3: otherMultiple  1531  0.355        0.002
 4:     multiplex   609  0.534        0.455
          product     N address near5
           <char> <int>   <num> <num>
-1: otherMultiple   182   0.011 0.011
-2:        single   545   0.705 0.710
-3:        duplex   646   0.633 0.633
+1: otherMultiple  1531   0.002 0.002
+2:        single  4187   0.730 0.720
+3:        duplex  1858   0.543 0.543
 4:     multiplex   609   0.453 0.455
-address vs 5m agreement where both match: 1  N = 1070 
+address vs 5m agreement where both match: 0.999  N = 4258 
          product     N addr26 addr26in2018
           <char> <int>  <num>        <num>
-1: otherMultiple   182  0.775        0.060
-2:        single   545  0.930        0.752
-3:        duplex   646  0.952        0.661
+1: otherMultiple  1531  0.862        0.008
+2:        single  4187  0.976        0.770
+3:        duplex  1858  0.978        0.578
 4:     multiplex   609  0.691        0.593
-2026-address vs centroid agreement where both match: 0.999  N = 1070 
-street-nearest vs 2026 address, address-linked off-centroid permits: agree = 0.863  N = 139 
-rollStart vs address agreement where both match: 1  N = 1070 
+2026-address vs centroid agreement where both match: 0.999  N = 4270 
+street-nearest vs 2026 address, address-linked off-centroid permits: agree = 0.777  N = 400 
+rollStart vs address agreement where both match: 0.999  N = 4258 
 Using 'N' as value column. Use 'value.var' to override
 Key: <product>
-         product    NA address26 rollStart26 streetNear
-          <char> <int>     <int>       <int>      <int>
-1:        duplex   132        19         409         86
-2:     multiplex    36        85         277        211
-3: otherMultiple   135         9           2         36
-4:        single    82        26         387         50
-matched to 2018 R1-1 SFD lot               1982 ->   1597 (lost 19.4%)
+         product    NA address19 address26 rollStart26 streetNear
+          <char> <int>     <int>     <int>       <int>      <int>
+1:        duplex   543         1        69        1009        236
+2:     multiplex    36         0        85         277        211
+3: otherMultiple  1328         0         9           3        191
+4:        single   509         1       237        3014        426
+matched to 2018 R1-1 SFD lot               8185 ->   5769 (lost 29.5%)
          product     N
           <char> <int>
-1: otherMultiple    47
-2:        single   463
-3:        duplex   514
+1:        single  3678
+2: otherMultiple   203
+3:        duplex  1315
 4:     multiplex   573
-latest permit per lot                      1597 ->   1318 (lost 17.5%)
+issued 2024+                               5769 ->   1666 (lost 71.1%)
+latest permit per lot                      1666 ->   1389 (lost 16.6%)
 
 === share of 2024+ multiplexes by lot width ===
 Key: <widthBin>
@@ -90,22 +100,47 @@ Using 'N' as value column. Use 'value.var' to override
 Key: <widthBin>
    widthBin duplex multiplex single total multiplexShare
      <fctr>  <int>     <int>  <int> <int>          <num>
-1:     <=30      8         2     11    21          0.095
-2:       33    308       152    177   637          0.239
-3:    37-41     41        35     30   106          0.330
-4:    42-50     88        96    135   319          0.301
-5:      >50     45        65     96   206          0.316
+1:     <=30      8         2     10    20          0.100
+2:       33    308       152    203   663          0.229
+3:    37-41     41        35     36   112          0.312
+4:    42-50     88        96    146   330          0.291
+5:      >50     46        65    122   233          0.279
 
 baseline: share of 2018 R1-1 SFD lots that are 33: 0.537 
 latest issue date in data: 2026-11-13 
+Key: <side, w>
+     side      w     N    mx   dup     share
+   <char> <char> <int> <int> <int>     <num>
+1:   East     33   262    87   123 0.3320611
+2:   East     50    32    13    10 0.4062500
+3:   West     33   198    36   107 0.1818182
+4:   West     50   104    33    19 0.3173077
+post-reform lots counted via high-value non-new-build permits:
+     product highVal     N
+      <char>  <lgcl> <int>
+1:    duplex   FALSE   415
+2:    single    TRUE    69
+3:    single   FALSE   314
+4: multiplex   FALSE   350
+5:    duplex    TRUE     1
       r33     N    mx     share
    <lgcl> <int> <int>     <num>
-1:  FALSE   686   219 0.3192420
-2:   TRUE   531   123 0.2316384
+1:  FALSE   732   219 0.2991803
+2:   TRUE   550   123 0.2236364
+\newcommand{\newBuildValueQuantile}{95}
+\newcommand{\newBuildValueThreshold}{340,000}
 \newcommand{\lotShareThirtyThreeRone}{44}
 \newcommand{\lotsRoneSFD}{58,004}
-\newcommand{\mplxShareThirtyThree}{23}
-\newcommand{\mplxShareWider}{32}
-\newcommand{\mplxShareGap}{9}
-\newcommand{\mplxNewBuildsThirtyThree}{531}
-\newcommand{\mplxNewBuildsWider}{686}
+\newcommand{\mplxShareThirtyThree}{22}
+\newcommand{\mplxShareWider}{30}
+\newcommand{\mplxShareGap}{8}
+\newcommand{\mplxNewBuildsThirtyThree}{550}
+\newcommand{\mplxNewBuildsWider}{732}
+\newcommand{\mplxShareEastThirtyThree}{33}
+\newcommand{\mplxShareEastFifty}{41}
+\newcommand{\mplxShareWestThirtyThree}{18}
+\newcommand{\mplxShareWestFifty}{32}
+\newcommand{\mplxNEastThirtyThree}{262}
+\newcommand{\mplxNEastFifty}{32}
+\newcommand{\mplxNWestThirtyThree}{198}
+\newcommand{\mplxNWestFifty}{104}

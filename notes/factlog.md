@@ -68,3 +68,18 @@
 - Per Tom: keep the 2019 extract, but don't overlap the duplex period. Sales now 2012 to 2018-09-17 (council approval 2018-09-18, the same cutoff as `D_REFORM` in vancouverPermitLogit.R). The tract plot has no labels.
 - 5,822 sales (median $660/sqft); 5,750 in 56 tracts, 5,818 in 20 neighbourhoods. Log effective year 1.89 (SE 0.32) tract, 1.91 nbhd. With/without-control correlation still 1.00. West premium 56% tract, 59% nbhd; tract–nbhd cor 0.99.
 - Other CHECK points as in the previous entry.
+
+## 2026-11-15 — permit definitions; newBuildValueThreshold; mplxShare{East,West}{ThirtyThree,Fifty} (text/multiplexLotWidth.tex) — CHECK
+
+- Script: `scripts/multiplexLotWidth.R` now links all permits issued 2017+ and saves `dataProcessed/permitLotLinks.rds`.
+- Products per `vancouverPermitLogit.R`: drop categories containing infill/laneway (mainly "Infill Single Detached House", 176); single = single detached / one-family; duplex = duplex; multiple dwelling = multiplex only if the description says multiplex / "two-units front/rear" and it was applied ≥ 2023-10-17. Previously my rule used grepl("Single"), which wrongly counted infill single detached houses.
+- New build (per Tom): typeofwork "New Building", or any other permit type with value ≥ `\newBuildValueThreshold` $340,000 = q0.95 of value among non-new-build principal permits (`\newBuildValueQuantile`). Adds 1,147 Addition/Alteration, 31 Demolition, 3 Temporary. Post-reform it adds 69 single-family lots (large renovations) and 1 duplex. Tom's older getRelevantPermits.R used $125k (q0.75 of alterations), which would mostly add ordinary renovations.
+- Post-reform (applied ≥ 2023-10-17), latest permit per lot, share multiplex of single+duplex+multiplex: East 33-ft 33% (N=262), East 50-ft 41% (N=32), West 33-ft 18% (N=198), West 50-ft 32% (N=104). 50 = round(width) == 50; East/West by lot longitude vs Ontario St (−123.101).
+- The earlier macros moved with the new definitions: mplxShareThirtyThree 22 (550), mplxShareWider 30 (732), gap 8.
+- Why CHECK: East 50-ft N is small (32). Linking caveats as above.
+
+## 2026-11-15 — permitTrends (text/permitTrends.png, text/permitTrends.tex) — CHECK
+
+- Script: `scripts/vancouverPermitMap.R`. 33-ft lots only (round(width) == 33), plotted at the 2018 lot centroid, latest permit per lot within each era. Duplex era: applied 2018-09-18 to 2023-10-16 (1,068 lots). R1-1 era: applied ≥ 2023-10-17 (460 lots). Tiles: keyless OSM, faded (cartolight needs an API key under rosm 0.3.2).
+- Duplex share of single+duplex: East 44% → 70%, West 21% → 66%. This supports the draft's claim that West duplex take-up rose relative to East.
+- Why CHECK: R1-1-era permits are right-censored (applied but not yet issued by Nov 2026 are missing), and single-family counts are low in that era (52 East, 55 West).
