@@ -145,7 +145,28 @@ A zoning reform approved by council in \rOneCouncilMonth{} 2023 and effective \r
 
 \subsection{Testable hypothesis}
 
-The pure division effect of the 2018 allowance of duplex homes suggests that duplex homes should have been more prevalent in less expensive neighbourhoods (concentrated on the East Side, see \textcite{SanghoonDaryl}) with (relatively) less affluent buyers than in more expensive neighbourhoods. The 2023 reforms added an addition effect to building duplexes, as $F(2)>F(1)$ after 2023. This suggests a difference in difference analysis: duplexes should have been relatively more attractive after 2023 in more expensive neighbourhoods.
+The pure division effect of the 2018 allowance of duplex homes suggests that duplex homes should have been more prevalent in less expensive neighbourhoods (concentrated on the East Side, see \textcite{SanghoonDaryl}) with (relatively) less affluent buyers than in more expensive neighbourhoods. The 2023 reforms added an addition effect to building duplexes, as $F(2)>F(1)$ after 2023. This suggests a difference in difference analysis: duplexes should have been relatively more attractive than single family homes after 2023 in more expensive neighbourhoods. 
+
+This suggests a difference-in-differences structure with a dependent variable measuring whether a building permit is for a duplex or single family home and the right hand side interaction of interest price level times a dummy for the permit being issued after the 2023 reform. The natural universe is permits granted after the 2018 reform in R1. Confining the analysis to single family and duplex permits after the 2023 reform allowed multiplexes requires an irrelevance of independent alternatives assumption. These considerations are discussed in section \ref{sec:estimationData}  
+
+\section{\label{sec:estimationData}Estimation and data}
+
+We wish to estimate the effect of the 2023 reform on the relationship between neighbourhood price levels and the relative take-up of duplexes versus single family homes conditional on redevelopment.
+
+\subsection{Local home prices}
+
+From B.C. Assessment we have transaction-level data that includes the type of home, location (and hence census tract and neighbourhood), square footage, the year built and the ``effective'' year based on permitted improvements and observable building condition. A caveat to the effective year and year built is that for older transactions, the building may not yet have been subject to renovations made as of the date (2019) at which the observables are identified.
+
+To estimate a price per square foot at the census tract or neighbourhood level, we take the local coefficients for areas $j$ from a regression of the form:
+
+\begin{equation}
+	\label{eq:ppsfHedonic}
+	\log \text{ppsf}_{ijt} = \alpha + \sum_{t}\beta_{t}I_{t} + \beta \log \text{effective year}_{i} + \sum_{j}\gamma_{j}I_{j} + \epsilon_{ijt}
+\end{equation}
+
+ppsf is the price per square foot (main building total built area). We estimate these for single family transactions in zones now R1 for the years 2012 through 2021. Figure \ref{fig:tractPPSF} plots these estimates at the tract level with (horizontal axis) and without (vertical axis) the effective year control. The points are shaded with darker shades further east and lighter shades further west. Figure \ref{fig:neighbourhoodPPSF} is at the neighbourhood level. All of these estimates are for 33' lots, the focus of our empirical analysis. We choose 33' lots because \fact{What percent} of R1 lots are (rounded) 33' wide and because \fact{difference in fraction of permits going to multiplex after 2023 on 33' versus larger lots.}
+
+\fact{Please estimate these regressions restricted to 33' lots and make the plots with names.png.}
 
 That difference-in-differences is complicated by the presence of a third alternative, multiplexes, newly allowed in 2023. Assuming that errors in profits have a type 1 extreme value distribution in \eqref{eq:profit}, then the relative appeal of duplexes versus single family homes is unaffected by the presence of the multiplex option. We thus include in our analysis on the logit as well as OLS difference in differences. Either version requires parallel trends: absent the 2023 reform, the relationship between neighbourhood prices and duplex take-up would have continued on the path it followed between the two reforms. Whether multiplexes, granted more FSR, but further divided relative to duplexes, would be more or less attractive on more expensive lots is unclear.
 
