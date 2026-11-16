@@ -20,7 +20,7 @@ OUT      <- "../text/"
 
 lk <- readRDS(fLinks)
 stopifnot(!anyDuplicated(lk$permitnumber))
-n0 <- nrow(lk); lk <- lk[round(landWidth) == 33 & product != "otherMultiple"]
+n0 <- nrow(lk); lk <- lk[newBuild == TRUE & round(landWidth) == 33 & product != "otherMultiple"]
 cat(sprintf("33-ft lots, principal products: %d of %d linked permits\n", nrow(lk), n0))
 lk[, era := fcase(applied >= D_REFORM & applied < R1_START, "Duplex era: applied Sept 2018 to Oct 2023",
                   applied >= R1_START, "R1-1 era: applied from Oct 17, 2023", default = NA_character_)]

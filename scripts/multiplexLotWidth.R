@@ -62,11 +62,19 @@ n0 <- nrow(dtP); dtP <- dtP[!grepl("infill|laneway", u)]; lost(n0, nrow(dtP), "d
 # new build = typed New Building, or any other permit type at/above the HIGHVAL_Q quantile of value among non-new-build
 # permits for the principal products (single / duplex / multiple dwelling)
 prin <- dtP[, grepl("multiplex|multiple dwelling|duplex|single detached|one-family|single family", u)]
-hvTh <- dtP[prin & typeofwork != "New Building", quantile(projectvalue, HIGHVAL_Q, na.rm = TRUE)]
+# cutoff alternatives (main = A); every principal permit is linked, the rule is applied afterwards
+cutoffs <- c(A = dtP[prin & typeofwork != "New Building", quantile(projectvalue, HIGHVAL_Q, na.rm = TRUE)],
+             B = dtP[prin, quantile(projectvalue, HIGHVAL_Q, na.rm = TRUE)],
+             C = dtP[typeofwork == "New Building" & grepl("duplex|single detached|one-family|single family", u) &
+                     !grepl("multiple dwelling", u), quantile(projectvalue, 1/3, na.rm = TRUE)])
+names(cutoffs) <- c("A", "B", "C")
+cutLab <- c(A = "q95 of non-new-build principal permits (main)", B = "q95 of all principal permits",
+            C = "q33 of new-build single + duplex permits")
+for (k in names(cutoffs)) cat(sprintf("cutoff %s: $%s  (%s)\n", k, format(cutoffs[k], big.mark = ","), cutLab[k]))
+hvTh <- cutoffs["A"]
 dtP[, highVal := typeofwork != "New Building" & projectvalue >= hvTh]
-cat(sprintf("high-value threshold (q%.2f of non-new-build principal permits): $%s\n", HIGHVAL_Q, format(hvTh, big.mark = ",")))
 print(dtP[prin & highVal == TRUE, .N, by = typeofwork])
-n0 <- nrow(dtP); dtP <- dtP[typeofwork == "New Building" | highVal]; lost(n0, nrow(dtP), "New Building or high-value permit")
+n0 <- nrow(dtP); dtP <- dtP[typeofwork == "New Building" | projectvalue >= min(cutoffs)]; lost(n0, nrow(dtP), "New Building or value >= lowest cutoff")
 R1_START <- as.IDate("2023-10-17")
 dtP[, isMplx := grepl("multiplex|multi-plex|two-units (front|rear)", tolower(projectdescription)) &
                 as.IDate(permitnumbercreateddate) >= R1_START]
@@ -153,8 +161,12 @@ print(dtP[, .N, by = product])
 links <- merge(dtP[, .(permitnumber, rollStart, product, applied, issued, how, gapSt, highVal, typeofwork, projectvalue, pLon = lon, pLat = lat)],
                dtS[, .(rollStart, landWidth, lotLon = longitude, lotLat = latitude)], by = "rollStart")
 stopifnot(nrow(links) == nrow(dtP), !anyDuplicated(links$permitnumber))
-saveRDS(links, fLinks)
 
+isNB <- function(d, th) d$typeofwork == "New Building" | d$projectvalue >= th
+links[, newBuild := isNB(links, hvTh)]
+saveRDS(links, fLinks)
+linksAll <- links
+links <- linksAll[newBuild == TRUE]
 n0 <- nrow(links); dt <- links[year(issued) >= YEAR_MIN]; lost(n0, nrow(dt), "issued 2024+")
 n0 <- nrow(dt); dt <- dt[order(rollStart, -issued)][, .SD[1], by = rollStart]; lost(n0, nrow(dt), "latest permit per lot")
 stopifnot(!anyDuplicated(dt$rollStart))
@@ -188,6 +200,28 @@ ew <- pr[!is.na(w), .(N = .N, mx = sum(product == "multiplex"), dup = sum(produc
 print(ew)
 stopifnot(nrow(ew) == 4)
 cat("post-reform lots counted via high-value non-new-build permits:\n"); print(pr[, .N, by = .(product, highVal)])
+
+# ---- cutoff sensitivity: key shares under each new-build value cutoff ----
+sens <- rbindlist(lapply(names(cutoffs), function(k) {
+  L <- linksAll[isNB(linksAll, cutoffs[k]) & product != "otherMultiple"]
+  P <- L[applied >= R1_START][order(rollStart, -issued)][, .SD[1], by = rollStart]
+  P[, side := fifelse(lotLon < ONT, "West", "East")]
+  sh <- function(d) d[, mean(product == "multiplex")]
+  Q <- L[year(issued) >= YEAR_MIN][order(rollStart, -issued)][, .SD[1], by = rollStart]
+  E <- L[round(landWidth) == 33][, era := fcase(applied >= as.IDate("2018-09-18") & applied < R1_START, "dup",
+                                                  applied >= R1_START, "r11", default = NA_character_)][!is.na(era)]
+  E <- E[order(rollStart, era, -issued)][, .SD[1], by = .(rollStart, era)][, side := fifelse(lotLon < ONT, "West", "East")]
+  dv <- function(e, s) E[era == e & side == s & product != "multiplex", mean(product == "duplex")]
+  data.table(cutoff = k, dollars = cutoffs[k],
+             nonNBadded = L[typeofwork != "New Building", .N],
+             mx33_2024 = sh(Q[round(landWidth) == 33]), mxWider_2024 = sh(Q[round(landWidth) > 33]),
+             E33 = sh(P[side == "East" & round(landWidth) == 33]), E50 = sh(P[side == "East" & round(landWidth) == 50]),
+             W33 = sh(P[side == "West" & round(landWidth) == 33]), W50 = sh(P[side == "West" & round(landWidth) == 50]),
+             nE33 = P[side == "East" & round(landWidth) == 33, .N], nW33 = P[side == "West" & round(landWidth) == 33, .N],
+             dupE_dupEra = dv("dup", "East"), dupW_dupEra = dv("dup", "West"), dupE_r11 = dv("r11", "East"), dupW_r11 = dv("r11", "West"))
+}))
+cat("\n=== new-build cutoff sensitivity (shares) ===\n")
+print(sens[, lapply(.SD, function(x) if (is.numeric(x) && max(abs(x), na.rm = TRUE) <= 1) round(x, 3) else x)])
 
 # ---- macros for the draft: rounded-33 lots, multiplex share of new builds on 33s vs wider ----
 lotShare33 <- dtS[, mean(round(landWidth) == 33)]

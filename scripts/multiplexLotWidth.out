@@ -4,7 +4,9 @@ one lot per rollStart                     67794 ->  67785 (lost 0.0%)
 in R1-1                                   67785 ->  58004 (lost 14.4%)
 2018 R1-1 lots with an address key: 1 | keys shared by >1 lot (E/W): 1219 
 drop infill/laneway categories            52683 ->  48085 (lost 8.7%)
-high-value threshold (q0.95 of non-new-build principal permits): $340,000
+cutoff A: $340,000  (q95 of non-new-build principal permits (main))
+cutoff B: $1,200,000  (q95 of all principal permits)
+cutoff C: $706,636.7  (q33 of new-build single + duplex permits)
                              typeofwork     N
                                  <char> <int>
 1:                Addition / Alteration  1147
@@ -12,7 +14,7 @@ high-value threshold (q0.95 of non-new-build principal permits): $340,000
 3:       Temporary Building / Structure     3
 4: Outdoor Uses (No Buildings Proposed)     1
 5:                Salvage and Abatement     1
-New Building or high-value permit         48085 ->  12121 (lost 74.8%)
+New Building or value >= lowest cutoff    48085 ->  12121 (lost 74.8%)
    multiplexByDescAndDate     N
                    <lgcl> <int>
 1:                  FALSE  1555
@@ -123,6 +125,18 @@ post-reform lots counted via high-value non-new-build permits:
 3:    single   FALSE   314
 4: multiplex   FALSE   350
 5:    duplex    TRUE     1
+
+=== new-build cutoff sensitivity (shares) ===
+   cutoff   dollars nonNBadded mx33_2024 mxWider_2024   E33   E50   W33   W50
+   <char>     <num>      <int>     <num>        <num> <num> <num> <num> <num>
+1:      A  340000.0        294     0.224        0.299 0.332 0.406 0.182 0.317
+2:      B 1200000.0         28     0.233        0.316 0.339 0.406 0.193 0.347
+3:      C  706636.7         82     0.229        0.311 0.336 0.406 0.188 0.340
+    nE33  nW33 dupE_dupEra dupW_dupEra dupE_r11 dupW_r11
+   <int> <int>       <num>       <num>    <num>    <num>
+1:   262   198       0.440       0.206    0.703    0.660
+2:   257   187       0.449       0.219    0.724    0.709
+3:   259   191       0.450       0.219    0.715    0.690
       r33     N    mx     share
    <lgcl> <int> <int>     <num>
 1:  FALSE   732   219 0.2991803
