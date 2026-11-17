@@ -137,3 +137,19 @@
 - Monte Carlo (1,000 draws, actual design, area/period effects from the FE logit, true β = clogit estimate): FE logit mean 2.381 vs 2.305 (+3%) tract and 2.274 vs 2.210 (+3%) nbhd; clogit 2.300 / 2.217 (unbiased); ppsf-control logit 2.316 / 2.129 (−4% nbhd, attenuated by omitted area heterogeneity). MC SD of the FE logit is 0.655 / 0.600, vs clustered SEs of 0.553 / 0.506.
 - Why CHECK: the clustered logit SEs understate sampling variability by about 15–20% on this design; there's no wild bootstrap for the logit (a score bootstrap would be the next step). Inherits the ShareDiD caveats (right-censored last period, linking).
 - Refs added to CLAUDE.bib: NeymanScott1948, Chamberlain1980, Greene2004, HahnNewey2004, FernandezValWeidner2016, Katz2001, AiNorton2003, Puhani2012.
+
+## 2026-11-17 — typeofwork restriction; bootstrap off (all permit macros rerun) — CHECK
+
+- `multiplexLotWidth.R` now keeps only New Building and Addition / Alteration (drops Demolition 7,198, Salvage and Abatement 6,751, Temporary 502, Outdoor 62; 52,683 → 38,170, 27.5% lost). Cutoffs are saved to `dataProcessed/permitNewBuildCutoffs.rds` and read by `permitShareDiD.R` (no more hard-coded values).
+- The main cutoff A (q95 of non-new-build principal permits) rises from $340,000 to $660,000: before, about 12.8k near-zero Demolition and Salvage permits pulled the quantile down. Before, 31 demolition permits ≥ $340k counted as "new builds". B: $1.2M → $1.61M. C is unchanged ($706,637). Non-new-build permits added to the new-build sample: A 294 → 90, B 28 → 15, C 82 → 81. A and C now give near-identical results.
+- ShareDiD base: tract 0.452 → 0.449 (SE 0.098, clustered p < 0.001), nbhd 0.418 → 0.443 (0.102, p < 0.001). Trend: 0.405 (p = 0.048) / 0.476 (p = 0.106). Window: 0.223 (p = 0.53) / 0.158 (p = 0.69). Permits 1,389 → 1,343 (tract). E/W 2×2 DiD 19 → 21 pp, OR 2.49 → 2.59. Map shares E 45→72, W 22→69.
+- LogitDiD: FE logit 2.311 (0.569) / 2.356 (0.558); clogit 2.228 / 2.294; MC FE-logit bias +5% / +4%.
+- multiplex shares: 33 vs wider 23% / 31%; E33 .338, W33 .188, W50 .340.
+- Bootstrap off (`BOOT <- FALSE` in permitShareDiD.R and permitLogitDiD.R): bootstrap table rows dropped; macros sdTractP, sdNbhdP, sd*TrendP, sd*WinP, lp*CtlP, sdNBoot print \fact{bootstrap off}. The draft's prose and captions still describe WCR p-values. Added \usepackage{xcolor} to main.tex (\fact needs \textcolor and had never been used).
+- Why CHECK: the prose describing the bootstrap needs a decision (see the bootstrap note in the session). The logit Monte Carlo (not a bootstrap) is still on, and takes about 4.5 of the 7 minutes.
+
+## 2026-11-17 — Addition / Alteration classification (scripts/vancouverPermitTypeOfWork.R; no macros) — CHECK
+
+- Residential (propertyuse has Dwelling) Addition / Alteration permits: 12,302. Classes by description regex, exclusive in order: conversion that adds units 205 (1.7%; median $750k; East 103 / West 95; 131 typed Multiple Conversion Dwelling); added secondary suite 1,191 (9.7%); high value ≥ cutoff A 586 (4.8%; mostly envelope, roof and window jobs on apartment buildings, some rebuilds of houses); other 10,320 (84%).
+- Saved to `dataProcessed/permitAddAltClass.rds`. Not used in any estimate yet.
+- Why CHECK: the regexes were spot-checked on samples only. The suite class still includes some permits that only repair a house that already has a suite.

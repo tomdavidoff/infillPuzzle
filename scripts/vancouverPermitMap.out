@@ -1,32 +1,30 @@
-Warning message:
-package ‘ggplot2’ was built under R version 4.5.2 
-33-ft lots, principal products: 2256 of 5769 linked permits
-in an era: 1644 of 2256
-latest permit per lot x era: 1528 of 1644
+33-ft lots, principal products: 2186 of 5560 linked permits
+in an era: 1591 of 2186
+latest permit per lot x era: 1481 of 1591
 Using 'N' as value column. Use 'value.var' to override
 Key: <era, side>
                                          era   side Single family Duplex
                                       <fctr> <char>         <int>  <int>
-1: Duplex era: applied Sept 2018 to Oct 2023   East           394    310
-2: Duplex era: applied Sept 2018 to Oct 2023   West           289     75
-3:       R1-1 era: applied from Oct 17, 2023   East            52    123
-4:       R1-1 era: applied from Oct 17, 2023   West            55    107
+1: Duplex era: applied Sept 2018 to Oct 2023   East           378    309
+2: Duplex era: applied Sept 2018 to Oct 2023   West           268     75
+3:       R1-1 era: applied from Oct 17, 2023   East            49    123
+4:       R1-1 era: applied from Oct 17, 2023   West            48    107
    Multiplex total duplexShare duplexVsSingle
        <int> <num>       <num>          <num>
-1:         0   704       0.440          0.440
-2:         0   364       0.206          0.206
-3:        87   262       0.469          0.703
-4:        36   198       0.540          0.660
+1:         0   687       0.450          0.450
+2:         0   343       0.219          0.219
+3:        88   260       0.473          0.715
+4:        36   191       0.560          0.690
                                          era highVal     N
                                       <fctr>  <lgcl> <int>
-1: Duplex era: applied Sept 2018 to Oct 2023   FALSE  1021
-2:       R1-1 era: applied from Oct 17, 2023   FALSE   442
-3: Duplex era: applied Sept 2018 to Oct 2023    TRUE    47
-4:       R1-1 era: applied from Oct 17, 2023    TRUE    18
+1: Duplex era: applied Sept 2018 to Oct 2023   FALSE  1022
+2:       R1-1 era: applied from Oct 17, 2023   FALSE   443
+3: Duplex era: applied Sept 2018 to Oct 2023    TRUE     8
+4:       R1-1 era: applied from Oct 17, 2023    TRUE     8
 Loading required namespace: raster
-\newcommand{\mapPermitsDuplexEra}{1,068}
-\newcommand{\mapPermitsRoneEra}{460}
-\newcommand{\dupVsSingleEastDuplexEra}{44}
-\newcommand{\dupVsSingleWestDuplexEra}{21}
-\newcommand{\dupVsSingleEastRoneEra}{70}
-\newcommand{\dupVsSingleWestRoneEra}{66}
+\newcommand{\mapPermitsDuplexEra}{1,030}
+\newcommand{\mapPermitsRoneEra}{451}
+\newcommand{\dupVsSingleEastDuplexEra}{45}
+\newcommand{\dupVsSingleWestDuplexEra}{22}
+\newcommand{\dupVsSingleEastRoneEra}{72}
+\newcommand{\dupVsSingleWestRoneEra}{69}

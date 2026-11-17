@@ -3,99 +3,104 @@ Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
 one lot per rollStart                     67794 ->  67785 (lost 0.0%)
 in R1-1                                   67785 ->  58004 (lost 14.4%)
 2018 R1-1 lots with an address key: 1 | keys shared by >1 lot (E/W): 1219 
-drop infill/laneway categories            52683 ->  48085 (lost 8.7%)
-cutoff A: $340,000  (q95 of non-new-build principal permits (main))
-cutoff B: $1,200,000  (q95 of all principal permits)
-cutoff C: $706,636.7  (q33 of new-build single + duplex permits)
                              typeofwork     N
                                  <char> <int>
-1:                Addition / Alteration  1147
-2:          Demolition / Deconstruction    31
-3:       Temporary Building / Structure     3
-4: Outdoor Uses (No Buildings Proposed)     1
-5:                Salvage and Abatement     1
-New Building or value >= lowest cutoff    48085 ->  12121 (lost 74.8%)
+1:                Addition / Alteration 26090
+2:                         New Building 12080
+3:          Demolition / Deconstruction  7198
+4:                Salvage and Abatement  6751
+5:       Temporary Building / Structure   502
+6: Outdoor Uses (No Buildings Proposed)    62
+New Building or Addition / Alteration     52683 ->  38170 (lost 27.5%)
+drop infill/laneway categories            38170 ->  33624 (lost 11.9%)
+cutoff A: $660,000  (q95 of non-new-build principal permits (main))
+cutoff B: $1,614,100  (q95 of all principal permits)
+cutoff C: $706,636.7  (q33 of new-build single + duplex permits)
+              typeofwork     N
+                  <char> <int>
+1: Addition / Alteration   544
+New Building or value >= lowest cutoff    33624 ->   9979 (lost 70.3%)
    multiplexByDescAndDate     N
                    <lgcl> <int>
-1:                  FALSE  1555
+1:                  FALSE  1249
 2:                   TRUE   615
             specificusecategory     N
                          <char> <int>
-1:               General Office  1207
-2:                 Retail Store   288
-3:         Restaurant - Class 1   208
-4: Multiple Conversion Dwelling   160
-5:           Health Care Office   120
-6:                     Hospital   120
-7:                Dwelling Unit   114
-8:               Not Applicable    97
-principal product, geocoded               12121 ->   8185 (lost 32.5%)
+1:               General Office   703
+2:                 Retail Store   144
+3: Multiple Conversion Dwelling   127
+4:                Dwelling Unit    88
+5:                     Hospital    78
+6:         Restaurant - Class 1    71
+7:        Financial Institution    59
+8:               Not Applicable    58
+principal product, geocoded                9979 ->   7551 (lost 24.3%)
          product     N near26 roll26in2018
           <char> <int>  <num>        <num>
-1:        single  4187  0.881        0.720
-2:        duplex  1858  0.855        0.543
-3: otherMultiple  1531  0.355        0.002
+1:        single  3888  0.876        0.729
+2:        duplex  1824  0.855        0.552
+3: otherMultiple  1230  0.310        0.002
 4:     multiplex   609  0.534        0.455
          product     N address near5
           <char> <int>   <num> <num>
-1: otherMultiple  1531   0.002 0.002
-2:        single  4187   0.730 0.720
-3:        duplex  1858   0.543 0.543
+1: otherMultiple  1230   0.002 0.002
+2:        single  3888   0.742 0.729
+3:        duplex  1824   0.552 0.552
 4:     multiplex   609   0.453 0.455
-address vs 5m agreement where both match: 0.999  N = 4258 
+address vs 5m agreement where both match: 0.999  N = 4082 
          product     N addr26 addr26in2018
           <char> <int>  <num>        <num>
-1: otherMultiple  1531  0.862        0.008
-2:        single  4187  0.976        0.770
-3:        duplex  1858  0.978        0.578
-4:     multiplex   609  0.691        0.593
-2026-address vs centroid agreement where both match: 0.999  N = 4270 
-street-nearest vs 2026 address, address-linked off-centroid permits: agree = 0.777  N = 400 
-rollStart vs address agreement where both match: 0.999  N = 4258 
+1: otherMultiple  1230  0.835        0.010
+2:        single  3888  0.976        0.784
+3:        duplex  1824  0.961        0.576
+4:     multiplex   609  0.681        0.576
+2026-address vs centroid agreement where both match: 0.999  N = 4062 
+street-nearest vs 2026 address, address-linked off-centroid permits: agree = 0.774  N = 399 
+rollStart vs address agreement where both match: 0.999  N = 4082 
 Using 'N' as value column. Use 'value.var' to override
 Key: <product>
          product    NA address19 address26 rollStart26 streetNear
           <char> <int>     <int>     <int>       <int>      <int>
-1:        duplex   543         1        69        1009        236
+1:        duplex   515         1        69        1007        232
 2:     multiplex    36         0        85         277        211
-3: otherMultiple  1328         0         9           3        191
-4:        single   509         1       237        3014        426
-matched to 2018 R1-1 SFD lot               8185 ->   5769 (lost 29.5%)
+3: otherMultiple  1032         0         9           3        186
+4:        single   408         1       236        2836        407
+matched to 2018 R1-1 SFD lot               7551 ->   5560 (lost 26.4%)
          product     N
           <char> <int>
-1:        single  3678
-2: otherMultiple   203
-3:        duplex  1315
+1:        single  3480
+2: otherMultiple   198
+3:        duplex  1309
 4:     multiplex   573
-issued 2024+                               5769 ->   1666 (lost 71.1%)
-latest permit per lot                      1666 ->   1389 (lost 16.6%)
+issued 2024+                               5560 ->   1620 (lost 70.9%)
+latest permit per lot                      1620 ->   1348 (lost 16.8%)
 
 === share of 2024+ multiplexes by lot width ===
 Key: <widthBin>
    widthBin     N share
      <fctr> <int> <num>
 1:     <=30     2 0.006
-2:       33   152 0.434
-3:    37-41    35 0.100
-4:    42-50    96 0.274
-5:      >50    65 0.186
+2:       33   154 0.436
+3:    37-41    34 0.096
+4:    42-50    98 0.278
+5:      >50    65 0.184
 
 === multiplex share on 33 by link method ===
            how     N share33
         <char> <int>   <num>
-1:  streetNear    86   0.500
-2: rollStart26   250   0.424
-3:   address26    14   0.214
-excluding street-nearest links: 0.413  N = 264 
-street-nearest only if clear gap > 2 m: 0.407  N = 312 
+1:  streetNear    89   0.494
+2: rollStart26   249   0.426
+3:   address26    15   0.267
+excluding street-nearest links: 0.417  N = 264 
+street-nearest only if clear gap > 2 m: 0.411  N = 319 
 
 === by issue year: multiplex N and share on 33 ===
 Key: <year>
     year     N share33
    <int> <int>   <num>
-1:  2024    26   0.538
-2:  2025   176   0.364
-3:  2026   148   0.500
+1:  2024    28   0.571
+2:  2025   178   0.360
+3:  2026   147   0.503
 
 === product mix within width bin (2024+) ===
 Using 'N' as value column. Use 'value.var' to override
@@ -103,58 +108,58 @@ Key: <widthBin>
    widthBin duplex multiplex single total multiplexShare
      <fctr>  <int>     <int>  <int> <int>          <num>
 1:     <=30      8         2     10    20          0.100
-2:       33    308       152    203   663          0.229
-3:    37-41     41        35     36   112          0.312
-4:    42-50     88        96    146   330          0.291
-5:      >50     46        65    122   233          0.279
+2:       33    308       154    183   645          0.239
+3:    37-41     41        34     33   108          0.315
+4:    42-50     88        98    137   323          0.303
+5:      >50     45        65    111   221          0.294
 
 baseline: share of 2018 R1-1 SFD lots that are 33: 0.537 
 latest issue date in data: 2026-11-13 
 Key: <side, w>
      side      w     N    mx   dup     share
    <char> <char> <int> <int> <int>     <num>
-1:   East     33   262    87   123 0.3320611
+1:   East     33   260    88   123 0.3384615
 2:   East     50    32    13    10 0.4062500
-3:   West     33   198    36   107 0.1818182
-4:   West     50   104    33    19 0.3173077
+3:   West     33   191    36   107 0.1884817
+4:   West     50    97    33    19 0.3402062
 post-reform lots counted via high-value non-new-build permits:
      product highVal     N
       <char>  <lgcl> <int>
 1:    duplex   FALSE   415
-2:    single    TRUE    69
-3:    single   FALSE   314
-4: multiplex   FALSE   350
+2:    single   FALSE   315
+3:    single    TRUE    30
+4: multiplex   FALSE   353
 5:    duplex    TRUE     1
 
 === new-build cutoff sensitivity (shares) ===
    cutoff   dollars nonNBadded mx33_2024 mxWider_2024   E33   E50   W33   W50
    <char>     <num>      <int>     <num>        <num> <num> <num> <num> <num>
-1:      A  340000.0        294     0.224        0.299 0.332 0.406 0.182 0.317
-2:      B 1200000.0         28     0.233        0.316 0.339 0.406 0.193 0.347
-3:      C  706636.7         82     0.229        0.311 0.336 0.406 0.188 0.340
+1:      A  660000.0         90     0.231        0.312 0.338 0.406 0.188 0.340
+2:      B 1614100.0         15     0.234        0.320 0.341 0.406 0.194 0.347
+3:      C  706636.7         81     0.231        0.313 0.338 0.406 0.188 0.340
     nE33  nW33 dupE_dupEra dupW_dupEra dupE_r11 dupW_r11
    <int> <int>       <num>       <num>    <num>    <num>
-1:   262   198       0.440       0.206    0.703    0.660
-2:   257   187       0.449       0.219    0.724    0.709
-3:   259   191       0.450       0.219    0.715    0.690
+1:   260   191       0.450       0.219    0.715    0.690
+2:   258   186       0.449       0.220    0.724    0.713
+3:   260   191       0.450       0.219    0.715    0.690
       r33     N    mx     share
    <lgcl> <int> <int>     <num>
-1:  FALSE   732   219 0.2991803
-2:   TRUE   550   123 0.2236364
+1:  FALSE   708   221 0.3121469
+2:   TRUE   537   124 0.2309125
 \newcommand{\newBuildValueQuantile}{95}
-\newcommand{\newBuildValueThreshold}{340,000}
+\newcommand{\newBuildValueThreshold}{660,000}
 \newcommand{\lotShareThirtyThreeRone}{44}
 \newcommand{\lotsRoneSFD}{58,004}
-\newcommand{\mplxShareThirtyThree}{22}
-\newcommand{\mplxShareWider}{30}
+\newcommand{\mplxShareThirtyThree}{23}
+\newcommand{\mplxShareWider}{31}
 \newcommand{\mplxShareGap}{8}
-\newcommand{\mplxNewBuildsThirtyThree}{550}
-\newcommand{\mplxNewBuildsWider}{732}
-\newcommand{\mplxShareEastThirtyThree}{33}
+\newcommand{\mplxNewBuildsThirtyThree}{537}
+\newcommand{\mplxNewBuildsWider}{708}
+\newcommand{\mplxShareEastThirtyThree}{34}
 \newcommand{\mplxShareEastFifty}{41}
-\newcommand{\mplxShareWestThirtyThree}{18}
-\newcommand{\mplxShareWestFifty}{32}
-\newcommand{\mplxNEastThirtyThree}{262}
+\newcommand{\mplxShareWestThirtyThree}{19}
+\newcommand{\mplxShareWestFifty}{34}
+\newcommand{\mplxNEastThirtyThree}{260}
 \newcommand{\mplxNEastFifty}{32}
-\newcommand{\mplxNWestThirtyThree}{198}
-\newcommand{\mplxNWestFifty}{104}
+\newcommand{\mplxNWestThirtyThree}{191}
+\newcommand{\mplxNWestFifty}{97}

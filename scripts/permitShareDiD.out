@@ -1,141 +1,137 @@
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
-    beta  reps      meanEst  rejBoot05 rejCluster05
-   <num> <int>        <num>      <num>        <num>
-1:   0.0  1500 -0.001990016 0.06333333        0.084
-2:   0.5   500  0.505354162 0.86000000        0.928
-33-ft single+duplex new builds, latest per lot x era: 1405 (duplex era 1068, R1-1 era 337)
+33-ft single+duplex new builds, latest per lot x era: 1357 (duplex era 1030, R1-1 era 327)
 lots with >1 BCA neighbourhood: 0 
 lots without tract: 0  without neighbourhood: 0 
 Key: <per>
      per     N dupShare       from         to
    <num> <int>    <num>     <IDat>     <IDat>
-1:    -5   201    0.124 2018-09-18 2019-10-11
-2:    -4   133    0.331 2019-10-17 2020-10-15
-3:    -3   270    0.419 2020-10-20 2021-10-15
-4:    -2   307    0.469 2021-10-18 2022-10-14
-5:    -1   157    0.376 2022-11-02 2023-10-16
-6:     0   136    0.743 2023-10-17 2024-10-15
-7:     1   129    0.643 2024-10-18 2025-10-14
-8:     2    72    0.639 2025-10-17 2026-09-08
-CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
-CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
-CTUID: area has ppsf33 estimate (window)         165 ->    162 (lost 1.8%)
+1:    -5   193    0.130 2018-09-18 2019-10-11
+2:    -4   127    0.339 2019-10-17 2020-10-15
+3:    -3   262    0.431 2020-10-20 2021-10-15
+4:    -2   299    0.482 2021-10-18 2022-10-14
+5:    -1   149    0.396 2022-11-02 2023-10-16
+6:     0   132    0.765 2023-10-17 2024-10-15
+7:     1   126    0.659 2024-10-18 2025-10-14
+8:     2    69    0.667 2025-10-17 2026-09-08
+CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
+CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
+CTUID: area has ppsf33 estimate (window)         157 ->    155 (lost 1.3%)
 NOTE: 23/0 fixed-effect singletons were removed (23 observations).
-nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
-nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
-nbhd: area has ppsf33 estimate (window)          165 ->    165 (lost 0.0%)
+nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
+nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
+nbhd: area has ppsf33 estimate (window)          157 ->    157 (lost 0.0%)
 NOTE: 3/0 fixed-effect singletons were removed (3 observations).
 
-==== base | areas 56 | cells 372 | permits 1389 | WCR p 0 
+==== base | areas 56 | cells 368 | permits 1343 | WCR p NA 
        Estimate Std. Error  t value     Pr(>|t|)
-postX 0.4518882 0.09778284 4.621344 2.345624e-05
+postX 0.4492936 0.09795957 4.586521 2.646306e-05
 attr(,"type")
 [1] "Clustered (area)"
 
-==== trend | areas 56 | cells 372 | permits 1389 | WCR p 0.03760376 
-          Estimate Std. Error   t value   Pr(>|t|)
-postX  0.430193938 0.19956258 2.1556844 0.03549988
-trendX 0.005802465 0.04582209 0.1266303 0.89969483
+==== trend | areas 56 | cells 368 | permits 1343 | WCR p NA 
+         Estimate Std. Error   t value   Pr(>|t|)
+postX  0.40487098 0.19998894 2.0244669 0.04778895
+trendX 0.01190968 0.04740754 0.2512191 0.80258093
 attr(,"type")
 [1] "Clustered (area)"
 
-==== window | areas 29 | cells 58 | permits 128 | WCR p 0.3754375 
+==== window | areas 29 | cells 58 | permits 121 | WCR p NA 
        Estimate Std. Error   t value  Pr(>|t|)
-postX 0.3365509  0.3422973 0.9832122 0.3339231
+postX 0.2227228   0.350282 0.6358386 0.5300449
 attr(,"type")
 [1] "Clustered (area)"
 
-==== base | areas 20 | cells 143 | permits 1404 | WCR p 0.00090009 
+==== base | areas 20 | cells 143 | permits 1356 | WCR p NA 
        Estimate Std. Error  t value     Pr(>|t|)
-postX 0.4175996 0.09847412 4.240704 0.0004422893
+postX 0.4431202  0.1018159 4.352171 0.0003430953
 attr(,"type")
 [1] "Clustered (area)"
 
-==== trend | areas 20 | cells 143 | permits 1404 | WCR p 0.1549155 
-          Estimate Std. Error    t value  Pr(>|t|)
-postX   0.47437678 0.27860253  1.7027009 0.1049282
-trendX -0.01494403 0.05945213 -0.2513623 0.8042326
+==== trend | areas 20 | cells 143 | permits 1356 | WCR p NA 
+           Estimate Std. Error    t value  Pr(>|t|)
+postX   0.475586929 0.27989473  1.6991636 0.1056032
+trendX -0.008573488 0.06087597 -0.1408353 0.8894824
 attr(,"type")
 [1] "Clustered (area)"
 
-==== window | areas 16 | cells 32 | permits 161 | WCR p 0.610161 
-       Estimate Std. Error   t value Pr(>|t|)
-postX 0.2003966  0.3796514 0.5278436 0.605329
+==== window | areas 16 | cells 32 | permits 153 | WCR p NA 
+       Estimate Std. Error   t value  Pr(>|t|)
+postX 0.1580565  0.3848706 0.4106744 0.6871178
 attr(,"type")
 [1] "Clustered (area)"
-CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
+CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
 NOTE: 0/1 fixed-effect singleton was removed (1 observation).
 NOTE: 0/1 fixed-effect singleton was removed (1 observation).
-nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
+nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
 NOTE: 0/2 fixed-effect singletons were removed (2 observations).
 NOTE: 0/2 fixed-effect singletons were removed (2 observations).
-CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
-nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
-CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
-nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
-CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
-nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
-       L  level periods cells medPermits  share5 cellsUsed     b     se   mde
-   <num> <char>   <int> <int>      <num>   <num>     <int> <num>  <num> <num>
-1:     1  tract      96  1092          1 0.00183      1091 0.450 0.1124 0.315
-2:     3  tract      32   790          1 0.03418       790 0.464 0.1017 0.285
-3:     6  tract      16   569          2 0.11248       569 0.460 0.1003 0.281
-4:    12  tract       8   372          3 0.28495       372 0.452 0.0978 0.274
-5:     1   nbhd      96   803          1 0.03238       801 0.410 0.1056 0.296
-6:     3   nbhd      32   445          2 0.22697       445 0.434 0.1058 0.296
-7:     6   nbhd      16   264          4 0.44697       264 0.428 0.1031 0.289
-8:    12   nbhd       8   143          7 0.69930       143 0.418 0.0985 0.276
-     pWCR  bUnw seUnw
-    <num> <num> <num>
-1: 0.0000 0.457 0.119
-2: 0.0000 0.503 0.115
-3: 0.0000 0.615 0.112
-4: 0.0001 0.509 0.117
-5: 0.0006 0.398 0.107
-6: 0.0013 0.481 0.117
-7: 0.0011 0.563 0.129
-8: 0.0007 0.589 0.144
-CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
-CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
+CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
+nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
+CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
+nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
+CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
+nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
+       L  level periods cells medPermits   share5 cellsUsed     b     se   mde
+   <num> <char>   <int> <int>      <num>    <num>     <int> <num>  <num> <num>
+1:     1  tract      96  1061          1 0.000943      1060 0.460 0.1117 0.313
+2:     3  tract      32   773          1 0.032342       773 0.459 0.1006 0.282
+3:     6  tract      16   560          2 0.108929       560 0.457 0.0994 0.278
+4:    12  tract       8   368          3 0.277174       368 0.449 0.0980 0.274
+5:     1   nbhd      96   787          1 0.031766       785 0.448 0.1058 0.296
+6:     3   nbhd      32   442          2 0.217195       442 0.454 0.1085 0.304
+7:     6   nbhd      16   263          4 0.429658       263 0.454 0.1053 0.295
+8:    12   nbhd       8   143          7 0.699301       143 0.443 0.1018 0.285
+    pWCR  bUnw seUnw
+   <num> <num> <num>
+1:    NA 0.470 0.117
+2:    NA 0.488 0.110
+3:    NA 0.613 0.102
+4:    NA 0.494 0.119
+5:    NA 0.426 0.108
+6:    NA 0.478 0.112
+7:    NA 0.571 0.119
+8:    NA 0.604 0.144
+CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
+CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
     Estimate   Std. Error      t value     Pr(>|t|) 
-0.5086984117 0.1169852843 4.3483965916 0.0000598052 
-nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
-nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
-   Estimate  Std. Error     t value    Pr(>|t|) 
-0.588869529 0.144030257 4.088512659 0.000625952 
+0.4943716876 0.1192722315 4.1449018045 0.0001183634 
+nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
+nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
+    Estimate   Std. Error      t value     Pr(>|t|) 
+0.6042908202 0.1442542460 4.1890678220 0.0004975731 
 West-East mean ppsf gap: tract 0.411  nbhd 0.377 
-CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
-CTUID: area has ppsf33 estimate                 1405 ->   1389 (lost 1.1%)
-nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
-nbhd: area has ppsf33 estimate                  1405 ->   1404 (lost 0.1%)
-CTUID: area has ppsf33 estimate                 1345 ->   1331 (lost 1.0%)
-CTUID: area has ppsf33 estimate                 1345 ->   1331 (lost 1.0%)
-nbhd: area has ppsf33 estimate                  1345 ->   1344 (lost 0.1%)
-nbhd: area has ppsf33 estimate                  1345 ->   1344 (lost 0.1%)
+CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
+CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
+nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
+nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
+CTUID: area has ppsf33 estimate                 1342 ->   1328 (lost 1.0%)
+CTUID: area has ppsf33 estimate                 1342 ->   1328 (lost 1.0%)
+nbhd: area has ppsf33 estimate                  1342 ->   1341 (lost 0.1%)
+nbhd: area has ppsf33 estimate                  1342 ->   1341 (lost 0.1%)
 CTUID: area has ppsf33 estimate                 1356 ->   1342 (lost 1.0%)
 CTUID: area has ppsf33 estimate                 1356 ->   1342 (lost 1.0%)
 nbhd: area has ppsf33 estimate                  1356 ->   1355 (lost 0.1%)
 nbhd: area has ppsf33 estimate                  1356 ->   1355 (lost 0.1%)
    cutoff  level     N         b         se
    <char> <char> <int>     <num>      <num>
-1:      A  tract  1405 0.4518882 0.09778284
-2:      A   nbhd  1405 0.4175996 0.09847412
-3:      B  tract  1345 0.4688717 0.09977912
-4:      B   nbhd  1345 0.4583599 0.10520833
+1:      A  tract  1357 0.4492936 0.09795957
+2:      A   nbhd  1357 0.4431202 0.10181590
+3:      B  tract  1342 0.4786104 0.09991945
+4:      B   nbhd  1342 0.4671441 0.10445008
 5:      C  tract  1356 0.4480958 0.09764496
 6:      C   nbhd  1356 0.4416026 0.10136369
 Key: <side, post>
      side  post     n     d         p
    <char> <num> <int> <num>     <num>
-1:   East     0   704   310 0.4403409
-2:   East     1   175   123 0.7028571
-3:   West     0   364    75 0.2060440
-4:   West     1   162   107 0.6604938
-EW DiD 0.192 (SE 0.058, z 3.30, p 0.0010) | ratio of odds ratios 2.49, Woolf chi2(1) 10.78, p 0.0010 | logit coef 0.914
+1:   East     0   687   309 0.4497817
+2:   East     1   172   123 0.7151163
+3:   West     0   343    75 0.2186589
+4:   West     1   155   107 0.6903226
+EW DiD 0.206 (SE 0.058, z 3.53, p 0.0004) | ratio of odds ratios 2.59, Woolf chi2(1) 11.13, p 0.0009 | logit coef 0.953
    cutoff       did         se
    <char>     <num>      <num>
-1:      A 0.1919336 0.05811292
-2:      B 0.2151245 0.05840092
+1:      A 0.2063291 0.05849772
+2:      B 0.2185454 0.05840960
 3:      C 0.2056897 0.05851914
 % generated by scripts/permitShareDiD.R; do not edit
 \begin{tabular}{lcccccc}
@@ -143,18 +139,17 @@ EW DiD 0.192 (SE 0.058, z 3.30, p 0.0010) | ratio of odds ratios 2.49, Woolf chi
  & \multicolumn{3}{c}{Census tract} & \multicolumn{3}{c}{Neighbourhood} \\
  & (1) & (2) & (3) & (4) & (5) & (6) \\
 \hline
-Post 2023 $\times$ log ppsf & $0.452^{***}$ & $0.430^{**}$ & $0.337$ & $0.418^{***}$ & $0.474$ & $0.200$ \\
- & (0.098) & (0.200) & (0.342) & (0.098) & (0.279) & (0.380) \\
-\quad wild bootstrap $p$ & $<$0.001 & 0.038 & 0.375 & $<$0.001 & 0.155 & 0.610 \\
-Period $\times$ log ppsf &  & $0.006$ &  &  & $-0.015$ &  \\
- &  & (0.046) &  &  & (0.059) &  \\
+Post 2023 $\times$ log ppsf & $0.449^{***}$ & $0.405^{**}$ & $0.223$ & $0.443^{***}$ & $0.476$ & $0.158$ \\
+ & (0.098) & (0.200) & (0.350) & (0.102) & (0.280) & (0.385) \\
+Period $\times$ log ppsf &  & $0.012$ &  &  & $-0.009$ &  \\
+ &  & (0.047) &  &  & (0.061) &  \\
 \hline
 Window & full & full & $\pm$6 mo. & full & full & $\pm$6 mo. \\
 Areas & 56 & 56 & 29 & 20 & 20 & 16 \\
 Periods & 8 & 8 & 2 & 8 & 8 & 2 \\
-Area $\times$ period cells & 372 & 372 & 58 & 143 & 143 & 32 \\
-Permits & 1,389 & 1,389 & 128 & 1,404 & 1,404 & 161 \\
-Mean duplex share & 0.44 & 0.44 & 0.51 & 0.44 & 0.44 & 0.50 \\
+Area $\times$ period cells & 368 & 368 & 58 & 143 & 143 & 32 \\
+Permits & 1,343 & 1,343 & 121 & 1,356 & 1,356 & 153 \\
+Mean duplex share & 0.45 & 0.45 & 0.54 & 0.45 & 0.45 & 0.53 \\
 \hline
 \end{tabular}
 % generated by scripts/permitShareDiD.R; do not edit
@@ -163,52 +158,52 @@ Mean duplex share & 0.44 & 0.44 & 0.51 & 0.44 & 0.44 & 0.50 \\
  & Period & & Cells & Median & Cells with & \multicolumn{2}{c}{Weighted} & Unweighted \\
 Level & (months) & Periods & used & permits & $\geq$5 permits & Coef. (SE) [boot. $p$] & MDE & Coef. (SE) \\
 \hline
-Tract & 1 & 96 & 1091 & 1 & 0\% & 0.450 (0.112) [$<$0.001] & 0.315 & 0.457 (0.119) \\
-Tract & 3 & 32 & 790 & 1 & 3\% & 0.464 (0.102) [$<$0.001] & 0.285 & 0.503 (0.115) \\
-Tract & 6 & 16 & 569 & 2 & 11\% & 0.460 (0.100) [$<$0.001] & 0.281 & 0.615 (0.112) \\
-Tract & 12 & 8 & 372 & 3 & 28\% & 0.452 (0.098) [$<$0.001] & 0.274 & 0.509 (0.117) \\
-Neighbourhood & 1 & 96 & 801 & 1 & 3\% & 0.410 (0.106) [$<$0.001] & 0.296 & 0.398 (0.107) \\
-Neighbourhood & 3 & 32 & 445 & 2 & 23\% & 0.434 (0.106) [0.001] & 0.296 & 0.481 (0.117) \\
-Neighbourhood & 6 & 16 & 264 & 4 & 45\% & 0.428 (0.103) [0.001] & 0.289 & 0.563 (0.129) \\
-Neighbourhood & 12 & 8 & 143 & 7 & 70\% & 0.418 (0.098) [$<$0.001] & 0.276 & 0.589 (0.144) \\
+Tract & 1 & 96 & 1060 & 1 & 0\% & 0.460 (0.112) [--] & 0.313 & 0.470 (0.117) \\
+Tract & 3 & 32 & 773 & 1 & 3\% & 0.459 (0.101) [--] & 0.282 & 0.488 (0.110) \\
+Tract & 6 & 16 & 560 & 2 & 11\% & 0.457 (0.099) [--] & 0.278 & 0.613 (0.102) \\
+Tract & 12 & 8 & 368 & 3 & 28\% & 0.449 (0.098) [--] & 0.274 & 0.494 (0.119) \\
+Neighbourhood & 1 & 96 & 785 & 1 & 3\% & 0.448 (0.106) [--] & 0.296 & 0.426 (0.108) \\
+Neighbourhood & 3 & 32 & 442 & 2 & 22\% & 0.454 (0.108) [--] & 0.304 & 0.478 (0.112) \\
+Neighbourhood & 6 & 16 & 263 & 4 & 43\% & 0.454 (0.105) [--] & 0.295 & 0.571 (0.119) \\
+Neighbourhood & 12 & 8 & 143 & 7 & 70\% & 0.443 (0.102) [--] & 0.285 & 0.604 (0.144) \\
 \hline
 \end{tabular}
 % generated by scripts/permitShareDiD.R; do not edit
-\newcommand{\sdTractB}{0.452}
+\newcommand{\sdTractB}{0.449}
 \newcommand{\sdTractSE}{0.098}
-\newcommand{\sdTractP}{$p<0.001$}
-\newcommand{\sdNbhdB}{0.418}
-\newcommand{\sdNbhdSE}{0.098}
-\newcommand{\sdNbhdP}{$p<0.001$}
-\newcommand{\sdTractTrendB}{0.430}
-\newcommand{\sdTractTrendP}{$p=0.038$}
-\newcommand{\sdNbhdTrendB}{0.474}
-\newcommand{\sdNbhdTrendP}{$p=0.155$}
-\newcommand{\sdTractWinB}{0.337}
-\newcommand{\sdTractWinP}{$p=0.375$}
-\newcommand{\sdNbhdWinB}{0.200}
-\newcommand{\sdNbhdWinP}{$p=0.610$}
-\newcommand{\sdWinPermits}{128}
+\newcommand{\sdTractP}{\fact{bootstrap off}}
+\newcommand{\sdNbhdB}{0.443}
+\newcommand{\sdNbhdSE}{0.102}
+\newcommand{\sdNbhdP}{\fact{bootstrap off}}
+\newcommand{\sdTractTrendB}{0.405}
+\newcommand{\sdTractTrendP}{\fact{bootstrap off}}
+\newcommand{\sdNbhdTrendB}{0.476}
+\newcommand{\sdNbhdTrendP}{\fact{bootstrap off}}
+\newcommand{\sdTractWinB}{0.223}
+\newcommand{\sdTractWinP}{\fact{bootstrap off}}
+\newcommand{\sdNbhdWinB}{0.158}
+\newcommand{\sdNbhdWinP}{\fact{bootstrap off}}
+\newcommand{\sdWinPermits}{121}
 \newcommand{\sdNTract}{56}
 \newcommand{\sdNNbhd}{20}
-\newcommand{\sdNPermits}{1,389}
+\newcommand{\sdNPermits}{1,343}
 \newcommand{\sdGapTract}{0.41}
 \newcommand{\sdGapNbhd}{0.38}
-\newcommand{\sdEffectGapTract}{19}
-\newcommand{\sdEffectGapNbhd}{16}
-\newcommand{\ewDiD}{19}
+\newcommand{\sdEffectGapTract}{18}
+\newcommand{\sdEffectGapNbhd}{17}
+\newcommand{\ewDiD}{21}
 \newcommand{\ewDiDSE}{5.8}
 \newcommand{\ewDiDP}{$p<0.001$}
-\newcommand{\ewOddsRatio}{2.49}
-\newcommand{\ewChiSq}{10.78}
-\newcommand{\ewChiSqP}{$p=0.001$}
-\newcommand{\ewN}{1,405}
-\newcommand{\sdNBoot}{9,999}
+\newcommand{\ewOddsRatio}{2.59}
+\newcommand{\ewChiSq}{11.13}
+\newcommand{\ewChiSqP}{$p<0.001$}
+\newcommand{\ewN}{1,357}
+\newcommand{\sdNBoot}{\fact{bootstrap off}}
 \newcommand{\sdMonthMedPermits}{1}
 \newcommand{\sdMonthShareFive}{0}
 \newcommand{\sdYearMedPermits}{3}
 \newcommand{\sdSeRangeTract}{0.098 to 0.112}
-\newcommand{\sdSeRangeNbhd}{0.098 to 0.106}
-\newcommand{\sdBRangeTract}{0.450 to 0.464}
-\newcommand{\sdBRangeNbhd}{0.410 to 0.434}
-\newcommand{\sdUnwRangeTract}{0.457 to 0.615}
+\newcommand{\sdSeRangeNbhd}{0.102 to 0.108}
+\newcommand{\sdBRangeTract}{0.449 to 0.460}
+\newcommand{\sdBRangeNbhd}{0.443 to 0.454}
+\newcommand{\sdUnwRangeTract}{0.470 to 0.613}

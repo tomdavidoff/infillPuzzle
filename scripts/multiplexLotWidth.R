@@ -2,6 +2,7 @@
 # New-building permits (all issued 2017+) linked to 2018 single-family lots in R1-1 (BCA 2019 roll); links saved for
 # vancouverPermitMap.R. Share of 2024+ multiplexes on 33-ft lots, multiplex share of new builds by lot width, and
 # post-reform (applied on/after R1-1 start) multiplex share on 33 vs 50 ft lots, East and West.
+# Type of work restricted to New Building and Addition / Alteration (no demolition, salvage/abatement, temporary, outdoor).
 # Products as in vancouverPermitLogit.R: drop infill/laneway categories; single = single detached, duplex = duplex.
 # New build = New Building, or any permit type at/above the 95th pct value of non-new-build principal permits.
 # Multiplex = "Multiple Dwelling" whose description says multiplex (or two-unit front/rear building), applied on/after R1-1 start;
@@ -17,6 +18,8 @@ YEAR_MIN  <- 2024     # issue-year floor for the 2024+ tables
 HIGHVAL_Q <- 0.95      # high-value non-new-build permits count as new builds
 ONT       <- -123.101 # Ontario St: East/West divide
 fLinks    <- "~/DropboxExternal/dataProcessed/permitLotLinks.rds"
+fCutoffs  <- "~/DropboxExternal/dataProcessed/permitNewBuildCutoffs.rds"
+WORK      <- c("New Building", "Addition / Alteration")
 STREETDIST <- 30     # m, street-side geocode search radius
 ADDRDIST  <- 60     # m, max permit-to-lot distance for an address match (E/W ambiguity, street-side geocodes)
 fPermit   <- "~/DropboxExternal/dataRaw/vancouverIssuedBuildingPermits.csv"
@@ -58,6 +61,8 @@ stopifnot(!anyDuplicated(dtP$permitnumber))
 dtP[, issued := as.IDate(issuedate)]
 dtP[, applied := as.IDate(permitnumbercreateddate)]
 dtP[, u := tolower(specificusecategory)]
+print(dtP[, .N, by = typeofwork][order(-N)])
+n0 <- nrow(dtP); dtP <- dtP[typeofwork %chin% WORK]; lost(n0, nrow(dtP), "New Building or Addition / Alteration")
 n0 <- nrow(dtP); dtP <- dtP[!grepl("infill|laneway", u)]; lost(n0, nrow(dtP), "drop infill/laneway categories")
 # new build = typed New Building, or any other permit type at/above the HIGHVAL_Q quantile of value among non-new-build
 # permits for the principal products (single / duplex / multiple dwelling)
@@ -71,6 +76,7 @@ names(cutoffs) <- c("A", "B", "C")
 cutLab <- c(A = "q95 of non-new-build principal permits (main)", B = "q95 of all principal permits",
             C = "q33 of new-build single + duplex permits")
 for (k in names(cutoffs)) cat(sprintf("cutoff %s: $%s  (%s)\n", k, format(cutoffs[k], big.mark = ","), cutLab[k]))
+saveRDS(cutoffs, fCutoffs)
 hvTh <- cutoffs["A"]
 dtP[, highVal := typeofwork != "New Building" & projectvalue >= hvTh]
 print(dtP[prin & highVal == TRUE, .N, by = typeofwork])
