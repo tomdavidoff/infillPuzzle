@@ -1,0 +1,95 @@
+
+=== typeofwork x residential ===
+                             typeofwork     N residential medValue
+                                 <char> <int>       <int>    <num>
+1:                Addition / Alteration 26090       12302  65000.0
+2:                         New Building 12080       11837 636257.5
+3:          Demolition / Deconstruction  7198        6753  15000.0
+4:                Salvage and Abatement  6751        6347      0.0
+5:       Temporary Building / Structure   502          11  14187.5
+6: Outdoor Uses (No Buildings Proposed)    62          25  57500.0
+Key: <typeofwork>
+                             typeofwork  2017  2018  2019  2020  2021  2022
+                                 <char> <int> <int> <int> <int> <int> <int>
+1:                Addition / Alteration  3133  3320  3034  2247  2582  2387
+2:          Demolition / Deconstruction   877   836   663   551   611  1017
+3:                         New Building  1508  1660  1195  1030   945  1474
+4: Outdoor Uses (No Buildings Proposed)    11     9     6     4     9     6
+5:                Salvage and Abatement  1114   858   597   525   833  1010
+6:       Temporary Building / Structure    73    60    72    26    39    58
+    2023  2024  2025  2026
+   <int> <int> <int> <int>
+1:  2253  2544  2490  2100
+2:   680   631   772   560
+3:  1074  1114  1238   842
+4:     7     9     1     0
+5:   612   582   599    21
+6:    57    37    40    40
+Addition / Alteration                          52683 ->  26090 (lost 50.5%)
+residential (propertyuse has Dwelling)         26090 ->  12302 (lost 52.8%)
+
+cutoff A = $660,000
+                      class     N share medValue
+                     <char> <int> <num>    <num>
+1:                    other 10320 0.839    40000
+2:          secondary suite  1191 0.097    54800
+3: high value (>= cutoff A)   586 0.048  1152500
+4:  conversion (adds units)   205 0.017   750000
+Key: <class>
+                      class  2017  2018  2019  2020  2021  2022  2023  2024
+                     <char> <int> <int> <int> <int> <int> <int> <int> <int>
+1:  conversion (adds units)    13    15    14    36    32    19    28    24
+2: high value (>= cutoff A)    47    52    57    49    55    54    73    72
+3:                    other  1218  1221  1174   965  1198   967   925   975
+4:          secondary suite   148   159   149   121   127    97    91   115
+    2025  2026
+   <int> <int>
+1:    15     9
+2:    62    65
+3:   902   775
+4:   103    81
+Key: <class>
+                      class  East  West
+                     <char> <int> <int>
+1:  conversion (adds units)   103    95
+2: high value (>= cutoff A)   162   420
+3:                    other  3358  6888
+4:          secondary suite   732   457
+                                                               specificusecategory
+                                                                            <char>
+1:                                                    Multiple Conversion Dwelling
+2:                                                                          Duplex
+3:                                                                   Dwelling Unit
+4:                                               Single Detached House w/Sec Suite
+5:                                                               Multiple Dwelling
+6:                                                           Single Detached House
+7:                                                        Duplex w/Secondary Suite
+8: Infill Single Detached House,Multiple Conversion Dwelling,Single Detached House
+       N
+   <int>
+1:   131
+2:    26
+3:     9
+4:     8
+5:     6
+6:     6
+7:     5
+8:     2
+
+-- conversion (adds units) examples --
+[1] "exterior and interior alterations to add to and to convert the existing one family dwelling building to multiple conversion dwelling building with 3 dwelling un"  
+[2] "**********************part 5 design********************** \r\nto relocate, alter, add to and convert this existing two-storey plus basement, heritage a one-family"
+[3] "exterior and interior alteration to convert this existing two-family dwelling to a 3-storey multiple conversion dwelling containing 5 dwelling units (including "  
+[4] "to alter and convert the existing one-family character dwelling to a multiple conversion dwelling (building 1) containing 2 dwelling units and, to develop an in"  
+
+-- secondary suite examples --
+[1] "exterior and interior alterations to remove work without permit rear deck with addition below, and replace with rear landing.\r\n\r\ninterior alterations and change"
+[2] "exterior alterations to add a new deck (approx. 8'4\"\" x 18'5\"\") at the rear of the main floor, install new french doros and windows at rear, one new window at t"
+[3] "to change the use from one-family dwelling to one-family dwelling with secondary suite on this site. \r\n\r\nsecondary suite size reviewed and noted per s. dugaro, "
+[4] "interior and exterior alterations to this existing one family dwelling on this site to convert it to a one family dwelling with a secondary suite.\r\n\r\nscope of w"
+
+-- high value (>= cutoff A) examples --
+[1] "exterior alterations to reroof the flat roof and roof decks at this existing multiple dwelling building on this site. the scope includes replace the skylights a"  
+[2] "exterior alterations to replace windows and doors only with new vinyl windows and doors in the same openings for these existing multiple dwelling buildings (21 "  
+[3] "1020 harwood street\n\nexterior alterations to renew existing coatings and minor concrete repairs at balconies on the 2nd level to 25th level at this existing mul"
+[4] "exterior and interior alterations to reconstruct, add new dormers, new roof for this existing single detached house on this inside with lane site as approved by"  
