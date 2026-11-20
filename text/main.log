@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  20 NOV 2026 12:18
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  20 NOV 2026 16:41
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -430,26 +430,26 @@ Package xcolor Info: Model `wave' substituted by `hsb' on input line 1372.
 )
 (./duplexStock2018.tex) (./institutionalFacts.tex) (./multiplexLotWidth.tex)
 (./ppsf33.tex) (./permitTrends.tex) (./elasPremium.tex) (./shareDiD.tex)
-(./logitDiD.tex)
+(./logitDiD.tex) (./sqftPrePost.tex)
 \@quotelevel=\count413
 \@quotereset=\count414
  (./main.aux)
 \openout1 = `main.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 22.
-LaTeX Font Info:    ... okay on input line 22.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 22.
-LaTeX Font Info:    ... okay on input line 22.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 22.
-LaTeX Font Info:    ... okay on input line 22.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 22.
-LaTeX Font Info:    ... okay on input line 22.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 22.
-LaTeX Font Info:    ... okay on input line 22.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 22.
-LaTeX Font Info:    ... okay on input line 22.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 22.
-LaTeX Font Info:    ... okay on input line 22.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 23.
+LaTeX Font Info:    ... okay on input line 23.
 Package biblatex Info: Trying to load language 'english'...
 Package biblatex Info: ... file 'english.lbx' found.
 
@@ -465,8 +465,8 @@ Package biblatex Info: Trying to load bibliographic data...
 Package biblatex Info: ... file 'main.bbl' found.
 
 (./main.bbl)
-Package biblatex Info: Reference section=0 on input line 22.
-Package biblatex Info: Reference segment=0 on input line 22.
+Package biblatex Info: Reference section=0 on input line 23.
+Package biblatex Info: Reference segment=0 on input line 23.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -532,14 +532,14 @@ al/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
 
 [2]
 
-LaTeX Warning: Reference `sec:policies' on page 3 undefined on input line 44.
+LaTeX Warning: Reference `sec:policies' on page 3 undefined on input line 109.
 
 
-LaTeX Warning: Reference `sec:results' on page 3 undefined on input line 44.
+LaTeX Warning: Reference `sec:results' on page 3 undefined on input line 110.
 
 
-LaTeX Warning: Reference `sec:conclusion' on page 3 undefined on input line 44.
-
+LaTeX Warning: Reference `sec:conclusion' on page 3 undefined on input line 110
+.
 
 
 
@@ -556,56 +556,96 @@ LaTeX Warning: Reference `sec:conclusion' on page 3 undefined on input line 44.
 [8]
 
 [9]
-<ppsf33Tract.png, id=44, 542.025pt x 505.89pt>
-File: ppsf33Tract.png Graphic file (type png)
-<use ppsf33Tract.png>
-Package pdftex.def Info: ppsf33Tract.png  used on input line 181.
-(pdftex.def)             Requested size: 469.75502pt x 438.45337pt.
-<ppsf33Neighbourhood.png, id=45, 542.025pt x 505.89pt>
-File: ppsf33Neighbourhood.png Graphic file (type png)
-<use ppsf33Neighbourhood.png>
-Package pdftex.def Info: ppsf33Neighbourhood.png  used on input line 187.
-(pdftex.def)             Requested size: 469.75502pt x 438.45337pt.
-
 
 [10]
+<ppsf33Tract.png, id=48, 542.025pt x 505.89pt>
+File: ppsf33Tract.png Graphic file (type png)
+<use ppsf33Tract.png>
+Package pdftex.def Info: ppsf33Tract.png  used on input line 300.
+(pdftex.def)             Requested size: 469.75502pt x 438.45337pt.
+<ppsf33Neighbourhood.png, id=49, 542.025pt x 505.89pt>
+File: ppsf33Neighbourhood.png Graphic file (type png)
+<use ppsf33Neighbourhood.png>
+Package pdftex.def Info: ppsf33Neighbourhood.png  used on input line 306.
+(pdftex.def)             Requested size: 469.75502pt x 438.45337pt.
+ (./elasPpsfCor.tex)
 
-[11 <./ppsf33Tract.png>]
+[11]
 
-[12 <./ppsf33Neighbourhood.png>] (./elasPpsfCor.tex) (./elasPpsfDupCor.tex)
+[12 <./ppsf33Tract.png>]
 
-[13]
+[13 <./ppsf33Neighbourhood.png>] (./elasPpsfDupCor.tex) (./sqftPrePostTable.tex
+)
 
-LaTeX Warning: Reference `eq:profit' on page 14 undefined on input line 214.
-
-<permitTrends.png, id=60, 1756.5625pt x 2132.96875pt>
+[14]
+<permitTrends.png, id=64, 1756.5625pt x 2132.96875pt>
 File: permitTrends.png Graphic file (type png)
 <use permitTrends.png>
-Package pdftex.def Info: permitTrends.png  used on input line 222.
+Package pdftex.def Info: permitTrends.png  used on input line 349.
 (pdftex.def)             Requested size: 469.75502pt x 570.40892pt.
 
-LaTeX Warning: Float too large for page by 2.47891pt on input line 224.
+
+LaTeX Warning: Float too large for page by 2.47891pt on input line 351.
 
 
-
-[14] (./shareDiDTable.tex)
 
 [15]
 
-[16 <./permitTrends.png>]
+[16 <./permitTrends.png>] (./shareDiDTable.tex)
 
 [17] (./shareDiDPeriods.tex)
 
-[18] (./logitDiDTable.tex)
-Overfull \hbox (2.94786pt too wide) in paragraph at lines 2--271
+[18]
+
+[19] (./logitDiDTable.tex)
+Overfull \hbox (2.94786pt too wide) in paragraph at lines 2--398
  [][] 
  []
 
 
 
-[19]
+[20]
 
-[20] (./main.aux)
+[21]
+Overfull \hbox (30.02003pt too wide) in paragraph at lines 409--409
+\OT1/cmtt/m/n/12 documents / 1 . ZDBy -[] lawamendmentre . missingmiddlehousing
+andsimplifyingregulations .
+ []
+
+
+
+[22]
+
+[23]
+Overfull \hbox (8.19232pt too wide) in paragraph at lines 409--409
+\OT1/cmr/m/it/12 State Gov-ern-ments\OT1/cmr/m/n/12 . Re-search Re-port. NYU Fu
+r-man Cen-ter. \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 https : 
+/ / furmancenter .
+ []
+
+
+Overfull \hbox (15.82265pt too wide) in paragraph at lines 409--409
+\OT1/cmr/m/sc/12 doi\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 10 . 1177 / 00420980231
+159500$\OT1/cmr/m/n/12 . \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/1
+2 https : / / doi . org / 10 . 1177 / 00420980231159500$\OT1/cmr/m/n/12 . 
+ []
+
+
+Package biblatex Warning: No driver for 'url'.
+(biblatex)                Using fallback driver on input line 409.
+
+
+Overfull \hbox (10.74803pt too wide) in paragraph at lines 409--409
+\OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 https : / / doodles . m
+ountainmath . ca / posts / 2025 -[] 08 -[] 29 -[] multiplex -[] reforms -[]-[]-
+[]-[]
+ []
+
+
+
+[24]
+
+[25] (./main.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
@@ -619,15 +659,16 @@ Package logreq Info: Writing requests to 'main.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 11784 strings out of 473190
- 218729 string characters out of 5715801
- 1052007 words of memory out of 5000000
- 34905 multiletter control sequences out of 15000+600000
- 567323 words of font info for 65 fonts, out of 8000000 for 9000
+ 11986 strings out of 473190
+ 224881 string characters out of 5715801
+ 1058308 words of memory out of 5000000
+ 35099 multiletter control sequences out of 15000+600000
+ 567793 words of font info for 67 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 66i,11n,81p,2524b,1654s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 66i,11n,81p,2524b,1697s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
+</usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb>
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmex10.pfb><
 /usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi10.pfb></
 usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmmi12.pfb></u
@@ -640,13 +681,14 @@ xlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmr8.pfb></usr/local/texli
 ve/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy10.pfb></usr/local/texliv
 e/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/
 2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmti12.pfb></usr/local/texlive/2
-025/texmf-dist/fonts/type1/public/cm-super/sfrm0700.pfb></usr/local/texlive/202
-5/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2025/
-texmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
-Output written on main.pdf (20 pages, 3113163 bytes).
+025/texmf-dist/fonts/type1/public/amsfonts/cm/cmtt12.pfb></usr/local/texlive/20
+25/texmf-dist/fonts/type1/public/cm-super/sfrm0700.pfb></usr/local/texlive/2025
+/texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2025/t
+exmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
+Output written on main.pdf (25 pages, 3156010 bytes).
 PDF statistics:
- 160 PDF objects out of 1000 (max. 8388607)
- 99 compressed objects within 1 object stream
+ 187 PDF objects out of 1000 (max. 8388607)
+ 116 compressed objects within 2 object streams
  0 named destinations out of 1000 (max. 500000)
  16 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -162,3 +162,16 @@
 - Monte Carlo (400 draws, actual tract design and coordinates, LPM, rejection at 5%): iid errors: cluster 9%, Conley 1/2/3/5 km 9/11/13/17%. 0.3 km exponential field: iid 39%, cluster 12%, Conley 2 km 11%. 1 km field: cluster 37%, Conley 2 km 32%.
 - Why CHECK: (1) Conley isn't a fix for few effective clusters. postX varies only at area × post, so long cutoffs over-reject even with iid errors, and if the errors are correlated across tracts, neither method reaches nominal size. (2) The 2 km cutoff is a judgment call; the table caption names it and the .out shows 1–5 km. (3) There's still no bootstrap for the logit (score bootstrap is the candidate).
 - Caption of tab:LogitDiD: one sentence added for the bracketed SEs; Conley1999 added to CLAUDE.bib. No other prose changed.
+
+## 2026-11-20 — ewPreYear, ewDup{East,West}{PreYear,Post} (text/shareDiD.tex) — OK
+
+- Script: `scripts/permitShareDiD.R`, same sample as the E/W 2×2 (latest new-build permit per 33-ft lot × era, single + duplex). Duplex share by application year, 2022: East 58% (N=144), West 34% (N=59). R1-1 era (applied ≥ 2023-10-17): East 72% (172), West 69% (155). These match the numbers Tom had typed into the intro and the map macros dupVsSingle*RoneEra. The intro now uses the macros.
+
+## 2026-11-20 — sqftPrePost (text/sqftPrePost.tex, text/sqftPrePostTable.tex; tab:sqftPrePost) — CHECK
+
+- Script: `scripts/newBuildFSRPrePost.R`. Realized FSR = 2026 BCA finished floor area (sum over 2026 folios on the rollStart; single-folio duplex with a duplex use ×2) / 2018 lot area, on the 1,357 shareDiD permits.
+- Flow: not the lot's latest principal permit −17 (1.3%); a 2026 folio without area −27 (2.0%); building not complete on the 2026 roll (max year built < max(2019, issue year)) −277 (21.1%); single-folio duplex with unknown unit count −6. In the table: 1,030 (856 duplex era, 174 R1-1 era). Coverage: duplex era 83%, R1-1 era 53% (issued 2024 89%, 2025 62%, 2026 0%).
+- ×2 check (duplex-era duplexes, median FSR): multi-folio 0.725, single-folio ×2 0.715.
+- Mean (SD, median): duplex era single 0.70 (0.05, 0.71) N=549, duplex 0.73 (0.05, 0.72) N=307. R1-1 era single 0.64 (0.06, 0.61) N=51, duplex 0.75 (0.05, 0.76) N=123. Duplex − single: 0.033 → 0.113. E/W within product are similar.
+- Why CHECK: (1) The R1-1 era coverage is only 53% and skewed to early, fast builds. (2) R1-1 era singles are a mix: the median is 0.61 but p90 is 0.71, so some built at the old FSR (transition or vesting). (3) Duplexes were already 0.03 above singles in the duplex era. (4) FSR uses the 2018 lot area; it doesn't reflect lot consolidations or subdivisions.
+- Added BCAssessment2026 to CLAUDE.bib.

@@ -245,6 +245,7 @@
       \strng{authornamehash}{f675a527b14189e78481ba59aa9a2152}
       \strng{authorfullhash}{f675a527b14189e78481ba59aa9a2152}
       \strng{authorfullhashraw}{f675a527b14189e78481ba59aa9a2152}
+      \field{extraname}{1}
       \field{sortinit}{B}
       \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
       \field{extradatescope}{labelyear}
@@ -254,6 +255,31 @@
       \field{note}{Licensed data; roll reflects property condition as of 2018}
       \field{title}{2019 Residential Inventory and Data Advice Extracts ({REVD19})}
       \field{year}{2019}
+    \endentry
+    \entry{BCAssessment2026}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=f675a527b14189e78481ba59aa9a2152}{%
+           family={{BC Assessment}},
+           familyi={B\bibinitperiod}}}%
+      }
+      \strng{namehash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{fullhash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{fullhashraw}{f675a527b14189e78481ba59aa9a2152}
+      \strng{bibnamehash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{authorbibnamehash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{authornamehash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{authorfullhash}{f675a527b14189e78481ba59aa9a2152}
+      \strng{authorfullhashraw}{f675a527b14189e78481ba59aa9a2152}
+      \field{extraname}{2}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{Licensed data; roll reflects property condition as of 2025}
+      \field{title}{2026 Residential Inventory Extract and Folio Descriptions}
+      \field{year}{2026}
     \endentry
     \entry{Brueckner_1981}{article}{}{}
       \name{author}{1}{}{%

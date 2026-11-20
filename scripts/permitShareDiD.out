@@ -132,6 +132,21 @@ Key: <side, post>
 3:   West     0   343    75 0.2186589
 4:   West     1   155   107 0.6903226
 EW DiD 0.206 (SE 0.058, z 3.53, p 0.0004) | ratio of odds ratios 2.59, Woolf chi2(1) 11.13, p 0.0009 | logit coef 0.953
+Key: <side, yr>
+      side    yr     n         p
+    <char> <int> <int>     <num>
+ 1:   East  2018    51 0.1372549
+ 2:   East  2019    99 0.2424242
+ 3:   East  2020    84 0.4642857
+ 4:   East  2021   233 0.5236052
+ 5:   East  2022   144 0.5833333
+ 6:   East  2023    76 0.4342105
+ 7:   West  2018    17 0.0000000
+ 8:   West  2019    60 0.0500000
+ 9:   West  2020    47 0.2127660
+10:   West  2021   107 0.2336449
+11:   West  2022    59 0.3389831
+12:   West  2023    53 0.3207547
    cutoff       did         se
    <char>     <num>      <num>
 1:      A 0.2063291 0.05849772
@@ -202,6 +217,11 @@ Neighbourhood & 12 & 8 & 143 & 7 & 70\% & 0.443 (0.102) [$<$0.001] & 0.285 & 0.6
 \newcommand{\ewOddsRatio}{2.59}
 \newcommand{\ewChiSq}{11.13}
 \newcommand{\ewChiSqP}{$p<0.001$}
+\newcommand{\ewPreYear}{2022}
+\newcommand{\ewDupEastPreYear}{58}
+\newcommand{\ewDupWestPreYear}{34}
+\newcommand{\ewDupEastPost}{72}
+\newcommand{\ewDupWestPost}{69}
 \newcommand{\ewN}{1,357}
 \newcommand{\sdNBoot}{9,999}
 \newcommand{\sdMonthMedPermits}{1}
