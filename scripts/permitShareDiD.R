@@ -20,7 +20,7 @@ R1_START <- as.IDate("2023-10-17")   # R1-1 in force
 WIN_DAYS <- 182                      # narrow window: ~6 months either side of R1_START
 ONT      <- -123.101                 # Ontario St
 NBOOT    <- 9999
-BOOT     <- FALSE                    # wild bootstrap off for now (time); p macros print a \fact{} marker
+BOOT     <- TRUE
 CUTOFFS  <- readRDS("~/DropboxExternal/dataProcessed/permitNewBuildCutoffs.rds")  # from multiplexLotWidth.R
 fLinks   <- "~/DropboxExternal/dataProcessed/permitLotLinks.rds"
 fBCA19   <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"

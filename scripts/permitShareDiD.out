@@ -1,4 +1,8 @@
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+    beta  reps      meanEst  rejBoot05 rejCluster05
+   <num> <int>        <num>      <num>        <num>
+1:   0.0  1500 -0.001990016 0.06333333        0.084
+2:   0.5   500  0.505354162 0.86000000        0.928
 33-ft single+duplex new builds, latest per lot x era: 1357 (duplex era 1030, R1-1 era 327)
 lots with >1 BCA neighbourhood: 0 
 lots without tract: 0  without neighbourhood: 0 
@@ -22,39 +26,39 @@ nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
 nbhd: area has ppsf33 estimate (window)          157 ->    157 (lost 0.0%)
 NOTE: 3/0 fixed-effect singletons were removed (3 observations).
 
-==== base | areas 56 | cells 368 | permits 1343 | WCR p NA 
+==== base | areas 56 | cells 368 | permits 1343 | WCR p 0.00010001 
        Estimate Std. Error  t value     Pr(>|t|)
 postX 0.4492936 0.09795957 4.586521 2.646306e-05
 attr(,"type")
 [1] "Clustered (area)"
 
-==== trend | areas 56 | cells 368 | permits 1343 | WCR p NA 
+==== trend | areas 56 | cells 368 | permits 1343 | WCR p 0.04930493 
          Estimate Std. Error   t value   Pr(>|t|)
 postX  0.40487098 0.19998894 2.0244669 0.04778895
 trendX 0.01190968 0.04740754 0.2512191 0.80258093
 attr(,"type")
 [1] "Clustered (area)"
 
-==== window | areas 29 | cells 58 | permits 121 | WCR p NA 
+==== window | areas 29 | cells 58 | permits 121 | WCR p 0.5568557 
        Estimate Std. Error   t value  Pr(>|t|)
 postX 0.2227228   0.350282 0.6358386 0.5300449
 attr(,"type")
 [1] "Clustered (area)"
 
-==== base | areas 20 | cells 143 | permits 1356 | WCR p NA 
+==== base | areas 20 | cells 143 | permits 1356 | WCR p 0.00070007 
        Estimate Std. Error  t value     Pr(>|t|)
 postX 0.4431202  0.1018159 4.352171 0.0003430953
 attr(,"type")
 [1] "Clustered (area)"
 
-==== trend | areas 20 | cells 143 | permits 1356 | WCR p NA 
+==== trend | areas 20 | cells 143 | permits 1356 | WCR p 0.1521152 
            Estimate Std. Error    t value  Pr(>|t|)
 postX   0.475586929 0.27989473  1.6991636 0.1056032
 trendX -0.008573488 0.06087597 -0.1408353 0.8894824
 attr(,"type")
 [1] "Clustered (area)"
 
-==== window | areas 16 | cells 32 | permits 153 | WCR p NA 
+==== window | areas 16 | cells 32 | permits 153 | WCR p 0.6847685 
        Estimate Std. Error   t value  Pr(>|t|)
 postX 0.1580565  0.3848706 0.4106744 0.6871178
 attr(,"type")
@@ -83,14 +87,14 @@ nbhd: area has ppsf33 estimate                  1357 ->   1356 (lost 0.1%)
 8:    12   nbhd       8   143          7 0.699301       143 0.443 0.1018 0.285
     pWCR  bUnw seUnw
    <num> <num> <num>
-1:    NA 0.470 0.117
-2:    NA 0.488 0.110
-3:    NA 0.613 0.102
-4:    NA 0.494 0.119
-5:    NA 0.426 0.108
-6:    NA 0.478 0.112
-7:    NA 0.571 0.119
-8:    NA 0.604 0.144
+1: 1e-04 0.470 0.117
+2: 1e-04 0.488 0.110
+3: 0e+00 0.613 0.102
+4: 0e+00 0.494 0.119
+5: 1e-04 0.426 0.108
+6: 8e-04 0.478 0.112
+7: 5e-04 0.571 0.119
+8: 7e-04 0.604 0.144
 CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
 CTUID: area has ppsf33 estimate                 1357 ->   1343 (lost 1.0%)
     Estimate   Std. Error      t value     Pr(>|t|) 
@@ -141,6 +145,7 @@ EW DiD 0.206 (SE 0.058, z 3.53, p 0.0004) | ratio of odds ratios 2.59, Woolf chi
 \hline
 Post 2023 $\times$ log ppsf & $0.449^{***}$ & $0.405^{**}$ & $0.223$ & $0.443^{***}$ & $0.476$ & $0.158$ \\
  & (0.098) & (0.200) & (0.350) & (0.102) & (0.280) & (0.385) \\
+\quad wild bootstrap $p$ & $<$0.001 & 0.049 & 0.557 & $<$0.001 & 0.152 & 0.685 \\
 Period $\times$ log ppsf &  & $0.012$ &  &  & $-0.009$ &  \\
  &  & (0.047) &  &  & (0.061) &  \\
 \hline
@@ -158,31 +163,31 @@ Mean duplex share & 0.45 & 0.45 & 0.54 & 0.45 & 0.45 & 0.53 \\
  & Period & & Cells & Median & Cells with & \multicolumn{2}{c}{Weighted} & Unweighted \\
 Level & (months) & Periods & used & permits & $\geq$5 permits & Coef. (SE) [boot. $p$] & MDE & Coef. (SE) \\
 \hline
-Tract & 1 & 96 & 1060 & 1 & 0\% & 0.460 (0.112) [--] & 0.313 & 0.470 (0.117) \\
-Tract & 3 & 32 & 773 & 1 & 3\% & 0.459 (0.101) [--] & 0.282 & 0.488 (0.110) \\
-Tract & 6 & 16 & 560 & 2 & 11\% & 0.457 (0.099) [--] & 0.278 & 0.613 (0.102) \\
-Tract & 12 & 8 & 368 & 3 & 28\% & 0.449 (0.098) [--] & 0.274 & 0.494 (0.119) \\
-Neighbourhood & 1 & 96 & 785 & 1 & 3\% & 0.448 (0.106) [--] & 0.296 & 0.426 (0.108) \\
-Neighbourhood & 3 & 32 & 442 & 2 & 22\% & 0.454 (0.108) [--] & 0.304 & 0.478 (0.112) \\
-Neighbourhood & 6 & 16 & 263 & 4 & 43\% & 0.454 (0.105) [--] & 0.295 & 0.571 (0.119) \\
-Neighbourhood & 12 & 8 & 143 & 7 & 70\% & 0.443 (0.102) [--] & 0.285 & 0.604 (0.144) \\
+Tract & 1 & 96 & 1060 & 1 & 0\% & 0.460 (0.112) [$<$0.001] & 0.313 & 0.470 (0.117) \\
+Tract & 3 & 32 & 773 & 1 & 3\% & 0.459 (0.101) [$<$0.001] & 0.282 & 0.488 (0.110) \\
+Tract & 6 & 16 & 560 & 2 & 11\% & 0.457 (0.099) [$<$0.001] & 0.278 & 0.613 (0.102) \\
+Tract & 12 & 8 & 368 & 3 & 28\% & 0.449 (0.098) [$<$0.001] & 0.274 & 0.494 (0.119) \\
+Neighbourhood & 1 & 96 & 785 & 1 & 3\% & 0.448 (0.106) [$<$0.001] & 0.296 & 0.426 (0.108) \\
+Neighbourhood & 3 & 32 & 442 & 2 & 22\% & 0.454 (0.108) [$<$0.001] & 0.304 & 0.478 (0.112) \\
+Neighbourhood & 6 & 16 & 263 & 4 & 43\% & 0.454 (0.105) [$<$0.001] & 0.295 & 0.571 (0.119) \\
+Neighbourhood & 12 & 8 & 143 & 7 & 70\% & 0.443 (0.102) [$<$0.001] & 0.285 & 0.604 (0.144) \\
 \hline
 \end{tabular}
 % generated by scripts/permitShareDiD.R; do not edit
 \newcommand{\sdTractB}{0.449}
 \newcommand{\sdTractSE}{0.098}
-\newcommand{\sdTractP}{\fact{bootstrap off}}
+\newcommand{\sdTractP}{$p<0.001$}
 \newcommand{\sdNbhdB}{0.443}
 \newcommand{\sdNbhdSE}{0.102}
-\newcommand{\sdNbhdP}{\fact{bootstrap off}}
+\newcommand{\sdNbhdP}{$p<0.001$}
 \newcommand{\sdTractTrendB}{0.405}
-\newcommand{\sdTractTrendP}{\fact{bootstrap off}}
+\newcommand{\sdTractTrendP}{$p=0.049$}
 \newcommand{\sdNbhdTrendB}{0.476}
-\newcommand{\sdNbhdTrendP}{\fact{bootstrap off}}
+\newcommand{\sdNbhdTrendP}{$p=0.152$}
 \newcommand{\sdTractWinB}{0.223}
-\newcommand{\sdTractWinP}{\fact{bootstrap off}}
+\newcommand{\sdTractWinP}{$p=0.557$}
 \newcommand{\sdNbhdWinB}{0.158}
-\newcommand{\sdNbhdWinP}{\fact{bootstrap off}}
+\newcommand{\sdNbhdWinP}{$p=0.685$}
 \newcommand{\sdWinPermits}{121}
 \newcommand{\sdNTract}{56}
 \newcommand{\sdNNbhd}{20}
@@ -198,7 +203,7 @@ Neighbourhood & 12 & 8 & 143 & 7 & 70\% & 0.443 (0.102) [--] & 0.285 & 0.604 (0.
 \newcommand{\ewChiSq}{11.13}
 \newcommand{\ewChiSqP}{$p<0.001$}
 \newcommand{\ewN}{1,357}
-\newcommand{\sdNBoot}{\fact{bootstrap off}}
+\newcommand{\sdNBoot}{9,999}
 \newcommand{\sdMonthMedPermits}{1}
 \newcommand{\sdMonthShareFive}{0}
 \newcommand{\sdYearMedPermits}{3}

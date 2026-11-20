@@ -849,6 +849,37 @@
       \verb https://bylaws.vancouver.ca/zoning/zoning-by-law-district-schedule-r1-1.pdf
       \endverb
     \endentry
+    \entry{Conley1999}{article}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=0ad31912dab5ec3db2a9008277e91428}{%
+           family={Conley},
+           familyi={C\bibinitperiod},
+           given={Timothy\bibnamedelima G.},
+           giveni={T\bibinitperiod\bibinitdelim G\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{0ad31912dab5ec3db2a9008277e91428}
+      \strng{fullhash}{0ad31912dab5ec3db2a9008277e91428}
+      \strng{fullhashraw}{0ad31912dab5ec3db2a9008277e91428}
+      \strng{bibnamehash}{0ad31912dab5ec3db2a9008277e91428}
+      \strng{authorbibnamehash}{0ad31912dab5ec3db2a9008277e91428}
+      \strng{authornamehash}{0ad31912dab5ec3db2a9008277e91428}
+      \strng{authorfullhash}{0ad31912dab5ec3db2a9008277e91428}
+      \strng{authorfullhashraw}{0ad31912dab5ec3db2a9008277e91428}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Econometrics}
+      \field{number}{1}
+      \field{title}{{GMM} Estimation with Cross Sectional Dependence}
+      \field{volume}{92}
+      \field{year}{1999}
+      \field{pages}{1\bibrangedash 45}
+      \range{pages}{45}
+    \endentry
     \entry{Couture_etal2024}{article}{}{}
       \name{author}{4}{}{%
         {{un=0,uniquepart=base,hash=7e04bb1f0a7962e508a41fa9d60186a1}{%
