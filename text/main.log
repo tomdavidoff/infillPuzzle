@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  20 NOV 2026 21:57
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  20 NOV 2026 22:02
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -584,26 +584,26 @@ LaTeX Warning: Float too large for page by 2.47891pt on input line 353.
 
 [17] (./shareDiDPeriods.tex)
 
-[18]
-
-[19] (./logitDiDTable.tex)
+[18] (./logitDiDTable.tex)
 Overfull \hbox (2.94786pt too wide) in paragraph at lines 2--400
  [][] 
  []
 
 
-LaTeX Warning: Reference `tab:shareDiD' on page 20 undefined on input line 403.
+LaTeX Warning: Reference `tab:shareDiD' on page 19 undefined on input line 403.
 
 
 
-LaTeX Warning: Reference `tab:shareDiD' on page 20 undefined on input line 406.
+LaTeX Warning: Reference `tab:shareDiD' on page 19 undefined on input line 406.
 
 
 
-LaTeX Warning: Reference `tab:shareDiD' on page 20 undefined on input line 406.
+LaTeX Warning: Reference `tab:shareDiD' on page 19 undefined on input line 406.
 
 
 (./shareDiDElasTable.tex)
+
+[19]
 
 [20]
 
@@ -618,6 +618,8 @@ andsimplifyingregulations .
 
 
 [23]
+
+[24]
 Overfull \hbox (8.19232pt too wide) in paragraph at lines 414--414
 \OT1/cmr/m/it/12 State Gov-ern-ments\OT1/cmr/m/n/12 . Re-search Re-port. NYU Fu
 r-man Cen-ter. \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 https : 
@@ -625,8 +627,6 @@ r-man Cen-ter. \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 https :
  []
 
 
-
-[24]
 Overfull \hbox (15.82265pt too wide) in paragraph at lines 414--414
 \OT1/cmr/m/sc/12 doi\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 10 . 1177 / 00420980231
 159500$\OT1/cmr/m/n/12 . \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/1
@@ -664,7 +664,7 @@ Package logreq Info: Writing requests to 'main.run.xml'.
 Here is how much of TeX's memory you used:
  11989 strings out of 473190
  225018 string characters out of 5715801
- 1058339 words of memory out of 5000000
+ 1059339 words of memory out of 5000000
  35099 multiletter control sequences out of 15000+600000
  567793 words of font info for 67 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
@@ -688,7 +688,7 @@ e/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/
 25/texmf-dist/fonts/type1/public/cm-super/sfrm0700.pfb></usr/local/texlive/2025
 /texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2025/t
 exmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
-Output written on main.pdf (26 pages, 3156103 bytes).
+Output written on main.pdf (26 pages, 3119084 bytes).
 PDF statistics:
  190 PDF objects out of 1000 (max. 8388607)
  118 compressed objects within 2 object streams
