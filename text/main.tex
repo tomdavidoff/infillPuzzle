@@ -30,7 +30,7 @@
 \begin{abstract}
 
 Several U.S. and Canadian jurisdictions have recently allowed  multifamily homes in formerly single-family-only zones. Within markets, the option to build infill multifamily is commonly exercised disproportionately in cheaper locations. This is puzzling, because the right to add space is more valuable where rents and prices are higher. We distinguish two aspects of zoning allowances: ``addition'' of allowable built space on a fixed lot versus ``division'' of given built space into more homes. Addition is more valuable in better locations; division likely is not. When density cannot vary much with location, richer households, with more willingness to pay for incremental square feet, sort into better locations. Vancouver legalized duplexes in 2018, but allowed them no more space than single family homes. A 2023 reform reduced allowable single family square footage, so that duplexes represented addition and division. Consistent with our model, duplexes initially sorted heavily into cheaper locations and the 2023 reform was associated with a significant spatial reallocation of duplexes towards pricier locations. 
-par\bigskip
+\par\bigskip
 \textbf{Keywords:} housing supply and markets, government policy, regulation, state and local government
 \end{abstract}
 
@@ -107,7 +107,7 @@ particulary the attendant sorting of newly allowed infill housing. Section
 \ref{sec:model} presents our model of addition, division, and sorting. We
 follow this with a description of the institutional and policy setting in
 Section \ref{sec:policies}. Our empirical analysis is in Section
-\ref{sec:results}. Section \ref{sec:conclusion} concludes. 
+\ref{sec:estimationData}. Section \ref{sec:conclusion} concludes. 
 
 Empirically, we find that Vancouver's low density neighbourhoods are sorted in
 that the elasticity of willingness to pay for additional square footage is
@@ -256,10 +256,10 @@ profitable than $N$ units is:
 \end{equation}
 where $\Lambda$ is the logistic cumulative distribution function. 
 
-The effect of the 2023 rezoning on the probability that a developer will choose to build $N+1$ units, in which $N$
+The effect of the 2023 rezoning on the probability that a developer will choose to build $N+1$ units, in which $N$ should be captured with an interaction between price and an indicator for post-2023.
 
 
-\section{Institutional background}
+\section{\label{sec:policies} Institutional background}
 
 Vancouver, British Columbia, is a Canadian city with a population of 662,248 as
 of the 2021 Canadian census. The city has been densifying over time. In 2001, the City had 65,390 single detached homes, 39,580 ``other ground oriented homes such as townhomes and half-duplexes, and 131,130 apartments. By 2021, the counts were 44,755 single family, 70,650 other ground oriented, and 189,940 apartments.\footnote{2018 and 2025 Metro Vancouver Housing Data Book.} The loss of single family homes is attributable to a near absence of unbuilt residentially zoned land.
@@ -397,14 +397,9 @@ Two small-sample concerns arise. First, maximum likelihood with area dummies suf
 	\input{logitDiDTable}
 \end{table}
 
-The regression of interest in OLS form is confined to single family or duplex new build permits\footnote{New builds are identified as either a permit for a new structure or for any permit above a certain threshold percentile in dollar cost of the permitted work. Inclusion of the latter is important as the definition of ``new build'' is not clear, and yadda yadda.}
+\section{\label{sec:conclusion}Conclusion}
 
-\begin{equation}
-	I_{ijt}   = \alpha + \beta_{1} Post 2023 \times ppsf_{j} + \beta_{2}D_{T} + \beta_{3}D_{j} + \epsilon_{ijt} 
-\end{equation}
-
-
-% NOTE TO CLAUDE: more to come!
+A fairly general model of housing density choice by a developer suggests competing effects in the spatial allocation of infill housing. The opportunity to divide the same space into more units will be more valuable where willingness to pay for incremental square footage is less. Classical monocentric city models of residential sorting with limited density choice suggest this will be in relatively inexpensive areas. On the other hand, if building more units is associated with the relaxation of binding zoning constraints, infill should be relatively likely in higher quality locations where land is more expensive. Data from Vancouver support all three of these predictions. The elasticity of home prices with respect to size is very highly correlated with average price per square foot across neighbourhoods. The choice to build a new duplex rather than a single family home was highly sorted into the inexpensive east side when zoning was division only, but equalized across locations after allowable single family size was shrunk in 2023.
 
 \printbibliography[heading=bibintoc]
 

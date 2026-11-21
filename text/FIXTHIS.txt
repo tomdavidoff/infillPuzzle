@@ -1,0 +1,56 @@
+FIXTHIS.txt — notes on main.tex, 2026-11-20 (line numbers as of the 17:26 save; may drift)
+
+CLEAR ASKS / UNFINISHED
+1. Line ~259: unfinished sentence, no verb: "The effect of the 2023 rezoning on the probability that a
+   developer will choose to build N+1 units, in which N should be captured with an interaction between
+   price and an indicator for post-2023." This is where the model should connect to eq:LogitDiD.
+2. Line ~341: still says "errors in log profits have a type 1 extreme value distribution in
+   \eqref{eq:profit}". That contradicts the new eq:profit (additive shock sigma*eps_iN). Log-profit
+   errors would also make the logit DiD interaction zero by construction (see the model notes below).
+   The next sentence, "We thus include in our analysis on the logit as well as OLS...", is garbled.
+3. Line ~265: hand-typed census and housing-stock numbers (662,248; 65,390 / 39,580 / 131,130;
+   44,755 / 70,650 / 189,940). The source is a footnote only ("2018 and 2025 Metro Vancouver Housing
+   Data Book"), with no bib key. Send Claude the PDFs to turn these into macros and add the citation.
+   Also an unclosed quote: ``other ground oriented homes ... has no closing ''.
+
+MODEL SECTION: LEFTOVERS FROM EDITS
+4. Line ~166: dangling fragment after eq:profit: "$F(N)x(N,\theta)$, where $x(N,\theta)$ is ..."
+   (left over from the old "Profits from building are ..." sentence).
+5. Line ~194, eq:Delta: stray "\sigma[" and mismatched subscripts: \epsilon_{iN+1}-\epsilon_{N}
+   should be \epsilon_{iN+1}-\epsilon_{iN}. The definition of Delta in the sentence above (line ~189)
+   leaves out the shock.
+6. Line ~255: Pr(Delta>0) = Lambda(Delta/sigma). Inside Lambda you want the deterministic part of
+   Delta, without the shocks.
+7. Choose the scale of sigma. Option (a): constant sigma, in dollars (the current eq:profit).
+   Option (b): scale sigma*Fbar*p(theta), so the shock is a percentage of the value of a standard
+   house; sigma is then unitless. Under (b) the log odds run through c/p, and the reform effect
+   rises with price at rate [dF(2)c2 - dF(1)c1]/(sigma p^2) > 0. Under log-profit errors the
+   interaction is zero. Make line ~341 match whichever you choose.
+   Possible robustness check: 1/ppsf in place of log ppsf in the interaction.
+   IIA caveat: if duplex and multiplex shocks are correlated, nested logit is the standard fix.
+8. Line ~277: "irrelevance of independent alternatives" should be "independence of irrelevant
+   alternatives". The sentence ending "...discussed in section \ref{sec:estimationData}" is missing
+   its final period.
+
+CLAIMS TO CHECK AGAINST THE RESULTS
+9.  Line ~365: "as there has been convergence in pricing over time" is not tested, and the trend
+    coefficients are about zero (factlog, Nov 16, CHECK).
+10. Line ~402, conclusion: "very highly correlated" (elasticity vs ppsf) is 0.57 across tracts and
+    0.66 across neighbourhoods. "All three of these predictions" doesn't match the two effects listed
+    just before it.
+11. Line ~362, eq:ShareDiD: uses D_T where eq:LogitDiD uses D_t, and gives an epsilon_{ijt} subscript
+    to a cell-level equation.
+
+MINOR
+- Line ~99: "(relatively!)" is either a note to self or deliberate.
+- Bibliography: biber warns about text month fields (April, July, November, January) in HsiehMoretti,
+  Liao2023, Bayer_etal2004 and MarantzElmendorfKim2023_ADUReforms, and about a trailing comma in an
+  author name.
+
+CLAUDE CAN DO DIRECTLY ON REQUEST: items 4, 5, 6 and 8 (typos and notation). Item 2 depends on item 7.
+
+NEW TODAY (branch conleyWCB, see notes/factlog.md)
+- Wild cluster bootstrap back on (shareDiD, logitDiD).
+- Bartlett Conley SEs at 2 km in tab:LogitDiD panels A and B.
+- Intro E/W shares as macros (\ewDupEastPreYear etc.).
+- tab:sqftPrePost (realized FSR before and after 2023; only 53% of post-reform permits are built so far).

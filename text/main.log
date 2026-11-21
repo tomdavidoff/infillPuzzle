@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  20 NOV 2026 16:41
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  20 NOV 2026 17:22
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -532,17 +532,6 @@ al/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc}]
 
 [2]
 
-LaTeX Warning: Reference `sec:policies' on page 3 undefined on input line 109.
-
-
-LaTeX Warning: Reference `sec:results' on page 3 undefined on input line 110.
-
-
-LaTeX Warning: Reference `sec:conclusion' on page 3 undefined on input line 110
-.
-
-
-
 [3]
 
 [4]
@@ -607,7 +596,7 @@ Overfull \hbox (2.94786pt too wide) in paragraph at lines 2--398
 [20]
 
 [21]
-Overfull \hbox (30.02003pt too wide) in paragraph at lines 409--409
+Overfull \hbox (30.02003pt too wide) in paragraph at lines 404--404
 \OT1/cmtt/m/n/12 documents / 1 . ZDBy -[] lawamendmentre . missingmiddlehousing
 andsimplifyingregulations .
  []
@@ -617,25 +606,28 @@ andsimplifyingregulations .
 [22]
 
 [23]
-Overfull \hbox (8.19232pt too wide) in paragraph at lines 409--409
+Overfull \hbox (8.19232pt too wide) in paragraph at lines 404--404
 \OT1/cmr/m/it/12 State Gov-ern-ments\OT1/cmr/m/n/12 . Re-search Re-port. NYU Fu
 r-man Cen-ter. \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 https : 
 / / furmancenter .
  []
 
 
-Overfull \hbox (15.82265pt too wide) in paragraph at lines 409--409
+Overfull \hbox (15.82265pt too wide) in paragraph at lines 404--404
 \OT1/cmr/m/sc/12 doi\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 10 . 1177 / 00420980231
 159500$\OT1/cmr/m/n/12 . \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/1
 2 https : / / doi . org / 10 . 1177 / 00420980231159500$\OT1/cmr/m/n/12 . 
  []
 
 
+
+[24]
+
 Package biblatex Warning: No driver for 'url'.
-(biblatex)                Using fallback driver on input line 409.
+(biblatex)                Using fallback driver on input line 404.
 
 
-Overfull \hbox (10.74803pt too wide) in paragraph at lines 409--409
+Overfull \hbox (10.74803pt too wide) in paragraph at lines 404--404
 \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 https : / / doodles . m
 ountainmath . ca / posts / 2025 -[] 08 -[] 29 -[] multiplex -[] reforms -[]-[]-
 []-[]
@@ -643,27 +635,21 @@ ountainmath . ca / posts / 2025 -[] 08 -[] 29 -[] multiplex -[] reforms -[]-[]-
 
 
 
-[24]
-
 [25] (./main.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
  ***********
-
-
-LaTeX Warning: There were undefined references.
-
 Package logreq Info: Writing requests to 'main.run.xml'.
 \openout1 = `main.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 11986 strings out of 473190
- 224881 string characters out of 5715801
- 1058308 words of memory out of 5000000
- 35099 multiletter control sequences out of 15000+600000
- 567793 words of font info for 67 fonts, out of 8000000 for 9000
+ 11984 strings out of 473190
+ 224853 string characters out of 5715801
+ 1058355 words of memory out of 5000000
+ 35097 multiletter control sequences out of 15000+600000
+ 567486 words of font info for 66 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  66i,11n,81p,2524b,1697s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
@@ -685,7 +671,7 @@ e/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/
 25/texmf-dist/fonts/type1/public/cm-super/sfrm0700.pfb></usr/local/texlive/2025
 /texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2025/t
 exmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
-Output written on main.pdf (25 pages, 3156010 bytes).
+Output written on main.pdf (25 pages, 3155892 bytes).
 PDF statistics:
  187 PDF objects out of 1000 (max. 8388607)
  116 compressed objects within 2 object streams
