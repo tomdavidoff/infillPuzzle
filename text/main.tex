@@ -319,22 +319,13 @@ To evaluate the assumption that the gap in willingness to pay for a single famil
 	\input{elasPpsfCor}
 \end{table}
 
-To measure the duplex premium, we add \dupSales{} sales of strata duplex units from the same period in any zone; \dupRTShare\% are in the two-family RT zones, which do not overlap R1. (Non-strata duplex records report one unit's floor area but the sale price of the building, so we exclude them.) The premium is the difference between duplex and single family area effects in a pooled version of equation \eqref{eq:ppsfHedonic}. The mean duplex premium per square foot is \dupPremiumMeanTract\% across the \dupAreasTract{} tracts with at least \dupMinSales{} duplex sales. Table \ref{tab:elasPpsfDup} shows the correlations. Across tracts, the duplex premium falls with both price per square foot (\dupPremPpsfCorTract) and elasticity (\dupPremElasCorTract), but this is largely a contrast between East Side tracts and the \dupWestTracts{} West Side tracts with enough duplex sales: a West Side indicator alone correlates \dupPremWestCorTract{} with the premium (last column of the table).
+To measure the duplex premium, we add \dupSales{} sales of strata duplex units from the same period in any zone; \dupRTShare\% are in the two-family RT zones, which do not overlap R1. (Non-strata duplex records report one unit's floor area but the sale price of the building, so we exclude them.) The premium is the difference between duplex and single family area effects in a pooled version of equation \eqref{eq:ppsfHedonic}. The mean duplex premium per square foot is \dupPremiumMeanTract\% across the \dupAreasTract{} tracts with at least \dupMinSales{} duplex sales. Table \ref{tab:elasPpsfDup} shows the correlations. Across tracts, the duplex premium falls with both price per square foot (\dupPremPpsfCorTract) and elasticity (\dupPremElasCorTract), but this is largely a contrast between East Side tracts and the \dupWestTracts{} West Side tracts with enough duplex sales: a West Side indicator alone correlates \dupPremWestCorTract{} with the premium (last column of the table). In light of these results, it is not surprising that duplexes were concentrated on the East Side prior to the 2023 reform.
 
 \begin{table}[htbp]
 	\centering
 	\caption{\label{tab:elasPpsfDup}Correlations among local log price per square foot, size elasticity, duplex price per square foot premium, and a West Side indicator (west of Ontario Street), census tracts with at least \dupMinSales{} strata duplex sales, \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear.}
 	\input{elasPpsfDupCor}
 \end{table}
-
-Table \ref{tab:sqftPrePost} shows the mean and standard deviation of the ratio of square feet to lot size (FSR) for newly built duplexes and single family homes in the initial reform period and after 2023.
-
-\begin{table}[htbp]
-	\centering
-	\caption{\label{tab:sqftPrePost}Realized floor space ratio of new single family homes and duplexes on 33' lots now zoned R1, by application period: duplex era (September 18, 2018 to October 16, 2023) and R1-1 era (October 17, 2023 on). FSR is \fsrRollYear{} assessed finished floor area of the main building(s) on the lot divided by 2018 lot area \parencite{COVdata,BCAssessment2019,BCAssessment2026}. Sample: the latest permit on each lot, where the building is complete on the \fsrRollYear{} roll (\fsrCoverDupEra\% of duplex era and \fsrCoverRoneEra\% of R1-1 era permits).}
-	\input{sqftPrePostTable}
-\end{table}
-
 
 \section{Results: The spatial distribution of the duplex share of new builds on 33' lots before and after 2023}
 
@@ -354,49 +345,31 @@ Both panels are confined to 33' lots and show the most recent permit on each lot
 
 After the reform, multiplexes were \mplxShareEastThirtyThree\% of new builds on 33' lots and \mplxShareEastFifty\% on 50' lots on the East Side (\mplxNEastThirtyThree{} and \mplxNEastFifty{} lots), and \mplxShareWestThirtyThree\% and \mplxShareWestFifty\% on the West Side (\mplxNWestThirtyThree{} and \mplxNWestFifty{} lots).
 
+Table \ref{tab:sqftPrePost} shows the mean and standard deviation of the ratio of square feet to lot size (FSR) for newly built duplexes and single family homes in the initial reform period and after 2023. We see relatively modest variation in FSR within housing type / period cells. Importantly, the mean single family home FSR drops from .7 to .65 after the reform, while the mean duplex FSR rises slightly; the legislated modifications to density applied to actual permits. 
+
+\begin{table}[htbp]
+	\centering
+	\caption{\label{tab:sqftPrePost}Realized floor space ratio of new single family homes and duplexes on 33' lots now zoned R1, by application period: duplex era (September 18, 2018 to October 16, 2023) and R1-1 era (October 17, 2023 on). FSR is \fsrRollYear{} assessed finished floor area of the main building(s) on the lot divided by 2018 lot area \parencite{COVdata,BCAssessment2019,BCAssessment2026}. Sample: the latest permit on each lot, where the building is complete on the \fsrRollYear{} roll (\fsrCoverDupEra\% of duplex era and \fsrCoverRoneEra\% of R1-1 era permits).}
+	\input{sqftPrePostTable}
+\end{table}
 
 \subsection{Regression analysis}
 
-To test whether the 2023 reform led to an increase in the share of duplex permits among R1 duplex and single family permits in more expensive neighbourhoods, we first estimate tract- and neighbourhood level difference in differences in shares:
-
+To test whether the 2023 reform led to an increase in the share of duplex permits among R1 duplex and single family permits in more expensive neighbourhoods, we first estimate tract- and neighbourhood level difference in differences in aggregated neighbourhood or tract shares:
+ 
 \begin{equation}
 	\label{eq:ShareDiD}
 	\frac{\text{Duplex}_{jt}}{\text{Duplex + Single}_{jt}} = \alpha + \beta_{1} Post 2023 \times ppsf_{j} + \beta_{2}D_{T} + \beta_{3}D_{j} + \epsilon_{ijt}
 \end{equation}
 
-Table \ref{tab:ShareDiD} shows the results of estimating \eqref{eq:ShareDiD} at the tract and neighbourhood levels for new-build single family and duplex permits on 33' lots now zoned R1 \parencite{COVdata,BCAssessment2019}. Periods $t$ are twelve-month windows of application date relative to the 2023 reform, $ppsf_{j}$ is the local log price per square foot from \eqref{eq:ppsfHedonic}, and cells are weighted by their number of permits, so that the estimates equal those of a permit-level linear probability model with the same fixed effects. The coefficient on the interaction term is positive and statistically significant: \sdTractB{} (standard error \sdTractSE) across \sdNTract{} tracts and \sdNbhdB{} (\sdNbhdSE) across \sdNNbhd{} neighbourhoods, indicating that the 2023 reform was associated with an increase in the share of duplex permits in more expensive neighbourhoods. Scaled by the West minus East gap in mean log price per square foot (\sdGapTract{} across tracts, \sdGapNbhd{} across neighbourhoods), the estimates imply a relative increase in the West Side duplex share of \sdEffectGapTract{} and \sdEffectGapNbhd{} percentage points. Standard errors are clustered at the tract and neighbourhood levels, respectively. There are \sdNNbhd{} neighbourhoods with R1 zoning and enough sales to estimate a price level, a small number of clusters for cluster-robust inference \parencite{CameronGelbachMiller2008,CameronMiller2015}, so we also report wild cluster restricted bootstrap $p$-values with the weights of \textcite{Webb2023}: \sdTractP{} for tracts and \sdNbhdP{} for neighbourhoods. Columns 2 and 5 add $ppsf_{j}$ times a linear period trend, as there has been convergence in pricing over time. The trend coefficients are close to zero, and the interaction coefficients are similar in magnitude (\sdTractTrendB{} and \sdNbhdTrendB) but less precisely estimated (\sdTractTrendP{} and \sdNbhdTrendP). The base specification includes the entire period from the September 2018 duplex approval through November 2026; because permits applied for but not yet issued are not in the data, the last period is incomplete. Columns 3 and 6 narrow the window to 6 months on either side of the 2023 reform. Only \sdWinPermits{} permits in tracts with permits on both sides of the reform date remain, and the estimates are positive but imprecise (\sdTractWinB, \sdTractWinP{} for tracts; \sdNbhdWinB, \sdNbhdWinP{} for neighbourhoods).
+Table \ref{tab:ShareDiD} shows the results of estimating \eqref{eq:ShareDiD} at the tract and neighbourhood levels for new-build single family and duplex permits on 33' lots now zoned R1 \parencite{COVdata,BCAssessment2019}. Periods $t$ are twelve-month windows of application date relative to the 2023 reform, $ppsf_{j}$ is the local log price per square foot from \eqref{eq:ppsfHedonic}, and cells are weighted by their number of permits, so that the estimates equal those of a permit-level linear probability model with the same fixed effects. The coefficient on the interaction term is positive and statistically significant: \sdTractB{} (standard error \sdTractSE) across \sdNTract{} tracts and \sdNbhdB{} (\sdNbhdSE) across \sdNNbhd{} neighbourhoods, indicating that the 2023 reform was associated with an increase in the share of duplex permits in more expensive neighbourhoods. Scaled by the West minus East gap in mean log price per square foot (\sdGapTract{} across tracts, \sdGapNbhd{} across neighbourhoods), the estimates imply a relative increase in the West Side duplex share of \sdEffectGapTract{} and \sdEffectGapNbhd{} percentage points. Standard errors are clustered at the tract and neighbourhood levels, respectively. 
+
+There are \sdNNbhd{} neighbourhoods with R1 zoning and enough sales to estimate a price level, a small number of clusters for cluster-robust inference per \textcite{CameronGelbachMiller2008,CameronMiller2015}, so we also report wild cluster restricted bootstrap $p$-values with the weights of \textcite{Webb2023}: \sdTractP{} for tracts and \sdNbhdP{} for neighbourhoods. Columns 2 and 5 add $ppsf_{j}$ times a linear period trend, as there has been convergence in pricing over time between the East and West Sides, per \textcite{DarylSanghoon}. The trend coefficients are close to zero (there is not a trend towards convergence separate from the discrete jump), and the interaction coefficients are similar in magnitude (\sdTractTrendB{} and \sdNbhdTrendB) but less precisely estimated (\sdTractTrendP{} and \sdNbhdTrendP). The base specification includes the entire period from the September 2018 duplex approval through November 2026; because permits applied for but not yet issued are not in the data, the last period is incomplete. Columns 3 and 6 narrow the window to 6 months on either side of the 2023 reform. Only \sdWinPermits{} permits in tracts with permits on both sides of the reform date remain, and the estimates are positive but imprecise (\sdTractWinB, \sdTractWinP{} for tracts; \sdNbhdWinB, \sdNbhdWinP{} for neighbourhoods). We find that changing the period over which tract permit shares are aggregated to months or quarters has approximately no effect on point estimates.
 
 \begin{table}[htbp]
 	\centering
-	\caption{\label{tab:ShareDiD}Duplex share of single family and duplex new-build permits on 33' lots now zoned R1, by area and twelve-month application period (equation \ref{eq:ShareDiD}), September 2018 to November 2026. All columns include area and period fixed effects; cells are weighted by permits. Standard errors clustered by area in parentheses; $^{*}$, $^{**}$, $^{***}$: significant at 10, 5, 1\% with clustered standard errors. Wild cluster restricted bootstrap $p$-values use \sdNBoot{} draws with Webb weights. Columns 3 and 6 use applications within 6 months of October 17, 2023; areas with permits on only one side drop out.}
+	\caption{\label{tab:ShareDiD}Duplex share of single family and duplex new-build permits on 33' lots now zoned R1, by area and twelve-month application period (equation \ref{eq:ShareDiD}), September 2018 to November 2026. All columns include area and period fixed effects; cells are weighted by permits. Standard errors clustered by area in parentheses; $^{*}$, $^{**}$, $^{***}$: significant at 10, 5, 1\% with clustered standard errors. Wild cluster restricted bootstrap $p$-values use \sdNBoot{} draws with Webb weights. Columns 3 and 6 use permit applications within 6 months of October 17, 2023; areas with permits on only one side drop out.}
 	\input{shareDiDTable}
-\end{table}
-
-Figures \ref{fig:tractPPSF} and \ref{fig:neighbourhoodPPSF} show a discrete difference in price levels between the East and West sides, and Figure \ref{fig:permitTrends} a corresponding difference in duplex take-up. Aggregating to the side level with no controls, across \ewN{} permits (the latest on each lot in each era), the duplex share of single family and duplex permits rose \ewDiD{} percentage points more on the West Side than on the East Side after the 2023 reform (standard error \ewDiDSE, \ewDiDP). Equivalently, the ratio of the West Side to the East Side odds ratio for a duplex after versus before the reform is \ewOddsRatio{} (Woolf $\chi^{2}(1) = \ewChiSq$, \ewChiSqP).
-
-The periods $t$ in \eqref{eq:ShareDiD} need not be years. Because cells are weighted by their number of permits, the estimate is the permit-level linear probability coefficient with area and period fixed effects for any period length, so thin cells do not bias it; shorter periods change only the time effects and use up degrees of freedom. Table \ref{tab:ShareDiDPeriods} re-estimates columns 1 and 4 of Table \ref{tab:ShareDiD} with periods of 1, 3, 6 and 12 months. With monthly periods the median tract-month cell has \sdMonthMedPermits{} permit and \sdMonthShareFive\% of cells have at least five, against a median of \sdYearMedPermits{} permits per tract-year cell. The coefficient barely moves (\sdBRangeTract{} across tracts, \sdBRangeNbhd{} across neighbourhoods), and annual periods give the smallest standard errors (the range is \sdSeRangeTract{} across tracts and \sdSeRangeNbhd{} across neighbourhoods) and hence the smallest minimum detectable effect, so we keep annual periods. Unweighted cell regressions, which give a one-permit cell the same weight as a twenty-permit cell, are more sensitive to the period length (\sdUnwRangeTract{} across tracts).
-
-\begin{table}[htbp]
-	\centering
-	\caption{\label{tab:ShareDiDPeriods}Equation \ref{eq:ShareDiD} with different period lengths, base specification (columns 1 and 4 of Table \ref{tab:ShareDiD}). Weighted: cells weighted by permits, standard errors clustered by area, wild cluster restricted bootstrap $p$-values in brackets. MDE: minimum detectable effect at 80\% power and 5\% two-sided size, 2.8 standard errors. Unweighted: each cell weighted equally.}
-	\resizebox{\textwidth}{!}{\input{shareDiDPeriods}}
-\end{table}
-
-Table \ref{tab:LogitDiD} estimates the analogous difference in differences at the lot level. The outcome is an indicator that a new-build permit is for a duplex rather than a single family home:
-
-\begin{equation}
-	\label{eq:LogitDiD}
-	\Pr(\text{Duplex}_{ijt} = 1) = \Lambda\left(\alpha + \beta_{1} Post 2023 \times ppsf_{j} + \beta_{2}D_{t} + \beta_{3}D_{j}\right),
-\end{equation}
-
-where $\Lambda$ is the logistic function. The logit coefficient on the interaction is \lgTractFE{} (standard error \lgTractFESE) with tract fixed effects and \lgNbhdFE{} (\lgNbhdFESE) with neighbourhood fixed effects. At the West minus East gap in log price per square foot, these imply that the reform multiplied the odds of a duplex on the West Side relative to the East Side by \lgTractOR{} and \lgNbhdOR, close to the unconditional ratio of odds ratios of \ewOddsRatio{} above. In a nonlinear model the interaction coefficient is not the cross-partial effect on the probability \parencite{AiNorton2003}, but in a difference-in-differences design its sign is the sign of the treatment effect \parencite{Puhani2012}.
-
-Two small-sample concerns arise. First, maximum likelihood with area dummies suffers from the incidental parameters problem \parencite{NeymanScott1948}: with few observations per area, the fixed effect logit coefficient is biased away from zero \parencite{Katz2001,Greene2004}, with bias of order $1/T$ for $T$ observations per group \parencite{HahnNewey2004,FernandezValWeidner2016}. We have about \lgPermitsPerTract{} permits per tract and \lgPermitsPerNbhd{} per neighbourhood. The conditional logit \parencite{Chamberlain1980} conditions the area effects out of the likelihood and is consistent for fixed $T$; it gives \lgTractCL{} and \lgNbhdCL{} (panel C). In a Monte Carlo of \lgNSim{} samples drawn from the estimated logit on our actual design, with the true coefficient set to the conditional logit estimate, the fixed effect logit is biased upward by \lgSimBiasFETract\% (tracts) and \lgSimBiasFENbhd\% (neighbourhoods), while the conditional logit is essentially unbiased (mean \lgSimCLTract{} against a true \lgSimTrueTract{} for tracts, \lgSimCLNbhd{} against \lgSimTrueNbhd{} for neighbourhoods). The clustered standard errors of the fixed effect logit are smaller than the Monte Carlo standard deviation of the estimator (\lgSimSdFETract{} and \lgSimSdFENbhd), consistent with few clusters, so the logit $p$-values in Table \ref{tab:LogitDiD} should be read with some caution. Second, area fixed effects are themselves estimated from few permits. Columns 2 and 4 replace them with the area's log price per square foot as a control. The interaction is essentially unchanged: \lpTractCtl{} (\lpTractCtlP) and \lpNbhdCtl{} (\lpNbhdCtlP) in the linear probability model, \lgTractCtl{} and \lgNbhdCtl{} in the logit. The coefficient on the price level itself is negative, reflecting the lower duplex share in pricier areas before the reform.
-
-\begin{table}[htbp]
-	\centering
-	\caption{\label{tab:LogitDiD}Lot-level difference in differences (equation \ref{eq:LogitDiD}): duplex versus single family new-build permits on 33' lots now zoned R1, September 2018 to November 2026, with twelve-month period fixed effects. Fixed effects columns include area fixed effects; ppsf control columns replace them with the area's log price per square foot. Standard errors clustered by area in parentheses (model-based for the conditional logit); $^{*}$, $^{**}$, $^{***}$: significant at 10, 5, 1\%. Wild cluster restricted bootstrap $p$-values use \sdNBoot{} draws with Webb weights. Spatial standard errors in brackets \parencite{Conley1999}: Bartlett kernel in distance between lots, \lgConleyKm{} km cutoff. Odds ratio: $\exp(\beta_{1}\times$ West minus East gap in mean log ppsf). The neighbourhood fixed effect logit drops \lgNbhdAreasDropped{} neighbourhood in which every permit is for the same product.}
-	\input{logitDiDTable}
 \end{table}
 
 Table \ref{tab:shareDiDElasTable} deletes tract-level dummies relative to
@@ -407,6 +380,29 @@ the results in Table \ref{tab:shareDiD}, so that we can separately observe level
 	\input{shareDiDElasTable}
 \end{table}
 
+Figures \ref{fig:tractPPSF} and \ref{fig:neighbourhoodPPSF} show a discrete difference in price levels between the East and West sides, and Figure \ref{fig:permitTrends} a corresponding difference in duplex take-up. Aggregating to the side level with no controls, across \ewN{} permits, the duplex share of single family and duplex permits rose \ewDiD{} percentage points more on the West Side than on the East Side after the 2023 reform (standard error \ewDiDSE, \ewDiDP). Alternatively, the ratio of the West Side to the East Side odds ratio for a duplex after versus before the reform is \ewOddsRatio{} (Woolf $\chi^{2}(1) = \ewChiSq$, \ewChiSqP). 
+
+Table \ref{tab:LogitDiD} estimates the analogous difference in differences at the lot level. The outcome is an indicator that a new-build permit is for a duplex rather than a single family home:
+
+\begin{equation}
+	\label{eq:LogitDiD}
+	\Pr(\text{Duplex}_{ijt} = 1) = \Lambda\left(\alpha + \beta_{1} Post 2023 \times ppsf_{j} + \beta_{2}D_{t} + \beta_{3}D_{j}\right),
+\end{equation}
+
+where $\Lambda$ is the logistic function. The logit coefficient on the interaction is \lgTractFE{} (standard error \lgTractFESE) with tract fixed effects and \lgNbhdFE{} (\lgNbhdFESE) with neighbourhood fixed effects. At the West minus East gap in log price per square foot, these imply that the reform multiplied the odds of a duplex on the West Side relative to the East Side by \lgTractOR{} and \lgNbhdOR, close to the unconditional ratio of odds ratios of \ewOddsRatio{} above. 
+
+We present standard errors under different schemes to handle problems of small samples and spatial correlation. First, fixed effects estimated in small samples generate bias per, e.g. \textcite{NeymanScott1948}. There are an mean of approximately \lgPermitsPerTract{} permits per tract and \lgPermitsPerNbhd{} per neighbourhood. We thus present test statistics using a wild bootstrap. We also present lot-level results using a linear probability model and a model in conditional logit model in which a control for price per square foot replaces tract dummies (this is also done in specifications (2) and (4)) for the LPM and logit. We include standard errors clustered by tract or neighbourhood and alternative Conley standard errors to account for (strong) spatial correlation across neighbourhoods.
+
+\begin{table}[htbp]
+	\centering
+	\caption{\label{tab:LogitDiD}Lot-level difference in differences (equation \ref{eq:LogitDiD}): duplex versus single family new-build permits on 33' lots now zoned R1, September 2018 to November 2026, with twelve-month period fixed effects. Fixed effects columns include area fixed effects; ppsf control columns replace them with the area's log price per square foot. Standard errors clustered by area in parentheses (model-based for the conditional logit); $^{*}$, $^{**}$, $^{***}$: significant at 10, 5, 1\%. Wild cluster restricted bootstrap $p$-values use \sdNBoot{} draws with Webb weights. Spatial standard errors in brackets \parencite{Conley1999}: Bartlett kernel in distance between lots, \lgConleyKm{} km cutoff. Odds ratio: $\exp(\beta_{1}\times$ West minus East gap in mean log ppsf). The neighbourhood fixed effect logit drops \lgNbhdAreasDropped{} neighbourhood in which every permit is for the same product.}
+	\input{logitDiDTable}
+\end{table}
+
+In all lot-level specifications, we find significant positive interactions on Post 2023 reform times log price per square foot in the area prior to the 2018 duplex reform.
+
+All of the analysis above considers the decision of what to build conditional on a tear-down. A different question left to future research is whether the upzoning increased the pace of tear-downs relative to a suitable benchmark. 
+
 \section{\label{sec:conclusion}Conclusion}
 
 A fairly general model of housing density choice by a developer suggests competing effects in the spatial allocation of infill housing. The opportunity to divide the same space into more units will be more valuable where willingness to pay for incremental square footage is less. Classical monocentric city models of residential sorting with limited density choice suggest this will be in relatively inexpensive areas. On the other hand, if building more units is associated with the relaxation of binding zoning constraints, infill should be relatively likely in higher quality locations where land is more expensive. Data from Vancouver support all three of these predictions. The elasticity of home prices with respect to size is very highly correlated with average price per square foot across neighbourhoods. The choice to build a new duplex rather than a single family home was highly sorted into the inexpensive east side when zoning was division only, but equalized across locations after allowable single family size was shrunk in 2023.
@@ -414,3 +410,12 @@ A fairly general model of housing density choice by a developer suggests competi
 \printbibliography[heading=bibintoc]
 
 \end{document}
+The periods $t$ in \eqref{eq:ShareDiD} need not be years. Because cells are weighted by their number of permits, the estimate is the permit-level linear probability coefficient with area and period fixed effects for any period length, so thin cells do not bias it; shorter periods change only the time effects and use up degrees of freedom. Table \ref{tab:ShareDiDPeriods} re-estimates columns 1 and 4 of Table \ref{tab:ShareDiD} with periods of 1, 3, 6 and 12 months. With monthly periods the median tract-month cell has \sdMonthMedPermits{} permit and \sdMonthShareFive\% of cells have at least five, against a median of \sdYearMedPermits{} permits per tract-year cell. The coefficient barely moves (\sdBRangeTract{} across tracts, \sdBRangeNbhd{} across neighbourhoods), and annual periods give the smallest standard errors (the range is \sdSeRangeTract{} across tracts and \sdSeRangeNbhd{} across neighbourhoods) and hence the smallest minimum detectable effect, so we keep annual periods. Unweighted cell regressions, which give a one-permit cell the same weight as a twenty-permit cell, are more sensitive to the period length (\sdUnwRangeTract{} across tracts).
+
+\begin{table}[htbp]
+	\centering
+	\caption{\label{tab:ShareDiDPeriods}Equation \ref{eq:ShareDiD} with different period lengths, base specification (columns 1 and 4 of Table \ref{tab:ShareDiD}). Weighted: cells weighted by permits, standard errors clustered by area, wild cluster restricted bootstrap $p$-values in brackets. MDE: minimum detectable effect at 80\% power and 5\% two-sided size, 2.8 standard errors. Unweighted: each cell weighted equally.}
+	\resizebox{\textwidth}{!}{\input{shareDiDPeriods}}
+\end{table}
+
+
