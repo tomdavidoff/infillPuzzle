@@ -1,6 +1,10 @@
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+Warning message:
+package ‘ggrepel’ was built under R version 4.5.2 
 simulation: cor(true, est slope) = 0.977, mean abs error = 0.042, lEff = 1.68 (true 2)
-SFD sales: 5822 
+SFD sales: 5706 
 duplex: drop multi-folio conveyances             8185 ->    8185 (lost 0.0%)
 duplex: 2012 to pre-duplex reform                8185 ->    1828 (lost 77.7%)
 duplex: strata units only                        1828 ->    1677 (lost 8.3%)
@@ -25,45 +29,46 @@ duplex sales by current zoning district:
 12:   RT-3     RT    31
 RT polygons: 101 (RT-1,RT-10,RT-11,RT-2,RT-3,RT-4,RT-4A,RT-5,RT-7,RT-8,RT-9); area of RT n R1-1 overlap: 0.3 m2
 duplex: tract and neighbourhood                  1676 ->    1676 (lost 0.0%)
-duplex: log ppsf within 0.5-99.5 pctile          1676 ->    1658 (lost 1.1%)
-duplex sales: 1658 | median ppsf $733 | median sqft 1428
+duplex: effective year not after sale year       1676 ->    1669 (lost 0.4%)
+duplex: log ppsf within 0.5-99.5 pctile          1669 ->    1651 (lost 1.1%)
+duplex sales: 1651 | median ppsf $733 | median sqft 1429
 cor with vancouverPPSF33.R tract FE: 1 
    nAreas  meanElas    sdElas      medSE withDup meanPremium
     <int>     <num>     <num>      <num>   <int>       <num>
-1:     56 0.3752219 0.1622714 0.09506551      15    0.117812
-   nAreas meanElas    sdElas      medSE withDup meanPremium
-    <int>    <num>     <num>      <num>   <int>       <num>
-1:     20 0.363339 0.1439818 0.05581002      10  0.08387747
+1:     56 0.4001571 0.1529062 0.08484708      15  0.08321653
+   nAreas  meanElas    sdElas      medSE withDup meanPremium
+    <int>     <num>     <num>      <num>   <int>       <num>
+1:     20 0.3976167 0.1102087 0.05154951      10  0.04947639
            level     n       all    nW      west    nE      east corWestElas
           <char> <int>     <num> <int>     <num> <int>     <num>       <num>
-1:  Census tract    56 0.5738147    17 0.7328953    39 0.1002859   0.4411217
-2: Neighbourhood    20 0.6597743     9 0.8157981    11 0.4584022   0.5301618
+1:  Census tract    56 0.4821064    17 0.7633185    39 0.1206039   0.3207294
+2: Neighbourhood    20 0.4766271     9 0.8115211    11 0.5038666   0.2976513
                 lppsf       elas dupPremium      westD
-lppsf       1.0000000  0.5373151 -0.8007166  0.9787877
-elas        0.5373151  1.0000000 -0.6986257  0.4817103
-dupPremium -0.8007166 -0.6986257  1.0000000 -0.7763250
-westD       0.9787877  0.4817103 -0.7763250  1.0000000
-                lppsf      elas dupPremium      westD
-lppsf       1.0000000 0.4546351 -0.1008018  0.9463959
-elas        0.4546351 1.0000000  0.3390810  0.3699544
-dupPremium -0.1008018 0.3390810  1.0000000 -0.2394002
-westD       0.9463959 0.3699544 -0.2394002  1.0000000
-\newcommand{\elasMeanTract}{0.38}
-\newcommand{\elasMeanNbhd}{0.36}
-\newcommand{\elasPpsfCorTract}{0.57}
-\newcommand{\elasPpsfCorNbhd}{0.66}
-\newcommand{\dupSales}{1,658}
+lppsf       1.0000000  0.3057751 -0.7482274  0.9675735
+elas        0.3057751  1.0000000 -0.3577447  0.1444606
+dupPremium -0.7482274 -0.3577447  1.0000000 -0.7423208
+westD       0.9675735  0.1444606 -0.7423208  1.0000000
+                 lppsf        elas  dupPremium       westD
+lppsf       1.00000000 -0.26500765 -0.03125643  0.94508494
+elas       -0.26500765  1.00000000 -0.02087638 -0.29006522
+dupPremium -0.03125643 -0.02087638  1.00000000 -0.08749257
+westD       0.94508494 -0.29006522 -0.08749257  1.00000000
+\newcommand{\elasMeanTract}{0.40}
+\newcommand{\elasMeanNbhd}{0.40}
+\newcommand{\elasPpsfCorTract}{0.48}
+\newcommand{\elasPpsfCorNbhd}{0.48}
+\newcommand{\dupSales}{1,651}
 \newcommand{\dupMinSales}{10}
 \newcommand{\dupWestTracts}{3}
 \newcommand{\dupWestNbhds}{2}
-\newcommand{\dupPremWestCorTract}{-0.78}
-\newcommand{\dupPremWestCorNbhd}{-0.24}
+\newcommand{\dupPremWestCorTract}{-0.74}
+\newcommand{\dupPremWestCorNbhd}{-0.09}
 \newcommand{\dupRTShare}{64}
 \newcommand{\dupAreasTract}{15}
 \newcommand{\dupAreasNbhd}{10}
-\newcommand{\dupPremiumMeanTract}{13}
-\newcommand{\dupPremiumMeanNbhd}{9}
-\newcommand{\dupPremPpsfCorTract}{-0.80}
-\newcommand{\dupPremPpsfCorNbhd}{-0.10}
-\newcommand{\dupPremElasCorTract}{-0.70}
-\newcommand{\dupPremElasCorNbhd}{0.34}
+\newcommand{\dupPremiumMeanTract}{9}
+\newcommand{\dupPremiumMeanNbhd}{5}
+\newcommand{\dupPremPpsfCorTract}{-0.75}
+\newcommand{\dupPremPpsfCorNbhd}{-0.03}
+\newcommand{\dupPremElasCorTract}{-0.36}
+\newcommand{\dupPremElasCorNbhd}{-0.02}

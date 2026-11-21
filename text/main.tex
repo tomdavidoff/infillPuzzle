@@ -178,7 +178,7 @@ location. Whether the difference between the optimized cost per square foot of
 an $N$plex and that of an $N+1$plex is larger in better or worse locations
 strikes us as a second order empirical question.
 
-The additive profit shock $\sigma\epsilon_{iN}$ is a developer-specific
+The additive profit shock $\epsilon_{iN}$ is a developer-specific
 additive shock to profits from developing $N$ units. This might map to
 differences in fixed costs such as professional fees depending on relative
 experience with different unit types (e.g. a developer must pay more for a
@@ -191,7 +191,7 @@ F(N)x(N,\theta)$ can be written:
 
 \begin{equation}
 	\label{eq:Delta}
-	\Delta(N,\theta) = \left[F(N+1)-F(N)\right]x(N,\theta) + F(N+1)\left[x(N+1,\theta)-x(N,\theta)\right] + \sigma[\left[\epsilon_{iN+1}-\epsilon_{N}\right].
+	\Delta(N,\theta) = \left[F(N+1)-F(N)\right]x(N,\theta) + F(N+1)\left[x(N+1,\theta)-x(N,\theta)\right] + \sigma\left[\epsilon_{iN+1}-\epsilon_{N}\right].
 \end{equation}
 
 The first two terms on the right hand side of equation \eqref{eq:Delta}
@@ -200,7 +200,7 @@ allowed floor area and the division effect of potentially greater price per
 square foot from newly permissible smaller unit types that may be closer to
 optimal.
 
-How the gain to taking up the option to build $N+1$ instead of $N$ units varies with location is:
+How the gain to taking up the option to build $N+1$ instead of $N$ units varies with location is determined by: 
 
 \begin{equation}
 	\label{eq:compStatic}
@@ -256,7 +256,7 @@ profitable than $N$ units is:
 \end{equation}
 where $\Lambda$ is the logistic cumulative distribution function. 
 
-The effect of the 2023 rezoning on the probability that a developer will choose to build $N+1$ units, in which $N$ should be captured with an interaction between price and an indicator for post-2023.
+The effect of the 2023 rezoning on the relationship between local land prices and the probability that a developer will choose to build $N+1$ (2) units for sale instead of $N=1$, should be captured with an interaction between neighbourhood price level (prior to rezoning) and an indicator for post-2023. The logit model with underlying extreme value distribution renders the presence of the option to build multiplexes irrelevant to the single family versus duplex.
 
 
 \section{\label{sec:policies} Institutional background}
@@ -264,11 +264,10 @@ The effect of the 2023 rezoning on the probability that a developer will choose 
 Vancouver, British Columbia, is a Canadian city with a population of 662,248 as
 of the 2021 Canadian census. The city has been densifying over time. In 2001, the City had 65,390 single detached homes, 39,580 ``other ground oriented homes such as townhomes and half-duplexes, and 131,130 apartments. By 2021, the counts were 44,755 single family, 70,650 other ground oriented, and 189,940 apartments.\footnote{2018 and 2025 Metro Vancouver Housing Data Book.} The loss of single family homes is attributable to a near absence of unbuilt residentially zoned land.
 
-Vancouver has historically zoned most of its residential land for single family homes, with different variants of ``RS'' zoning. As of 2018, before duplexes were permitted in RS zones, the assessment roll records \duplexBldgStockEighteen{} duplex buildings in the City (\duplexFolioStockEighteen{} assessment folios, as each strata duplex unit is a separate folio), spread across \duplexZoningCodesEighteen{} zoning codes. \duplexTopFiveZoneShareEighteen\% were in the five most common of these (\duplexTopFiveZonesEighteen), \duplexRTShareEighteen\% were in the two-family RT zones, and only \duplexRSShareEighteen\% were in RS zones \parencite{BCAssessment2019}. Vancouver incrementally formally allowed rental suites in basements of single detached homes starting in 1986 in a restricted set of zones, with all RS zones allowed suites by \suitesAllRSYear{} \parencite{CoV2004Suites}. The large majority of suites are believed not to conform with regulations: the City estimated that \suitesIllegalShareTwoThousandFour\% of suites in areas where suites could be legalized remained unauthorized \parencite{CoV2004Suites}, and later that permitted suites were only \suitesPermittedShareTwentyNineteen\% of an estimated \suitesTotalTwentyNineteen{} \parencite{CoV2019SuitesMemo}. After basement suites, the city next moved to allow laneway homes, with the RS-1 and RS-5 zones (\lanewayFirstLotShare\% of single family lots) enabled in \lanewayFirstYear{} \parencite{CoV2009Laneway} and the remaining RS zones in \lanewayAllRSYear{} \parencite{CoV2018LanewayReview}.
+Vancouver has historically zoned most of its residential land for single family homes, with different variants of ``RS'' zoning. As of 2018, before duplexes were permitted in RS zones, the assessment roll records \duplexBldgStockEighteen{} duplex buildings in the City (\duplexFolioStockEighteen{} assessment folios, as each strata duplex unit is a separate folio), spread across \duplexZoningCodesEighteen{} zoning codes. \duplexTopFiveZoneShareEighteen\% were in the five most common of these (\duplexTopFiveZonesEighteen), \duplexRTShareEighteen\% were in the two-family RT zones, and only \duplexRSShareEighteen\% were in RS zones per the BC Assessement data described below. Vancouver incrementally formally allowed rental suites in basements of single detached homes starting in 1986 in a restricted set of zones, with all RS zones allowed suites by \suitesAllRSYear{}. The large majority of suites are believed not to conform with regulations: the City estimated that \suitesIllegalShareTwoThousandFour\% of suites in areas where suites could be legalized remained unauthorized in 2004,\footnote{\textcite{CoV2004Suites}} and later that permitted suites were only \suitesPermittedShareTwentyNineteen\% of an estimated \suitesTotalTwentyNineteen{} in 2019.\footnote{ \textcite{CoV2019SuitesMemo}}. After basement suites, the city next moved to allow laneway homes, with the RS-1 and RS-5 zones (\lanewayFirstLotShare\% of single family lots) enabled in \lanewayFirstYear{}  and the remaining RS zones in \lanewayAllRSYear{}.\footnote{ \textcite{CoV2018LanewayReview}}.
+In \duplexCouncilMonth{} 2018, duplex homes were approved by council in nearly all RS zones, with the by-law enacted on \duplexEnactedDate{}.\footnote{ \textcite{CoV2018DuplexReport,CoV2018DuplexAdmin}}. Generally, duplexes were allowed the same FSR as a single family home (with or without a suite): \rsDuplexFSR{}, against \rsSingleBaseFSR{} for a single detached house, rising to \rsSingleMaxFSR{} when above-grade floor area was limited.\footnote{\textcite{CoVRS1Schedule2023}}. Duplexes were not permitted an additional laneway home on the same lot \parencite{CoV2018DuplexAdmin}. In that way, a single family home with a laneway was granted more total square footage than a duplex, so that the value to a builder would come from dividing the purchaseable square footage into two units (laneway homes cannot be sold separately from the main structure).
 
-In \duplexCouncilMonth{} 2018, duplex homes were approved by council in nearly all RS zones, with the by-law enacted on \duplexEnactedDate{} \parencite{CoV2018DuplexReport,CoV2018DuplexAdmin}. Generally, duplexes were allowed the same FSR as a single family home (with or without a suite): \rsDuplexFSR{}, against \rsSingleBaseFSR{} for a single detached house, rising to \rsSingleMaxFSR{} when above-grade floor area was limited \parencite{CoVRS1Schedule2023}. Duplexes were not permitted an additional laneway home on the same lot \parencite{CoV2018DuplexAdmin}. In that way, a single family home with a laneway was granted more total square footage than a duplex, so that the value to a builder would come from dividing the purchaseable square footage into two units (laneway homes cannot be sold separately from the main structure).
-
-A zoning reform approved by council in \rOneCouncilMonth{} 2023 and effective \rOneEffectiveDate{} had several components \parencite{CoV2023MissingMiddle}. First, all RS zones were combined into a single R1-1 zone. RT zones were not included, although multiplexes were later extended to some RT zones in \rOneMultiplexRTYear{} \parencite{vonBergmannMultiplex2025}. Second, the maximum FSR for single family homes was set at \rOneSingleFSR{}, with no conditional increase to \rsSingleMaxFSR{}, and for duplexes at \rOneDuplexFSR{} \parencite{CoVR1Schedule}. Also, multiplexes of up to 4 units were allowed on lots with at least \rOneFourUnitFrontageM{} m (\rOneFourUnitFrontageFt{} feet) of frontage and \rOneFourUnitAreaM{} m$^2$ (\rOneFourUnitAreaFt{} square feet) of area. That includes the most commonly sized lots (33 feet wide and 122 feet deep), and indeed any 33-foot lot over \rOneFourUnitDepthThirtyThreeFt{} feet deep. Up to \rOneSixUnitMax{} strata units (\rOneRentalUnitMax{} if all are secured rental) were allowed on lots with at least \rOneSixUnitFrontageM{} m (\rOneSixUnitFrontageFt{} feet) of frontage and \rOneSixUnitAreaM{} m$^2$ (\rOneSixUnitAreaFt{} square feet); 50 feet wide is another common width, particularly south of 16th Avenue. Multiplexes were allowed a base FSR of \rOneMultiplexBaseFSR{}, rising to \rOneMultiplexMaxFSR{} for secured rental or with a density bonus contribution \parencite{CoVR1Schedule}.
+A zoning reform approved by council in \rOneCouncilMonth{} 2023 and effective \rOneEffectiveDate{} had several components \parencite{CoV2023MissingMiddle}. First, all RS zones were combined into a single R1-1 zone. RT zones were not included, although multiplexes were later extended to some RT zones in \rOneMultiplexRTYear{}, per \textcite{vonBergmannMultiplex2025}. Second, the maximum FSR for single family homes was set at \rOneSingleFSR{}, with no more conditional increase to \rsSingleMaxFSR{}, and for duplexes at \rOneDuplexFSR{} \parencite{CoVR1Schedule}. Also, multiplexes of up to 4 units were allowed on lots with at least \rOneFourUnitFrontageFt{}  of frontage and \rOneFourUnitAreaFt{} square feet of area. That includes the most commonly sized lots (33 feet wide and 122 feet deep), and indeed any 33-foot lot over \rOneFourUnitDepthThirtyThreeFt{} feet deep. Up to \rOneSixUnitMax{} strata units (\rOneRentalUnitMax{} if all are secured rental) were allowed on lots with at least \rOneSixUnitFrontageFt{} feet of frontage and \rOneSixUnitAreaM{} \rOneSixUnitAreaFt{} square feet; 50 feet wide is another common width, particularly south of 16th Avenue. Multiplexes were allowed a base FSR of \rOneMultiplexBaseFSR{}, rising to \rOneMultiplexMaxFSR{} for secured rental or with a density bonus contribution \parencite{CoVR1Schedule}.
 
 \subsection{Testable hypothesis}
 
@@ -288,28 +287,29 @@ To estimate a price per square foot at the census tract or neighbourhood level, 
 
 \begin{equation}
 	\label{eq:ppsfHedonic}
-	\log \text{ppsf}_{ijt} = \alpha + \sum_{t}\beta_{t}I_{t} + \beta \log \text{effective year}_{i} + \sum_{j}\gamma_{j}I_{j} + \epsilon_{ijt}
+	\log \text{ppsf}_{ijt} = \alpha + \sum_{t}\beta_{t}I_{t} + \sum_{e}\delta_{e}I_{e} + \sum_{j}\gamma_{j}I_{j} + \epsilon_{ijt}
 \end{equation}
 
-ppsf is the price per square foot (main building total built area). We estimate these for single family transactions in zones now R1 from \ppsfFirstYear{} until council approved duplexes in RS zones in \duplexCouncilMonth{} \ppsfLastYear{}, so that prices predate the duplex period \parencite{BCAssessment2019}. Figure \ref{fig:tractPPSF} plots these estimates at the tract level with (horizontal axis) and without (vertical axis) the effective year control. The points are shaded with darker shades further east and lighter shades further west. Figure \ref{fig:neighbourhoodPPSF} is at the neighbourhood level. All of these estimates are for 33' lots, the focus of our empirical analysis. We choose 33' lots because \lotShareThirtyThreeRone\% of R1 lots are (rounded) 33' wide and because, among new building permits issued since 2024, multiplexes are \mplxShareThirtyThree\% of new builds on 33' lots versus \mplxShareWider\% on larger lots \parencite{BCAssessment2019,COVdata}.
+ppsf is the price per square foot (main building total built area). $I_{t}$ are sale year indicators and $I_{e}$ are effective year indicators, with effective years up to \ppsfEffBinYear{} (the bottom \ppsfEffBinShare\% of sales) pooled. Because the effective year is recorded as of 2019, we drop the \ppsfAgeNonPos{} sales (\ppsfAgeNonPosShare\%) with an effective year after the transaction year, homes renovated after they sold. We estimate these for single family transactions in zones now R1 from \ppsfFirstYear{} until council approved duplexes in RS zones in \duplexCouncilMonth{} \ppsfLastYear{}, so that estimates predate the duplex period and are not affected by relative duplex supply post-2018. Figure \ref{fig:tractPPSF} plots the tract estimates (horizontal axis) against the tract elasticity of price with respect to square footage described below (vertical axis). The points are shaded with darker shades further east and lighter shades further west. Figure \ref{fig:neighbourhoodPPSF} is at the neighbourhood level. All of these estimates are for 33' lots, the focus of our empirical analysis. We choose 33' lots because \lotShareThirtyThreeRone\% of R1 lots are (rounded) 33' wide and because, among new building permits issued since 2024, multiplexes are \mplxShareThirtyThree\% of new builds on 33' lots versus \mplxShareWider\% on larger lots \parencite{BCAssessment2019,COVdata}. In this way, while our logit results in principle require independence from the alternative of multiplex development, on 33' lots, deviations from the type 1 EV assumption should be relatively innocuous.
 
-The estimates use \ppsfSalesTract{} sales in \ppsfNTract{} tracts and \ppsfSalesNbhd{} sales in \ppsfNNbhd{} neighbourhoods with at least \ppsfMinObs{} sales each. The effective-year control barely moves the local estimates: the correlation between the two sets is \ppsfCorEffTract{} across tracts and \ppsfCorEffNbhd{} across neighbourhoods. Price per square foot is \ppsfWestPremiumTract\% higher in West Side than East Side tracts on average.
-
-\begin{figure}[htbp]
-	\centering
-	\includegraphics[width=\textwidth]{ppsf33Tract.png}
-	\caption{\label{fig:tractPPSF}Census tract price per square foot fixed effects (log, demeaned), single family sales on 33' lots now zoned R1, \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear. Darker points are further east.}
-\end{figure}
-
-\begin{figure}[htbp]
-	\centering
-	\includegraphics[width=\textwidth]{ppsf33Neighbourhood.png}
-	\caption{\label{fig:neighbourhoodPPSF}Neighbourhood price per square foot fixed effects (log, demeaned), single family sales on 33' lots now zoned R1, \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear. Darker points are further east.}
-\end{figure}
+The estimates use \ppsfSalesTract{} sales in \ppsfNTract{} tracts and \ppsfSalesNbhd{} sales in \ppsfNNbhd{} neighbourhoods with at least \ppsfMinObs{} sales each. The effective-year control barely moves the local estimates: the correlation between the two sets is \ppsfCorEffTract{} across tracts and \ppsfCorEffNbhd{} across neighbourhoods. Mean price per square foot is \ppsfWestPremiumTract\% higher in West Side than East Side tracts (the East Side is defined as east of Ontario Avenue).
 
 \subsection{Elasticity of price with respect to square footage and the single-duplex premium}
 
-To evaluate the assumption that the gap in willingness to pay for a single family home versus a duplex grows in local price per square foot, we estimate the elasticity of price with respect to square footage for each tract and neighbourhood. We add an area-specific slope on log square footage to equation \eqref{eq:ppsfHedonic}, using the same \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear{} single family sales on 33' lots now zoned R1 \parencite{BCAssessment2019}. The mean elasticity is \elasMeanTract{} across tracts and \elasMeanNbhd{} across neighbourhoods. Table \ref{tab:elasPpsf} shows that elasticity and price per square foot are positively correlated (\elasPpsfCorTract{} across tracts, \elasPpsfCorNbhd{} across neighbourhoods), mostly within the West Side.
+To evaluate the assumption that the gap in willingness to pay for a single family home versus a duplex grows in local price per square foot, we estimate the elasticity of price with respect to square footage for each tract and neighbourhood. We add an area-specific slope on log square footage to equation \eqref{eq:ppsfHedonic}, using the same \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear{} single family sales on 33' lots now zoned R1 \parencite{BCAssessment2019}. The mean elasticity is \elasMeanTract{} across tracts and \elasMeanNbhd{} across neighbourhoods. Table \ref{tab:elasPpsf} shows that elasticity and price per square foot are highly positively correlated (\elasPpsfCorTract{} across tracts, \elasPpsfCorNbhd{} across neighbourhoods).
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=\textwidth]{elasPpsfTract.png}
+	\caption{\label{fig:tractPPSF}Census tract structure square foot elasticity of price against price per square foot fixed effects (log, demeaned, x axis), and single family sales on 33' lots now zoned R1, \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear. Vertical lines are 95\% confidence intervals for the elasticity. Darker points are further east.}
+\end{figure}
+
+\begin{figure}[htbp]
+	\centering
+	\includegraphics[width=\textwidth]{elasPpsfNeighbourhood.png}
+	\caption{\label{fig:neighbourhoodPPSF}Neighbourhood size elasticity of price against price per square foot fixed effects (log, demeaned, x axis), and single family sales on 33' lots now zoned R1, \ppsfFirstYear{} to \duplexCouncilMonth{} \ppsfLastYear. Vertical lines are 95\% confidence intervals for the elasticity. Darker points are further east.}
+\end{figure}
+
 
 \begin{table}[htbp]
 	\centering
@@ -334,7 +334,7 @@ Table \ref{tab:sqftPrePost} shows the mean and standard deviation of the ratio o
 \end{table}
 
 
-\section{The spatial distribution of the duplex share of new builds on 33' lots before and after 2023}
+\section{Results: The spatial distribution of the duplex share of new builds on 33' lots before and after 2023}
 
 From the City of Vancouver, we have all building permits issued between 2017 and November, 2026. For each, the data include date applied (and hence the pre- and post-2023 reform status), the estimated value of improvements to be put in place, the type of structure, and lot zoning and latitude and longitude. We consider permits for single family main buildings, duplexes, and multiplexes, identified by the permit's specific use category: ``Single Detached House'' (with or without a secondary suite), ``Duplex'' (with or without secondary suites), and ``Multiple Dwelling'' where the project description identifies a multiplex and the application postdates the 2023 reform. Categories for infill and laneway homes, which are secondary buildings on a lot, are excluded. A permit counts as a new build if its type of work is a new building, or if its value is at least \$\newBuildValueThreshold{}, the \newBuildValueQuantile{}th percentile of value among other permits for these uses \parencite{COVdata}. Each permit is linked to the lot on which a single family home stood in 2018, which gives its width \parencite{BCAssessment2019}. 
 
@@ -353,7 +353,7 @@ Both panels are confined to 33' lots and show the most recent permit on each lot
 After the reform, multiplexes were \mplxShareEastThirtyThree\% of new builds on 33' lots and \mplxShareEastFifty\% on 50' lots on the East Side (\mplxNEastThirtyThree{} and \mplxNEastFifty{} lots), and \mplxShareWestThirtyThree\% and \mplxShareWestFifty\% on the West Side (\mplxNWestThirtyThree{} and \mplxNWestFifty{} lots).
 
 
-\section{Regression analysis}
+\subsection{Regression analysis}
 
 To test whether the 2023 reform led to an increase in the share of duplex permits among R1 duplex and single family permits in more expensive neighbourhoods, we first estimate tract- and neighbourhood level difference in differences in shares:
 
@@ -395,6 +395,14 @@ Two small-sample concerns arise. First, maximum likelihood with area dummies suf
 	\centering
 	\caption{\label{tab:LogitDiD}Lot-level difference in differences (equation \ref{eq:LogitDiD}): duplex versus single family new-build permits on 33' lots now zoned R1, September 2018 to November 2026, with twelve-month period fixed effects. Fixed effects columns include area fixed effects; ppsf control columns replace them with the area's log price per square foot. Standard errors clustered by area in parentheses (model-based for the conditional logit); $^{*}$, $^{**}$, $^{***}$: significant at 10, 5, 1\%. Wild cluster restricted bootstrap $p$-values use \sdNBoot{} draws with Webb weights. Spatial standard errors in brackets \parencite{Conley1999}: Bartlett kernel in distance between lots, \lgConleyKm{} km cutoff. Odds ratio: $\exp(\beta_{1}\times$ West minus East gap in mean log ppsf). The neighbourhood fixed effect logit drops \lgNbhdAreasDropped{} neighbourhood in which every permit is for the same product.}
 	\input{logitDiDTable}
+\end{table}
+
+Table \ref{tab:shareDiDElasTable} deletes tract-level dummies relative to
+the results in Table \ref{tab:shareDiD}, so that we can separately observe level and interaction effects of price per square foot and elasticity of price per square foot. While we might expect elasticity, rather than price, to have a levels effect, the two measures are highly correlated and mean price per square foot pre-2018 is presumably better-estimated than the higher-order elasticity measure. We find that in a ``horse-race'', the price per square foot measure dominates both in levels and interacted with post. The post interaction should be loaded on price per square foot in our model's context, but elasticity should matter in levels.
+
+\begin{table}
+	\caption{\label{tab:shareDiDElasTable} Tract-level DiD as in \ref{tab:shareDiD}, but with tract dummies dropped to separately observe level and interaction effects of price per square foot and elasticity of price per square foot.}
+	\input{shareDiDElasTable}
 \end{table}
 
 \section{\label{sec:conclusion}Conclusion}

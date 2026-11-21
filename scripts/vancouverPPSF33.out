@@ -12,52 +12,55 @@ lot width rounds to 33 ft                       16510 ->    6918 (lost 58.1%)
 located via 2026 rollStart centroid              6918 ->    6861 (lost 0.8%)
 lot now zoned R1-1                               6861 ->    5882 (lost 14.3%)
 tract and neighbourhood assigned                 5882 ->    5882 (lost 0.0%)
-log ppsf within 0.5-99.5 pctile                  5882 ->    5822 (lost 1.0%)
-sales: 5822 | median ppsf $660 | median sqft 2314 | median eff yr 1995
+effective age < 0: 118, = 0: 306 of 5882
+effective year not after sale year               5882 ->    5764 (lost 2.0%)
+log ppsf within 0.5-99.5 pctile                  5764 ->    5706 (lost 1.0%)
+sales: 5706 | median ppsf $667 | median sqft 2302 | median eff yr 1994 | median eff age 21
 Key: <yr>
       yr     N medPPSF
    <int> <int>   <num>
-1:  2012   751     463
-2:  2013   894     480
-3:  2014  1036     533
-4:  2015  1087     644
-5:  2016   870     831
-6:  2017   786     826
-7:  2018   398     831
-CTUID: 66 areas with 33-ft R1-1 sales, 56 with >= 20 (sales kept 98.8%)
+1:  2012   718     462
+2:  2013   873     482
+3:  2014   999     537
+4:  2015  1072     644
+5:  2016   867     833
+6:  2017   782     826
+7:  2018   395     831
+effective-year bins: 54; bottom bin <= 1965 holds 11.3% of sales; bins with < 10 sales: 2
+CTUID: 65 areas with 33-ft R1-1 sales, 56 with >= 20 (sales kept 98.8%)
 nbhd: 22 areas with 33-ft R1-1 sales, 20 with >= 20 (sales kept 99.9%)
-                            rT$m1    rT$m0             rN$m1    rN$m0
-                            tract    tract              nbhd     nbhd
-Dependent Var.:             lppsf    lppsf             lppsf    lppsf
-                                                                     
-lEff            1.886*** (0.3235)          1.912*** (0.3211)         
-Fixed-Effects:  ----------------- -------- ----------------- --------
-yr                            Yes      Yes               Yes      Yes
-CTUID                         Yes      Yes                No       No
-nbhd                           No       No               Yes      Yes
-_______________ _________________ ________ _________________ ________
-S.E. type       Heteroskeda.-rob.       -- Heteroskeda.-rob.       --
-Observations                5,750    5,750             5,818    5,818
-R2                        0.78153  0.77977           0.77325  0.77142
-Within R2                 0.00799       --           0.00800       --
+                   rT$m1    rT$m0    rN$m1    rN$m0
+                   tract    tract     nbhd     nbhd
+Dependent Var.:    lppsf    lppsf    lppsf    lppsf
+                                                   
+Fixed-Effects:  -------- -------- -------- --------
+yr                   Yes      Yes      Yes      Yes
+effBin               Yes       No      Yes       No
+CTUID                Yes      Yes       No       No
+nbhd                  No       No      Yes      Yes
+_______________ ________ ________ ________ ________
+Observations       5,638    5,638    5,702    5,702
+R2               0.80746  0.79069  0.79982  0.78315
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
     level nAreas corWithNo    sdWith      sdNo westMinusEast    corLon
    <char>  <int>     <num>     <num>     <num>         <num>     <num>
-1:  tract     56 0.9999018 0.2270427 0.2304632     0.4453711 0.9285345
-2:   nbhd     20 0.9999339 0.2452435 0.2491955     0.4627395 0.9377529
+1:  tract     56 0.9991282 0.2236418 0.2315754     0.4373446 0.9259529
+2:   nbhd     20 0.9995957 0.2381000 0.2481029     0.4483946 0.9384727
 cor(neighbourhood FE, sales-weighted mean tract FE): 0.993 N = 19 
-\newcommand{\ppsfSalesTract}{5,750}
-\newcommand{\ppsfSalesNbhd}{5,818}
+\newcommand{\ppsfSalesTract}{5,638}
+\newcommand{\ppsfSalesNbhd}{5,702}
 \newcommand{\ppsfNTract}{56}
 \newcommand{\ppsfNNbhd}{20}
 \newcommand{\ppsfMinObs}{20}
 \newcommand{\ppsfFirstYear}{2012}
 \newcommand{\ppsfLastYear}{2018}
-\newcommand{\ppsfEffCoefTract}{1.89}
-\newcommand{\ppsfEffCoefNbhd}{1.91}
+\newcommand{\ppsfEffBinYear}{1965}
+\newcommand{\ppsfEffBinShare}{11}
+\newcommand{\ppsfAgeNonPos}{118}
+\newcommand{\ppsfAgeNonPosShare}{2.0}
 \newcommand{\ppsfCorEffTract}{1.00}
 \newcommand{\ppsfCorEffNbhd}{1.00}
-\newcommand{\ppsfWestPremiumTract}{56}
-\newcommand{\ppsfWestPremiumNbhd}{59}
+\newcommand{\ppsfWestPremiumTract}{55}
+\newcommand{\ppsfWestPremiumNbhd}{57}
 \newcommand{\ppsfCorTractNbhd}{0.99}

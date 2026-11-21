@@ -175,3 +175,19 @@
 - Mean (SD, median): duplex era single 0.70 (0.05, 0.71) N=549, duplex 0.73 (0.05, 0.72) N=307. R1-1 era single 0.64 (0.06, 0.61) N=51, duplex 0.75 (0.05, 0.76) N=123. Duplex − single: 0.033 → 0.113. E/W within product are similar.
 - Why CHECK: (1) The R1-1 era coverage is only 53% and skewed to early, fast builds. (2) R1-1 era singles are a mix: the median is 0.61 but p90 is 0.71, so some built at the old FSR (transition or vesting). (3) Duplexes were already 0.03 above singles in the duplex era. (4) FSR uses the 2018 lot area; it doesn't reflect lot consolidations or subdivisions.
 - Added BCAssessment2026 to CLAUDE.bib.
+
+## 2026-11-20 — shareDiDElasTable (tab:shareDiDElasTable; exploratory) — CHECK
+
+- Script: `scripts/permitShareDiDElas.R`. Tract × 12-month cells as in permitShareDiD.R column (1), weighted by permits, period FE, no tract FE, SEs clustered by tract, WCR bootstrap p (9,999 Webb draws). Regressors: log ppsf and size elasticity (elasPremiumTract.csv) and their post-2023 interactions, each alone and together. 56 tracts, 368 cells, 1,343 permits (1,357 → 1,343, lost 1.0%: tract has no ppsf).
+- Final spec (after the hedonic respec below): together, log ppsf −0.439 (0.100), elasticity −0.180 (0.183, p 0.36); post × ppsf 0.420 (0.129, p 0.006), post × elasticity 0.158 (0.209, p 0.46). Alone: post × ppsf 0.463, post × elasticity 0.516 (p 0.010).
+- Why CHECK: elasticity is noisy (reliability ≈ 0.54 from its own SEs; correlation with ppsf 0.48), so measurement error biases the horse race toward ppsf. Tom wrote the paragraph and \input in main.tex.
+
+## 2026-11-20 — Hedonic respec: sale-year + effective-year FE (ppsf33*, elasPremium*, elasPpsfCor, elasPpsfDupCor, ppsfEffBin*, ppsfAgeNonPos*; downstream shareDiD*, logitDiD*, sqftPrePost*) — CHECK
+
+- eq. ppsfHedonic in vancouverPPSF33.R and vancouverElasticityPremium.R: log ppsf (and log price, for elasticity) on sale-year FE + effective-year FE (effective years ≤ 1965, the 10th percentile, pooled: 11% of sales; 54 bins, 2 with < 10 sales) + area FE. The log effective year control is gone; the \ppsfEffCoef* macros are removed (they were not used in the text).
+- Sample: drop sales with effective year (2019 roll) > sale year, 118 of 5,882 (2.0%); duplexes 1,676 → 1,669. Keep new homes (effective year = sale year). Tract sample 5,750 → 5,638; neighbourhoods still 20.
+- Tried and dropped (Tom): log effective age, log(1 + age), year-built FE. In-sample cor(ppsf, elasticity) for tract / nbhd: old 0.57 / 0.66; log age, age > 0: 0.38 / 0.27; this spec 0.48 / 0.48. About 60% of the cross-area covariance is between E/W (West mean elasticity 0.47 vs 0.37, tracts).
+- Levels: cor(with, without control) 0.999 / 1.000. West premium 55% / 57% (was 56 / 59). Duplex premium: mean 9% / 5% (was 13 / 9); cor(premium, elasticity) −0.36 / −0.02 (was −0.70 / 0.34).
+- Downstream: sdTractB 0.449 → 0.454, sdNbhdB 0.443 → 0.448; lgTractFE 2.311 → 2.332, lgNbhdFE 2.356 → 2.381; ORs 2.55 / 2.36.
+- Figures fig:tractPPSF / fig:neighbourhoodPPSF now plot elasticity (95% CI) against log ppsf: text/elasPpsfTract.png, text/elasPpsfNeighbourhood.png, from vancouverElasticityPremium.R.
+- Why CHECK: (1) The elasticity correlations moved a lot; the draft claim that the duplex premium "falls with elasticity" across tracts is now weak (−0.36). (2) Run environment: this R setup keeps fixest singletons, so the ±6-month window columns of tab:ShareDiD have higher counts (tract areas 29 → 52) than the earlier run; the coefficients are unaffected. The FSR table also matched 8 more R1-1-era duplexes (123 → 131) with unchanged inputs. (3) Your new paragraph has \ref{tab:shareDiD}, but the label is tab:ShareDiD.

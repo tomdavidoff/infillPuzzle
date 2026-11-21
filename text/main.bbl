@@ -594,41 +594,6 @@
       \verb https://council.vancouver.ca/20040325/ph2.pdf
       \endverb
     \endentry
-    \entry{CoV2009Laneway}{report}{}{}
-      \name{author}{1}{}{%
-        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
-           family={{City of Vancouver}},
-           familyi={C\bibinitperiod}}}%
-      }
-      \list{institution}{1}{%
-        {City of Vancouver}%
-      }
-      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \field{extraname}{2}
-      \field{sortinit}{C}
-      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
-      \field{extradatescope}{labelyear}
-      \field{labeldatesource}{}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{note}{verify}
-      \field{title}{{EcoDensity}: Laneway Housing, Proposed Amendments to the Zoning and Development By-law ({Policy Report})}
-      \field{type}{techreport}
-      \field{year}{2009}
-      \verb{urlraw}
-      \verb https://council.vancouver.ca/20090616/documents/p3.pdf
-      \endverb
-      \verb{url}
-      \verb https://council.vancouver.ca/20090616/documents/p3.pdf
-      \endverb
-    \endentry
     \entry{CoV2018DuplexAdmin}{report}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
@@ -646,7 +611,7 @@
       \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \field{extraname}{3}
+      \field{extraname}{2}
       \field{sortinit}{C}
       \field{sortinithash}{4d103a86280481745c9c897c925753c0}
       \field{extradate}{1}
@@ -682,7 +647,7 @@
       \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \field{extraname}{4}
+      \field{extraname}{3}
       \field{sortinit}{C}
       \field{sortinithash}{4d103a86280481745c9c897c925753c0}
       \field{extradate}{2}
@@ -718,7 +683,7 @@
       \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \field{extraname}{5}
+      \field{extraname}{4}
       \field{sortinit}{C}
       \field{sortinithash}{4d103a86280481745c9c897c925753c0}
       \field{extradate}{3}
@@ -754,7 +719,7 @@
       \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \field{extraname}{6}
+      \field{extraname}{5}
       \field{sortinit}{C}
       \field{sortinithash}{4d103a86280481745c9c897c925753c0}
       \field{extradatescope}{labelyear}
@@ -790,7 +755,7 @@
       \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \field{extraname}{7}
+      \field{extraname}{6}
       \field{sortinit}{C}
       \field{sortinithash}{4d103a86280481745c9c897c925753c0}
       \field{extradate}{1}
@@ -826,7 +791,7 @@
       \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \field{extraname}{8}
+      \field{extraname}{7}
       \field{sortinit}{C}
       \field{sortinithash}{4d103a86280481745c9c897c925753c0}
       \field{extradate}{2}
@@ -857,7 +822,7 @@
       \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \field{extraname}{9}
+      \field{extraname}{8}
       \field{sortinit}{C}
       \field{sortinithash}{4d103a86280481745c9c897c925753c0}
       \field{extradatescope}{labelyear}

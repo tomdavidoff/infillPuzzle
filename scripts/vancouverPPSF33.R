@@ -1,6 +1,7 @@
 # vancouverPPSF33.R
-# Local price per sqft (eq. ppsfHedonic): log(price / finished area) on sale-year FE, (optionally) log effective
-# year, and area FE, for single-family sales from 2012 to the Sept 2018 duplex approval on 33-ft lots now zoned R1-1. Areas: census tract (CTUID)
+# Local price per sqft (eq. ppsfHedonic): log(price / finished area) on sale-year FE, (optionally) effective-year FE
+# (2019-roll effective year; years at or below the 10th percentile pooled; sales with effective year after the sale
+# year dropped, as renovated after sale), and area FE, for single-family sales from 2012 to the Sept 2018 duplex approval on 33-ft lots now zoned R1-1. Areas: census tract (CTUID)
 # and BCA neighbourhood. Plots tract/neighbourhood FE with vs without the effective-year control.
 # Writes text/ppsf33.tex, text/ppsf33Tract.png, text/ppsf33Neighbourhood.png
 # Tom Davidoff 11/15/26
@@ -71,19 +72,26 @@ s[, `:=`(CTUID = ct$CTUID[sapply(j, function(i) if (length(i)) i else NA_integer
          CTNAME = ct$CTNAME[sapply(j, function(i) if (length(i)) i else NA_integer_)])]
 n0 <- nrow(s); s <- s[!is.na(CTUID) & nbhd != ""];                          lost(n0, nrow(s), "tract and neighbourhood assigned")
 
-s[, `:=`(lppsf = log(price / sqft), lEff = log(effYr))]
+s[, `:=`(lppsf = log(price / sqft), age = yr - effYr)]
+cat(sprintf("effective age < 0: %d, = 0: %d of %d\n", s[age < 0, .N], s[age == 0, .N], nrow(s)))
+nAge0 <- nrow(s); nAgeDrop <- s[age < 0, .N]
+n0 <- nrow(s); s <- s[age >= 0];                                            lost(n0, nrow(s), "effective year not after sale year")
 q <- quantile(s$lppsf, c(.005, .995))
 n0 <- nrow(s); s <- s[lppsf %between% q];                                   lost(n0, nrow(s), "log ppsf within 0.5-99.5 pctile")
-cat(sprintf("sales: %d | median ppsf $%.0f | median sqft %.0f | median eff yr %.0f\n",
-            nrow(s), median(s$price / s$sqft), median(s$sqft), median(s$effYr)))
+cat(sprintf("sales: %d | median ppsf $%.0f | median sqft %.0f | median eff yr %.0f | median eff age %.0f\n",
+            nrow(s), median(s$price / s$sqft), median(s$sqft), median(s$effYr), median(s$age)))
 print(s[, .(N = .N, medPPSF = round(median(price / sqft))), keyby = yr])
+EFF_BIN <- floor(quantile(s$effYr, .1))
+s[, effBin := pmax(effYr, EFF_BIN)]
+cat(sprintf("effective-year bins: %d; bottom bin <= %d holds %.1f%% of sales; bins with < 10 sales: %d\n", uniqueN(s$effBin), EFF_BIN,
+            100 * mean(s$effYr <= EFF_BIN), s[, .N, by = effBin][N < 10, .N]))
 
 areaFE <- function(dd, area) {
   na <- dd[, .N, by = area]
   cat(sprintf("%s: %d areas with 33-ft R1-1 sales, %d with >= %d (sales kept %.1f%%)\n", area, nrow(na),
               na[N >= MIN_OBS, .N], MIN_OBS, 100 * na[N >= MIN_OBS, sum(N)] / nrow(dd)))
   dd <- dd[na[N >= MIN_OBS], on = area]
-  m1 <- feols(as.formula(paste("lppsf ~ lEff | yr +", area)), dd, vcov = "hetero")
+  m1 <- feols(as.formula(paste("lppsf ~ 1 | yr + effBin +", area)), dd, vcov = "hetero")
   m0 <- feols(as.formula(paste("lppsf ~ 1 | yr +", area)), dd, vcov = "hetero")
   f1 <- fixef(m1)[[area]]; f0 <- fixef(m0)[[area]]
   out <- data.table(id = names(f1), withEff = f1 - mean(f1), noEff = f0[names(f1)] - mean(f0[names(f1)]))
@@ -138,8 +146,10 @@ mac <- c(
   sprintf("\\newcommand{\\ppsfMinObs}{%d}", MIN_OBS),
   sprintf("\\newcommand{\\ppsfFirstYear}{%d}", min(YEARS)),
   sprintf("\\newcommand{\\ppsfLastYear}{%d}", max(YEARS)),
-  sprintf("\\newcommand{\\ppsfEffCoefTract}{%.2f}", coef(rT$m1)["lEff"]),
-  sprintf("\\newcommand{\\ppsfEffCoefNbhd}{%.2f}", coef(rN$m1)["lEff"]),
+  sprintf("\\newcommand{\\ppsfEffBinYear}{%d}", as.integer(EFF_BIN)),
+  sprintf("\\newcommand{\\ppsfEffBinShare}{%.0f}", 100 * mean(s$effYr <= EFF_BIN)),
+  sprintf("\\newcommand{\\ppsfAgeNonPos}{%s}", formatC(nAgeDrop, big.mark = ",")),
+  sprintf("\\newcommand{\\ppsfAgeNonPosShare}{%.1f}", 100 * nAgeDrop / nAge0),
   sprintf("\\newcommand{\\ppsfCorEffTract}{%.2f}", sT$corWithNo),
   sprintf("\\newcommand{\\ppsfCorEffNbhd}{%.2f}", sN$corWithNo),
   sprintf("\\newcommand{\\ppsfWestPremiumTract}{%.0f}", 100 * (exp(sT$westMinusEast) - 1)),
