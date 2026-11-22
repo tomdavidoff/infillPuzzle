@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  20 NOV 2026 22:43
+This is pdfTeX, Version 3.141592653-2.6-1.40.27 (TeX Live 2025) (preloaded format=pdflatex 2025.3.8)  21 NOV 2026 21:46
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -429,27 +429,27 @@ Package xcolor Info: Model `Gray' substituted by `gray' on input line 1371.
 Package xcolor Info: Model `wave' substituted by `hsb' on input line 1372.
 )
 (./duplexStock2018.tex) (./institutionalFacts.tex) (./multiplexLotWidth.tex)
-(./ppsf33.tex) (./permitTrends.tex) (./elasPremium.tex) (./shareDiD.tex)
-(./logitDiD.tex) (./sqftPrePost.tex)
+(./ppsf33.tex) (./permitTrends.tex) (./elasPremium.tex) (./lotElas.tex)
+(./shareDiD.tex) (./logitDiD.tex) (./sqftPrePost.tex)
 \@quotelevel=\count413
 \@quotereset=\count414
  (./main.aux)
 \openout1 = `main.aux'.
 
-LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 23.
-LaTeX Font Info:    ... okay on input line 23.
-LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 23.
-LaTeX Font Info:    ... okay on input line 23.
-LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 23.
-LaTeX Font Info:    ... okay on input line 23.
-LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 23.
-LaTeX Font Info:    ... okay on input line 23.
-LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 23.
-LaTeX Font Info:    ... okay on input line 23.
-LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 23.
-LaTeX Font Info:    ... okay on input line 23.
-LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 23.
-LaTeX Font Info:    ... okay on input line 23.
+LaTeX Font Info:    Checking defaults for OML/cmm/m/it on input line 24.
+LaTeX Font Info:    ... okay on input line 24.
+LaTeX Font Info:    Checking defaults for OMS/cmsy/m/n on input line 24.
+LaTeX Font Info:    ... okay on input line 24.
+LaTeX Font Info:    Checking defaults for OT1/cmr/m/n on input line 24.
+LaTeX Font Info:    ... okay on input line 24.
+LaTeX Font Info:    Checking defaults for T1/cmr/m/n on input line 24.
+LaTeX Font Info:    ... okay on input line 24.
+LaTeX Font Info:    Checking defaults for TS1/cmr/m/n on input line 24.
+LaTeX Font Info:    ... okay on input line 24.
+LaTeX Font Info:    Checking defaults for OMX/cmex/m/n on input line 24.
+LaTeX Font Info:    ... okay on input line 24.
+LaTeX Font Info:    Checking defaults for U/cmr/m/n on input line 24.
+LaTeX Font Info:    ... okay on input line 24.
 Package biblatex Info: Trying to load language 'english'...
 Package biblatex Info: ... file 'english.lbx' found.
 
@@ -465,8 +465,8 @@ Package biblatex Info: Trying to load bibliographic data...
 Package biblatex Info: ... file 'main.bbl' found.
 
 (./main.bbl)
-Package biblatex Info: Reference section=0 on input line 23.
-Package biblatex Info: Reference segment=0 on input line 23.
+Package biblatex Info: Reference section=0 on input line 24.
+Package biblatex Info: Reference segment=0 on input line 24.
 
 *geometry* driver: auto-detecting
 *geometry* detected driver: pdftex
@@ -559,67 +559,65 @@ File: elasPpsfNeighbourhood.png Graphic file (type png)
 <use elasPpsfNeighbourhood.png>
 Package pdftex.def Info: elasPpsfNeighbourhood.png  used on input line 311.
 (pdftex.def)             Requested size: 469.75502pt x 375.81718pt.
- (./elasPpsfCor.tex)
+ (./elasLotCor.tex)
 
 [12 <./elasPpsfTract.png>]
 
 [13 <./elasPpsfNeighbourhood.png>] (./elasPpsfDupCor.tex)
 
-[14]
-<permitTrends.png, id=65, 1756.5625pt x 2132.96875pt>
+[14] (./sumStats.tex)
+<permitTrends.png, id=64, 1756.5625pt x 2132.96875pt>
 File: permitTrends.png Graphic file (type png)
 <use permitTrends.png>
-Package pdftex.def Info: permitTrends.png  used on input line 342.
+Package pdftex.def Info: permitTrends.png  used on input line 346.
 (pdftex.def)             Requested size: 469.75502pt x 570.40892pt.
 
 
-LaTeX Warning: Float too large for page by 2.47891pt on input line 344.
+LaTeX Warning: Float too large for page by 2.47891pt on input line 348.
 
-(./sqftPrePostTable.tex)
+
 
 [15]
 
-[16 <./permitTrends.png>]
+[16]
 
-LaTeX Warning: Citation 'DarylSanghoon' on page 17 undefined on input line 367.
+[17 <./permitTrends.png>]
 
-
-(./shareDiDTable.tex)
-
-[17]
-
-LaTeX Warning: Reference `tab:shareDiD' on page 18 undefined on input line 379.
+[18] (./shareDiDTable.tex) (./shareDiDElasTable.tex)
+Underfull \hbox (badness 10000) in paragraph at lines 2--386
+[][]
+ []
 
 
+Underfull \hbox (badness 10000) in paragraph at lines 2--386
 
-LaTeX Warning: Reference `tab:shareDiD' on page 18 undefined on input line 379.
-
-
-(./shareDiDElasTable.tex)
-
-[18] (./logitDiDTable.tex)
-Overfull \hbox (2.94786pt too wide) in paragraph at lines 2--400
- [][] 
  []
 
 
 
 [19]
 
-[20]
+[20] (./logitDiDTable.tex)
+Overfull \hbox (2.94786pt too wide) in paragraph at lines 2--405
+ [][] 
+ []
+
+
 
 [21]
-Overfull \hbox (30.02003pt too wide) in paragraph at lines 410--410
+
+[22]
+
+[23]
+Overfull \hbox (30.02003pt too wide) in paragraph at lines 415--415
 \OT1/cmtt/m/n/12 documents / 1 . ZDBy -[] lawamendmentre . missingmiddlehousing
 andsimplifyingregulations .
  []
 
 
 
-[22]
-
-[23]
-Overfull \hbox (8.19232pt too wide) in paragraph at lines 410--410
+[24]
+Overfull \hbox (8.19232pt too wide) in paragraph at lines 415--415
 \OT1/cmr/m/it/12 State Gov-ern-ments\OT1/cmr/m/n/12 . Re-search Re-port. NYU Fu
 r-man Cen-ter. \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 https : 
 / / furmancenter .
@@ -627,8 +625,8 @@ r-man Cen-ter. \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 https :
 
 
 
-[24]
-Overfull \hbox (15.82265pt too wide) in paragraph at lines 410--410
+[25]
+Overfull \hbox (15.82265pt too wide) in paragraph at lines 415--415
 \OT1/cmr/m/sc/12 doi\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 10 . 1177 / 00420980231
 159500$\OT1/cmr/m/n/12 . \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/1
 2 https : / / doi . org / 10 . 1177 / 00420980231159500$\OT1/cmr/m/n/12 . 
@@ -636,10 +634,10 @@ Overfull \hbox (15.82265pt too wide) in paragraph at lines 410--410
 
 
 Package biblatex Warning: No driver for 'url'.
-(biblatex)                Using fallback driver on input line 410.
+(biblatex)                Using fallback driver on input line 415.
 
 
-Overfull \hbox (10.74803pt too wide) in paragraph at lines 410--410
+Overfull \hbox (10.74803pt too wide) in paragraph at lines 415--415
 \OT1/cmr/m/sc/12 url\OT1/cmr/m/n/12 : $\OT1/cmtt/m/n/12 https : / / doodles . m
 ountainmath . ca / posts / 2025 -[] 08 -[] 29 -[] multiplex -[] reforms -[]-[]-
 []-[]
@@ -647,7 +645,7 @@ ountainmath . ca / posts / 2025 -[] 08 -[] 29 -[] multiplex -[] reforms -[]-[]-
 
 
 
-[25] (./main.aux)
+[26] (./main.aux)
  ***********
 LaTeX2e <2024-11-01> patch level 2
 L3 programming layer <2025-01-18>
@@ -666,13 +664,13 @@ Package logreq Info: Writing requests to 'main.run.xml'.
 
  ) 
 Here is how much of TeX's memory you used:
- 11973 strings out of 473190
- 224721 string characters out of 5715801
- 1056114 words of memory out of 5000000
- 35086 multiletter control sequences out of 15000+600000
+ 11963 strings out of 473190
+ 223865 string characters out of 5715801
+ 1058927 words of memory out of 5000000
+ 35073 multiletter control sequences out of 15000+600000
  567793 words of font info for 67 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 66i,11n,81p,1650b,1697s stack positions out of 10000i,1000n,20000p,200000b,200000s
+ 66i,11n,81p,1778b,1654s stack positions out of 10000i,1000n,20000p,200000b,200000s
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx10.pfb
 ></usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmbx12.pfb>
 </usr/local/texlive/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmcsc10.pfb>
@@ -692,10 +690,10 @@ e/2025/texmf-dist/fonts/type1/public/amsfonts/cm/cmsy8.pfb></usr/local/texlive/
 25/texmf-dist/fonts/type1/public/cm-super/sfrm0700.pfb></usr/local/texlive/2025
 /texmf-dist/fonts/type1/public/cm-super/sfrm1000.pfb></usr/local/texlive/2025/t
 exmf-dist/fonts/type1/public/cm-super/sfrm1200.pfb>
-Output written on main.pdf (25 pages, 3116883 bytes).
+Output written on main.pdf (26 pages, 3117377 bytes).
 PDF statistics:
- 187 PDF objects out of 1000 (max. 8388607)
- 116 compressed objects within 2 object streams
+ 190 PDF objects out of 1000 (max. 8388607)
+ 118 compressed objects within 2 object streams
  0 named destinations out of 1000 (max. 500000)
  16 words of extra memory for PDF output out of 10000 (max. 10000000)
 

@@ -1,24 +1,24 @@
 [0] Config.pm:308> INFO - This is Biber 2.20
 [0] Config.pm:311> INFO - Logfile is 'main.blg'
-[46] biber-darwin:340> INFO - === Fri Nov 20, 2026, 21:03:48
+[47] biber-darwin:340> INFO - === Sat Nov 21, 2026, 19:30:01
 [58] Biber.pm:420> INFO - Reading 'main.bcf'
-[114] Biber.pm:994> INFO - Found 53 citekeys in bib section 0
+[113] Biber.pm:994> INFO - Found 46 citekeys in bib section 0
 [123] Biber.pm:4463> INFO - Processing section 0
-[132] Biber.pm:4654> INFO - Looking for bibtex file 'infillPuzzle.bib' for section 0
-[138] bibtex.pm:1713> INFO - LaTeX decoding ...
-[288] bibtex.pm:1519> INFO - Found BibTeX data source 'infillPuzzle.bib'
-[396] Biber.pm:4654> INFO - Looking for bibtex file 'CLAUDE.bib' for section 0
-[397] bibtex.pm:1713> INFO - LaTeX decoding ...
-[411] bibtex.pm:1519> INFO - Found BibTeX data source 'CLAUDE.bib'
-[521] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
-[521] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
-[521] Biber.pm:4283> INFO - Sorting list 'nyt/global//global/global/global' of type 'entry' with template 'nyt' and locale 'en-US'
-[521] Biber.pm:4289> INFO - No sort tailoring available for locale 'en-US'
-[560] bbl.pm:676> INFO - Writing 'main.bbl' with encoding 'UTF-8'
-[576] bbl.pm:779> INFO - Output to main.bbl
-[577] Biber.pm:131> WARN - legacy month field 'April' in entry 'HsiehMoretti' is not an integer - this will probably not sort properly.
-[577] Biber.pm:131> WARN - legacy month field 'July' in entry 'Liao2023' is not an integer - this will probably not sort properly.
-[577] Biber.pm:131> WARN - legacy month field 'November' in entry 'Bayer_etal2004' is not an integer - this will probably not sort properly.
-[577] Biber.pm:131> WARN - legacy month field 'January' in entry 'MarantzElmendorfKim2023_ADUReforms' is not an integer - this will probably not sort properly.
-[577] Biber.pm:131> WARN - BibTeX subsystem: warning: comma(s) at end of name (removing)
-[577] Biber.pm:133> INFO - WARNINGS: 5
+[130] Biber.pm:4654> INFO - Looking for bibtex file 'infillPuzzle.bib' for section 0
+[137] bibtex.pm:1713> INFO - LaTeX decoding ...
+[285] bibtex.pm:1519> INFO - Found BibTeX data source 'infillPuzzle.bib'
+[393] Biber.pm:4654> INFO - Looking for bibtex file 'CLAUDE.bib' for section 0
+[394] bibtex.pm:1713> INFO - LaTeX decoding ...
+[409] bibtex.pm:1519> INFO - Found BibTeX data source 'CLAUDE.bib'
+[500] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'variable = shifted' with 'variable = non-ignorable'
+[500] UCollate.pm:68> INFO - Overriding locale 'en-US' defaults 'normalization = NFD' with 'normalization = prenormalized'
+[500] Biber.pm:4283> INFO - Sorting list 'nyt/global//global/global/global' of type 'entry' with template 'nyt' and locale 'en-US'
+[500] Biber.pm:4289> INFO - No sort tailoring available for locale 'en-US'
+[534] bbl.pm:676> INFO - Writing 'main.bbl' with encoding 'UTF-8'
+[549] bbl.pm:779> INFO - Output to main.bbl
+[549] Biber.pm:131> WARN - legacy month field 'April' in entry 'HsiehMoretti' is not an integer - this will probably not sort properly.
+[549] Biber.pm:131> WARN - legacy month field 'July' in entry 'Liao2023' is not an integer - this will probably not sort properly.
+[549] Biber.pm:131> WARN - legacy month field 'November' in entry 'Bayer_etal2004' is not an integer - this will probably not sort properly.
+[549] Biber.pm:131> WARN - legacy month field 'January' in entry 'MarantzElmendorfKim2023_ADUReforms' is not an integer - this will probably not sort properly.
+[549] Biber.pm:131> WARN - BibTeX subsystem: warning: comma(s) at end of name (removing)
+[549] Biber.pm:133> INFO - WARNINGS: 5

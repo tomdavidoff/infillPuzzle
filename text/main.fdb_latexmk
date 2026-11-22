@@ -1,13 +1,13 @@
 # Fdb version 4
-["biber main"] 1795233827.62522 "main.bcf" "main.bbl" "main" 1795237326.93916 0
+["biber main"] 1795314600.52254 "main.bcf" "main.bbl" "main" 1795315055.99776 0
   "CLAUDE.bib" 1795223873.56298 7763 17ea3ab7ffcc5ec8f56544deffa8160c ""
   "infillPuzzle.bib" 1794770916.97031 76761 640613403051fb6e9ed711e43e1b3e39 ""
-  "main.bcf" 1795237326.80999 113615 aed7ee1bcad09360a1a586cda9cfe827 "pdflatex"
+  "main.bcf" 1795315055.88142 113271 496bb1453c9bb5367da19ec983a178f6 "pdflatex"
   (generated)
   "main.bbl"
   "main.blg"
   (rewritten before read)
-["pdflatex"] 1795237323.57947 "main.tex" "main.pdf" "main" 1795237326.9398 0
+["pdflatex"] 1795315052.80347 "main.tex" "main.pdf" "main" 1795315055.9982 0
   "/usr/local/texlive/2025/texmf-dist/fonts/enc/dvips/cm-super/cm-super-ts1.enc" 1136849721 2900 1537cc8184ad1792082cd229ecc269f4 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/map/fontname/texfonts.map" 1577235249 3524 cb3e574dea2d1052e39280babc910dc8 ""
   "/usr/local/texlive/2025/texmf-dist/fonts/tfm/jknappen/ec/tcrm0700.tfm" 1136768653 1536 73da8e8f1d2a4c957d51ca133585586b ""
@@ -102,7 +102,7 @@
   "/usr/local/texlive/2025/texmf-var/web2c/pdftex/pdflatex.fmt" 1741450574 3345740 46b66fdb0378f7bf5921b5eabf1762b8 ""
   "/usr/local/texlive/2025/texmf.cnf" 1741450484 577 418a7058ec8e006d8704f60ecd22c938 ""
   "duplexStock2018.tex" 1794792036.21441 383 72766d2491fab981402d7f06b097ddf2 ""
-  "elasPpsfCor.tex" 1795237315.73112 380 5e20dc8cb655f710eace073b2d4ab89b ""
+  "elasLotCor.tex" 1795315042.90382 421 96d0231da55bbd42937d774e5cd01973 ""
   "elasPpsfDupCor.tex" 1795237315.74135 420 2e73a7f2c56cae85f4816b7a0ef7436c ""
   "elasPpsfNeighbourhood.png" 1795237316.54264 82000 c7538dd27f0c37c97f8e99a47c36fb92 ""
   "elasPpsfTract.png" 1795237316.10605 59501 75e0e6527d57e48db513844a4e30fa8a ""
@@ -110,17 +110,17 @@
   "institutionalFacts.tex" 1794792036.2156 1274 c31c9d1c865343d0d661e0730ba6de28 ""
   "logitDiD.tex" 1795235636.91077 1595 a6309f5e0b7f743c2124d9f35cd68a42 ""
   "logitDiDTable.tex" 1795235636.90113 1111 149b17eae97b7e93af8239c7b154942e ""
-  "main.aux" 1795237326.8019 19426 ceb7247914fa003c0c755addce679235 "pdflatex"
-  "main.bbl" 1795233829.32147 84747 a0144b8b2f28087a387cc6a4ad78c868 "biber main"
-  "main.run.xml" 1795237326.81102 2343 09bcf85bbf443c55cdef3d81130af9bd "pdflatex"
-  "main.tex" 1795237304.20462 52456 dbfd827fbbb01c509b763e40cdb0fb53 ""
+  "lotElas.tex" 1795315042.90505 340 6823a79bc78b95de363356d3950b09cb ""
+  "main.aux" 1795315055.87464 18780 b6d19106e751091457dff871554026fe "pdflatex"
+  "main.bbl" 1795314602.08138 74664 29545bf410dfa556934133eb8fe67319 "biber main"
+  "main.run.xml" 1795315055.88233 2343 09bcf85bbf443c55cdef3d81130af9bd "pdflatex"
+  "main.tex" 1795315049.52034 53793 030c9c6e01e304500c24f64f90e9a08a ""
   "multiplexLotWidth.tex" 1795223873.57811 708 bdaf0569e4a50ee85053ecde742ca565 ""
   "permitTrends.png" 1795223873.58468 3278602 a4eefa00c36b9550886b1c0af38dab27 ""
   "permitTrends.tex" 1795223873.58498 303 5378652261ce57f7ee12cdf353031b6f ""
   "ppsf33.tex" 1795235135.08819 603 ef9547469109d5b99769e37b0198afa6 ""
   "shareDiD.tex" 1795235195.78946 1492 61913b48d53cd040ba5d27e93269cdec ""
-  "shareDiDElasTable.tex" 1795235686.4114 828 177acf7dc4195ff427b35d7957033492 ""
-  "shareDiDPeriods.tex" 1795235195.76637 1031 91a751f55c4767924beaed0c8541a76e ""
+  "shareDiDElasTable.tex" 1795315005.10451 1328 c0ea42a540422c7b77d2b2f6face8dd3 ""
   "shareDiDTable.tex" 1795235195.765 905 1f34890b2835ee2d076eccb12ca9ac1d ""
   "sqftPrePost.tex" 1795235684.77332 363 f0c23766ce1db82d7ed02a600217cca7 ""
   "sqftPrePostTable.tex" 1795235684.76694 397 c7443e454f88e36077ce62cb7d6298b7 ""

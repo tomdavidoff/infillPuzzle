@@ -1,0 +1,39 @@
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+Key: <per>
+     per     N
+   <num> <int>
+1:    -5   193
+2:    -4   127
+3:    -3   262
+4:    -2   299
+5:    -1   149
+6:     0   132
+7:     1   126
+8:     2    69
+Census tract: permits 1357 -> 1343
+                Estimate Std. Error    t value    Pr(>|t|)
+per::-5:ppsf -0.12677832  0.1791906 -0.7075054 0.482239751
+per::-4:ppsf -0.28990282  0.2096933 -1.3825089 0.172403801
+per::-3:ppsf -0.55590244  0.2020681 -2.7510642 0.008026827
+per::-2:ppsf -0.31233625  0.1370975 -2.2782051 0.026621781
+per::0:ppsf   0.22390225  0.2097545  1.0674491 0.290432219
+per::1:ppsf   0.04357402  0.1673255  0.2604146 0.795516461
+per::2:ppsf   0.30863889  0.2119753  1.4560136 0.151073823
+attr(,"type")
+[1] "Clustered (area)"
+pooled post x ppsf: 0.454 ( 0.1 )
+Census tract: joint pre-period test F = 2.31, p = 0.058 (4 restrictions)
+Neighbourhood: permits 1357 -> 1356
+                Estimate Std. Error    t value   Pr(>|t|)
+per::-5:ppsf -0.05958925  0.2248834 -0.2649784 0.79387951
+per::-4:ppsf -0.13849134  0.2225436 -0.6223111 0.54113439
+per::-3:ppsf -0.50440804  0.2183504 -2.3100856 0.03227799
+per::-2:ppsf -0.26995360  0.1383054 -1.9518665 0.06585182
+per::0:ppsf   0.28380246  0.3243121  0.8750906 0.39245283
+per::1:ppsf   0.11372367  0.2286534  0.4973626 0.62464006
+per::2:ppsf   0.35269520  0.2612795  1.3498769 0.19291930
+attr(,"type")
+[1] "Clustered (area)"
+pooled post x ppsf: 0.448 ( 0.105 )
+Neighbourhood: joint pre-period test F = 2.43, p = 0.052 (4 restrictions)
