@@ -1,30 +1,33 @@
-33-ft lots, principal products: 2186 of 5560 linked permits
-in an era: 1591 of 2186
-latest permit per lot x era: 1481 of 1591
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+33-ft lots, principal products: 2185 of 5560 linked permits
+in an era: 1590 of 2185
+latest permit per lot x era: 1480 of 1590
+keep applications in 2019-2022, 2024-2026: 1249 of 1480
 Using 'N' as value column. Use 'value.var' to override
 Key: <era, side>
-                                         era   side Single family Duplex
-                                      <fctr> <char>         <int>  <int>
-1: Duplex era: applied Sept 2018 to Oct 2023   East           378    309
-2: Duplex era: applied Sept 2018 to Oct 2023   West           268     75
-3:       R1-1 era: applied from Oct 17, 2023   East            49    123
-4:       R1-1 era: applied from Oct 17, 2023   West            48    107
-   Multiplex total duplexShare duplexVsSingle
-       <int> <num>       <num>          <num>
-1:         0   687       0.450          0.450
-2:         0   343       0.219          0.219
-3:        88   260       0.473          0.715
-4:        36   191       0.560          0.690
-                                         era highVal     N
-                                      <fctr>  <lgcl> <int>
-1: Duplex era: applied Sept 2018 to Oct 2023   FALSE  1022
-2:       R1-1 era: applied from Oct 17, 2023   FALSE   443
-3: Duplex era: applied Sept 2018 to Oct 2023    TRUE     8
-4:       R1-1 era: applied from Oct 17, 2023    TRUE     8
+                                   era   side Single family Duplex Multiplex
+                                <fctr> <char>         <int>  <int>     <int>
+1:    Duplex era: applied 2019 to 2022   East           291    269         0
+2:    Duplex era: applied 2019 to 2022   West           215     58         0
+3: R1-1 era: applied 2024 to Sept 2026   East            45    107        87
+4: R1-1 era: applied 2024 to Sept 2026   West            44     97        36
+   total duplexShare duplexVsSingle
+   <num>       <num>          <num>
+1:   560       0.480          0.480
+2:   273       0.212          0.212
+3:   239       0.448          0.704
+4:   177       0.548          0.688
+                                   era highVal     N
+                                <fctr>  <lgcl> <int>
+1:    Duplex era: applied 2019 to 2022   FALSE   827
+2: R1-1 era: applied 2024 to Sept 2026   FALSE   408
+3: R1-1 era: applied 2024 to Sept 2026    TRUE     8
+4:    Duplex era: applied 2019 to 2022    TRUE     6
 Loading required namespace: raster
-\newcommand{\mapPermitsDuplexEra}{1,030}
-\newcommand{\mapPermitsRoneEra}{451}
-\newcommand{\dupVsSingleEastDuplexEra}{45}
-\newcommand{\dupVsSingleWestDuplexEra}{22}
-\newcommand{\dupVsSingleEastRoneEra}{72}
+\newcommand{\mapPermitsDuplexEra}{833}
+\newcommand{\mapPermitsRoneEra}{416}
+\newcommand{\dupVsSingleEastDuplexEra}{48}
+\newcommand{\dupVsSingleWestDuplexEra}{21}
+\newcommand{\dupVsSingleEastRoneEra}{70}
 \newcommand{\dupVsSingleWestRoneEra}{69}

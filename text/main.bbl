@@ -208,7 +208,6 @@
       \strng{authornamehash}{f675a527b14189e78481ba59aa9a2152}
       \strng{authorfullhash}{f675a527b14189e78481ba59aa9a2152}
       \strng{authorfullhashraw}{f675a527b14189e78481ba59aa9a2152}
-      \field{extraname}{1}
       \field{sortinit}{B}
       \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
       \field{extradatescope}{labelyear}
@@ -218,31 +217,6 @@
       \field{note}{Licensed data; roll reflects property condition as of 2018}
       \field{title}{2019 Residential Inventory and Data Advice Extracts ({REVD19})}
       \field{year}{2019}
-    \endentry
-    \entry{BCAssessment2026}{misc}{}{}
-      \name{author}{1}{}{%
-        {{un=0,uniquepart=base,hash=f675a527b14189e78481ba59aa9a2152}{%
-           family={{BC Assessment}},
-           familyi={B\bibinitperiod}}}%
-      }
-      \strng{namehash}{f675a527b14189e78481ba59aa9a2152}
-      \strng{fullhash}{f675a527b14189e78481ba59aa9a2152}
-      \strng{fullhashraw}{f675a527b14189e78481ba59aa9a2152}
-      \strng{bibnamehash}{f675a527b14189e78481ba59aa9a2152}
-      \strng{authorbibnamehash}{f675a527b14189e78481ba59aa9a2152}
-      \strng{authornamehash}{f675a527b14189e78481ba59aa9a2152}
-      \strng{authorfullhash}{f675a527b14189e78481ba59aa9a2152}
-      \strng{authorfullhashraw}{f675a527b14189e78481ba59aa9a2152}
-      \field{extraname}{2}
-      \field{sortinit}{B}
-      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
-      \field{extradatescope}{labelyear}
-      \field{labeldatesource}{}
-      \field{labelnamesource}{author}
-      \field{labeltitlesource}{title}
-      \field{note}{Licensed data; roll reflects property condition as of 2025}
-      \field{title}{2026 Residential Inventory Extract and Folio Descriptions}
-      \field{year}{2026}
     \endentry
     \entry{Brueckner_1981}{article}{}{}
       \name{author}{1}{}{%
@@ -706,6 +680,43 @@
       \verb https://council.vancouver.ca/20230914/documents/1.ZDBy-lawamendmentre.missingmiddlehousingandsimplifyingregulations.pdf
       \endverb
     \endentry
+    \entry{CoV2023January}{misc}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
+           family={{City of Vancouver}},
+           familyi={C\bibinitperiod}}}%
+      }
+      \list{location}{1}{%
+        {Vancouver, BC}%
+      }
+      \strng{namehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{fullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{bibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorbibnamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
+      \field{extraname}{7}
+      \field{sortinit}{C}
+      \field{sortinithash}{4d103a86280481745c9c897c925753c0}
+      \field{extradate}{2}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{howpublished}{Presentation to Vancouver City Council}
+      \field{month}{1}
+      \field{note}{January 18, 2023 Council Meeting}
+      \field{title}{Standing Committee on Policy and Strategic Priorities: Staff Presentation (PSPC2)}
+      \field{year}{2023}
+      \verb{urlraw}
+      \verb https://council.vancouver.ca/20230118/documents/pspc2presentation.pdf
+      \endverb
+      \verb{url}
+      \verb https://council.vancouver.ca/20230118/documents/pspc2presentation.pdf
+      \endverb
+    \endentry
     \entry{CoVRS1Schedule2023}{report}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=8fe4d14f4f18d66b37ba7ed85795e83b}{%
@@ -723,10 +734,10 @@
       \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \field{extraname}{7}
+      \field{extraname}{8}
       \field{sortinit}{C}
       \field{sortinithash}{4d103a86280481745c9c897c925753c0}
-      \field{extradate}{2}
+      \field{extradate}{3}
       \field{extradatescope}{labelyear}
       \field{labeldatesource}{}
       \field{labelnamesource}{author}
@@ -754,7 +765,7 @@
       \strng{authornamehash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhash}{8fe4d14f4f18d66b37ba7ed85795e83b}
       \strng{authorfullhashraw}{8fe4d14f4f18d66b37ba7ed85795e83b}
-      \field{extraname}{8}
+      \field{extraname}{9}
       \field{sortinit}{C}
       \field{sortinithash}{4d103a86280481745c9c897c925753c0}
       \field{extradatescope}{labelyear}
@@ -1323,6 +1334,77 @@
       \verb https://furmancenter.org/files/Evaluating_California%E2%80%99s_Accessory_Dwelling_Unit_Reforms_508.pdf
       \endverb
     \endentry
+    \entry{MetroVancouver2018HousingDataBook}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=0d67460784d4d049ca04927ad9de984d}{%
+           family={{Metro Vancouver}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {Metro Vancouver Regional District}%
+      }
+      \list{location}{1}{%
+        {Burnaby, BC}%
+      }
+      \strng{namehash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{fullhash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{fullhashraw}{0d67460784d4d049ca04927ad9de984d}
+      \strng{bibnamehash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{authorbibnamehash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{authornamehash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{authorfullhash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{authorfullhashraw}{0d67460784d4d049ca04927ad9de984d}
+      \field{extraname}{1}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{4}
+      \field{note}{Revised April 2018}
+      \field{title}{Metro Vancouver Housing Data Book}
+      \field{type}{techreport}
+      \field{year}{2018}
+    \endentry
+    \entry{MetroVancouver2025HousingDataBook}{report}{}{}
+      \name{author}{1}{}{%
+        {{un=0,uniquepart=base,hash=0d67460784d4d049ca04927ad9de984d}{%
+           family={{Metro Vancouver}},
+           familyi={M\bibinitperiod}}}%
+      }
+      \list{institution}{1}{%
+        {Metro Vancouver Regional District}%
+      }
+      \list{location}{1}{%
+        {Burnaby, BC}%
+      }
+      \strng{namehash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{fullhash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{fullhashraw}{0d67460784d4d049ca04927ad9de984d}
+      \strng{bibnamehash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{authorbibnamehash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{authornamehash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{authorfullhash}{0d67460784d4d049ca04927ad9de984d}
+      \strng{authorfullhashraw}{0d67460784d4d049ca04927ad9de984d}
+      \field{extraname}{2}
+      \field{sortinit}{M}
+      \field{sortinithash}{4625c616857f13d17ce56f7d4f97d451}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{2}
+      \field{title}{Metro Vancouver Housing Data Book}
+      \field{type}{techreport}
+      \field{year}{2025}
+      \verb{urlraw}
+      \verb https://metrovancouver.org/services/regional-planning/Documents/metro-vancouver-housing-data-book-2025.pdf
+      \endverb
+      \verb{url}
+      \verb https://metrovancouver.org/services/regional-planning/Documents/metro-vancouver-housing-data-book-2025.pdf
+      \endverb
+    \endentry
     \entry{Molloy2020}{article}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=213d8595271de76aa34ac4e1b2d9e72c}{%
@@ -1430,6 +1512,46 @@
       \field{year}{2023}
       \keyw{Upzoning}
     \endentry
+    \entry{RambachanRoth2023}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=85edb53244c29c17ce57830271014b46}{%
+           family={Rambachan},
+           familyi={R\bibinitperiod},
+           given={Ashesh},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=73c1da3266b3c7728f6b1f38a73c7671}{%
+           family={Roth},
+           familyi={R\bibinitperiod},
+           given={Jonathan},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{c7db070288680264f6dfa86410e8586f}
+      \strng{fullhash}{c7db070288680264f6dfa86410e8586f}
+      \strng{fullhashraw}{c7db070288680264f6dfa86410e8586f}
+      \strng{bibnamehash}{c7db070288680264f6dfa86410e8586f}
+      \strng{authorbibnamehash}{c7db070288680264f6dfa86410e8586f}
+      \strng{authornamehash}{c7db070288680264f6dfa86410e8586f}
+      \strng{authorfullhash}{c7db070288680264f6dfa86410e8586f}
+      \strng{authorfullhashraw}{c7db070288680264f6dfa86410e8586f}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Review of Economic Studies}
+      \field{number}{5}
+      \field{title}{A More Credible Approach to Parallel Trends}
+      \field{volume}{90}
+      \field{year}{2023}
+      \field{pages}{2555\bibrangedash 2591}
+      \range{pages}{37}
+      \verb{doi}
+      \verb 10.1093/restud/rdad018
+      \endverb
+    \endentry
     \entry{Rollet_2025}{unpublished}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=351f9396f8ceea35f7d87f3928a710e0}{%
@@ -1493,6 +1615,47 @@
       \endverb
       \verb{url}
       \verb https://www.jstor.org/stable/1830899
+      \endverb
+    \endentry
+    \entry{RosenthalHelsley1994}{article}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=c160ce9b95ebb074295116b6f4cf4251}{%
+           family={Rosenthal},
+           familyi={R\bibinitperiod},
+           given={Stuart\bibnamedelima S.},
+           giveni={S\bibinitperiod\bibinitdelim S\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=ab319405af9abd152e870461db895890}{%
+           family={Helsley},
+           familyi={H\bibinitperiod},
+           given={Robert\bibnamedelima W.},
+           giveni={R\bibinitperiod\bibinitdelim W\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{09c2c9915c81ec4603286afe50670ba3}
+      \strng{fullhash}{09c2c9915c81ec4603286afe50670ba3}
+      \strng{fullhashraw}{09c2c9915c81ec4603286afe50670ba3}
+      \strng{bibnamehash}{09c2c9915c81ec4603286afe50670ba3}
+      \strng{authorbibnamehash}{09c2c9915c81ec4603286afe50670ba3}
+      \strng{authornamehash}{09c2c9915c81ec4603286afe50670ba3}
+      \strng{authorfullhash}{09c2c9915c81ec4603286afe50670ba3}
+      \strng{authorfullhashraw}{09c2c9915c81ec4603286afe50670ba3}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{journaltitle}{Journal of Urban Economics}
+      \field{month}{3}
+      \field{number}{2}
+      \field{title}{Redevelopment and the Urban Land Price Gradient}
+      \field{volume}{35}
+      \field{year}{1994}
+      \field{pages}{182\bibrangedash 200}
+      \range{pages}{19}
+      \verb{doi}
+      \verb 10.1006/juec.1994.1012
       \endverb
     \endentry
     \entry{Stacy_etal2023}{article}{}{}

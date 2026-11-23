@@ -26,17 +26,17 @@ Lot size elasticity & 49 & 0.71 & 0.24 & 0.23 & 1.29 \\
 Duplex premium & 15 & 0.08 & 0.08 & -0.06 & 0.21 \\
 West Side & 56 & 0.30 & 0.46 & 0.00 & 1.00 \\
 \hline
-\multicolumn{6}{l}{\expandafter\def\csname @currentlabel\endcsname{D}\label{sumStats:permits}\textit{D. New-build permits, 33' lots now R1, Sept. 2018 on}} \\
-Duplex & 1,357 & 0.45 & 0.50 & 0.00 & 1.00 \\
-Post 2023 reform & 1,357 & 0.24 & 0.43 & 0.00 & 1.00 \\
-West Side & 1,357 & 0.37 & 0.48 & 0.00 & 1.00 \\
-Tract log price per sq. ft. & 1,343 & 6.47 & 0.24 & 6.21 & 7.04 \\
-Neighbourhood log price per sq. ft. & 1,356 & 6.47 & 0.24 & 6.26 & 6.91 \\
+\multicolumn{6}{l}{\expandafter\def\csname @currentlabel\endcsname{D}\label{sumStats:permits}\textit{D. New-build permits, 33' lots now R1, applied 2019--2022 and 2024--2026}} \\
+Duplex & 1,126 & 0.47 & 0.50 & 0.00 & 1.00 \\
+Post 2023 reform & 1,126 & 0.26 & 0.44 & 0.00 & 1.00 \\
+West Side & 1,126 & 0.37 & 0.48 & 0.00 & 1.00 \\
+Tract log price per sq. ft. & 1,115 & 6.47 & 0.24 & 6.21 & 7.04 \\
+Neighbourhood log price per sq. ft. & 1,125 & 6.47 & 0.24 & 6.26 & 6.91 \\
 \hline
 \multicolumn{6}{l}{\expandafter\def\csname @currentlabel\endcsname{E}\label{sumStats:fsr}\textit{E. Realized FSR of completed new builds}} \\
-Single family, duplex era & 549 & 0.70 & 0.05 & 0.37 & 0.84 \\
-Duplex, duplex era & 310 & 0.73 & 0.05 & 0.53 & 0.93 \\
-Single family, R1-1 era & 51 & 0.64 & 0.06 & 0.57 & 0.85 \\
-Duplex, R1-1 era & 131 & 0.75 & 0.05 & 0.51 & 0.94 \\
+Single family, duplex era & 426 & 0.70 & 0.05 & 0.37 & 0.84 \\
+Duplex, duplex era & 263 & 0.73 & 0.05 & 0.53 & 0.93 \\
+Single family, R1-1 era & 43 & 0.63 & 0.06 & 0.57 & 0.85 \\
+Duplex, R1-1 era & 112 & 0.75 & 0.05 & 0.51 & 0.94 \\
 \hline
 \end{tabular}

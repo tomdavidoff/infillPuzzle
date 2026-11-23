@@ -1,100 +1,100 @@
 Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
-tract: 1343 of 1357 permits have an area ppsf
+tract: 1115 of 1126 permits have an area ppsf
 SE of postX: clustered vs Conley (Bartlett) by cutoff
           ols  olsC   lgt  lgtC
-cluster 0.099 0.096 0.580 0.472
-1km     0.103 0.104 0.600 0.519
-2km     0.107 0.105 0.609 0.514
-3km     0.104 0.101 0.578 0.493
-5km     0.100 0.102 0.556 0.519
+cluster 0.116 0.112 0.705 0.537
+1km     0.121 0.120 0.735 0.586
+2km     0.132 0.127 0.756 0.599
+3km     0.135 0.131 0.758 0.623
+5km     0.135 0.138 0.755 0.684
 Conley MC: LPM rejection rate at 5% (beta = true), by error-field range (km)
    range    iid cluster conley1 conley2 conley3 conley5
    <num>  <num>   <num>   <num>   <num>   <num>   <num>
-1:   0.0 0.0675  0.0925  0.0875   0.110   0.128   0.175
-2:   0.3 0.3875  0.1150  0.1225   0.107   0.125   0.205
-3:   1.0 0.7125  0.3650  0.3975   0.318   0.320   0.350
+1:   0.0 0.0475   0.065   0.065  0.0775  0.0975   0.125
+2:   0.3 0.3550   0.130   0.140  0.1275  0.1550   0.212
+3:   1.0 0.7000   0.323   0.357  0.2800  0.2725   0.310
                                ols                olsC               lgt
 Dependent Var.:                dup                 dup               dup
                                                                         
-postX           0.4540*** (0.0989)  0.4633*** (0.0958) 2.332*** (0.5795)
-ppsf                               -0.4906*** (0.0821)                  
+postX           0.5611*** (0.1162)  0.5434*** (0.1117) 3.167*** (0.7048)
+ppsf                               -0.5618*** (0.0965)                  
 Fixed-Effects:  ------------------ ------------------- -----------------
 area                           Yes                  No               Yes
 per                            Yes                 Yes               Yes
 _______________ __________________ ___________________ _________________
 Family                         OLS                 OLS             Logit
 S.E.: Clustered           by: area            by: area          by: area
-Observations                 1,343               1,343             1,343
-Squared Cor.               0.24198             0.16849           0.25099
-Pseudo R2                  0.19194             0.12783           0.19919
-BIC                        2,027.4             1,762.8           1,943.2
+Observations                 1,115               1,115             1,115
+Squared Cor.               0.24210             0.16206           0.25112
+Pseudo R2                  0.19131             0.12202           0.19864
+BIC                        1,741.6             1,481.6           1,671.4
 
                               lgtC
 Dependent Var.:                dup
                                   
-postX            2.370*** (0.4720)
-ppsf            -2.501*** (0.4838)
+postX            2.766*** (0.5369)
+ppsf            -2.853*** (0.6008)
 Fixed-Effects:  ------------------
 area                            No
 per                            Yes
 _______________ __________________
 Family                       Logit
 S.E.: Clustered           by: area
-Observations                 1,343
-Squared Cor.               0.17090
-Pseudo R2                  0.13532
-BIC                        1,672.4
+Observations                 1,115
+Squared Cor.               0.16438
+Pseudo R2                  0.12885
+BIC                        1,407.2
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
         coef    exp(coef)     se(coef)            z     Pr(>|z|) 
-2.2505897984 9.4933333385 0.6271600494 3.5885413946 0.0003325332 
-logit: areas dropped (all single or all duplex): 0 | permits used 1343 
-MC (1000 reps, true 2.251): mean fe 2.384 cl 2.300 ctl 2.337 | median fe 2.349 cl 2.265 ctl 2.321 | sd fe 0.692 cl 0.656 ctl 0.570
-nbhd: 1356 of 1357 permits have an area ppsf
+3.010797e+00 2.030358e+01 7.062236e-01 4.263235e+00 2.014883e-05 
+logit: areas dropped (all single or all duplex): 0 | permits used 1115 
+MC (1000 reps, true 3.011): mean fe 3.160 cl 3.009 ctl 2.619 | median fe 3.140 cl 2.984 ctl 2.604 | sd fe 0.801 cl 0.752 ctl 0.621
+nbhd: 1125 of 1126 permits have an area ppsf
 SE of postX: clustered vs Conley (Bartlett) by cutoff
           ols  olsC   lgt  lgtC
-cluster 0.102 0.103 0.572 0.491
-1km     0.109 0.108 0.581 0.531
-2km     0.113 0.110 0.591 0.528
-3km     0.109 0.105 0.549 0.496
-5km     0.101 0.101 0.503 0.494
+cluster 0.122 0.122 0.662 0.535
+1km     0.122 0.122 0.656 0.585
+2km     0.131 0.127 0.665 0.587
+3km     0.132 0.129 0.653 0.598
+5km     0.127 0.131 0.626 0.632
                                ols                olsC               lgt
 Dependent Var.:                dup                 dup               dup
                                                                         
-postX           0.4480*** (0.1020)  0.4374*** (0.1033) 2.381*** (0.5724)
-ppsf                               -0.4639*** (0.1082)                  
+postX           0.5267*** (0.1222)  0.4984*** (0.1220) 2.915*** (0.6616)
+ppsf                               -0.5236*** (0.1159)                  
 Fixed-Effects:  ------------------ ------------------- -----------------
 area                           Yes                  No               Yes
 per                            Yes                 Yes               Yes
 _______________ __________________ ___________________ _________________
 Family                         OLS                 OLS             Logit
 S.E.: Clustered           by: area            by: area          by: area
-Observations                 1,356               1,356             1,352
-Squared Cor.               0.20814             0.16567           0.21278
-Pseudo R2                  0.16177             0.12555           0.16825
-BIC                        1,841.7             1,782.7           1,744.1
+Observations                 1,125               1,125             1,122
+Squared Cor.               0.20240             0.15649           0.20540
+Pseudo R2                  0.15613             0.11750           0.16265
+BIC                        1,564.8             1,501.3           1,482.3
 
                               lgtC
 Dependent Var.:                dup
                                   
-postX            2.248*** (0.4909)
-ppsf            -2.375*** (0.5818)
+postX            2.539*** (0.5346)
+ppsf            -2.658*** (0.6362)
 Fixed-Effects:  ------------------
 area                            No
 per                            Yes
 _______________ __________________
 Family                       Logit
 S.E.: Clustered           by: area
-Observations                 1,356
-Squared Cor.               0.16745
-Pseudo R2                  0.13304
-BIC                        1,691.4
+Observations                 1,125
+Squared Cor.               0.15752
+Pseudo R2                  0.12419
+BIC                        1,426.0
 ---
 Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
         coef    exp(coef)     se(coef)            z     Pr(>|z|) 
-2.319447e+00 1.017004e+01 6.154669e-01 3.768597e+00 1.641678e-04 
-logit: areas dropped (all single or all duplex): 1 | permits used 1352 
-MC (1000 reps, true 2.319): mean fe 2.370 cl 2.308 ctl 2.176 | median fe 2.365 cl 2.304 ctl 2.178 | sd fe 0.641 cl 0.628 ctl 0.587
+2.821379e+00 1.680000e+01 6.777988e-01 4.162561e+00 3.146978e-05 
+logit: areas dropped (all single or all duplex): 1 | permits used 1122 
+MC (1000 reps, true 2.821): mean fe 2.952 cl 2.861 ctl 2.483 | median fe 2.902 cl 2.819 ctl 2.462 | sd fe 0.722 cl 0.703 ctl 0.648
 % generated by scripts/permitLogitDiD.R; do not edit
 \begin{tabular}{lcccc}
 \hline
@@ -103,66 +103,66 @@ MC (1000 reps, true 2.319): mean fe 2.370 cl 2.308 ctl 2.176 | median fe 2.365 c
  & (1) & (2) & (3) & (4) \\
 \hline
 \multicolumn{5}{l}{\textit{A. Linear probability}} \\
-Post 2023 $\times$ log ppsf & $0.454^{***}$ & $0.463^{***}$ & $0.448^{***}$ & $0.437^{***}$ \\
- & (0.099) & (0.096) & (0.102) & (0.103) \\
- & [0.107] & [0.105] & [0.113] & [0.110] \\
+Post 2023 $\times$ log ppsf & $0.561^{***}$ & $0.543^{***}$ & $0.527^{***}$ & $0.498^{***}$ \\
+ & (0.116) & (0.112) & (0.122) & (0.122) \\
+ & [0.132] & [0.127] & [0.131] & [0.127] \\
 \quad wild bootstrap $p$ & $<$0.001 & $<$0.001 & $<$0.001 & $<$0.001 \\
 \multicolumn{5}{l}{\textit{B. Logit}} \\
-Post 2023 $\times$ log ppsf & $2.332^{***}$ & $2.370^{***}$ & $2.381^{***}$ & $2.248^{***}$ \\
- & (0.580) & (0.472) & (0.572) & (0.491) \\
- & [0.609] & [0.514] & [0.591] & [0.528] \\
-\quad odds ratio at West$-$East gap & 2.55 & 2.59 & 2.36 & 2.25 \\
+Post 2023 $\times$ log ppsf & $3.167^{***}$ & $2.766^{***}$ & $2.915^{***}$ & $2.539^{***}$ \\
+ & (0.705) & (0.537) & (0.662) & (0.535) \\
+ & [0.756] & [0.599] & [0.665] & [0.587] \\
+\quad odds ratio at West$-$East gap & 3.35 & 2.87 & 2.87 & 2.50 \\
 \multicolumn{5}{l}{\textit{C. Conditional logit}} \\
-Post 2023 $\times$ log ppsf & $2.251^{***}$ &  & $2.319^{***}$ &  \\
- & (0.627) &  & (0.615) &  \\
+Post 2023 $\times$ log ppsf & $3.011^{***}$ &  & $2.821^{***}$ &  \\
+ & (0.706) &  & (0.678) &  \\
 \hline
-Areas & 56 & 56 & 20 & 20 \\
-Permits & 1,343 & 1,343 & 1,356 & 1,356 \\
+Areas & 55 & 55 & 20 & 20 \\
+Permits & 1,115 & 1,115 & 1,125 & 1,125 \\
 \hline
 \end{tabular}
 % generated by scripts/permitLogitDiD.R; do not edit
-\newcommand{\lgTractFE}{2.332}
-\newcommand{\lgTractFESE}{0.580}
-\newcommand{\lgNbhdFE}{2.381}
-\newcommand{\lgNbhdFESE}{0.572}
-\newcommand{\lgTractCL}{2.251}
-\newcommand{\lgNbhdCL}{2.319}
-\newcommand{\lgTractCtl}{2.370}
-\newcommand{\lgNbhdCtl}{2.248}
+\newcommand{\lgTractFE}{3.167}
+\newcommand{\lgTractFESE}{0.705}
+\newcommand{\lgNbhdFE}{2.915}
+\newcommand{\lgNbhdFESE}{0.662}
+\newcommand{\lgTractCL}{3.011}
+\newcommand{\lgNbhdCL}{2.821}
+\newcommand{\lgTractCtl}{2.766}
+\newcommand{\lgNbhdCtl}{2.539}
 \newcommand{\lgTractCtlP}{$p<0.001$}
 \newcommand{\lgNbhdCtlP}{$p<0.001$}
-\newcommand{\lpTractCtl}{0.463}
-\newcommand{\lpNbhdCtl}{0.437}
+\newcommand{\lpTractCtl}{0.543}
+\newcommand{\lpNbhdCtl}{0.498}
 \newcommand{\lpTractCtlP}{$p<0.001$}
 \newcommand{\lpNbhdCtlP}{$p<0.001$}
-\newcommand{\lgTractOR}{2.55}
-\newcommand{\lgNbhdOR}{2.36}
+\newcommand{\lgTractOR}{3.35}
+\newcommand{\lgNbhdOR}{2.87}
 \newcommand{\lgTractAreasDropped}{0}
 \newcommand{\lgNbhdAreasDropped}{1}
 \newcommand{\lgNSim}{1,000}
-\newcommand{\lgSimTrueTract}{2.251}
-\newcommand{\lgSimTrueNbhd}{2.319}
-\newcommand{\lgSimFETract}{2.384}
-\newcommand{\lgSimFENbhd}{2.370}
-\newcommand{\lgSimCLTract}{2.300}
-\newcommand{\lgSimCLNbhd}{2.308}
-\newcommand{\lgSimCtlTract}{2.337}
-\newcommand{\lgSimCtlNbhd}{2.176}
-\newcommand{\lgSimBiasFETract}{6}
-\newcommand{\lgSimBiasFENbhd}{2}
-\newcommand{\lgSimSdFETract}{0.692}
-\newcommand{\lgSimSdFENbhd}{0.641}
+\newcommand{\lgSimTrueTract}{3.011}
+\newcommand{\lgSimTrueNbhd}{2.821}
+\newcommand{\lgSimFETract}{3.160}
+\newcommand{\lgSimFENbhd}{2.952}
+\newcommand{\lgSimCLTract}{3.009}
+\newcommand{\lgSimCLNbhd}{2.861}
+\newcommand{\lgSimCtlTract}{2.619}
+\newcommand{\lgSimCtlNbhd}{2.483}
+\newcommand{\lgSimBiasFETract}{5}
+\newcommand{\lgSimBiasFENbhd}{5}
+\newcommand{\lgSimSdFETract}{0.801}
+\newcommand{\lgSimSdFENbhd}{0.722}
 \newcommand{\lgConleyKm}{2}
 \newcommand{\lgConleyKmMin}{1}
 \newcommand{\lgConleyKmMax}{5}
-\newcommand{\lpTractFEConley}{0.107}
-\newcommand{\lpNbhdFEConley}{0.113}
-\newcommand{\lgTractFEConley}{0.609}
-\newcommand{\lgNbhdFEConley}{0.591}
-\newcommand{\lgTractFEConleyRange}{0.556--0.609}
-\newcommand{\lgNbhdFEConleyRange}{0.503--0.591}
-\newcommand{\lgConleyMCRejCl}{12}
-\newcommand{\lgConleyMCRejConley}{11}
+\newcommand{\lpTractFEConley}{0.132}
+\newcommand{\lpNbhdFEConley}{0.131}
+\newcommand{\lgTractFEConley}{0.756}
+\newcommand{\lgNbhdFEConley}{0.665}
+\newcommand{\lgTractFEConleyRange}{0.735--0.758}
+\newcommand{\lgNbhdFEConleyRange}{0.626--0.665}
+\newcommand{\lgConleyMCRejCl}{13}
+\newcommand{\lgConleyMCRejConley}{13}
 \newcommand{\lgAreasNbhdLogit}{19}
-\newcommand{\lgPermitsPerTract}{24}
-\newcommand{\lgPermitsPerNbhd}{68}
+\newcommand{\lgPermitsPerTract}{20}
+\newcommand{\lgPermitsPerNbhd}{56}

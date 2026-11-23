@@ -1,0 +1,54 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+type: sfd 
+                CONVEYANCE_TYPE_DESCRIPTION     N
+                                     <char> <int>
+1:     Improved Single Property Transaction 69245
+2: Reject - Not Suitable for Sales Analysis 26226
+3:            Multiple Property Transaction   675
+4:       Vacant Single Property Transaction    63
+5:                                     <NA>    NA
+6:                                     <NA>    NA
+arm's-length improved single property                96209 ->   69245 (lost 28.0%)
+Warning message:
+st_centroid assumes attributes are constant over geometries 
+2026 use sfd                                         69245 ->   12259 (lost 82.3%)
+in 2026 inventory                                    12259 ->   12259 (lost 0.0%)
+lot (sfd), sqft, effective year                      12259 ->   12237 (lost 0.2%)
+effective year <= sale year                          12237 ->   11379 (lost 7.0%)
+age < 20                                             11379 ->    4023 (lost 64.6%)
+tract has ppsf33                                      4023 ->    3176 (lost 21.1%)
+Key: <year>
+    year     n medPrice medAge
+   <int> <int>    <num>  <num>
+1:  2019   429  2300000      8
+2:  2020   576  2335000      8
+3:  2021   743  2775000      9
+4:  2022   485  3200000     10
+5:  2023   374  3228000     10
+6:  2024   320  3237500     10
+7:  2025   249  3200000     10
+tracts: 56
+                    Estimate Std. Error     t value     Pr(>|t|)
+year::2019:ppsf  0.135534913 0.04202015  3.22547433 2.118962e-03
+year::2020:ppsf  0.148572436 0.03554477  4.17986769 1.053666e-04
+year::2021:ppsf  0.120411542 0.02839703  4.24028653 8.609763e-05
+year::2023:ppsf -0.040313918 0.05147791 -0.78313039 4.369098e-01
+year::2024:ppsf  0.002502865 0.06667423  0.03753871 9.701914e-01
+year::2025:ppsf -0.072284518 0.04791359 -1.50864331 1.371134e-01
+lnLot            0.314908608 0.04878612  6.45488149 2.937580e-08
+lnSqft           0.564452209 0.04711660 11.97990141 5.859114e-17
+attr(,"type")
+[1] "Clustered (CTUID)"
+joint 2019-2021 test F = 8.42, p = 0.000
+Key: <year>
+    year            b         se     N        mid
+   <int>        <num>      <num> <int>     <IDat>
+1:  2019  0.135534913 0.04202015   429 2019-07-01
+2:  2020  0.148572436 0.03554477   576 2020-07-01
+3:  2021  0.120411542 0.02839703   743 2021-07-01
+4:  2022  0.000000000 0.00000000   485 2022-07-01
+5:  2023 -0.040313918 0.05147791   374 2023-07-01
+6:  2024  0.002502865 0.06667423   320 2024-07-01
+7:  2025 -0.072284518 0.04791359   249 2025-07-01

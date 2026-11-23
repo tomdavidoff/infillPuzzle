@@ -1,6 +1,7 @@
 # vancouverPermitMap.R
 # Fig. permitTrends: new-build permits (incl. high-value non-new-build permits) on 33-ft 2018 SFD lots now R1-1,
-# plotted at the lot centroid. Top: duplex era (applied from duplex approval to R1-1 start), single vs duplex.
+# plotted at the lot centroid. Top: duplex era (applied 2019-2022), single vs duplex. Calendar years as permitShareDiD.R
+# (11/22/26): 2018 (partial) and 2023 (announcement and post-announcement) are dropped after keeping the latest permit per lot x era.
 # Bottom: R1-1 era (applied on/after R1-1 start), single vs duplex vs multiplex. Latest permit per lot within each era.
 # Reads links from multiplexLotWidth.R. Map style as vancouverDuplexChoice.R; keyless OSM tiles as calgaryDownload.R (cartolight needs a key under rosm >= 0.3).
 # Writes text/permitTrends.png, text/permitTrends.tex
@@ -12,6 +13,7 @@ library(ggspatial)
 
 D_REFORM <- as.IDate("2018-09-18")   # council approves duplexes in RS
 R1_START <- as.IDate("2023-10-17")   # R1-1 in force
+YEARS    <- c(2019:2022, 2024:2026)  # calendar years kept
 ONT      <- -123.101                 # Ontario St
 XLIM     <- c(-123.23, -123.02)
 YLIM     <- c(49.198, 49.298)
@@ -22,13 +24,15 @@ lk <- readRDS(fLinks)
 stopifnot(!anyDuplicated(lk$permitnumber))
 n0 <- nrow(lk); lk <- lk[newBuild == TRUE & round(landWidth) == 33 & product != "otherMultiple"]
 cat(sprintf("33-ft lots, principal products: %d of %d linked permits\n", nrow(lk), n0))
-lk[, era := fcase(applied >= D_REFORM & applied < R1_START, "Duplex era: applied Sept 2018 to Oct 2023",
-                  applied >= R1_START, "R1-1 era: applied from Oct 17, 2023", default = NA_character_)]
+lk[, era := fcase(applied >= D_REFORM & applied < R1_START, "Duplex era: applied 2019 to 2022",
+                  applied >= R1_START, "R1-1 era: applied 2024 to Sept 2026", default = NA_character_)]
 n0 <- nrow(lk); lk <- lk[!is.na(era)]; cat(sprintf("in an era: %d of %d\n", nrow(lk), n0))
 stopifnot(lk[era %like% "Duplex era", !any(product == "multiplex")])
 n0 <- nrow(lk); lk <- lk[order(rollStart, era, -issued)][, .SD[1], by = .(rollStart, era)]
 cat(sprintf("latest permit per lot x era: %d of %d\n", nrow(lk), n0))
-lk[, era := factor(era, c("Duplex era: applied Sept 2018 to Oct 2023", "R1-1 era: applied from Oct 17, 2023"))]
+n0 <- nrow(lk); lk <- lk[year(applied) %in% YEARS]
+cat(sprintf("keep applications in 2019-2022, 2024-2026: %d of %d\n", nrow(lk), n0))
+lk[, era := factor(era, c("Duplex era: applied 2019 to 2022", "R1-1 era: applied 2024 to Sept 2026"))]
 lk[, product := factor(product, c("single", "duplex", "multiplex"), c("Single family", "Duplex", "Multiplex"))]
 lk[, side := fifelse(lotLon < ONT, "West", "East")]
 

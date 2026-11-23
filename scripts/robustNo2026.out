@@ -1,0 +1,45 @@
+Warning message:
+package ‘HonestDiD’ was built under R version 4.5.2 
+permits without 2026: 1073 of 1126
+pooled DiD, tract: 0.588 (0.111), p = 0.0000, N = 1062
+pooled DiD, nbhd: 0.558 (0.114), p = 0.0001, N = 1072
+                Estimate Std. Error    t value    Pr(>|t|)
+per::-4:ppsf  0.01997282  0.1994879  0.1001205 0.920619487
+per::-3:ppsf -0.16322079  0.1721625 -0.9480622 0.347321401
+per::-2:ppsf -0.27270637  0.1689735 -1.6138997 0.112378300
+per::0:ppsf   0.39117935  0.1732832  2.2574571 0.028045987
+per::1:ppsf   0.50870408  0.1844999  2.7572046 0.007936778
+attr(,"type")
+[1] "Clustered (CTUID)"
+joint pre-period test p = 0.276
+largest pre-period change = 0.273
+
+First post year: estimate 0.391, original 95% CI [0.052, 0.731]
+    Mbar     lb    ub
+   <num>  <num> <num>
+1:   0.0  0.059 0.725
+2:   0.1  0.024 0.746
+3:   0.2 -0.010 0.767
+4:   0.3 -0.045 0.787
+5:   0.5 -0.128 0.843
+6:   1.0 -0.371 1.065
+       M     lb    ub
+   <num>  <num> <num>
+1:  0.00 -0.461 0.697
+2:  0.05 -0.496 0.736
+First post year: breakdown Mbar = 0.1; breakdown M = none
+
+Average of post years: estimate 0.450, original 95% CI [0.163, 0.737]
+    Mbar     lb    ub
+   <num>  <num> <num>
+1:   0.0  0.167 0.730
+2:   0.1  0.114 0.759
+3:   0.2  0.056 0.800
+4:   0.3 -0.009 0.847
+5:   0.5 -0.161 0.976
+6:   1.0 -0.554 1.363
+       M     lb    ub
+   <num>  <num> <num>
+1:  0.00 -0.660 0.742
+2:  0.05 -0.731 0.816
+Average of post years: breakdown Mbar = 0.2; breakdown M = none

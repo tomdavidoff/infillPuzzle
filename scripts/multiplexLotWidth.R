@@ -5,8 +5,9 @@
 # Type of work restricted to New Building and Addition / Alteration (no demolition, salvage/abatement, temporary, outdoor).
 # Products as in vancouverPermitLogit.R: drop infill/laneway categories; single = single detached, duplex = duplex.
 # New build = New Building, or any permit type at/above the 95th pct value of non-new-build principal permits.
-# Multiplex = "Multiple Dwelling" whose description says multiplex (or two-unit front/rear building), applied on/after R1-1 start;
-# other "Multiple Dwelling" (apartments, townhouses, rebuilt multifamily) is kept as otherMultiple and excluded from shares.
+# Multiplex = specific use exactly "Multiple Dwelling" (not combinations with parking garage, retail, office, etc.; 11/22/26)
+# whose description says multiplex (or two-unit front/rear building), applied on/after R1-1 start; other "Multiple Dwelling"
+# categories (apartments, townhouses, rebuilt multifamily, mixed use) are kept as otherMultiple and excluded from shares.
 # Tom Davidoff 11/15/26
 
 library(data.table)
@@ -28,7 +29,8 @@ fZoning   <- "~/DropboxExternal/dataRaw/vancouver_zoning.geojson"
 fGeo26    <- "~/DropboxExternal/dataProcessed/bca26FolioGeometryVancouver.rds"  # rollStart centroids, 2026 gpkg (see vancouverR1FSRDate.R)
 fGpkg26   <- list.files("~/bigFiles/latestSpatialBCA/", pattern = "\\.gpkg$", full.names = TRUE)
 fBCA19    <- "~/DropboxExternal/dataRaw/REVD19_and_inventory_extracts.sqlite3"
-stopifnot(difftime(Sys.time(), file.mtime(fPermit), units = "hours") < 48)
+# freshness guard; SKIP_FRESH=1 reruns on the existing extract (11/22/26: rerun on the Nov 15 2026 extract)
+if (Sys.getenv("SKIP_FRESH") != "1") stopifnot(difftime(Sys.time(), file.mtime(fPermit), units = "hours") < 48)
 
 lost <- function(n0, n1, what) cat(sprintf("%-40s %6d -> %6d (lost %.1f%%)\n", what, n0, n1, 100 * (1 - n1 / n0)))
 
@@ -85,7 +87,7 @@ R1_START <- as.IDate("2023-10-17")
 dtP[, isMplx := grepl("multiplex|multi-plex|two-units (front|rear)", tolower(projectdescription)) &
                 as.IDate(permitnumbercreateddate) >= R1_START]
 print(dtP[grepl("Multiple Dwelling", specificusecategory), .N, by = .(multiplexByDescAndDate = isMplx)])
-dtP[, product := fcase(grepl("multiplex|multiple dwelling", u) & isMplx, "multiplex",
+dtP[, product := fcase(u == "multiple dwelling" & isMplx, "multiplex",
                        grepl("multiplex|multiple dwelling", u), "otherMultiple",
                        grepl("duplex", u), "duplex",
                        grepl("single detached|one-family|single family", u), "single",

@@ -1,0 +1,24 @@
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+permits 1357 -> 1343 with tract ppsf
+drop Jan 1 - Oct 16 2023: 1343 -> 1215
+Key: <ev>
+      ev     n                 lab
+   <int> <int>              <char>
+1:    -4   222 Sep 2018-\nDec 2019
+2:    -3   129 Jan 2020-\nDec 2020
+3:    -2   336 Jan 2021-\nDec 2021
+4:    -1   202 Jan 2022-\nDec 2022
+5:     0   131 Oct 2023-\nOct 2024
+6:     1   126 Oct 2024-\nOct 2025
+7:     2    69 Oct 2025-\nSep 2026
+               Estimate Std. Error    t value    Pr(>|t|)
+ev::-4:ppsf  0.06947206  0.1871720  0.3711670 0.711939090
+ev::-3:ppsf -0.17075168  0.1740862 -0.9808458 0.330963769
+ev::-2:ppsf -0.27654623  0.1721369 -1.6065482 0.113880206
+ev::0:ppsf   0.43057404  0.1604728  2.6831587 0.009614168
+ev::1:ppsf   0.29978915  0.1856358  1.6149322 0.112048280
+ev::2:ppsf   0.51792992  0.2615924  1.9799119 0.052725867
+attr(,"type")
+[1] "Clustered (CTUID)"
+joint pre-period test F = 1.60, p = 0.187 (3 restrictions); pooled post x ppsf = 0.514 (0.100)

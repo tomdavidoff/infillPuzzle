@@ -1,0 +1,4 @@
+  File "/Users/tdavidof/projects/infillPuzzle/text/main.tex", line 1
+    \documentclass[12pt]{article}
+                                ^
+SyntaxError: unexpected character after line continuation character

@@ -2,145 +2,40 @@ Warning message:
 package ‘HonestDiD’ was built under R version 4.5.2 
 Warning message:
 package ‘ggplot2’ was built under R version 4.5.2 
-permits 1357 -> 1343 with tract ppsf
-                Estimate Std. Error    t value    Pr(>|t|)
-per::-5:ppsf -0.12677832  0.1766635 -0.7176261 0.476024923
-per::-4:ppsf -0.28990282  0.2067360 -1.4022853 0.166449234
-per::-3:ppsf -0.55590244  0.1992184 -2.7904175 0.007221032
-per::-2:ppsf -0.31233625  0.1351640 -2.3107943 0.024619627
-per::0:ppsf   0.22390225  0.2067963  1.0827187 0.283657377
-per::1:ppsf   0.04357402  0.1649657  0.2641398 0.792659449
-per::2:ppsf   0.30863889  0.2089858  1.4768415 0.145421403
-attr(,"type")
-[1] "Clustered (CTUID)"
+permits 1126 -> 1115 with tract ppsf
+largest pre-period change = 0.278
 
-[Reference Nov 2022-Oct 2023] First post period: estimate 0.224, original 95% CI [-0.181, 0.629]
-     Mbar     lb    ub
-    <num>  <num> <num>
- 1:   0.0 -0.170 0.617
- 2:   0.1 -0.203 0.633
- 3:   0.2 -0.236 0.658
- 4:   0.3 -0.261 0.683
- 5:   0.4 -0.302 0.716
- 6:   0.5 -0.335 0.749
- 7:   0.6 -0.377 0.782
- 8:   0.7 -0.418 0.824
- 9:   0.8 -0.468 0.865
-10:   0.9 -0.509 0.915
-11:   1.0 -0.559 0.965
-        M     lb    ub
-    <num>  <num> <num>
- 1:  0.00 -0.633 0.460
- 2:  0.03 -0.663 0.480
- 3:  0.06 -0.685 0.508
- 4:  0.09 -0.706 0.529
- 5:  0.12 -0.728 0.558
- 6:  0.15 -0.759 0.579
- 7:  0.18 -0.782 0.609
- 8:  0.21 -0.805 0.631
- 9:  0.24 -0.837 0.653
-10:  0.27 -0.860 0.684
-11:  0.30 -0.884 0.706
-[Reference Nov 2022-Oct 2023] First post period: largest Mbar with CI above 0 = none; largest M with CI above 0 = none
+First post year: estimate 0.385, original 95% CI [0.044, 0.725]
+    Mbar     lb    ub
+   <num>  <num> <num>
+1:   0.0  0.052 0.720
+2:   0.1  0.017 0.734
+3:   0.2 -0.024 0.755
+4:   0.3 -0.059 0.776
+5:   0.5 -0.136 0.839
+6:   1.0 -0.379 1.047
+       M     lb    ub
+   <num>  <num> <num>
+1:  0.00 -0.470 0.679
+2:  0.05 -0.505 0.717
+First post year: largest Mbar with CI above 0 = 0.1; largest M with CI above 0 = none
 
-[Reference Nov 2022-Oct 2023] Average of post periods: estimate 0.192, original 95% CI [-0.074, 0.458]
-     Mbar     lb    ub
-    <num>  <num> <num>
- 1:   0.0 -0.073 0.459
- 2:   0.1 -0.138 0.497
- 3:   0.2 -0.215 0.557
- 4:   0.3 -0.301 0.649
- 5:   0.4 -0.399 0.752
- 6:   0.5 -0.508 0.855
- 7:   0.6 -0.622 0.969
- 8:   0.7 -0.736 1.089
- 9:   0.8 -0.855 1.203
-10:   0.9 -0.980 1.322
-11:   1.0 -1.100 1.447
-        M     lb    ub
-    <num>  <num> <num>
- 1:  0.00 -1.127 0.263
- 2:  0.03 -1.202 0.335
- 3:  0.06 -1.280 0.417
- 4:  0.09 -1.366 0.498
- 5:  0.12 -1.449 0.589
- 6:  0.15 -1.540 0.679
- 7:  0.18 -1.635 0.766
- 8:  0.21 -1.732 0.864
- 9:  0.24 -1.825 0.960
-10:  0.27 -1.928 1.060
-11:  0.30 -2.025 1.156
-[Reference Nov 2022-Oct 2023] Average of post periods: largest Mbar with CI above 0 = none; largest M with CI above 0 = none
-                Estimate Std. Error    t value    Pr(>|t|)
-per::-5:ppsf  0.18555793  0.1775717  1.0449749 0.300605677
-per::-4:ppsf  0.02243343  0.2108518  0.1063943 0.915656646
-per::-3:ppsf -0.24356620  0.1677418 -1.4520304 0.152174151
-per::-1:ppsf  0.31233625  0.1351640  2.3107943 0.024619627
-per::0:ppsf   0.53623850  0.1961742  2.7334809 0.008412935
-per::1:ppsf   0.35591027  0.1648074  2.1595527 0.035184036
-per::2:ppsf   0.62097514  0.2278483  2.7253887 0.008596304
-attr(,"type")
-[1] "Clustered (CTUID)"
-
-[Reference Oct 2021-Oct 2022 (anticipation)] First post period: estimate 0.312, original 95% CI [0.047, 0.577]
-     Mbar     lb    ub
-    <num>  <num> <num>
- 1:   0.0  0.046 0.576
- 2:   0.1  0.024 0.609
- 3:   0.2 -0.003 0.641
- 4:   0.3 -0.030 0.679
- 5:   0.4 -0.062 0.717
- 6:   0.5 -0.100 0.766
- 7:   0.6 -0.138 0.815
- 8:   0.7 -0.176 0.863
- 9:   0.8 -0.219 0.923
-10:   0.9 -0.268 0.977
-11:   1.0 -0.322 1.036
-        M     lb    ub
-    <num>  <num> <num>
- 1:  0.00 -0.382 0.522
- 2:  0.03 -0.408 0.544
- 3:  0.06 -0.434 0.567
- 4:  0.09 -0.456 0.596
- 5:  0.12 -0.483 0.619
- 6:  0.15 -0.506 0.643
- 7:  0.18 -0.534 0.672
- 8:  0.21 -0.557 0.697
- 9:  0.24 -0.586 0.722
-10:  0.27 -0.610 0.747
-11:  0.30 -0.640 0.779
-[Reference Oct 2021-Oct 2022 (anticipation)] First post period: largest Mbar with CI above 0 = 0.1; largest M with CI above 0 = none
-
-[Reference Oct 2021-Oct 2022 (anticipation)] Average of post periods: estimate 0.456, original 95% CI [0.209, 0.703]
-     Mbar     lb    ub
-    <num>  <num> <num>
- 1:   0.0  0.209 0.699
- 2:   0.1  0.134 0.780
- 3:   0.2  0.043 0.881
- 4:   0.3 -0.068 1.017
- 5:   0.4 -0.194 1.163
- 6:   0.5 -0.336 1.315
- 7:   0.6 -0.482 1.461
- 8:   0.7 -0.633 1.613
- 9:   0.8 -0.785 1.764
-10:   0.9 -0.936 1.921
-11:   1.0 -1.093 2.072
-        M     lb    ub
-    <num>  <num> <num>
- 1:  0.00 -1.098 0.790
- 2:  0.03 -1.217 0.912
- 3:  0.06 -1.336 1.031
- 4:  0.09 -1.466 1.163
- 5:  0.12 -1.597 1.290
- 6:  0.15 -1.732 1.431
- 7:  0.18 -1.873 1.572
- 8:  0.21 -2.020 1.712
- 9:  0.24 -2.164 1.859
-10:  0.27 -2.306 2.003
-11:  0.30 -2.459 2.154
-[Reference Oct 2021-Oct 2022 (anticipation)] Average of post periods: largest Mbar with CI above 0 = 0.2; largest M with CI above 0 = none
+Average of post years: estimate 0.396, original 95% CI [0.061, 0.732]
+    Mbar     lb    ub
+   <num>  <num> <num>
+1:   0.0  0.065 0.730
+2:   0.1 -0.003 0.778
+3:   0.2 -0.093 0.833
+4:   0.3 -0.182 0.909
+5:   0.5 -0.381 1.094
+6:   1.0 -0.922 1.615
+       M     lb    ub
+   <num>  <num> <num>
+1:  0.00 -1.066 0.744
+2:  0.05 -1.190 0.874
+Average of post years: largest Mbar with CI above 0 = 0; largest M with CI above 0 = none
 
 warnings from HonestDiD:
 W
 NaNs produced 
-          322 
+            5 

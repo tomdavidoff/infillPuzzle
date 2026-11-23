@@ -1,0 +1,40 @@
+Warning message:
+package ‘HonestDiD’ was built under R version 4.5.2 
+Warning message:
+package ‘ggplot2’ was built under R version 4.5.2 
+largest pre-period change = 0.277
+
+First post period: estimate 0.431, original 95% CI [0.116, 0.745]
+    Mbar     lb    ub
+   <num>  <num> <num>
+1:   0.0  0.125 0.736
+2:   0.1  0.087 0.761
+3:   0.2  0.055 0.787
+4:   0.3  0.022 0.813
+5:   0.5 -0.061 0.883
+6:   1.0 -0.305 1.121
+       M     lb    ub
+   <num>  <num> <num>
+1:  0.00 -0.389 0.697
+2:  0.05 -0.427 0.734
+First post period: breakdown Mbar = 0.3; breakdown M = none
+
+Average of post periods: estimate 0.416, original 95% CI [0.122, 0.710]
+    Mbar     lb    ub
+   <num>  <num> <num>
+1:   0.0  0.123 0.712
+2:   0.1  0.057 0.766
+3:   0.2 -0.033 0.838
+4:   0.3 -0.123 0.928
+5:   0.5 -0.327 1.138
+6:   1.0 -0.874 1.715
+       M     lb    ub
+   <num>  <num> <num>
+1:  0.00 -1.012 0.742
+2:  0.05 -1.138 0.866
+Average of post periods: breakdown Mbar = 0.1; breakdown M = none
+
+warnings from HonestDiD:
+W
+NaNs produced 
+            2 
