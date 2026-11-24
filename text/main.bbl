@@ -218,6 +218,71 @@
       \field{title}{2019 Residential Inventory and Data Advice Extracts ({REVD19})}
       \field{year}{2019}
     \endentry
+    \entry{SSMUH}{report}{}{}
+      \name{author}{5}{}{%
+        {{un=0,uniquepart=base,hash=6018b2636f333c4800523ea81378740f}{%
+           family={Bergmann},
+           familyi={B\bibinitperiod},
+           given={Jens},
+           giveni={J\bibinitperiod},
+           givenun=0,
+           prefix={von},
+           prefixi={v\bibinitperiod},
+           prefixun=0}}%
+        {{un=0,uniquepart=base,hash=e6405a59525f93e81d65420fdf2b133d}{%
+           family={Davidoff},
+           familyi={D\bibinitperiod},
+           given={Tom},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=81bad66d90fac60056ad8f25095d0475}{%
+           family={Huang},
+           familyi={H\bibinitperiod},
+           given={Albert},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=2916b5aad78a353ee164c179a4baf688}{%
+           family={Lauster},
+           familyi={L\bibinitperiod},
+           given={Nathanael},
+           giveni={N\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=9bf800fb1e02772131896a538b06b070}{%
+           family={Somerville},
+           familyi={S\bibinitperiod},
+           given={Tsur},
+           giveni={T\bibinitperiod},
+           givenun=0}}%
+      }
+      \list{institution}{1}{%
+        {Ministry of Housing, Province of British Columbia}%
+      }
+      \strng{namehash}{7555d695b156c0480b93235d9f1564a6}
+      \strng{fullhash}{05c90d6bd994249839a4093aaf9627d5}
+      \strng{fullhashraw}{05c90d6bd994249839a4093aaf9627d5}
+      \strng{bibnamehash}{7555d695b156c0480b93235d9f1564a6}
+      \strng{authorbibnamehash}{7555d695b156c0480b93235d9f1564a6}
+      \strng{authornamehash}{7555d695b156c0480b93235d9f1564a6}
+      \strng{authorfullhash}{05c90d6bd994249839a4093aaf9627d5}
+      \strng{authorfullhashraw}{05c90d6bd994249839a4093aaf9627d5}
+      \field{sortinit}{B}
+      \field{sortinithash}{d7095fff47cda75ca2589920aae98399}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{month}{12}
+      \field{note}{Prepared for the Ministry of Housing, Province of British Columbia}
+      \field{title}{{SSMUH} and {TOA} Scenarios in British Columbia}
+      \field{type}{techreport}
+      \field{year}{2023}
+      \verb{urlraw}
+      \verb https://www2.gov.bc.ca/assets/gov/housing-and-tenancy/tools-for-government/local-governments-and-housing/ssmuh_toa_scenarios.pdf
+      \endverb
+      \verb{url}
+      \verb https://www2.gov.bc.ca/assets/gov/housing-and-tenancy/tools-for-government/local-governments-and-housing/ssmuh_toa_scenarios.pdf
+      \endverb
+    \endentry
     \entry{Brueckner_1981}{article}{}{}
       \name{author}{1}{}{%
         {{un=0,uniquepart=base,hash=475960db9d449cfe8f8ab1ecb8a46ff5}{%
@@ -1535,6 +1600,7 @@
       \strng{authornamehash}{c7db070288680264f6dfa86410e8586f}
       \strng{authorfullhash}{c7db070288680264f6dfa86410e8586f}
       \strng{authorfullhashraw}{c7db070288680264f6dfa86410e8586f}
+      \field{extraname}{1}
       \field{sortinit}{R}
       \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
       \field{extradatescope}{labelyear}
@@ -1550,6 +1616,49 @@
       \range{pages}{37}
       \verb{doi}
       \verb 10.1093/restud/rdad018
+      \endverb
+    \endentry
+    \entry{RambachanRoth2026HonestDiD}{manual}{}{}
+      \name{author}{2}{}{%
+        {{un=0,uniquepart=base,hash=85edb53244c29c17ce57830271014b46}{%
+           family={Rambachan},
+           familyi={R\bibinitperiod},
+           given={Ashesh},
+           giveni={A\bibinitperiod},
+           givenun=0}}%
+        {{un=0,uniquepart=base,hash=73c1da3266b3c7728f6b1f38a73c7671}{%
+           family={Roth},
+           familyi={R\bibinitperiod},
+           given={Jonathan},
+           giveni={J\bibinitperiod},
+           givenun=0}}%
+      }
+      \strng{namehash}{c7db070288680264f6dfa86410e8586f}
+      \strng{fullhash}{c7db070288680264f6dfa86410e8586f}
+      \strng{fullhashraw}{c7db070288680264f6dfa86410e8586f}
+      \strng{bibnamehash}{c7db070288680264f6dfa86410e8586f}
+      \strng{authorbibnamehash}{c7db070288680264f6dfa86410e8586f}
+      \strng{authornamehash}{c7db070288680264f6dfa86410e8586f}
+      \strng{authorfullhash}{c7db070288680264f6dfa86410e8586f}
+      \strng{authorfullhashraw}{c7db070288680264f6dfa86410e8586f}
+      \field{extraname}{2}
+      \field{sortinit}{R}
+      \field{sortinithash}{5e1c39a9d46ffb6bebd8f801023a9486}
+      \field{extradatescope}{labelyear}
+      \field{labeldatesource}{}
+      \field{labelnamesource}{author}
+      \field{labeltitlesource}{title}
+      \field{note}{R package version 0.2.8}
+      \field{title}{HonestDiD: Robust Inference in Difference-in-Differences and Event Study Designs}
+      \field{year}{2026}
+      \verb{doi}
+      \verb 10.32614/CRAN.package.HonestDiD
+      \endverb
+      \verb{urlraw}
+      \verb https://CRAN.R-project.org/package=HonestDiD
+      \endverb
+      \verb{url}
+      \verb https://CRAN.R-project.org/package=HonestDiD
       \endverb
     \endentry
     \entry{Rollet_2025}{unpublished}{}{}
