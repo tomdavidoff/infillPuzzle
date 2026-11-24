@@ -201,9 +201,10 @@
 - Decide: (a) adopt R1 + RT for Table 2 and the premium paragraph only (permit analysis stays R1); (b) whether a neighbourhood panel returns; (c) a nearest-R1-neighbour matching design for the premium.
 
 ## multiplexShareByWidth.png (figure, 11/23/26) — OK
-Multiplex share of new builds issued 2024+ (latest permit per 2018 R1-1 SFD lot, otherMultiple dropped; N = 1,311), by
-round(width): <33 11% (8/72), 33 23% (123/536), 34-40 36% (51/141), 41-49 29% (58/198), 50+ 30% (108/364). Bar widths =
-bin share of redeveloped lots (5/41/11/15/28%). 40 ft in 34-40, 50 ft in 50+. Script: scripts/multiplexShareByWidthPlot.R
+Multiplex share of new builds applied on/after R1-1 start 2023-10-17 (latest permit per 2018 R1-1 SFD lot, otherMultiple
+dropped; N = 1,108), by round(width): <33 14% (8/56), 33 27% (123/450), 34-40 44% (51/116), 41-49 35% (58/166), 50+ 34%
+(108/320). Bar widths = bin share of redeveloped lots (5/41/10/15/29%). 11/23: switched from issued-2024+ (which
+included pre-reform applications that cannot be multiplexes); 33 bin now matches the mplxN*ThirtyThree macro sample. 40 ft in 34-40, 50 ft in 50+. Script: scripts/multiplexShareByWidthPlot.R
 (reads permitLotLinks.rds; same sample as the product-mix table in multiplexLotWidth.out). Checks: unique lots, bin Ns sum to N.
 
 ## permitValueDist.tex (table, 11/23/26) — OK

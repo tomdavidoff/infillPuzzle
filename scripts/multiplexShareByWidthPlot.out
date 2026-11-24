@@ -1,15 +1,13 @@
-Warning message:
-package ‘ggplot2’ was built under R version 4.5.2 
-new build, issued 2024+                    5560 ->   1620 (lost 70.9%)
-latest permit per lot                      1620 ->   1344 (lost 17.0%)
-drop otherMultiple                         1344 ->   1311 (lost 2.5%)
+new build, applied on/after R1-1 start     5560 ->   1397 (lost 74.9%)
+latest permit per lot                      1397 ->   1126 (lost 19.4%)
+drop otherMultiple                         1126 ->   1108 (lost 1.6%)
 latest issue date: 2026-11-13 
 Key: <bin>
       bin     N    mx share lotShare
    <fctr> <int> <int> <num>    <num>
-1:    <33    72     8 0.111    0.055
-2:     33   536   123 0.229    0.409
-3:  34-40   141    51 0.362    0.108
-4:  41-49   198    58 0.293    0.151
-5:    50+   364   108 0.297    0.278
-overall multiplex share: 0.265  N = 1311 
+1:    <33    56     8 0.143    0.051
+2:     33   450   123 0.273    0.406
+3:  34-40   116    51 0.440    0.105
+4:  41-49   166    58 0.349    0.150
+5:    50+   320   108 0.338    0.289
+overall multiplex share: 0.314  N = 1108 

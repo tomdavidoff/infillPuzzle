@@ -1,17 +1,17 @@
 # multiplexShareByWidthPlot.R
-# Multiplex share of new-build permits issued 2024+ on 2018 R1-1 SFD lots, by lot width (round(width): <33, 33, 34-40,
-# 41-49, 50+). Bar widths = bin's share of redeveloped lots. Sample as multiplexLotWidth.R product-mix table: new build,
+# Multiplex share of new-build permits applied on or after the R1-1 start (2023-10-17) on 2018 R1-1 SFD lots, by lot width (round(width): <33, 33, 34-40,
+# 41-49, 50+). Bar widths = bin's share of redeveloped lots. Sample as the post-reform mplx* macros in multiplexLotWidth.R: new build,
 # latest permit per lot, otherMultiple dropped. Reads permitLotLinks.rds (run multiplexLotWidth.R first).
 # Tom Davidoff 11/23/26
 
 library(data.table)
 library(ggplot2)
 
-YEAR_MIN <- 2024
+R1_START <- as.IDate("2023-10-17")  # as multiplexLotWidth.R
 lost <- function(n0, n1, what) cat(sprintf("%-40s %6d -> %6d (lost %.1f%%)\n", what, n0, n1, 100 * (1 - n1 / n0)))
 
 L <- readRDS("~/DropboxExternal/dataProcessed/permitLotLinks.rds")
-n0 <- nrow(L); dt <- L[newBuild == TRUE & year(issued) >= YEAR_MIN]; lost(n0, nrow(dt), "new build, issued 2024+")
+n0 <- nrow(L); dt <- L[newBuild == TRUE & applied >= R1_START]; lost(n0, nrow(dt), "new build, applied on/after R1-1 start")
 n0 <- nrow(dt); dt <- dt[order(rollStart, -issued)][, .SD[1], by = rollStart]; lost(n0, nrow(dt), "latest permit per lot")
 n0 <- nrow(dt); dt <- dt[product != "otherMultiple"]; lost(n0, nrow(dt), "drop otherMultiple")
 stopifnot(!anyDuplicated(dt$rollStart))
