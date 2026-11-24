@@ -205,3 +205,9 @@ Multiplex share of new builds issued 2024+ (latest permit per 2018 R1-1 SFD lot,
 round(width): <33 11% (8/72), 33 23% (123/536), 34-40 36% (51/141), 41-49 29% (58/198), 50+ 30% (108/364). Bar widths =
 bin share of redeveloped lots (5/41/11/15/28%). 40 ft in 34-40, 50 ft in 50+. Script: scripts/multiplexShareByWidthPlot.R
 (reads permitLotLinks.rds; same sample as the product-mix table in multiplexLotWidth.out). Checks: unique lots, bin Ns sum to N.
+
+## permitValueDist.tex (table, 11/23/26) — OK
+Project value ($000) of new-build permits on 2018 R1-1 SFD lots issued 2018+ (all linked permits, not one per lot;
+otherMultiple dropped). New Building N = 4,616: p10/25/50/75/90 = 586/700/805/1,015/1,301. Addition / Alteration
+>= $660,000 N = 80 (76 single, 4 duplex): 715/798/996/1,362/2,163. 82 New Building permits report $0/NA value
+(63 of 571 multiplexes); left in the quantiles. Script: scripts/permitValueDist.R.
