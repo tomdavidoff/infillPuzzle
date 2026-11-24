@@ -199,3 +199,9 @@
 - REVISIT (Tom to sleep on it). Problem: about 64% of strata duplex sales are in RT zones, but the single-family sample is 33' lots now R1-1. Tracts mostly separate RT from R1, so RT-heavy tracts drop out (tract panel 409 duplex sales). Neighbourhoods contain both, so the old nbhd panel (1,311 sales, 60% Kitsilano + Grandview) compared RT duplexes with R1 houses elsewhere in the same neighbourhood.
 - Option tested (scratch, not in repo): single-family sample = 33' lots now R1-1 or RT, pre-2018 sales (6,322 SFD sales, 613 in RT). Tracts: 22 areas (5 West), 924 duplex sales; cor(premium, ppsf) −0.48, (premium, elasticity) −0.20, (premium, West) −0.52; mean premium 8.6%. Neighbourhoods: same 10 areas (2 West), cor(premium, ppsf) −0.05, still flat; Kitsilano premium +7%. Among Table 2 areas cor(ppsf, elasticity) is only 0.05 / 0.10 (selection: duplex markets lack the expensive West Side), vs 0.40 / 0.54 across all areas. Odd point: West tract 9330045.02 (all-RT, 56 SFD sales) has elasticity 0.01.
 - Decide: (a) adopt R1 + RT for Table 2 and the premium paragraph only (permit analysis stays R1); (b) whether a neighbourhood panel returns; (c) a nearest-R1-neighbour matching design for the premium.
+
+## multiplexShareByWidth.png (figure, 11/23/26) — OK
+Multiplex share of new builds issued 2024+ (latest permit per 2018 R1-1 SFD lot, otherMultiple dropped; N = 1,311), by
+round(width): <33 11% (8/72), 33 23% (123/536), 34-40 36% (51/141), 41-49 29% (58/198), 50+ 30% (108/364). Bar widths =
+bin share of redeveloped lots (5/41/11/15/28%). 40 ft in 34-40, 50 ft in 50+. Script: scripts/multiplexShareByWidthPlot.R
+(reads permitLotLinks.rds; same sample as the product-mix table in multiplexLotWidth.out). Checks: unique lots, bin Ns sum to N.
