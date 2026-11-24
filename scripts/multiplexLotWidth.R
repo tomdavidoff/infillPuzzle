@@ -14,11 +14,12 @@ library(data.table)
 library(sf)
 library(RSQLite)
 
+SFX <- if (Sys.getenv("ZONESET") == "RT") "RT" else ""   # ZONESET=RT: 2018 SFD lots now in RT-* zones, outputs suffixed RT
 MATCHDIST <- 5      # m, permit point to 2018 SFD centroid (as in vancouverR1FSRDate.R)
 YEAR_MIN  <- 2024     # issue-year floor for the 2024+ tables
 HIGHVAL_Q <- 0.95      # high-value non-new-build permits count as new builds
 ONT       <- -123.101 # Ontario St: East/West divide
-fLinks    <- "~/DropboxExternal/dataProcessed/permitLotLinks.rds"
+fLinks    <- paste0("~/DropboxExternal/dataProcessed/permitLotLinks", SFX, ".rds")
 fCutoffs  <- "~/DropboxExternal/dataProcessed/permitNewBuildCutoffs.rds"
 WORK      <- c("New Building", "Addition / Alteration")
 STREETDIST <- 30     # m, street-side geocode search radius
@@ -42,9 +43,9 @@ n0 <- nrow(dtS); dtS <- dtS[landWidth > 0 & is.finite(longitude)]; lost(n0, nrow
 n0 <- nrow(dtS); dtS <- unique(dtS, by = "rollStart"); lost(n0, nrow(dtS), "one lot per rollStart")
 sfS <- st_transform(st_as_sf(dtS, coords = c("longitude", "latitude"), crs = 4326), 26910)
 zR1 <- st_transform(st_make_valid(st_read(fZoning, quiet = TRUE)), 26910)
-zR1 <- zR1[zR1$zoning_district == "R1-1", ]
+zR1 <- zR1[if (SFX == "RT") grepl("^RT", zR1$zoning_district) else zR1$zoning_district == "R1-1", ]
 inR1 <- lengths(st_intersects(sfS, zR1)) > 0
-n0 <- nrow(dtS); dtS <- dtS[inR1]; sfS <- sfS[inR1, ]; lost(n0, nrow(dtS), "in R1-1")
+n0 <- nrow(dtS); dtS <- dtS[inR1]; sfS <- sfS[inR1, ]; lost(n0, nrow(dtS), if (SFX == "RT") "in RT zones" else "in R1-1")
 
 addrKey <- function(num, name) toupper(gsub("\\s+", " ", trimws(paste(num, name))))
 con <- dbConnect(SQLite(), path.expand(fBCA19))
@@ -78,7 +79,7 @@ names(cutoffs) <- c("A", "B", "C")
 cutLab <- c(A = "q95 of non-new-build principal permits (main)", B = "q95 of all principal permits",
             C = "q33 of new-build single + duplex permits")
 for (k in names(cutoffs)) cat(sprintf("cutoff %s: $%s  (%s)\n", k, format(cutoffs[k], big.mark = ","), cutLab[k]))
-saveRDS(cutoffs, fCutoffs)
+if (SFX == "") saveRDS(cutoffs, fCutoffs)
 hvTh <- cutoffs["A"]
 dtP[, highVal := typeofwork != "New Building" & projectvalue >= hvTh]
 print(dtP[prin & highVal == TRUE, .N, by = typeofwork])
@@ -173,6 +174,13 @@ stopifnot(nrow(links) == nrow(dtP), !anyDuplicated(links$permitnumber))
 isNB <- function(d, th) d$typeofwork == "New Building" | d$projectvalue >= th
 links[, newBuild := isNB(links, hvTh)]
 saveRDS(links, fLinks)
+if (SFX == "RT") {
+  zi <- st_intersects(st_transform(st_as_sf(links, coords = c("lotLon", "lotLat"), crs = 4326), 26910), zR1)
+  links[, zone := zR1$zoning_district[sapply(zi, `[`, 1)]]
+  cat("\nRT lots linked, new builds by zone x era x product:\n")
+  print(dcast(links[newBuild == TRUE, .N, by = .(zone, era = fifelse(applied < R1_START, "pre", "post"), product)], zone + era ~ product, fill = 0))
+  quit(save = "no")
+}
 linksAll <- links
 links <- linksAll[newBuild == TRUE]
 n0 <- nrow(links); dt <- links[year(issued) >= YEAR_MIN]; lost(n0, nrow(dt), "issued 2024+")

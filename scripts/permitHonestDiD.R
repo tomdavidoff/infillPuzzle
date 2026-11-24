@@ -12,9 +12,10 @@ library(fixest)
 library(HonestDiD)
 library(ggplot2)
 
-S  <- readRDS("~/DropboxExternal/dataProcessed/shareDiDPermits.rds")   # from permitShareDiD.R
+SFX <- if (Sys.getenv("ZONESET") == "RT") "RT" else ""   # ZONESET=RT: RT-zone run, outputs suffixed
+S  <- readRDS(paste0("~/DropboxExternal/dataProcessed/shareDiDPermits", SFX, ".rds"))   # from permitShareDiD.R
 n0 <- nrow(S$pm); d <- merge(S$pm, S$pT, by = "CTUID"); cat(sprintf("permits %d -> %d with tract ppsf\n", n0, nrow(d)))
-es <- fread("~/DropboxExternal/dataProcessed/eventStudyPpsf.csv")[per != -1][order(per)]
+es <- fread(paste0("~/DropboxExternal/dataProcessed/eventStudyPpsf", SFX, ".csv"))[per != -1][order(per)]
 m  <- feols(dup ~ i(per, ppsf, ref = -1) | CTUID + per, d, cluster = ~CTUID)
 stopifnot(max(abs(coef(m) - es$b)) < 1e-8)   # = permitEventStudy.R
 b <- coef(m); V <- vcov(m); pp <- as.numeric(sub("^per::(-?[0-9]+):ppsf$", "\\1", names(b)))
@@ -37,7 +38,7 @@ res <- rbindlist(lapply(names(targets), function(tg) {
         data.table(target = tg, restr = "Smoothness (M)", x = c(NA, sd$M), lb = c(o$lb, sd$lb), ub = c(o$ub, sd$ub)))
 }))
 cat("\nwarnings from HonestDiD:\n"); print(table(W))
-fwrite(res, "~/DropboxExternal/dataProcessed/honestDiDPpsf.csv")
+fwrite(res, paste0("~/DropboxExternal/dataProcessed/honestDiDPpsf", SFX, ".csv"))
 pd <- res[!is.na(x)]
 og <- res[is.na(x), .(lb = lb[1], ub = ub[1]), by = .(target, restr)]
 p <- ggplot(pd, aes(x, ymin = lb, ymax = ub)) +
@@ -45,4 +46,4 @@ p <- ggplot(pd, aes(x, ymin = lb, ymax = ub)) +
   geom_hline(data = og, aes(yintercept = lb), linetype = 3) + geom_hline(data = og, aes(yintercept = ub), linetype = 3) +
   facet_grid(target ~ restr, scales = "free_x") + labs(x = NULL, y = "Robust 95% CI, coefficient on log ppsf") +
   theme_bw(base_size = 10) + theme(panel.grid.minor = element_blank())
-ggsave("../text/honestDiDPpsf.png", p, width = 7.5, height = 5.5, dpi = 300)
+ggsave(paste0("../text/honestDiDPpsf", SFX, ".png"), p, width = 7.5, height = 5.5, dpi = 300)

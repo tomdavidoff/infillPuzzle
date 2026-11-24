@@ -1,0 +1,97 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+2018 SFD lots: width>0, located           73694 ->  67794 (lost 8.0%)
+one lot per rollStart                     67794 ->  67785 (lost 0.0%)
+in RT zones                               67785 ->   5858 (lost 91.4%)
+2018 R1-1 lots with an address key: 1 | keys shared by >1 lot (E/W): 3 
+                             typeofwork     N
+                                 <char> <int>
+1:                Addition / Alteration 26090
+2:                         New Building 12080
+3:          Demolition / Deconstruction  7198
+4:                Salvage and Abatement  6751
+5:       Temporary Building / Structure   502
+6: Outdoor Uses (No Buildings Proposed)    62
+New Building or Addition / Alteration     52683 ->  38170 (lost 27.5%)
+drop infill/laneway categories            38170 ->  33624 (lost 11.9%)
+cutoff A: $660,000  (q95 of non-new-build principal permits (main))
+cutoff B: $1,614,100  (q95 of all principal permits)
+cutoff C: $706,636.7  (q33 of new-build single + duplex permits)
+              typeofwork     N
+                  <char> <int>
+1: Addition / Alteration   544
+New Building or value >= lowest cutoff    33624 ->   9979 (lost 70.3%)
+   multiplexByDescAndDate     N
+                   <lgcl> <int>
+1:                  FALSE  1249
+2:                   TRUE   615
+            specificusecategory     N
+                         <char> <int>
+1:               General Office   703
+2:                 Retail Store   144
+3: Multiple Conversion Dwelling   127
+4:                Dwelling Unit    88
+5:                     Hospital    78
+6:         Restaurant - Class 1    71
+7:        Financial Institution    59
+8:               Not Applicable    58
+principal product, geocoded                9979 ->   7551 (lost 24.3%)
+         product     N near26 roll26in2018
+          <char> <int>  <num>        <num>
+1:        single  3888  0.876        0.027
+2:        duplex  1824  0.855        0.093
+3: otherMultiple  1232  0.311        0.002
+4:     multiplex   607  0.532        0.003
+         product     N address near5
+          <char> <int>   <num> <num>
+1: otherMultiple  1232   0.002 0.002
+2:        single  3888   0.028 0.027
+3:        duplex  1824   0.091 0.093
+4:     multiplex   607   0.003 0.003
+address vs 5m agreement where both match: 1  N = 273 
+         product     N addr26 addr26in2018
+          <char> <int>  <num>        <num>
+1: otherMultiple  1232  0.850        0.003
+2:        single  3888  0.977        0.032
+3:        duplex  1824  0.978        0.110
+4:     multiplex   607  0.690        0.003
+2026-address vs centroid agreement where both match: 0.996  N = 278 
+street-nearest vs 2026 address, address-linked off-centroid permits: agree = 0.792  N = 53 
+rollStart vs address agreement where both match: 1  N = 273 
+Using 'N' as value column. Use 'value.var' to override
+Key: <product>
+         product    NA address26 rollStart26 streetNear
+          <char> <int>     <int>       <int>      <int>
+1:        duplex  1488        31         169        136
+2:     multiplex   598         0           2          7
+3: otherMultiple  1202         2           2         26
+4:        single  3706        20         105         57
+matched to 2018 R1-1 SFD lot               7551 ->    557 (lost 92.6%)
+         product     N
+          <char> <int>
+1:        duplex   336
+2:        single   182
+3: otherMultiple    30
+4:     multiplex     9
+
+RT lots linked, new builds by zone x era x product:
+Using 'N' as value column. Use 'value.var' to override
+Key: <zone, era>
+      zone    era duplex multiplex otherMultiple single
+    <char> <char>  <int>     <int>         <int>  <int>
+ 1:  RT-10   post      5         1             3      1
+ 2:  RT-10    pre     46         0             2     24
+ 3:  RT-11   post      8         1             0      9
+ 4:  RT-11    pre     52         0             2     20
+ 5:   RT-2   post      9         0             0      5
+ 6:   RT-2    pre     23         0             9     13
+ 7:   RT-3   post      1         0             2      0
+ 8:   RT-3    pre      1         0             0      6
+ 9:  RT-4A    pre      2         0             0      1
+10:   RT-5   post     43         2             1      9
+11:   RT-5    pre    130         0            10     43
+12:   RT-7   post      1         5             0      1
+13:   RT-7    pre      3         0             0      2
+14:   RT-8   post      2         0             0      8
+15:   RT-8    pre     10         0             1     21
+16:   RT-9   post      0         0             0      4
+17:   RT-9    pre      0         0             0     15

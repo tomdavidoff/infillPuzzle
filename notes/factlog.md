@@ -212,3 +212,12 @@ Project value ($000) of new-build permits on 2018 R1-1 SFD lots issued 2018+ (al
 otherMultiple dropped). New Building N = 4,616: p10/25/50/75/90 = 586/700/805/1,015/1,301. Addition / Alteration
 >= $660,000 N = 80 (76 single, 4 duplex): 715/798/996/1,362/2,163. 82 New Building permits report $0/NA value
 (63 of 571 multiplexes); left in the quantiles. Script: scripts/permitValueDist.R.
+
+## RT-zone DiD (shareDiDTableRT.tex, permitPhaseCountsRT.tex, eventStudyPpsfRT.png; 11/23/26) — CHECK
+ZONESET=RT reruns multiplexLotWidth.R -> permitShareDiD.R -> permitEventStudy.R on 2018 SFD lots now in RT-* zones
+(5,858 lots), same permit extract (SKIP_FRESH=1), outputs suffixed RT, no macros. 33-ft single+duplex sample: 194
+permits (129 pre, 65 post; East 158, West 36). Tract ppsf33 exists for only 55 of them (17 tracts), so tract columns
+are noise; neighbourhood base (8 nbhds, 191 permits): post x ppsf 0.074 (0.154), WCR p 0.60, vs R1-1 0.527 (0.125).
+East/West 2x2: DiD 0.028 (0.164) vs R1-1 0.25 (0.063). East RT duplex share falls 96% (2019) -> 52% (2022), 78% (2024).
+Tract event study: pre-trend p = 0.013, 2026 coefficient dropped (1 permit). HonestDiD not run (meaningless at N = 55).
+Open: whether any RT zones changed rules in Oct 2023 (RT-7 has 5 post-reform multiplexes) — needs policy doc from Tom.

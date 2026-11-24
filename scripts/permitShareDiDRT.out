@@ -1,0 +1,196 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+33-ft single+duplex new builds, latest per lot x era: 194 (duplex era 129, R1-1 era 65)
+lots with >1 BCA neighbourhood: 0 
+lots without tract: 0  without neighbourhood: 0 
+excluded from regressions (pmAll, per = NA):
+Key: <yr>
+      yr     N
+   <int> <int>
+1:  2018     1
+2:  2023    21
+Key: <per>
+     per     N dupShare       from         to
+   <int> <int>    <num>     <IDat>     <IDat>
+1:    -4    28    0.857 2019-01-30 2019-12-24
+2:    -3    26    0.692 2020-01-10 2020-12-15
+3:    -2    49    0.653 2021-01-22 2021-12-22
+4:    -1    26    0.500 2022-01-10 2022-12-22
+5:     0    32    0.625 2024-01-03 2024-12-21
+6:     1    26    0.692 2025-01-20 2025-12-18
+7:     2     7    0.571 2026-01-13 2026-05-20
+CTUID: area has ppsf33 estimate                  194 ->     55 (lost 71.6%)
+CTUID: area has ppsf33 estimate                  194 ->     55 (lost 71.6%)
+CTUID: area has ppsf33 estimate (adjacent years)     58 ->     15 (lost 74.1%)
+nbhd: area has ppsf33 estimate                   194 ->    191 (lost 1.5%)
+nbhd: area has ppsf33 estimate                   194 ->    191 (lost 1.5%)
+nbhd: area has ppsf33 estimate (adjacent years)     58 ->     56 (lost 3.4%)
+
+==== base | areas 17 | cells 40 | permits 55 | WCR p 0.5329533 
+        Estimate Std. Error    t value  Pr(>|t|)
+postX -0.4177414  0.6118819 -0.6827157 0.5045522
+attr(,"type")
+[1] "Clustered (area)"
+
+==== trend | areas 17 | cells 40 | permits 55 | WCR p 0.2166217 
+         Estimate Std. Error   t value   Pr(>|t|)
+postX  -2.8731128  1.3712441 -2.095260 0.05241275
+trendX  0.7754929  0.4530687  1.711645 0.10627391
+attr(,"type")
+[1] "Clustered (area)"
+
+==== window | areas 10 | cells 12 | permits 15 | WCR p 0.1657166 
+      Estimate Std. Error t value Pr(>|t|)
+postX -3.68339        NaN     NaN       NA
+attr(,"type")
+[1] "NA (not-available)"
+
+==== base | areas 8 | cells 40 | permits 191 | WCR p 0.6021602 
+        Estimate Std. Error   t value Pr(>|t|)
+postX 0.07373604  0.1535897 0.4800846 0.645806
+attr(,"type")
+[1] "Clustered (area)"
+
+==== trend | areas 8 | cells 40 | permits 191 | WCR p 0.1581158 
+         Estimate Std. Error   t value    Pr(>|t|)
+postX  -1.0131029 0.35122980 -2.884445 0.023501920
+trendX  0.2740805 0.07543693  3.633240 0.008361786
+attr(,"type")
+[1] "Clustered (area)"
+
+==== window | areas 8 | cells 12 | permits 56 | WCR p 0.1443144 
+        Estimate Std. Error   t value  Pr(>|t|)
+postX -0.3936635  0.2235534 -1.760937 0.1216358
+attr(,"type")
+[1] "Clustered (area)"
+           cells   med share5
+          <char> <num>  <num>
+1: tract x month     1      0
+2:  tract x year     1      0
+CTUID: area has ppsf33 estimate                  194 ->     55 (lost 71.6%)
+CTUID: area has ppsf33 estimate                  194 ->     55 (lost 71.6%)
+  Estimate Std. Error    t value   Pr(>|t|) 
+-0.5682896  0.5556865 -1.0226803  0.3216738 
+nbhd: area has ppsf33 estimate                   194 ->    191 (lost 1.5%)
+nbhd: area has ppsf33 estimate                   194 ->    191 (lost 1.5%)
+  Estimate Std. Error    t value   Pr(>|t|) 
+-0.1215311  0.4258216 -0.2854037  0.7835951 
+West-East mean ppsf gap: tract 0.168  nbhd 0.212 
+CTUID: area has ppsf33 estimate                  194 ->     55 (lost 71.6%)
+CTUID: area has ppsf33 estimate                  194 ->     55 (lost 71.6%)
+nbhd: area has ppsf33 estimate                   194 ->    191 (lost 1.5%)
+nbhd: area has ppsf33 estimate                   194 ->    191 (lost 1.5%)
+CTUID: area has ppsf33 estimate                  176 ->     54 (lost 69.3%)
+CTUID: area has ppsf33 estimate                  176 ->     54 (lost 69.3%)
+nbhd: area has ppsf33 estimate                   176 ->    173 (lost 1.7%)
+nbhd: area has ppsf33 estimate                   176 ->    173 (lost 1.7%)
+CTUID: area has ppsf33 estimate                  192 ->     55 (lost 71.4%)
+CTUID: area has ppsf33 estimate                  192 ->     55 (lost 71.4%)
+nbhd: area has ppsf33 estimate                   192 ->    189 (lost 1.6%)
+nbhd: area has ppsf33 estimate                   192 ->    189 (lost 1.6%)
+   cutoff  level     N           b        se
+   <char> <char> <int>       <num>     <num>
+1:      A  tract   194 -0.41774138 0.6118819
+2:      A   nbhd   194  0.07373604 0.1535897
+3:      B  tract   176 -0.21335120 0.5490520
+4:      B   nbhd   176  0.07209857 0.1657984
+5:      C  tract   192 -0.41774138 0.6118819
+6:      C   nbhd   192  0.01934496 0.1598313
+Key: <side, post>
+     side  post     n     d         p
+   <char> <num> <int> <num>     <num>
+1:   East     0   108    82 0.7592593
+2:   East     1    50    38 0.7600000
+3:   West     0    21     5 0.2380952
+4:   West     1    15     4 0.2666667
+EW DiD 0.028 (SE 0.164, z 0.17, p 0.8655) | ratio of odds ratios 1.16, Woolf chi2(1) 0.03, p 0.8660 | logit coef 0.147
+Key: <side, per>
+      side   per     n         p
+    <char> <int> <int>     <num>
+ 1:   East    -4    25 0.9600000
+ 2:   East    -3    19 0.8947368
+ 3:   East    -2    43 0.6976744
+ 4:   East    -1    21 0.5238095
+ 5:   East     0    23 0.7826087
+ 6:   East     1    22 0.7272727
+ 7:   East     2     5 0.8000000
+ 8:   West    -4     3 0.0000000
+ 9:   West    -3     7 0.1428571
+10:   West    -2     6 0.3333333
+11:   West    -1     5 0.4000000
+12:   West     0     9 0.2222222
+13:   West     1     4 0.5000000
+14:   West     2     2 0.0000000
+   cutoff         did        se
+   <char>       <num>     <num>
+1:      A 0.027830688 0.1643650
+2:      B 0.051699029 0.2096061
+3:      C 0.002768031 0.1690652
+Key: <phase>
+                                        phase East_duplex East_single
+                                       <char>       <int>       <int>
+1:                                  2019 2019          24           1
+2:                                  2020 2020          17           2
+3:                                  2021 2021          30          13
+4:                                  2022 2022          11          10
+5: 2023.1 Announcement period 2023 (Jan--Sep)          10           2
+6:   2023.2 Post-announcement 2023 (Oct--Dec)           5           1
+7:                                  2024 2024          18           5
+8:                                  2025 2025          16           6
+9:                       2026 2026 (Jan--Sep)           4           1
+   West_duplex West_single
+         <int>       <int>
+1:           0           3
+2:           1           6
+3:           2           4
+4:           2           3
+5:           0           2
+6:           1           0
+7:           2           7
+8:           2           2
+9:           0           2
+2018 (Sept 18 - Dec 31), excluded:
+Key: <side, product>
+     side product     N
+   <char>  <char> <int>
+1:   East  single     1
+% generated by scripts/permitShareDiD.R; do not edit
+{\footnotesize
+\begin{tabular}{lrrrrrr}
+\hline
+ & \multicolumn{3}{c}{West Side} & \multicolumn{3}{c}{East Side} \\
+Application period & Single & Duplex & Duplex \% & Single & Duplex & Duplex \% \\
+\hline
+2019 & 3 & 0 & 0 & 1 & 24 & 96 \\
+2020 & 6 & 1 & 14 & 2 & 17 & 89 \\
+2021 & 4 & 2 & 33 & 13 & 30 & 70 \\
+2022 & 3 & 2 & 40 & 10 & 11 & 52 \\
+\hline
+Announcement period 2023 (Jan--Sep) & 2 & 0 & 0 & 2 & 10 & 83 \\
+Post-announcement 2023 (Oct--Dec) & 0 & 1 & 100 & 1 & 5 & 83 \\
+\hline
+2024 & 7 & 2 & 22 & 5 & 18 & 78 \\
+2025 & 2 & 2 & 50 & 6 & 16 & 73 \\
+2026 (Jan--Sep) & 2 & 0 & 0 & 1 & 4 & 80 \\
+\hline
+\end{tabular}
+}
+% generated by scripts/permitShareDiD.R; do not edit
+\begin{tabular}{lcccccc}
+\hline
+ & \multicolumn{3}{c}{Census tract} & \multicolumn{3}{c}{Neighbourhood} \\
+ & (1) & (2) & (3) & (4) & (5) & (6) \\
+\hline
+Post 2023 $\times$ log ppsf & $-0.418$ & $-2.873^{*}$ & $-3.683$ & $0.074$ & $-1.013^{**}$ & $-0.394$ \\
+ & (0.612) & (1.371) & (NaN) & (0.154) & (0.351) & (0.224) \\
+\quad wild bootstrap $p$ & 0.533 & 0.217 & 0.166 & 0.602 & 0.158 & 0.144 \\
+Period $\times$ log ppsf &  & $0.775$ &  &  & $0.274^{***}$ &  \\
+ &  & (0.453) &  &  & (0.075) &  \\
+\hline
+Years & all & all & 2022, 2024 & all & all & 2022, 2024 \\
+Areas & 17 & 17 & 10 & 8 & 8 & 8 \\
+Periods & 7 & 7 & 2 & 7 & 7 & 2 \\
+Area $\times$ period cells & 40 & 40 & 12 & 40 & 40 & 12 \\
+Permits & 55 & 55 & 15 & 191 & 191 & 56 \\
+Mean duplex share & 0.71 & 0.71 & 0.67 & 0.66 & 0.66 & 0.57 \\
+\hline
+\end{tabular}

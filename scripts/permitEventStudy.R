@@ -13,7 +13,8 @@ library(data.table)
 library(fixest)
 library(ggplot2)
 
-S  <- readRDS("~/DropboxExternal/dataProcessed/shareDiDPermits.rds")   # from permitShareDiD.R
+SFX <- if (Sys.getenv("ZONESET") == "RT") "RT" else ""   # ZONESET=RT: RT-zone run, outputs suffixed
+S  <- readRDS(paste0("~/DropboxExternal/dataProcessed/shareDiDPermits", SFX, ".rds"))   # from permitShareDiD.R
 n0 <- nrow(S$pm); d <- merge(S$pm, S$pT, by = "CTUID"); cat(sprintf("permits %d -> %d with tract ppsf\n", n0, nrow(d)))
 lab <- d[, .(n = .N, lab = paste0(format(min(applied), "%b %Y"), "-\n", format(max(applied), "%b %Y"))), keyby = per]
 print(lab)
@@ -25,7 +26,7 @@ cat(sprintf("joint pre-period test F = %.2f, p = %.3f (%d restrictions); pooled 
             w$stat, w$p, w$df1, coef(m0), se(m0)))
 es <- data.table(per = as.numeric(sub("^per::(-?[0-9]+):ppsf$", "\\1", names(coef(m)))), b = coef(m), se = se(m))
 es <- rbind(es, data.table(per = -1, b = 0, se = 0))[order(per)]
-fwrite(es, "~/DropboxExternal/dataProcessed/eventStudyPpsf.csv")
+fwrite(es, paste0("~/DropboxExternal/dataProcessed/eventStudyPpsf", SFX, ".csv"))
 # figure model: dropped window as its own period
 dA <- merge(S$pmAll, S$pT, by = "CTUID")
 dA <- dA[year(applied) >= 2019]
@@ -50,4 +51,4 @@ p <- ggplot(eA, aes(mid, b)) +
   scale_x_date(breaks = as.Date(paste0(2019:2026, "-07-01")), labels = 2019:2026, minor_breaks = NULL) +
   labs(x = "Permit application year (2023 estimated separately; excluded from main sample)", y = "Coefficient on tract log ppsf (reference: 2022)") +
   theme_bw(base_size = 10) + theme(panel.grid.minor = element_blank())
-ggsave("../text/eventStudyPpsf.png", p, width = 7.5, height = 4.8, dpi = 300)
+ggsave(paste0("../text/eventStudyPpsf", SFX, ".png"), p, width = 7.5, height = 4.8, dpi = 300)
