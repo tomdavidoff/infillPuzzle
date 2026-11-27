@@ -1,0 +1,225 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+                               use     N
+                            <char> <int>
+1:          Single Family Dwelling 18216
+2: Residential Dwelling with Suite  9407
+                                      ctype      N
+                                     <char>  <int>
+1:     Improved Single Property Transaction 163040
+2: Reject - Not Suitable for Sales Analysis  34434
+3:       Vacant Single Property Transaction   4429
+4:            Multiple Property Transaction   1510
+sales on 2022 single-family lots               203413 ->   69013 (lost 66.1%)
+ctype %like% "Single Property"                  69013 ->   52141 (lost 24.4%)
+price > 1e+05                                   52141 ->   46021 (lost 11.7%)
+lotArea > 0                                     46021 ->   46021 (lost 0.0%)
+     event     n noRoll
+    <char> <int>  <num>
+1:   ssmuh  2172  5e-04
+2: cutback  1225  0e+00
+     event        cut
+    <char>      <num>
+1:   ssmuh 0.04817518
+2: cutback 0.04450390
+comparison group: 20 cap 20 
+     event     n noEffYear young    td tdAndYoung
+    <char> <int>     <int> <int> <int>      <int>
+1:   ssmuh  2171        21   352   556          7
+2: cutback  1225        12   290   305          8
+     event   post     n teardowns      first       last
+    <char> <lgcl> <int>     <int>     <IDat>     <IDat>
+1: cutback  FALSE   512       261 2023-12-18 2025-12-12
+2: cutback   TRUE    67        36 2025-12-15 2026-04-08
+3:   ssmuh  FALSE   491       309 2022-06-28 2024-06-21
+4:   ssmuh   TRUE   403       240 2024-06-24 2026-03-31
+NOTE: 2/0 fixed-effect singletons were removed (2 observations).
+NOTE: 2/1 fixed-effect singletons were removed (3 observations).
+NOTE: 2/0 fixed-effect singletons were removed (2 observations).
+NOTE: 2/1 fixed-effect singletons were removed (3 observations).
+Warning messages:
+1: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+2: The VCOV matrix is not positive semi-definite and was 'fixed' (see ?vcov). 
+NOTE: 2/0 fixed-effect singletons were removed (2 observations).
+NOTE: 2/1 fixed-effect singletons were removed (3 observations).
+     event           b     seNbhd   seHetero
+    <char>       <num>      <num>      <num>
+1:   ssmuh  0.08819663 0.03996986 0.03405899
+2: cutback -0.08984829 0.03992725 0.04371308
+                                ssmuh             cutback           ssmuh.1
+event                           ssmuh             cutback             ssmuh
+spec                             roll                roll             share
+Dependent Var.:                  lppl                lppl              lppl
+                                                                           
+tdTRUE            -0.3655*** (0.0394) -0.4595*** (0.0733)                  
+td x rel = -8      -0.2166** (0.0593)     0.1684 (0.1196)                  
+td x rel = -7     -0.1879*** (0.0404)    0.1760. (0.0949)                  
+td x rel = -6        -0.0109 (0.0986)     0.0822 (0.0930)                  
+td x rel = -5        -0.0934 (0.0757)     0.1457 (0.0870)                  
+td x rel = -4        -0.0335 (0.0756)     0.0860 (0.1003)                  
+td x rel = -3        -0.0279 (0.1082)     0.0621 (0.0887)                  
+td x rel = -2         0.0064 (0.0703)    -0.0672 (0.0912)                  
+td x rel = 0         -0.0399 (0.0877)    -0.0430 (0.0704)                  
+td x rel = 1          0.0688 (0.1091)     0.0488 (0.0838)                  
+td x rel = 2          0.0949 (0.0796)                                      
+td x rel = 3          0.0703 (0.0962)                                      
+td x rel = 4         -0.0101 (0.0807)                                      
+td x rel = 5         -0.0567 (0.0483)                                      
+td x rel = 6         -0.0189 (0.0778)                                      
+td x rel = 7          0.0509 (0.1666)                                      
+ishare                                                    1.107*** (0.1518)
+ishare x rel = -8                                         0.4332** (0.1398)
+ishare x rel = -7                                          0.5664* (0.1974)
+ishare x rel = -6                                          -0.0183 (0.2477)
+ishare x rel = -5                                           0.4125 (0.2335)
+ishare x rel = -4                                           0.0709 (0.1364)
+ishare x rel = -3                                           0.2052 (0.3399)
+ishare x rel = -2                                           0.2986 (0.1687)
+ishare x rel = 0                                            0.0682 (0.2365)
+ishare x rel = 1                                           -0.3948 (0.2419)
+ishare x rel = 2                                           -0.1199 (0.2131)
+ishare x rel = 3                                           -0.1857 (0.2300)
+ishare x rel = 4                                           -0.1196 (0.2155)
+ishare x rel = 5                                           0.3146. (0.1774)
+ishare x rel = 6                                           -0.1196 (0.2492)
+ishare x rel = 7                                           -0.0736 (0.3755)
+tdPostTRUE                                                                 
+Fixed-Effects:    ------------------- ------------------- -----------------
+nbhd                              Yes                 Yes               Yes
+ym                                Yes                 Yes               Yes
+_________________ ___________________ ___________________ _________________
+S.E.: Clustered              by: nbhd            by: nbhd          by: nbhd
+Observations                      892                 576               892
+R2                            0.57662             0.61860           0.56952
+Within R2                     0.39336             0.43027           0.38318
+
+                           cutback.1             ssmuh.2           cutback.2
+event                        cutback               ssmuh             cutback
+spec                           share                 DiD                 DiD
+Dependent Var.:                 lppl                lppl                lppl
+                                                                            
+tdTRUE                               -0.4477*** (0.0308) -0.3849*** (0.0260)
+td x rel = -8                                                               
+td x rel = -7                                                               
+td x rel = -6                                                               
+td x rel = -5                                                               
+td x rel = -4                                                               
+td x rel = -3                                                               
+td x rel = -2                                                               
+td x rel = 0                                                                
+td x rel = 1                                                                
+td x rel = 2                                                                
+td x rel = 3                                                                
+td x rel = 4                                                                
+td x rel = 5                                                                
+td x rel = 6                                                                
+td x rel = 7                                                                
+ishare             1.609*** (0.1166)                                        
+ishare x rel = -8  -0.7303* (0.3002)                                        
+ishare x rel = -7  -0.3311. (0.1624)                                        
+ishare x rel = -6  -0.3217. (0.1616)                                        
+ishare x rel = -5 -0.6821** (0.2086)                                        
+ishare x rel = -4  -0.3638. (0.1835)                                        
+ishare x rel = -3  -0.6252* (0.2260)                                        
+ishare x rel = -2   -0.1447 (0.1674)                                        
+ishare x rel = 0    -0.2345 (0.1378)                                        
+ishare x rel = 1    -0.2919 (0.1836)                                        
+ishare x rel = 2                                                            
+ishare x rel = 3                                                            
+ishare x rel = 4                                                            
+ishare x rel = 5                                                            
+ishare x rel = 6                                                            
+ishare x rel = 7                                                            
+tdPostTRUE                              0.0882* (0.0400)   -0.0898* (0.0399)
+Fixed-Effects:    ------------------ ------------------- -------------------
+nbhd                             Yes                 Yes                 Yes
+ym                               Yes                 Yes                 Yes
+_________________ __________________ ___________________ ___________________
+S.E.: Clustered             by: nbhd            by: nbhd            by: nbhd
+Observations                     576                 892                 576
+R2                           0.69190             0.56687             0.60706
+Within R2                    0.53976             0.37939             0.41304
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+            cls     n months minPerMonth sdLogArea
+         <char> <int>  <int>       <int>     <num>
+1: not teardown   345     46           1 0.3519955
+2:     teardown   549     46           1 0.3283333
+NOTE: 2/1 fixed-effect singletons were removed (3 observations).
+NOTE: 1/1 fixed-effect singletons were removed (2 observations).
+                                                                pp.1
+Sample (paste(cls, fifelse(post, "post", "pre")))  not teardown post
+Dependent Var.:                                                   lp
+                                                                    
+llc                                               0.5774*** (0.0531)
+Fixed-Effects:                                    ------------------
+nbhd                                                             Yes
+ym                                                               Yes
+________________________________________          __________________
+S.E. type                                         Heteroskedas.-rob.
+Observations                                                     162
+R2                                                           0.62906
+Within R2                                                    0.43886
+
+                                                                pp.2
+Sample (paste(cls, fifelse(post, "post", "pre")))   not teardown pre
+Dependent Var.:                                                   lp
+                                                                    
+llc                                               0.4395*** (0.0461)
+Fixed-Effects:                                    ------------------
+nbhd                                                             Yes
+ym                                                               Yes
+________________________________________          __________________
+S.E. type                                         Heteroskedas.-rob.
+Observations                                                     179
+R2                                                           0.60992
+Within R2                                                    0.35566
+
+                                                                pp.3
+Sample (paste(cls, fifelse(post, "post", "pre")))      teardown post
+Dependent Var.:                                                   lp
+                                                                    
+llc                                               0.4262*** (0.0635)
+Fixed-Effects:                                    ------------------
+nbhd                                                             Yes
+ym                                                               Yes
+________________________________________          __________________
+S.E. type                                         Heteroskedas.-rob.
+Observations                                                     237
+R2                                                           0.34372
+Within R2                                                    0.21476
+
+                                                                pp.4
+Sample (paste(cls, fifelse(post, "post", "pre")))       teardown pre
+Dependent Var.:                                                   lp
+                                                                    
+llc                                               0.3135*** (0.0490)
+Fixed-Effects:                                    ------------------
+nbhd                                                             Yes
+ym                                                               Yes
+________________________________________          __________________
+S.E. type                                         Heteroskedas.-rob.
+Observations                                                     307
+R2                                                           0.40514
+Within R2                                                    0.19875
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+NOTE: 3/2 fixed-effect singletons were removed (5 observations).
+                                        pj
+Dependent Var.:                         lp
+                                          
+llc                     0.4623*** (0.0421)
+llc x postTRUE             0.0677 (0.0520)
+llc x tdTRUE             -0.1439* (0.0621)
+llc x postTRUE x tdTRUE   -0.0362 (0.0854)
+Fixed-Effects:          ------------------
+nbhd-td                                Yes
+ym-td                                  Yes
+_______________________ __________________
+S.E. type               Heteroskedas.-rob.
+Observations                           889
+R2                                 0.67588
+Within R2                          0.25952
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+`geom_smooth()` using formula = 'y ~ x'
+`geom_smooth()` using formula = 'y ~ x'

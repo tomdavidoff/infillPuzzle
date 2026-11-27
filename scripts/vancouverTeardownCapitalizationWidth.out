@@ -1,0 +1,170 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+Warning message:
+st_point_on_surface assumes attributes are constant over geometries 
+                                      ctype      N
+                                     <char>  <int>
+1:     Improved Single Property Transaction 379063
+2: Reject - Not Suitable for Sales Analysis  94828
+3:       Vacant Single Property Transaction   9177
+4:            Multiple Property Transaction   6408
+!folio %in% strata drops 0.578 
+zone %like% "^(RS|R1-1)" drops 0.256 
+ctype %like% "Single Property" drops 0.273 
+price > 1e+05 drops 0.099 
+no 2018 SFD width 0.02 ; width 33/50 among matched 0.517 
+width sample 49992 
+    event     n noRoll badShare
+   <char> <int>  <num>    <num>
+1: duplex  1298      0        0
+2:    r11  1396      0        0
+    event        cut
+   <char>      <num>
+1: duplex 0.03109950
+2:    r11 0.03014637
+    event     td     n permitRate
+   <char> <lgcl> <int>      <num>
+1: duplex  FALSE   973 0.04727646
+2: duplex   TRUE   325 0.30769231
+3:    r11  FALSE  1039 0.03079885
+4:    r11   TRUE   357 0.22128852
+     event   dec     n permitRate share
+    <char> <int> <int>      <num> <num>
+ 1: duplex     1   140      0.436 0.012
+ 2: duplex     2   120      0.258 0.022
+ 3: duplex     3   119      0.092 0.031
+ 4: duplex     4   144      0.118 0.045
+ 5: duplex     5   119      0.076 0.066
+ 6: duplex     6   131      0.031 0.096
+ 7: duplex     7   134      0.045 0.136
+ 8: duplex     8   131      0.008 0.189
+ 9: duplex     9   126      0.032 0.280
+10: duplex    10   134      0.015 0.377
+11:    r11     1   131      0.359 0.012
+12:    r11     2   148      0.189 0.021
+13:    r11     3   150      0.047 0.030
+14:    r11     4   126      0.063 0.046
+15:    r11     5   150      0.047 0.066
+16:    r11     6   138      0.029 0.094
+17:    r11     7   136      0.022 0.136
+18:    r11     8   138      0.029 0.193
+19:    r11     9   143      0.021 0.284
+20:    r11    10   136      0.000 0.370
+     event   dec     n permitRate share
+    <char> <int> <int>      <num> <num>
+                feglm(tdPermit..1 feglm(tdPermit..2
+Sample (event)             duplex               r11
+Dependent Var.:          tdPermit          tdPermit
+                                                   
+ishare          -17.09*** (3.751) -16.63*** (4.292)
+Fixed-Effects:  ----------------- -----------------
+nbhd                          Yes               Yes
+ym                            Yes               Yes
+_______________ _________________ _________________
+S.E.: Clustered          by: nbhd          by: nbhd
+Observations                1,287             1,304
+Squared Cor.              0.17958           0.15962
+Pseudo R2                 0.20783           0.20817
+BIC                       1,050.5            909.61
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1
+    event      g     td     N
+   <char> <lgcl> <lgcl> <int>
+1: duplex  FALSE  FALSE   776
+2: duplex  FALSE   TRUE   258
+3: duplex   TRUE  FALSE   197
+4: duplex   TRUE   TRUE    67
+5:    r11  FALSE  FALSE   838
+6:    r11  FALSE   TRUE   271
+7:    r11   TRUE  FALSE   201
+8:    r11   TRUE   TRUE    86
+                                         est$roll.1          est$roll.2
+                                               roll                roll
+Dependent Var.:                                lppl                lppl
+                                                                       
+tdTRUE                          -0.1956*** (0.0159) -0.2195*** (0.0182)
+tdFALSE x gTRUE                 -0.1201*** (0.0193) -0.1793*** (0.0306)
+tdTRUE x gTRUE                  -0.1739*** (0.0372) -0.2209*** (0.0253)
+tdFALSE x postTRUE                  0.0496 (0.0446)     0.0465 (0.0471)
+tdTRUE x postTRUE                   0.0187 (0.0516)     0.0583 (0.0501)
+gTRUE x postTRUE                   -0.0214 (0.0282)     0.0072 (0.0527)
+tdTRUE x gTRUE x postTRUE           0.1058 (0.0649)     0.0137 (0.0611)
+tdPermitTRUE                                                           
+tdPermitFALSE x gTRUE                                                  
+tdPermitTRUE x gTRUE                                                   
+tdPermitFALSE x postTRUE                                               
+tdPermitTRUE x postTRUE                                                
+tdPermitTRUE x gTRUE x postTRUE                                        
+ishare                                                                 
+ishare x gTRUE                                                         
+ishare x postTRUE                                                      
+ishare x gTRUE x postTRUE                                              
+Fixed-Effects:                  ------------------- -------------------
+nbhd                                            Yes                 Yes
+ym                                              Yes                 Yes
+_______________________________ ___________________ ___________________
+S.E.: Clustered                            by: nbhd            by: nbhd
+Observations                                  1,297               1,395
+R2                                          0.67346             0.62977
+Within R2                                   0.21602             0.29637
+
+                                       est$permit.1        est$permit.2
+                                             permit              permit
+Dependent Var.:                                lppl                lppl
+                                                                       
+tdTRUE                                                                 
+tdFALSE x gTRUE                                                        
+tdTRUE x gTRUE                                                         
+tdFALSE x postTRUE                                                     
+tdTRUE x postTRUE                                                      
+gTRUE x postTRUE                    0.0180 (0.0272)     0.0209 (0.0370)
+tdTRUE x gTRUE x postTRUE                                              
+tdPermitTRUE                    -0.1816*** (0.0199) -0.2221*** (0.0396)
+tdPermitFALSE x gTRUE           -0.1294*** (0.0154) -0.2085*** (0.0303)
+tdPermitTRUE x gTRUE              -0.1209. (0.0633)  -0.1178** (0.0411)
+tdPermitFALSE x postTRUE            0.0231 (0.0371)     0.0174 (0.0546)
+tdPermitTRUE x postTRUE             0.0209 (0.0471)     0.0477 (0.0569)
+tdPermitTRUE x gTRUE x postTRUE     0.0103 (0.0878)    -0.0283 (0.0684)
+ishare                                                                 
+ishare x gTRUE                                                         
+ishare x postTRUE                                                      
+ishare x gTRUE x postTRUE                                              
+Fixed-Effects:                  ------------------- -------------------
+nbhd                                            Yes                 Yes
+ym                                              Yes                 Yes
+_______________________________ ___________________ ___________________
+S.E.: Clustered                            by: nbhd            by: nbhd
+Observations                                  1,297               1,395
+R2                                          0.62737             0.55474
+Within R2                                   0.10534             0.15376
+
+                                        est$share.1         est$share.2
+                                              share               share
+Dependent Var.:                                lppl                lppl
+                                                                       
+tdTRUE                                                                 
+tdFALSE x gTRUE                                                        
+tdTRUE x gTRUE                                                         
+tdFALSE x postTRUE                                                     
+tdTRUE x postTRUE                                                      
+gTRUE x postTRUE                 -0.1016** (0.0287) -0.1666*** (0.0211)
+tdTRUE x gTRUE x postTRUE                                              
+tdPermitTRUE                                                           
+tdPermitFALSE x gTRUE                                                  
+tdPermitTRUE x gTRUE                                                   
+tdPermitFALSE x postTRUE                                               
+tdPermitTRUE x postTRUE                                                
+tdPermitTRUE x gTRUE x postTRUE                                        
+ishare                            1.395*** (0.0539)   1.505*** (0.0594)
+ishare x gTRUE                  -0.3375*** (0.0686) -0.7101*** (0.1095)
+ishare x postTRUE                   0.1095 (0.0817)    -0.1207 (0.0738)
+ishare x gTRUE x postTRUE           0.2901 (0.1743)  0.6538*** (0.1482)
+Fixed-Effects:                  ------------------- -------------------
+nbhd                                            Yes                 Yes
+ym                                              Yes                 Yes
+_______________________________ ___________________ ___________________
+S.E.: Clustered                            by: nbhd            by: nbhd
+Observations                                  1,297               1,395
+R2                                          0.82259             0.76220
+Within R2                                   0.57406             0.54805
+---
+Signif. codes: 0 '***' 0.001 '**' 0.01 '*' 0.05 '.' 0.1 ' ' 1

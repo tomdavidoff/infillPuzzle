@@ -1,0 +1,69 @@
+Linking to GEOS 3.13.0, GDAL 3.8.5, PROJ 9.5.1; sf_use_s2() is TRUE
+2019 Burnaby inventory rows 73701 
+single-family 27580 
+valid eff. year & impr: lost 0.0037 
+          r22     N  share
+       <char> <int>  <num>
+1:    rebuilt   688 0.0250
+2:       none 26693 0.9714
+3: use change    56 0.0020
+4:       gone    42 0.0015
+          r26     N  share
+       <char> <int>  <num>
+1:    rebuilt  1585 0.0577
+2:       none 25559 0.9301
+3: use change   199 0.0072
+4:       gone   136 0.0049
+   1%   10%   25%   50%   75%   90%   95%   97%   99% 
+ 0.70  0.86  1.04  1.21  1.41  1.77  4.38 14.11 30.74 
+   rebuilt impr19   ratio26
+    <lgcl>  <num>     <num>
+1:    TRUE  50800 13.343109
+2:   FALSE 166000  1.189293
+
+P(redeveloped 2018->2025) by 2018 effective age
+Key: <age>
+      age     n      p
+    <num> <int>  <num>
+ 1:    -5   171 0.9766
+ 2:     0  1717 0.1112
+ 3:     5  1238 0.0065
+ 4:    10  1285 0.0062
+ 5:    15  1350 0.0104
+ 6:    20  2051 0.0117
+ 7:    25  3101 0.0103
+ 8:    30  2853 0.0259
+ 9:    35  2611 0.0460
+10:    40  4189 0.0747
+11:    45  1719 0.1024
+12:    50  3543 0.1310
+13:    55   417 0.1559
+14:    60   483 0.1718
+15:    65   307 0.2085
+16:    70   179 0.2905
+17:    75    96 0.2604
+18:    80   169 0.2367
+Key: <age>
+     age     n      p
+   <int> <int>  <num>
+1:    -1   171 0.9766
+2:     0   325 0.5108
+3:     1   299 0.0669
+4:     2   437 0.0046
+5:     3   346 0.0058
+6:     4   310 0.0032
+7:     5   195 0.0000
+8:     6   288 0.0069
+dropping effective age < 2 from the break fit (houses under construction in 2018 look 'rebuilt'): 795 
+
+kink age 29  bootstrap 90% CI 27 30 
+    young     n      p
+   <lgcl> <int>  <num>
+1:  FALSE 17069 0.0867
+2:   TRUE  9615 0.0090
+   under20     n      p
+    <lgcl> <int>  <num>
+1:   FALSE 21718 0.0705
+2:    TRUE  4966 0.0070
+        (Intercept) pmax(age - kHat, 0) 
+        0.009417212         0.005084049 
